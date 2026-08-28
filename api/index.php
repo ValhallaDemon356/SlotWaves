@@ -114,11 +114,18 @@ if (!getenv('LOG_CHANNEL')) {
     $_SERVER['LOG_CHANNEL'] = 'stderr';
 }
 
-// Fallback SQLite connection & writable database in /tmp for serverless Lambda
-if (!getenv('DB_CONNECTION') || getenv('DB_CONNECTION') === 'sqlite') {
-    putenv('DB_CONNECTION=sqlite');
-    $_ENV['DB_CONNECTION'] = 'sqlite';
-    $_SERVER['DB_CONNECTION'] = 'sqlite';
+// Check database configuration: Only execute SQLite preparation if DB_CONNECTION is sqlite or if no remote DB_HOST / DB_CONNECTION is set
+$dbConn = getenv('DB_CONNECTION') ?: ($_ENV['DB_CONNECTION'] ?? ($_SERVER['DB_CONNECTION'] ?? null));
+$dbHost = getenv('DB_HOST') ?: ($_ENV['DB_HOST'] ?? ($_SERVER['DB_HOST'] ?? null));
+
+if ($dbConn === 'sqlite' || (empty($dbConn) && empty($dbHost))) {
+    if (!getenv('DB_CONNECTION')) {
+        putenv('DB_CONNECTION=sqlite');
+        $_ENV['DB_CONNECTION'] = 'sqlite';
+        $_SERVER['DB_CONNECTION'] = 'sqlite';
+    }
+
+    $sqliteFile = $storageDir . '/database.sqlite';
 
     $candidateSourcePaths = [
         __DIR__ . '/../database/database.sqlite',
@@ -139,32 +146,39 @@ if (!getenv('DB_CONNECTION') || getenv('DB_CONNECTION') === 'sqlite') {
     if (!file_exists($sqliteFile) || filesize($sqliteFile) < 50000) {
         $restored = false;
         foreach ($candidateSourcePaths as $candidate) {
-            if (file_exists($candidate) && filesize($candidate) > 50000) {
-                @copy($candidate, $sqliteFile);
-                $restored = true;
-                break;
+            if (!empty($candidate) && file_exists($candidate) && filesize($candidate) > 50000) {
+                if (!empty($sqliteFile)) {
+                    @copy($candidate, $sqliteFile);
+                    $restored = true;
+                    break;
+                }
             }
         }
         if (!$restored) {
             foreach ($b64Candidates as $b64File) {
-                if (file_exists($b64File) && filesize($b64File) > 50000) {
-                    $decoded = base64_decode(file_get_contents($b64File));
-                    if ($decoded && strlen($decoded) > 50000) {
-                        @file_put_contents($sqliteFile, $decoded);
-                        $restored = true;
-                        break;
+                if (!empty($b64File) && file_exists($b64File) && filesize($b64File) > 50000) {
+                    $raw = @file_get_contents($b64File);
+                    if ($raw !== false) {
+                        $decoded = base64_decode($raw);
+                        if ($decoded && strlen($decoded) > 50000 && !empty($sqliteFile)) {
+                            @file_put_contents($sqliteFile, $decoded);
+                            $restored = true;
+                            break;
+                        }
                     }
                 }
             }
         }
-        if (!file_exists($sqliteFile)) {
+        if (!file_exists($sqliteFile) && !empty($sqliteFile)) {
             @touch($sqliteFile);
         }
     }
-    
-    putenv("DB_DATABASE={$sqliteFile}");
-    $_ENV['DB_DATABASE'] = $sqliteFile;
-    $_SERVER['DB_DATABASE'] = $sqliteFile;
+
+    if (!empty($sqliteFile)) {
+        putenv("DB_DATABASE={$sqliteFile}");
+        $_ENV['DB_DATABASE'] = $sqliteFile;
+        $_SERVER['DB_DATABASE'] = $sqliteFile;
+    }
 }
 
 try {
