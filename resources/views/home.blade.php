@@ -56,7 +56,7 @@
                 <div class="text-center mb-6">
                     <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-aviation-50 dark:bg-aviation-950/80 border border-aviation-200 dark:border-aviation-800 text-aviation-700 dark:text-aviation-300 text-xs font-semibold mb-2.5">
                         <span class="radar-dot w-2 h-2 rounded-full bg-aviation-600 dark:bg-aviation-400"></span>
-                        <span>FLIGHT INTELLIGENCE PIPELINE</span>
+                        <span>Flight Intelligence Pipeline</span>
                     </div>
                     <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
                         Import Flight Schedule
