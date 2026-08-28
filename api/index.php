@@ -67,6 +67,11 @@ if (!getenv('APP_SERVICES_CACHE')) {
     $_SERVER['APP_SERVICES_CACHE'] = "{$storageDir}/services.php";
 }
 
+// Enable APP_DEBUG to see exact exception on production
+putenv('APP_DEBUG=true');
+$_ENV['APP_DEBUG'] = 'true';
+$_SERVER['APP_DEBUG'] = 'true';
+
 // Fallback APP_KEY if not yet configured in Vercel dashboard
 if (!getenv('APP_KEY')) {
     putenv('APP_KEY=base64:5Zmfg8R9HutjOLTPOWXKrT6XP2ZAPlufqDq8VCY/9Fs=');
