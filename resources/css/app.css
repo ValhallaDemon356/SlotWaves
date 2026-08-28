@@ -1,0 +1,212 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --color-aviation-primary: #2764AA;
+        --color-aviation-secondary: #558BB3;
+        --color-aviation-light: #69A5C9;
+        --color-dark-navy: #050914;
+        --color-surface: #F7F9FB;
+        --color-surface-subtle: #EEF2F5;
+        --color-text-primary: #172033;
+        --color-text-secondary: #657184;
+        --color-success: #2E9B67;
+        --color-warning: #E5A12A;
+        --color-danger: #D94A4A;
+        --color-arrival-orange: #975432;
+        --color-arrival-int: #E9A52F;
+        --color-departure: #2764AA;
+    }
+
+    html.dark {
+        --color-surface: #050914;
+        --color-surface-subtle: #0B111E;
+        --color-text-primary: #F8FAFC;
+        --color-text-secondary: #94A3B8;
+    }
+
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+}
+
+/* ── Modern Flighty-Inspired Cards & Glass ────────────────────────── */
+.flight-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
+    border-radius: 1rem;
+    transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s ease;
+}
+.flight-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.09), 0 4px 10px -2px rgba(15, 23, 42, 0.04);
+}
+html.dark .flight-card {
+    background: #0B111E;
+    border-color: rgba(255, 255, 255, 0.07);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+html.dark .flight-card:hover {
+    border-color: rgba(39, 100, 170, 0.5);
+    box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.65);
+}
+
+.stat-card-modern {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+    border-radius: 1rem;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.stat-card-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.08);
+}
+html.dark .stat-card-modern {
+    background: #0B111E;
+    border-color: rgba(255, 255, 255, 0.07);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+}
+
+.glass-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), 0 1px 2px rgba(0, 0, 0, 0.02);
+    border-radius: 1.25rem;
+}
+html.dark .glass-card {
+    background: #0B111E;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+}
+
+/* ── Radar Pulse Dot ─────────────────────────────────────────────── */
+@keyframes radar-ping {
+    0% { transform: scale(0.95); opacity: 0.85; }
+    70% { transform: scale(1.8); opacity: 0; }
+    100% { transform: scale(2); opacity: 0; }
+}
+
+.radar-dot {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.radar-dot::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 9999px;
+    background: currentColor;
+    animation: radar-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+    pointer-events: none;
+}
+
+/* ── Aviation Buttons & Controls ─────────────────────────────────── */
+.btn-aviation-primary {
+    background-color: #2764AA;
+    color: #FFFFFF;
+    transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.btn-aviation-primary:hover {
+    background-color: #1D4F88;
+    box-shadow: 0 4px 14px rgba(39, 100, 170, 0.35);
+    transform: translateY(-1px);
+}
+
+.btn-aviation-subtle {
+    background-color: #EEF4FA;
+    color: #2764AA;
+    border: 1px solid #C3DCF1;
+    transition: all 0.18s ease;
+}
+.btn-aviation-subtle:hover {
+    background-color: #E1EDF8;
+    color: #1D4F88;
+}
+html.dark .btn-aviation-subtle {
+    background-color: rgba(39, 100, 170, 0.15);
+    color: #94C1E5;
+    border-color: rgba(39, 100, 170, 0.35);
+}
+html.dark .btn-aviation-subtle:hover {
+    background-color: rgba(39, 100, 170, 0.25);
+    color: #FFFFFF;
+}
+
+/* ── Filter Inputs ───────────────────────────────────────────────── */
+.filter-select, .filter-input-md {
+    background-color: #F8FAFC;
+    border: 1px solid #CBD5E1;
+    color: #172033;
+    border-radius: 0.75rem;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+html.dark .filter-select, html.dark .filter-input-md {
+    background-color: #050914;
+    border-color: #1E293B;
+    color: #F8FAFC;
+}
+.filter-select:focus, .filter-input-md:focus {
+    outline: none;
+    border-color: #2764AA;
+    box-shadow: 0 0 0 3px rgba(39, 100, 170, 0.2);
+}
+
+/* ── Custom Aviation Scrollbar ───────────────────────────────────── */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94A3B8;
+}
+html.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #1E293B;
+}
+html.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #334155;
+}
+
+/* ── 24-Column Grid for Hourly Operations Distribution ──────────── */
+.grid-cols-24 {
+    display: grid;
+    grid-template-columns: repeat(24, minmax(0, 1fr));
+}
+
+/* ── Chart Highlight & Animations ───────────────────────────────── */
+.chart-bar-highlight {
+    box-shadow: 0 0 0 2px #2764AA, 0 8px 20px -4px rgba(39, 100, 170, 0.4);
+}
+html.dark .chart-bar-highlight {
+    box-shadow: 0 0 0 2px #69A5C9, 0 8px 20px -4px rgba(105, 165, 201, 0.5);
+}
+
+.peak-bar-glow {
+    position: relative;
+}
+.peak-bar-glow::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 6px;
+    border: 1px dashed #F59E0B;
+    pointer-events: none;
+}
+

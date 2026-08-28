@@ -1,0 +1,29 @@
+{
+    "timestamp": "2026-08-27T02:24:50+00:00",
+    "source": "HUBUD KEMENHUB (https:\/\/hubud.kemenhub.go.id\/api\/bandara-map)",
+    "source_count": 597,
+    "initial_database_count": 42,
+    "final_database_count": 602,
+    "newly_inserted": 560,
+    "updated": 0,
+    "locked_injourney": 37,
+    "duplicates_detected": 0,
+    "invalid_records": 0,
+    "management_breakdown": {
+        "INJOURNEY": 37,
+        "UPT_HUBUD": 197,
+        "UPTD_PEMDA": 107,
+        "TNI": 6,
+        "MISSIONARIS": 188,
+        "BUMN": 9,
+        "SWASTA": 52,
+        "MASYARAKAT": 1,
+        "OTHER": 5
+    },
+    "reconciliation_notes": {
+        "hubud_official_source_total": 597,
+        "external_reference_hubs": 5,
+        "total_expected": 602,
+        "597th_airport": "Bandara Wari (Tolikara, Papua Pegunungan) - Pengelola: Masyarakat"
+    }
+}
