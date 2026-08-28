@@ -35,7 +35,9 @@ return [
         'sqlite' => [
             'driver' => 'sqlite',
             'url' => env('DB_URL'),
-            'database' => env('DB_DATABASE', database_path('database.sqlite')),
+            'database' => (!empty(env('DB_DATABASE')) && env('DB_DATABASE') !== 'database/database.sqlite')
+                ? env('DB_DATABASE')
+                : (file_exists('/tmp/storage/database.sqlite') ? '/tmp/storage/database.sqlite' : database_path('database.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
             'busy_timeout' => null,
