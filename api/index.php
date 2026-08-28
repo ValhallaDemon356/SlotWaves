@@ -67,7 +67,11 @@ if (!getenv('APP_SERVICES_CACHE')) {
     $_SERVER['APP_SERVICES_CACHE'] = "{$storageDir}/services.php";
 }
 
-// Enable APP_DEBUG to see exact exception on production
+// Enable APP_DEBUG and APP_ENV=local to see exact exception on production
+putenv('APP_ENV=local');
+$_ENV['APP_ENV'] = 'local';
+$_SERVER['APP_ENV'] = 'local';
+
 putenv('APP_DEBUG=true');
 $_ENV['APP_DEBUG'] = 'true';
 $_SERVER['APP_DEBUG'] = 'true';
