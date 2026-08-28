@@ -114,16 +114,20 @@ if (!getenv('LOG_CHANNEL')) {
     $_SERVER['LOG_CHANNEL'] = 'stderr';
 }
 
-// Fallback SQLite file in /tmp if remote database is not configured
-if (!getenv('DB_CONNECTION') && !getenv('DB_HOST')) {
+// Fallback SQLite connection & file in /tmp if remote database is not configured
+if (!getenv('DB_CONNECTION')) {
+    putenv('DB_CONNECTION=sqlite');
+    $_ENV['DB_CONNECTION'] = 'sqlite';
+    $_SERVER['DB_CONNECTION'] = 'sqlite';
+}
+
+if ((!getenv('DB_HOST') || getenv('DB_CONNECTION') === 'sqlite')) {
     $sqliteFile = $storageDir . '/database.sqlite';
-    if (!file_exists($sqliteFile)) {
-        $sourceDb = __DIR__ . '/../database/database.sqlite';
-        if (file_exists($sourceDb) && filesize($sourceDb) > 0) {
-            @copy($sourceDb, $sqliteFile);
-        } else {
-            @touch($sqliteFile);
-        }
+    $sourceDb = __DIR__ . '/../database/database.sqlite';
+    if ((!file_exists($sqliteFile) || filesize($sqliteFile) === 0) && file_exists($sourceDb) && filesize($sourceDb) > 0) {
+        @copy($sourceDb, $sqliteFile);
+    } elseif (!file_exists($sqliteFile)) {
+        @touch($sqliteFile);
     }
     if (!getenv('DB_DATABASE')) {
         putenv("DB_DATABASE={$sqliteFile}");
