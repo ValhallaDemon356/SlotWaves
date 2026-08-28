@@ -128,11 +128,33 @@ if (!getenv('DB_CONNECTION') || getenv('DB_CONNECTION') === 'sqlite') {
         getcwd() . '/database/database.sqlite',
     ];
 
-    if (!file_exists($sqliteFile) || filesize($sqliteFile) === 0) {
+    $b64Candidates = [
+        __DIR__ . '/../database/database.sqlite.b64',
+        dirname(__DIR__) . '/database/database.sqlite.b64',
+        '/var/task/user/database/database.sqlite.b64',
+        '/var/task/database/database.sqlite.b64',
+        getcwd() . '/database/database.sqlite.b64',
+    ];
+
+    if (!file_exists($sqliteFile) || filesize($sqliteFile) < 50000) {
+        $restored = false;
         foreach ($candidateSourcePaths as $candidate) {
-            if (file_exists($candidate) && filesize($candidate) > 0) {
+            if (file_exists($candidate) && filesize($candidate) > 50000) {
                 @copy($candidate, $sqliteFile);
+                $restored = true;
                 break;
+            }
+        }
+        if (!$restored) {
+            foreach ($b64Candidates as $b64File) {
+                if (file_exists($b64File) && filesize($b64File) > 50000) {
+                    $decoded = base64_decode(file_get_contents($b64File));
+                    if ($decoded && strlen($decoded) > 50000) {
+                        @file_put_contents($sqliteFile, $decoded);
+                        $restored = true;
+                        break;
+                    }
+                }
             }
         }
         if (!file_exists($sqliteFile)) {
