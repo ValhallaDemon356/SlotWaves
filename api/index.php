@@ -120,13 +120,24 @@ if (!getenv('DB_CONNECTION') || getenv('DB_CONNECTION') === 'sqlite') {
     $_ENV['DB_CONNECTION'] = 'sqlite';
     $_SERVER['DB_CONNECTION'] = 'sqlite';
 
-    $sqliteFile = $storageDir . '/database.sqlite';
-    $sourceDb = realpath(__DIR__ . '/../database/database.sqlite') ?: (__DIR__ . '/../database/database.sqlite');
-    
-    if ((!file_exists($sqliteFile) || filesize($sqliteFile) === 0) && file_exists($sourceDb) && filesize($sourceDb) > 0) {
-        @copy($sourceDb, $sqliteFile);
-    } elseif (!file_exists($sqliteFile)) {
-        @touch($sqliteFile);
+    $candidateSourcePaths = [
+        __DIR__ . '/../database/database.sqlite',
+        dirname(__DIR__) . '/database/database.sqlite',
+        '/var/task/user/database/database.sqlite',
+        '/var/task/database/database.sqlite',
+        getcwd() . '/database/database.sqlite',
+    ];
+
+    if (!file_exists($sqliteFile) || filesize($sqliteFile) === 0) {
+        foreach ($candidateSourcePaths as $candidate) {
+            if (file_exists($candidate) && filesize($candidate) > 0) {
+                @copy($candidate, $sqliteFile);
+                break;
+            }
+        }
+        if (!file_exists($sqliteFile)) {
+            @touch($sqliteFile);
+        }
     }
     
     putenv("DB_DATABASE={$sqliteFile}");

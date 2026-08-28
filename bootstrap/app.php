@@ -31,4 +31,18 @@ if ($storagePath) {
     $app->useStoragePath($storagePath);
 }
 
+$app->booted(function () {
+    try {
+        if (config('database.default') === 'sqlite') {
+            $dbPath = config('database.connections.sqlite.database');
+            if ($dbPath && file_exists($dbPath) && !\Illuminate\Support\Facades\Schema::hasTable('airports')) {
+                \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+                \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'Database\\Seeders\\MasterDatabaseSeeder', '--force' => true]);
+            }
+        }
+    } catch (\Throwable $e) {
+        // Fallback gracefully
+    }
+});
+
 return $app;
