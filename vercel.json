@@ -24,8 +24,8 @@
     }
   ],
   "env": {
-    "APP_ENV": "local",
-    "APP_DEBUG": "true",
+    "APP_ENV": "production",
+    "APP_DEBUG": "false",
     "APP_CONFIG_CACHE": "/tmp/config.php",
     "APP_EVENTS_CACHE": "/tmp/events.php",
     "APP_PACKAGES_CACHE": "/tmp/packages.php",

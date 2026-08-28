@@ -15,24 +15,12 @@ $app = Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
-            if (env('APP_DEBUG') || getenv('APP_DEBUG') === 'true') {
-                return response("<h1>Exception Details (SlotWaves Production Debug)</h1><p><strong>Class:</strong> " . htmlspecialchars(get_class($e)) . "</p><p><strong>Message:</strong> " . htmlspecialchars($e->getMessage()) . "</p><p><strong>File:</strong> " . htmlspecialchars($e->getFile()) . ":" . $e->getLine() . "</p><pre>" . htmlspecialchars($e->getTraceAsString()) . "</pre>", 500);
-            }
-        });
+        //
     })->create();
 
 $storagePath = env('APP_STORAGE_PATH') ?: getenv('APP_STORAGE_PATH') ?: ($_SERVER['APP_STORAGE_PATH'] ?? null);
 if ($storagePath) {
     $app->useStoragePath($storagePath);
 }
-
-// Ensure serverless defaults are never empty strings
-config([
-    'app.maintenance.driver' => !empty(env('APP_MAINTENANCE_DRIVER')) ? env('APP_MAINTENANCE_DRIVER') : 'file',
-    'app.maintenance.store' => !empty(env('APP_MAINTENANCE_STORE')) ? env('APP_MAINTENANCE_STORE') : 'array',
-    'session.driver' => !empty(env('SESSION_DRIVER')) ? env('SESSION_DRIVER') : 'cookie',
-    'cache.default' => !empty(env('CACHE_STORE')) ? env('CACHE_STORE') : 'array',
-]);
 
 return $app;
