@@ -6,16 +6,7 @@
     "api/index.php": {
       "runtime": "vercel-php@0.7.0",
       "memory": 1024,
-      "maxDuration": 30,
-      "includeFiles": [
-        "app/**",
-        "bootstrap/**",
-        "config/**",
-        "database/**",
-        "resources/**",
-        "public/**",
-        "vendor/**"
-      ]
+      "maxDuration": 30
     }
   },
   "routes": [
