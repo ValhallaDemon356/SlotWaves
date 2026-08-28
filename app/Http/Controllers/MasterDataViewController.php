@@ -10,8 +10,7 @@ class MasterDataViewController extends Controller
 {
     public function index(Request $request)
     {
-        try {
-            $tab = $request->input('tab', 'airports');
+        $tab = $request->input('tab', 'airports');
 
             // ── 1. Airports Query & Dynamic Filters ─────────────────────────────
             $airportQuery = Airport::query();
@@ -175,14 +174,6 @@ class MasterDataViewController extends Controller
                 'active_airlines'      => $activeAirlines,
             ];
 
-            return view('master-data.index', compact('airports', 'airlines', 'tab', 'stats', 'totalFilteredAirports'));
-        } catch (\Throwable $e) {
-            return response()->json([
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => explode("\n", $e->getTraceAsString()),
-            ], 500);
-        }
+        return view('master-data.index', compact('airports', 'airlines', 'tab', 'stats', 'totalFilteredAirports'));
     }
 }
