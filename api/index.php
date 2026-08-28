@@ -83,6 +83,13 @@ if (!getenv('APP_KEY')) {
     $_SERVER['APP_KEY'] = 'base64:5Zmfg8R9HutjOLTPOWXKrT6XP2ZAPlufqDq8VCY/9Fs=';
 }
 
+// Fallback maintenance driver in serverless
+if (!getenv('APP_MAINTENANCE_DRIVER')) {
+    putenv('APP_MAINTENANCE_DRIVER=file');
+    $_ENV['APP_MAINTENANCE_DRIVER'] = 'file';
+    $_SERVER['APP_MAINTENANCE_DRIVER'] = 'file';
+}
+
 // Fallback session driver to cookie if not explicitly configured in serverless
 if (!getenv('SESSION_DRIVER')) {
     putenv('SESSION_DRIVER=cookie');
