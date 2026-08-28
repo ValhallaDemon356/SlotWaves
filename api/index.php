@@ -64,6 +64,13 @@ if (!getenv('APP_SERVICES_CACHE')) {
     $_SERVER['APP_SERVICES_CACHE'] = "{$storageDir}/services.php";
 }
 
+// Fallback APP_KEY if not yet configured in Vercel dashboard
+if (!getenv('APP_KEY')) {
+    putenv('APP_KEY=base64:5Zmfg8R9HutjOLTPOWXKrT6XP2ZAPlufqDq8VCY/9Fs=');
+    $_ENV['APP_KEY'] = 'base64:5Zmfg8R9HutjOLTPOWXKrT6XP2ZAPlufqDq8VCY/9Fs=';
+    $_SERVER['APP_KEY'] = 'base64:5Zmfg8R9HutjOLTPOWXKrT6XP2ZAPlufqDq8VCY/9Fs=';
+}
+
 // Fallback session driver to cookie if not explicitly configured in serverless
 if (!getenv('SESSION_DRIVER')) {
     putenv('SESSION_DRIVER=cookie');
