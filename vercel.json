@@ -4,9 +4,18 @@
   "outputDirectory": "public",
   "functions": {
     "api/index.php": {
-      "runtime": "vercel-php@0.9.0",
+      "runtime": "vercel-php@0.7.0",
       "memory": 1024,
-      "maxDuration": 30
+      "maxDuration": 30,
+      "includeFiles": [
+        "app/**",
+        "bootstrap/**",
+        "config/**",
+        "database/**",
+        "resources/**",
+        "public/**",
+        "vendor/**"
+      ]
     }
   },
   "routes": [

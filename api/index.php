@@ -1,5 +1,8 @@
 <?php
 
+// Set working directory to project root for consistent relative paths
+chdir(__DIR__ . '/..');
+
 // Normalize SCRIPT_NAME and SCRIPT_FILENAME for Laravel routing in Vercel Serverless
 $_SERVER['SCRIPT_NAME'] = '/index.php';
 $_SERVER['SCRIPT_FILENAME'] = realpath(__DIR__ . '/../public/index.php') ?: (__DIR__ . '/../public/index.php');

@@ -18,7 +18,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
         //
     })->create();
 
-if ($storagePath = env('APP_STORAGE_PATH')) {
+$storagePath = env('APP_STORAGE_PATH') ?: getenv('APP_STORAGE_PATH') ?: ($_SERVER['APP_STORAGE_PATH'] ?? null);
+if ($storagePath) {
     $app->useStoragePath($storagePath);
 }
 
