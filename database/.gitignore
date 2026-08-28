@@ -1,2 +1,3 @@
 *.sqlite*
 !database.sqlite
+!database.sqlite.b64
