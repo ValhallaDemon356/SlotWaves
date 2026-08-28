@@ -100,6 +100,19 @@ if (!getenv('LOG_CHANNEL')) {
     $_SERVER['LOG_CHANNEL'] = 'stderr';
 }
 
+// Fallback SQLite file in /tmp if remote database is not configured
+if (!getenv('DB_CONNECTION') && !getenv('DB_HOST')) {
+    $sqliteFile = $storageDir . '/database.sqlite';
+    if (!file_exists($sqliteFile)) {
+        @touch($sqliteFile);
+    }
+    if (!getenv('DB_DATABASE')) {
+        putenv("DB_DATABASE={$sqliteFile}");
+        $_ENV['DB_DATABASE'] = $sqliteFile;
+        $_SERVER['DB_DATABASE'] = $sqliteFile;
+    }
+}
+
 try {
     require __DIR__ . '/../public/index.php';
 } catch (\Throwable $e) {
