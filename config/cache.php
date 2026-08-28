@@ -15,7 +15,7 @@ return [
     |
     */
 
-    'default' => env('CACHE_STORE', 'array'),
+    'default' => !empty(env('CACHE_STORE')) ? env('CACHE_STORE') : 'array',
 
     /*
     |--------------------------------------------------------------------------

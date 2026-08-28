@@ -27,4 +27,12 @@ if ($storagePath) {
     $app->useStoragePath($storagePath);
 }
 
+// Ensure serverless defaults are never empty strings
+config([
+    'app.maintenance.driver' => !empty(env('APP_MAINTENANCE_DRIVER')) ? env('APP_MAINTENANCE_DRIVER') : 'file',
+    'app.maintenance.store' => !empty(env('APP_MAINTENANCE_STORE')) ? env('APP_MAINTENANCE_STORE') : 'array',
+    'session.driver' => !empty(env('SESSION_DRIVER')) ? env('SESSION_DRIVER') : 'cookie',
+    'cache.default' => !empty(env('CACHE_STORE')) ? env('CACHE_STORE') : 'array',
+]);
+
 return $app;
