@@ -118,7 +118,12 @@ if (!getenv('LOG_CHANNEL')) {
 if (!getenv('DB_CONNECTION') && !getenv('DB_HOST')) {
     $sqliteFile = $storageDir . '/database.sqlite';
     if (!file_exists($sqliteFile)) {
-        @touch($sqliteFile);
+        $sourceDb = __DIR__ . '/../database/database.sqlite';
+        if (file_exists($sourceDb) && filesize($sourceDb) > 0) {
+            @copy($sourceDb, $sqliteFile);
+        } else {
+            @touch($sqliteFile);
+        }
     }
     if (!getenv('DB_DATABASE')) {
         putenv("DB_DATABASE={$sqliteFile}");
