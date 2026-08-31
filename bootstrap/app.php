@@ -25,22 +25,10 @@ $app = Application::configure(basePath: dirname(__DIR__))
         });
     })->create();
 
+// Redirect storage path to /tmp in serverless environments (Vercel)
 $storagePath = env('APP_STORAGE_PATH') ?: getenv('APP_STORAGE_PATH') ?: ($_SERVER['APP_STORAGE_PATH'] ?? null);
 if ($storagePath) {
     $app->useStoragePath($storagePath);
 }
-
-$app->booted(function () {
-    try {
-        if (!\Illuminate\Support\Facades\Schema::hasTable('airports')) {
-            \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-            \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'Database\\Seeders\\MasterDatabaseSeeder', '--force' => true]);
-        } elseif (\App\Models\Airport::count() === 0) {
-            \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'Database\\Seeders\\MasterDatabaseSeeder', '--force' => true]);
-        }
-    } catch (\Throwable $e) {
-        \Illuminate\Support\Facades\Log::warning('Bootstrap schema check: ' . $e->getMessage());
-    }
-});
 
 return $app;
