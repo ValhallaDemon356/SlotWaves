@@ -95,11 +95,9 @@ _sw_setenv_default('CACHE_STORE',            'database');
 _sw_setenv_default('QUEUE_CONNECTION',       'sync');
 _sw_setenv_default('DB_CONNECTION',          'pgsql');
 
-// ── 8. Database URL → DB_URL normalisation ────────────────────────────────────
-$dbUrl = getenv('DATABASE_URL') ?: getenv('POSTGRES_URL') ?: null;
-if ($dbUrl && getenv('DB_URL') === false) {
-    _sw_setenv('DB_URL', $dbUrl);
-}
+// ── 8. PostgreSQL SSL and Port Defaults for Supabase ─────────────────────────
+_sw_setenv_default('DB_SSLMODE', 'require');
+_sw_setenv_default('DB_PORT',    '6543');
 
 // ── 9. Bootstrap Laravel ──────────────────────────────────────────────────────
 try {

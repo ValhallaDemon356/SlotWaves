@@ -15,6 +15,17 @@ $app = Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->report(function (\Throwable $e) {
+            error_log(sprintf(
+                '[SlotWaves Exception] %s: %s in %s:%d' . PHP_EOL . '%s',
+                get_class($e),
+                $e->getMessage(),
+                $e->getFile(),
+                $e->getLine(),
+                $e->getTraceAsString()
+            ));
+        });
+
         $exceptions->render(function (\Throwable $e, $request) {
             if ($request->wantsJson() || $request->is('api/*')) {
                 return response()->json([
