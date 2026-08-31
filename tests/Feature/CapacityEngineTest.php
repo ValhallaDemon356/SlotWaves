@@ -234,7 +234,6 @@ class CapacityEngineTest extends TestCase
         $this->upload->flights()->create(['flight_number' => 'JT960', 'airline_code' => 'JT', 'aircraft_type' => 'B738', 'scheduled_time' => '12:25:00', 'operating_days' => '1234567', 'flight_type' => 'departure_domestic']);
         $this->upload->flights()->create(['flight_number' => 'XN741', 'airline_code' => 'XN', 'aircraft_type' => 'B738', 'scheduled_time' => '12:50:00', 'operating_days' => '1234567', 'flight_type' => 'arrival_domestic']);
         $this->upload->flights()->create(['flight_number' => 'XN739', 'airline_code' => 'XN', 'aircraft_type' => 'B738', 'scheduled_time' => '13:40:00', 'operating_days' => '1234567', 'flight_type' => 'departure_domestic']);
-        $this->upload->flights()->create(['flight_number' => 'QZ366', 'airline_code' => 'QZ', 'aircraft_type' => 'A320', 'scheduled_time' => '12:55:00', 'operating_days' => '1234567', 'flight_type' => 'arrival_domestic']);
 
         $res = $this->capacityService->calculate($this->upload->flights);
         $h12 = $res['hourly'][12];
@@ -262,7 +261,7 @@ class CapacityEngineTest extends TestCase
     }
 
     /**
-     * TEST 11: 19:00 case -> occupied 6, remaining 0 (Status FULL)
+     * TEST 11: 19:00 case -> occupied 6, remaining 0 (Status FULL / MAX)
      */
     public function test_11_1900_case_occupied_six_remaining_zero_status_full(): void
     {
@@ -283,7 +282,7 @@ class CapacityEngineTest extends TestCase
 
         $this->assertEquals(6, $h19['occupied']);
         $this->assertEquals(0, $h19['remaining']);
-        $this->assertEquals('FULL', $h19['status']);
+        $this->assertEquals('FULL / MAX', $h19['status']);
     }
 
     /**

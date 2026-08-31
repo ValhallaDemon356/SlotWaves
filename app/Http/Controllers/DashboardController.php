@@ -241,6 +241,29 @@ class DashboardController extends Controller
             ];
         })->sortBy('scheduled_time')->values();
 
+        // Normalized rotations for client-side reactive aircraft occupancy calculations
+        $normalizedRotations = array_map(function ($rot) {
+            return [
+                'rotation_id'     => $rot['rotation_id'],
+                'rotation_status' => $rot['rotation_status'],
+                'is_paired'       => $rot['is_paired'],
+                'is_cargo'        => $rot['is_cargo'] ?? false,
+                'passenger_units' => $rot['passenger_units'] ?? 1,
+                'start_minute'    => $rot['start_minute'],
+                'end_minute'      => $rot['end_minute'],
+                'sta'             => $rot['sta'] ?? null,
+                'std'             => $rot['std'] ?? null,
+                'aircraft_type'   => $rot['aircraft_type'] ?? '—',
+                'category'        => $rot['category'] ?? 'PNB',
+                'flight_number'   => !empty($rot['arrival'])
+                    ? $rot['arrival']->flight_number
+                    : (!empty($rot['departure']) ? $rot['departure']->flight_number : $rot['rotation_id']),
+                'pair_label'      => (!empty($rot['arrival']) && !empty($rot['departure']))
+                    ? "{$rot['arrival']->flight_number} → {$rot['departure']->flight_number}"
+                    : (!empty($rot['arrival']) ? "{$rot['arrival']->flight_number} (Unpaired Arr)" : "RON → {$rot['departure']->flight_number}"),
+            ];
+        }, $capacityStats['rotations']);
+
         // Hourly flight schedule buckets for 24-hour agenda / movement board view
         $hourlySchedule = [];
         for ($h = 0; $h < 24; $h++) {
@@ -272,6 +295,7 @@ class DashboardController extends Controller
             'stats',
             'flights',
             'flightMovements',
+            'normalizedRotations',
             'hourlySchedule',
             'arrivals',
             'departures',

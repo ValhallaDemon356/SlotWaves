@@ -5,7 +5,7 @@
 
 @push('head')
 <script>
-function dashboardState(initialDos, initialMovements, initialOpsStart, initialOpsEnd, initialNac, initialTimezone, initialOffset, initialTzAbbr) {
+function dashboardState(initialDos, initialMovements, initialOpsStart, initialOpsEnd, initialNac, initialTimezone, initialOffset, initialTzAbbr, initialRotations) {
     return {
         theme: localStorage.getItem('slotwaves-theme') || 'light',
         mobileNavOpen: false,
@@ -65,6 +65,7 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
         movementFilter: 'all', // 'all', 'arrivals', 'departures'
         movementSearch: '',
         movements: initialMovements || [],
+        rotations: initialRotations || [],
         hoveredHour: null,
 
         // Flight Detail Drawer State
@@ -215,14 +216,71 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                 const cargoArrs = arrs.filter(f => f.is_cargo);
                 const cargoDeps = deps.filter(f => f.is_cargo);
 
-                const passengerTotal = passengerArrs.length + passengerDeps.length;
+                const totalMovements = arrs.length + deps.length;
                 const cargoTotal = cargoArrs.length + cargoDeps.length;
-                const total = passengerTotal + cargoTotal;
                 const isOps = this.isOpsHour(h);
 
-                // Peak tracking based on passenger movements in active ops window
-                if (isOps && passengerTotal > maxInOps) {
-                    maxInOps = passengerTotal;
+                // Calculate true PASSENGER aircraft occupancy from time intervals [s, e)
+                const hStart = h * 60;
+                const hNext  = (h + 1) * 60;
+
+                const occupiedRotations = [];
+                let passengerOccupied = 0;
+                let ronContrib = 0;
+                let arrContrib = 0;
+
+                for (const rot of (this.rotations || [])) {
+                    if (rot.is_cargo || (rot.passenger_units || 1) <= 0) {
+                        continue; // Exclude cargo
+                    }
+
+                    let s = rot.start_minute;
+                    let e = rot.end_minute;
+                    const status = rot.rotation_status;
+
+                    if (this.timezoneMode === 'UTC') {
+                        const offsetMin = this.timezoneOffset || 420;
+                        s = (s - offsetMin) % 1440;
+                        if (s < 0) s += 1440;
+                        e = (e - offsetMin) % 1440;
+                        if (e < 0) e += 1440;
+                    }
+
+                    let intersects = false;
+                    if (status === 'PAIRED' && e < s) {
+                        // Overnight turnaround crossing midnight
+                        if (s < hNext || e > hStart) {
+                            intersects = true;
+                        }
+                    } else {
+                        // Normal interval [s, e)
+                        if (s < hNext && e > hStart) {
+                            intersects = true;
+                        }
+                    }
+
+                    if (intersects) {
+                        occupiedRotations.push(rot);
+                        const units = rot.passenger_units || 1;
+                        passengerOccupied += units;
+
+                        if (status === 'UNPAIRED_DEP') {
+                            ronContrib += units;
+                        } else if (status === 'UNPAIRED_ARR') {
+                            arrContrib += units;
+                        } else {
+                            if (s >= hStart && s < hNext) {
+                                arrContrib += units;
+                            } else {
+                                ronContrib += units;
+                            }
+                        }
+                    }
+                }
+
+                // Peak tracking based on passenger aircraft occupancy in active ops window
+                if (isOps && passengerOccupied > maxInOps) {
+                    maxInOps = passengerOccupied;
                     peakHourStr = `${String(h).padStart(2, '0')}:00–${String(h).padStart(2, '0')}:59`;
                 }
 
@@ -233,16 +291,16 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                 let remaining = 0;
                 let exceeded = 0;
 
-                // Status is based strictly on PASSENGER aircraft vs Aircraft Capacity (Cargo excluded!)
+                // Status is based strictly on PASSENGER aircraft occupancy vs Aircraft Capacity (NAC)
                 if (isOps) {
-                    if (passengerTotal < this.nacLimit) {
+                    if (passengerOccupied < this.nacLimit) {
                         status = 'AVAILABLE';
                         statusLabel = 'Available';
                         statusKey = 'available';
                         statusColor = 'emerald'; // Green (#16A34A)
-                        remaining = this.nacLimit - passengerTotal;
+                        remaining = this.nacLimit - passengerOccupied;
                         exceeded = 0;
-                    } else if (passengerTotal === this.nacLimit) {
+                    } else if (passengerOccupied === this.nacLimit) {
                         status = 'FULL / MAX';
                         statusLabel = 'Full / Max';
                         statusKey = 'full';
@@ -255,7 +313,7 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                         statusKey = 'over-capacity';
                         statusColor = 'purple'; // Purple (#9333EA)
                         remaining = 0;
-                        exceeded = passengerTotal - this.nacLimit;
+                        exceeded = passengerOccupied - this.nacLimit;
                     }
                 }
 
@@ -269,11 +327,15 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                     depCount: deps.length,
                     passengerArrCount: passengerArrs.length,
                     passengerDepCount: passengerDeps.length,
-                    passengerCount: passengerTotal,
+                    passengerCount: passengerOccupied, // Aircraft occupied for capacity display
                     cargoArrCount: cargoArrs.length,
                     cargoDepCount: cargoDeps.length,
                     cargoCount: cargoTotal,
-                    total: total,
+                    totalMovements: totalMovements,
+                    total: totalMovements,
+                    occupied: passengerOccupied,
+                    ronContrib: ronContrib,
+                    arrContrib: arrContrib,
                     isPeak: false,
                     status: status,
                     statusLabel: statusLabel,
@@ -281,6 +343,7 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                     statusColor: statusColor,
                     remaining: remaining,
                     exceeded: exceeded,
+                    occupiedRotations: occupiedRotations,
                     arrList: arrs,
                     depList: deps
                 };
@@ -294,7 +357,7 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
             // Mark Peak strictly within active operational window
             if (maxInOps > 0) {
                 for (const item of allList) {
-                    if (item.isOps && item.passengerCount === maxInOps) {
+                    if (item.isOps && item.occupied === maxInOps) {
                         item.isPeak = true;
                     }
                 }
@@ -581,7 +644,7 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
     $maxChartScale = max(10, $peakDemand ?: 8, $nacLimit + 2);
 @endphp
 
-<div x-data="dashboardState('{{ is_array($dosValue) ? implode('', $dosValue) : $dosValue }}', {{ Js::from($flightMovements) }}, '{{ $stats['ops_start'] }}', '{{ $stats['ops_end'] }}', {{ $capacityStats['nac'] ?? 6 }}, '{{ $airportTimezone ?? 'Asia/Jakarta' }}', {{ $timezoneOffset ?? 420 }}, '{{ $timezoneAbbr ?? 'WIB' }}')" class="min-h-screen flex flex-col">
+<div x-data="dashboardState('{{ is_array($dosValue) ? implode('', $dosValue) : $dosValue }}', {{ Js::from($flightMovements) }}, '{{ $stats['ops_start'] }}', '{{ $stats['ops_end'] }}', {{ $capacityStats['nac'] ?? 6 }}, '{{ $airportTimezone ?? 'Asia/Jakarta' }}', {{ $timezoneOffset ?? 420 }}, '{{ $timezoneAbbr ?? 'WIB' }}', {{ Js::from($normalizedRotations ?? []) }})" class="min-h-screen flex flex-col">
 
     {{-- ══ 1. COMPACT AOCC HEADER & NAVIGATION ════════════════════════════════ --}}
     <nav class="sticky top-0 z-40 w-full border-b border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-navy-900/95 backdrop-blur-md px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between shadow-xs">

@@ -227,53 +227,63 @@ class CapacityService
             $data['total_movements'] = $data['arrivals_count'] + $data['departures_count'];
             $data['demand']          = $data['passenger_count']; // Passenger movements for aircraft capacity calculation
 
-            // Evaluate representative occupancy for hour $h from passenger minuteTimeline
-            $startMinute = $h * 60;
-            $endMinute   = $startMinute + 59;
+            // Evaluate passenger aircraft occupancy for hour $h from rotation time intervals [s, e)
+            $hStart = $h * 60;
+            $hNext  = ($h + 1) * 60;
 
-            // Minute 59 (end of interval) occupancy
-            $endRots = $minuteTimeline[$endMinute] ?? [];
-            $endOcc  = 0;
-            foreach ($endRots as $r) {
-                $endOcc += ($r['passenger_units'] ?? 0);
-            }
+            $occupiedRotations = [];
+            $hourlyOccupancy   = 0;
+            $arrivalContrib    = 0;
+            $ronContrib        = 0;
 
-            // Peak occupancy in hour $h [startMinute .. endMinute]
-            $peakOcc  = 0;
-            $peakRots = [];
-            for ($m = $startMinute; $m <= $endMinute; $m++) {
-                $currentRots = $minuteTimeline[$m] ?? [];
-                $currentOcc  = 0;
-                foreach ($currentRots as $r) {
-                    $currentOcc += ($r['passenger_units'] ?? 0);
+            foreach ($rotations as $rot) {
+                if (!empty($rot['is_cargo']) || ($rot['passenger_units'] ?? 1) <= 0) {
+                    continue; // Cargo excluded from passenger occupancy timeline
                 }
-                if ($currentOcc > $peakOcc) {
-                    $peakOcc  = $currentOcc;
-                    $peakRots = $currentRots;
+
+                $s      = $rot['start_minute'];
+                $e      = $rot['end_minute'];
+                $status = $rot['rotation_status'];
+                $intersects = false;
+
+                if ($status === 'PAIRED' && $e < $s) {
+                    // Overnight turnaround crossing midnight [s..1440) U [0..e)
+                    if ($s < $hNext || $e > $hStart) {
+                        $intersects = true;
+                    }
+                } else {
+                    // Normal interval [s, e)
+                    // Aircraft occupies airport if arrival < hNext AND departure > hStart
+                    if ($s < $hNext && $e > $hStart) {
+                        $intersects = true;
+                    }
+                }
+
+                if ($intersects) {
+                    $occupiedRotations[] = $rot;
+                    $units = (int) ($rot['passenger_units'] ?? 1);
+                    $hourlyOccupancy += $units;
+
+                    if ($status === 'UNPAIRED_DEP') {
+                        $ronContrib += $units;
+                    } elseif ($status === 'UNPAIRED_ARR') {
+                        $arrivalContrib += $units;
+                    } else {
+                        // PAIRED
+                        if ($s >= $hStart && $s < $hNext) {
+                            $arrivalContrib += $units;
+                        } else {
+                            $ronContrib += $units; // Arrived in earlier hour and remains parked
+                        }
+                    }
                 }
             }
-
-            // If active aircraft remain at end of interval, use endOcc; otherwise use peakOcc (turnaround/departures in hour)
-            if ($endOcc > 0) {
-                $hourlyOccupancy = $endOcc;
-                $representativeRotations = $endRots;
-            } else {
-                $hourlyOccupancy = $peakOcc;
-                $representativeRotations = $peakRots;
-            }
-
-            // Unique rotations by rotation_id
-            $temp = [];
-            foreach ($representativeRotations as $r) {
-                $temp[$r['rotation_id']] = $r;
-            }
-            $peakOccupiedRotations = array_values($temp);
 
             // Build occupied and parked lists for tooltips/modal/debug
             $occupiedList = [];
             $parkedList   = [];
 
-            foreach ($peakOccupiedRotations as $r) {
+            foreach ($occupiedRotations as $r) {
                 $displayFlight = $r['arrival']
                     ? $r['arrival']->flight_number
                     : ($r['departure'] ? $r['departure']->flight_number : $r['rotation_id']);
@@ -311,7 +321,7 @@ class CapacityService
                 if ($hourlyOccupancy < $nac) {
                     $status = 'AVAILABLE';
                 } elseif ($hourlyOccupancy === $nac) {
-                    $status = 'FULL';
+                    $status = 'FULL / MAX';
                 } else {
                     $status = 'OVER CAPACITY';
                 }
@@ -319,6 +329,8 @@ class CapacityService
 
             $data['end_of_interval_occupancy'] = $hourlyOccupancy;
             $data['occupied']                  = $hourlyOccupancy;
+            $data['ron_contribution']          = $ronContrib;
+            $data['arrival_contribution']      = $arrivalContrib;
             $data['remaining']                 = $remaining;
             $data['useable']                   = $remaining;
             $data['exceeded']                  = $exceeded;
@@ -327,8 +339,8 @@ class CapacityService
             $data['parked_aircraft']           = $parkedList;
 
             // Only consider hours within the active operational window for peak window & peak demand
-            if ($isInOpsWindow && $data['demand'] > $peakDemand) {
-                $peakDemand = $data['demand'];
+            if ($isInOpsWindow && $hourlyOccupancy > $peakDemand) {
+                $peakDemand = $hourlyOccupancy;
                 $peakHour   = $data['label'];
             }
         }
@@ -384,5 +396,30 @@ class CapacityService
             'remaining' => 0,
             'exceeded'  => $occupied - $nac,
         ];
+    }
+
+    /**
+     * Diagnostic report for hourly occupancy breakdown (Section 23).
+     */
+    public function getDiagnosticReport(Collection $flights, ?int $nac = 6, ?int $opsStart = 6, ?int $opsEnd = 20): array
+    {
+        $res = $this->calculate($flights, null, $opsStart, $opsEnd, $nac);
+        $report = [];
+
+        foreach ($res['hourly'] as $h => $d) {
+            $report[] = [
+                'hour'                 => sprintf('%02d:00', $h),
+                'occupied'             => $d['occupied'],
+                'nac'                  => $d['nac'],
+                'ron_contribution'     => $d['ron_contribution'] ?? 0,
+                'arrival_contribution' => $d['arrival_contribution'] ?? 0,
+                'cargo_count'          => $d['cargo_count'] ?? 0,
+                'remaining'            => $d['remaining'],
+                'capacity'             => $d['nac'],
+                'status'               => $d['status'],
+            ];
+        }
+
+        return $report;
     }
 }
