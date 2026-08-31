@@ -37,7 +37,8 @@ class TimelineEngine
         // Track stacking: ['section:hour' => currentRow]
         $stackTracker = [];
 
-        $flights = $upload->flights()->validated()->orderBy('scheduled_time')->get();
+        $positions = [];
+        $now = now();
 
         foreach ($flights as $flight) {
             $section = self::SECTION_MAP[$flight->flight_type] ?? 'departure';
@@ -54,7 +55,7 @@ class TimelineEngine
             $row = $stackTracker[$stackKey];
             $stackTracker[$stackKey]++;
 
-            TimelinePosition::create([
+            $positions[] = [
                 'upload_id'        => $upload->id,
                 'flight_id'        => $flight->id,
                 'hour'             => $hour,
@@ -63,7 +64,15 @@ class TimelineEngine
                 'color_hex'        => $color,
                 'duration_minutes' => self::BLOCK_DURATION,
                 'section'          => $section,
-            ]);
+                'created_at'       => $now,
+                'updated_at'       => $now,
+            ];
+        }
+
+        if (!empty($positions)) {
+            foreach (array_chunk($positions, 100) as $chunk) {
+                TimelinePosition::insert($chunk);
+            }
         }
     }
 

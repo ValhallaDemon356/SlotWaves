@@ -97,32 +97,52 @@ class UploadController extends Controller
             $validator        = new FlightScheduleValidator();
             $validationResult = $validator->validate($parserResult['flights'], $filename);
 
-            // Step 3: Clear any prior flights/positions belonging exclusively to this upload ID
-            $upload->flights()->delete();
-            $upload->timelinePositions()->delete();
+            \Illuminate\Support\Facades\DB::transaction(function () use ($upload, $validationResult, $parserResult) {
+                // Step 3: Clear any prior flights/positions belonging exclusively to this upload ID
+                $upload->flights()->delete();
+                $upload->timelinePositions()->delete();
 
-            // Step 4: Persist exact validated normalized records with raw source metadata
-            foreach ($validationResult['valid_flights'] as $data) {
-                $upload->flights()->create($data);
-            }
+                // Step 4: Persist exact validated normalized records with raw source metadata (Bulk insert)
+                $now = now();
+                $flightRecords = [];
+                foreach ($validationResult['valid_flights'] as $data) {
+                    $record = $data;
+                    $record['upload_id']  = $upload->id;
+                    $record['created_at'] = $now;
+                    $record['updated_at'] = $now;
+                    if (isset($record['validation_errors']) && is_array($record['validation_errors'])) {
+                        $record['validation_errors'] = json_encode($record['validation_errors']);
+                    }
+                    if (isset($record['raw_data']) && is_array($record['raw_data'])) {
+                        $record['raw_data'] = json_encode($record['raw_data']);
+                    }
+                    $flightRecords[] = $record;
+                }
 
-            // Step 5: Build timeline positions strictly from validated flights
-            $engine = new TimelineEngine();
-            $engine->build($upload);
+                if (!empty($flightRecords)) {
+                    foreach (array_chunk($flightRecords, 100) as $chunk) {
+                        \App\Models\Flight::insert($chunk);
+                    }
+                }
 
-            $upload->update([
-                'status'             => 'completed',
-                'total_rows'         => $parserResult['total_rows'],
-                'valid_rows'         => $validationResult['valid_count'],
-                'invalid_rows'       => $validationResult['invalid_count'],
-                'duplicate_rows'     => $parserResult['duplicate_rows'],
-                'parsing_confidence' => $parserResult['parsing_confidence'],
-                'validation_summary' => [
-                    'section_counts' => $validationResult['section_counts'],
-                    'warnings'       => $validationResult['warnings'],
-                    'errors'         => $validationResult['errors'],
-                ],
-            ]);
+                // Step 5: Build timeline positions strictly from validated flights
+                $engine = new TimelineEngine();
+                $engine->build($upload);
+
+                $upload->update([
+                    'status'             => 'completed',
+                    'total_rows'         => $parserResult['total_rows'],
+                    'valid_rows'         => $validationResult['valid_count'],
+                    'invalid_rows'       => $validationResult['invalid_count'],
+                    'duplicate_rows'     => $parserResult['duplicate_rows'],
+                    'parsing_confidence' => $parserResult['parsing_confidence'],
+                    'validation_summary' => [
+                        'section_counts' => $validationResult['section_counts'],
+                        'warnings'       => $validationResult['warnings'],
+                        'errors'         => $validationResult['errors'],
+                    ],
+                ]);
+            });
 
         } catch (\Throwable $e) {
             Log::error("Failed to parse PDF ID {$upload->id}: " . $e->getMessage(), [

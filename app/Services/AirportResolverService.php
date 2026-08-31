@@ -181,6 +181,9 @@ class AirportResolverService
         return $clean;
     }
 
+    private static array $airportCache = [];
+    private static array $airlineCache = [];
+
     /**
      * Resolve full airport label e.g., "SUB — Juanda" or "JOG — Adisutjipto".
      */
@@ -194,7 +197,10 @@ class AirportResolverService
         $iata = $this->getIataCode($clean);
 
         if (preg_match('/^[A-Z]{3}$/', $iata)) {
-            $airport = Airport::findByIata($iata);
+            if (!array_key_exists($iata, self::$airportCache)) {
+                self::$airportCache[$iata] = Airport::findByIata($iata);
+            }
+            $airport = self::$airportCache[$iata];
             if ($airport) {
                 return "{$iata} — {$airport->name}";
             }
@@ -218,7 +224,10 @@ class AirportResolverService
             return '—';
         }
 
-        $airline = Airline::findByCode($code);
+        if (!array_key_exists($code, self::$airlineCache)) {
+            self::$airlineCache[$code] = Airline::findByCode($code);
+        }
+        $airline = self::$airlineCache[$code];
         if ($airline) {
             return $airline->airline_name;
         }
