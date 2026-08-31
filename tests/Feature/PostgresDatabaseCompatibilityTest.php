@@ -121,4 +121,44 @@ class PostgresDatabaseCompatibilityTest extends TestCase
         $airport->refresh();
         $this->assertEquals(10, $airport->getEffectiveCapacity());
     }
+
+    public function test_sessions_and_cache_tables_exist_and_persist_data(): void
+    {
+        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('sessions'));
+        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('cache'));
+        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('cache_locks'));
+
+        // Test session table record insertion
+        \Illuminate\Support\Facades\DB::table('sessions')->insert([
+            'id'            => 'sess_test_123456',
+            'user_id'       => null,
+            'ip_address'    => '127.0.0.1',
+            'user_agent'    => 'PHPUnit Test Agent',
+            'payload'       => base64_encode(serialize(['_token' => 'test_csrf_token', 'flash' => []])),
+            'last_activity' => time(),
+        ]);
+
+        $sessionRow = \Illuminate\Support\Facades\DB::table('sessions')->where('id', 'sess_test_123456')->first();
+        $this->assertNotNull($sessionRow);
+        $this->assertEquals('127.0.0.1', $sessionRow->ip_address);
+
+        // Test cache table record insertion
+        \Illuminate\Support\Facades\DB::table('cache')->insert([
+            'key'        => 'slotwaves_test_key',
+            'value'      => serialize(['version' => '1.0.0']),
+            'expiration' => time() + 3600,
+        ]);
+
+        $cacheRow = \Illuminate\Support\Facades\DB::table('cache')->where('key', 'slotwaves_test_key')->first();
+        $this->assertNotNull($cacheRow);
+    }
+
+    public function test_init_supabase_artisan_command_executes_successfully(): void
+    {
+        $this->artisan('slotwaves:init-supabase')
+            ->expectsOutputToContain('SLOTWAVES — SUPABASE DATABASE INITIALIZATION & HEALTH CHECK')
+            ->expectsOutputToContain('Database Connection:     [SUCCESS]')
+            ->expectsOutputToContain('SUPABASE DATABASE INITIALIZATION COMPLETE & VERIFIED')
+            ->assertExitCode(0);
+    }
 }

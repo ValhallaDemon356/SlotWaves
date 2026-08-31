@@ -116,7 +116,13 @@ if (!getenv('LOG_CHANNEL')) {
 
 // Check database configuration: Default to Supabase PostgreSQL (pgsql)
 $dbConn = getenv('DB_CONNECTION') ?: ($_ENV['DB_CONNECTION'] ?? ($_SERVER['DB_CONNECTION'] ?? null));
-$dbUrl  = getenv('DB_URL') ?: ($_ENV['DB_URL'] ?? ($_SERVER['DB_URL'] ?? null));
+$dbUrl  = getenv('DB_URL') ?: (getenv('DATABASE_URL') ?: (getenv('POSTGRES_URL') ?: ($_ENV['DB_URL'] ?? ($_ENV['DATABASE_URL'] ?? ($_SERVER['DB_URL'] ?? null)))));
+
+if ($dbUrl && !getenv('DB_URL')) {
+    putenv("DB_URL={$dbUrl}");
+    $_ENV['DB_URL'] = $dbUrl;
+    $_SERVER['DB_URL'] = $dbUrl;
+}
 
 if (empty($dbConn) && (empty($dbUrl) || str_starts_with($dbUrl, 'postgres'))) {
     putenv('DB_CONNECTION=pgsql');
