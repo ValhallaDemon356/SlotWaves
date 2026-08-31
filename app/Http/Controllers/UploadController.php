@@ -200,17 +200,28 @@ class UploadController extends Controller
                 $now = now();
                 $flightRecords = [];
                 foreach ($validationResult['valid_flights'] as $data) {
-                    $record = $data;
-                    $record['upload_id']  = $upload->id;
-                    $record['created_at'] = $now;
-                    $record['updated_at'] = $now;
-                    if (isset($record['validation_errors']) && is_array($record['validation_errors'])) {
-                        $record['validation_errors'] = json_encode($record['validation_errors']);
-                    }
-                    if (isset($record['raw_data']) && is_array($record['raw_data'])) {
-                        $record['raw_data'] = json_encode($record['raw_data']);
-                    }
-                    $flightRecords[] = $record;
+                    $flightRecords[] = [
+                        'upload_id'         => $upload->id,
+                        'flight_number'     => $data['flight_number'] ?? null,
+                        'airline_code'      => $data['airline_code'] ?? null,
+                        'aircraft_type'     => $data['aircraft_type'] ?? null,
+                        'origin'            => $data['origin'] ?? null,
+                        'destination'       => $data['destination'] ?? null,
+                        'scheduled_time'    => $data['scheduled_time'] ?? null,
+                        'operating_days'    => $data['operating_days'] ?? null,
+                        'flight_type'       => $data['flight_type'] ?? null,
+                        'direction'         => $data['direction'] ?? null,
+                        'traffic_type'      => $data['traffic_type'] ?? null,
+                        'slot_status'       => $data['slot_status'] ?? 'available',
+                        'parse_status'      => $data['parse_status'] ?? 'valid',
+                        'validation_status' => $data['validation_status'] ?? 'valid',
+                        'validation_errors' => isset($data['validation_errors']) ? (is_array($data['validation_errors']) ? json_encode($data['validation_errors']) : $data['validation_errors']) : null,
+                        'paired_flight_id'  => $data['paired_flight_id'] ?? null,
+                        'remarks'           => $data['remarks'] ?? null,
+                        'raw_data'          => isset($data['raw_data']) ? (is_array($data['raw_data']) ? json_encode($data['raw_data']) : $data['raw_data']) : null,
+                        'created_at'        => $now,
+                        'updated_at'        => $now,
+                    ];
                 }
 
                 if (!empty($flightRecords)) {

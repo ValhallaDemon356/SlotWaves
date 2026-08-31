@@ -191,10 +191,10 @@ class PdfParser
         $afterTime     = substr($afterAc, $timeStart + $timeLength);
         $operatingDays = $this->extractDos($afterTime);
 
-        // ── Step F: Extract Optional STAND (e.g. "Stand A04", "Stand 03", etc.)
-        $stand = null;
-        if (preg_match('/\bStand\s*([A-Z0-9]{1,4})\b/i', $afterTime, $standM)) {
-            $stand = strtoupper(trim($standM[1]));
+        // ── Step F: Extract Optional REMARKS (e.g. "Eksisting", "Existing", "Charter", etc.)
+        $remarks = '';
+        if (preg_match('/\b(Eksisting|Existing|New|Charter|Cargo|Transit|Extra\s*Flight)\b/i', $afterTime, $remM)) {
+            $remarks = ucfirst(trim($remM[1]));
         }
 
         // Direction and Traffic Classification
@@ -234,12 +234,11 @@ class PdfParser
             'direction'         => $direction,
             'traffic_type'      => $trafficType,
             'flight_type'       => $section,
-            'stand'             => $stand,
             'slot_status'       => 'available',
             'parse_status'      => $parseStatus,
             'validation_status' => $valStatus,
             'validation_errors' => !empty($valErrors) ? $valErrors : null,
-            'remarks'           => '',
+            'remarks'           => $remarks,
             'raw_data'          => json_encode([
                 'raw_line'    => $line,
                 'section'     => $section,
