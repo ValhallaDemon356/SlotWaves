@@ -114,11 +114,20 @@ if (!getenv('LOG_CHANNEL')) {
     $_SERVER['LOG_CHANNEL'] = 'stderr';
 }
 
-// Check database configuration: Only execute SQLite preparation if DB_CONNECTION is sqlite or if no remote DB_HOST / DB_CONNECTION is set
+// Check database configuration: Prioritize Supabase PostgreSQL when DB_CONNECTION=pgsql or DB_URL / remote DB_HOST is present
 $dbConn = getenv('DB_CONNECTION') ?: ($_ENV['DB_CONNECTION'] ?? ($_SERVER['DB_CONNECTION'] ?? null));
+$dbUrl  = getenv('DB_URL') ?: ($_ENV['DB_URL'] ?? ($_SERVER['DB_URL'] ?? null));
 $dbHost = getenv('DB_HOST') ?: ($_ENV['DB_HOST'] ?? ($_SERVER['DB_HOST'] ?? null));
 
-if ($dbConn === 'sqlite' || (empty($dbConn) && empty($dbHost))) {
+if ($dbConn === 'pgsql' || !empty($dbUrl)) {
+    // Production Cloud Database (Supabase PostgreSQL)
+    if (!getenv('DB_CONNECTION')) {
+        putenv('DB_CONNECTION=pgsql');
+        $_ENV['DB_CONNECTION'] = 'pgsql';
+        $_SERVER['DB_CONNECTION'] = 'pgsql';
+    }
+} elseif ($dbConn === 'sqlite' || (empty($dbConn) && empty($dbHost))) {
+    // Local / Offline fallback SQLite
     if (!getenv('DB_CONNECTION')) {
         putenv('DB_CONNECTION=sqlite');
         $_ENV['DB_CONNECTION'] = 'sqlite';
