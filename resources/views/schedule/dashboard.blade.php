@@ -110,6 +110,18 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                     }
                 }
             } catch (e) {}
+
+            // Restore custom Aircraft Capacity (NAC) from localStorage if available
+            try {
+                const savedNac = localStorage.getItem('slotwaves_nac_{{ $upload->id }}');
+                if (savedNac) {
+                    const parsedNac = parseInt(savedNac, 10);
+                    if (!isNaN(parsedNac) && parsedNac >= 1 && parsedNac <= 100) {
+                        this.nacLimit = parsedNac;
+                        this.modalNac = parsedNac;
+                    }
+                }
+            } catch (e) {}
         },
 
         // Time conversion helpers
@@ -347,6 +359,11 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
 
             this.nacLimit = newNac;
             this.capacityModalOpen = false;
+
+            try {
+                localStorage.setItem('slotwaves_nac_{{ $upload->id }}', String(this.nacLimit));
+            } catch (e) {}
+
             this.showToast(`Aircraft Capacity updated to ${this.nacLimit} Aircraft (Excludes Cargo)`);
 
             // Async background sync to Airport Configuration backend
@@ -797,7 +814,29 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                     </div>
                 </div>
 
-                {{-- Card 4: UTILIZATION --}}
+                {{-- Card 4: AIRCRAFT CAPACITY (Interactive with EDIT modal) --}}
+                <div @click="openCapacityModal()"
+                     class="stat-card-modern p-4 flex flex-col justify-between h-[108px] cursor-pointer hover:border-aviation-400 dark:hover:border-aviation-600 transition group relative">
+                    <div class="flex items-center justify-between text-slate-500 dark:text-slate-400">
+                        <span class="text-[11px] font-bold uppercase tracking-wide text-aviation-600 dark:text-aviation-400 flex items-center gap-1">
+                            <span>AIRCRAFT CAPACITY</span>
+                            <span class="text-[9px] group-hover:scale-110 transition">⚙</span>
+                        </span>
+                        <span class="text-[9.5px] font-mono font-bold px-1.5 py-0.2 rounded bg-aviation-50 text-aviation-700 dark:bg-aviation-950 dark:text-aviation-300 border border-aviation-200 dark:border-aviation-800">NAC</span>
+                    </div>
+                    <div>
+                        <div class="text-2xl sm:text-3xl font-black font-mono text-slate-900 dark:text-white leading-tight flex items-baseline gap-1.5">
+                            <span x-text="nacLimit">{{ $airportCapacity }}</span>
+                            <span class="text-xs text-slate-400 font-normal">A/C Max</span>
+                        </div>
+                        <div class="flex items-center justify-between text-[10.5px] text-slate-400 mt-0.5 font-mono">
+                            <span>EXCLUDES CARGO</span>
+                            <span class="text-[10px] font-bold text-aviation-600 dark:text-aviation-400 underline decoration-dotted">EDIT ⚙</span>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Card 5: UTILIZATION & PEAK --}}
                 <div class="stat-card-modern p-4 flex flex-col justify-between h-[108px]">
                     <div class="flex items-center justify-between text-slate-500 dark:text-slate-400">
                         <span class="text-[11px] font-bold uppercase tracking-wide">UTILIZATION</span>
@@ -808,28 +847,14 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                         </span>
                     </div>
                     <div>
-                        <div class="text-xl sm:text-2xl font-black font-mono text-slate-900 dark:text-white leading-tight">
-                            <span x-text="peakStats.peakDemand">{{ $peakDemand }}</span> <span class="text-xs text-slate-400 font-normal">/ <span x-text="nacLimit"></span> NAC</span>
+                        <div class="text-lg sm:text-xl font-black font-mono text-slate-900 dark:text-white leading-tight">
+                            <span x-text="peakStats.peakDemand">{{ $peakDemand }}</span> <span class="text-xs text-slate-400 font-normal">/ <span x-text="nacLimit"></span> Peak</span>
                         </div>
                         <div class="w-full bg-slate-100 dark:bg-navy-950 h-1.5 rounded-full mt-1.5 overflow-hidden">
                             <div class="h-full rounded-full transition-all duration-300"
                                  :class="peakUtilization >= 100 ? 'bg-purple-600' : (peakUtilization >= 80 ? 'bg-amber-500' : 'bg-emerald-500')"
                                  :style="'width: ' + Math.min(100, peakUtilization) + '%'"></div>
                         </div>
-                    </div>
-                </div>
-
-                {{-- Card 5: PEAK WINDOW --}}
-                <div class="stat-card-modern p-4 flex flex-col justify-between h-[108px]">
-                    <div class="flex items-center justify-between text-slate-500 dark:text-slate-400">
-                        <span class="text-[11px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400">PEAK WINDOW</span>
-                        <span class="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">MAX</span>
-                    </div>
-                    <div>
-                        <div class="text-sm sm:text-base font-black font-mono text-amber-600 dark:text-amber-400 truncate" x-text="peakStats.peakHour">
-                            {{ $capacityStats['peak_hour'] }}
-                        </div>
-                        <div class="text-[10.5px] text-slate-400 mt-0.5 font-mono"><span class="font-bold text-slate-700 dark:text-slate-300" x-text="peakStats.peakDemand">{{ $capacityStats['peak_demand'] }}</span> movements/hr</div>
                     </div>
                 </div>
 
@@ -880,8 +905,14 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                     </p>
                 </div>
 
-                {{-- Subsections: Distribusi Per Jam vs Operational Capacity --}}
-                <div class="flex items-center gap-2">
+                {{-- Subsections: Distribusi Per Jam vs Operational Capacity + Capacity Button --}}
+                <div class="flex flex-wrap items-center gap-2">
+                    <button type="button" @click="openCapacityModal()"
+                            class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-aviation-50 text-aviation-700 dark:bg-aviation-950/80 dark:text-aviation-300 border border-aviation-200 dark:border-aviation-800 hover:bg-aviation-100 dark:hover:bg-aviation-900 transition cursor-pointer shadow-2xs">
+                        <span class="w-2 h-2 rounded-full bg-aviation-500"></span>
+                        <span>AIRCRAFT CAPACITY: [<span class="font-mono font-black" x-text="nacLimit"></span> A/C]</span>
+                        <span class="text-[10px] underline ml-0.5 font-bold">EDIT ⚙</span>
+                    </button>
                     <div class="inline-flex p-0.5 bg-slate-100 dark:bg-navy-950 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-semibold">
                         <button type="button"
                                 @click="activeChartMode = 'distribution'"
@@ -1874,22 +1905,39 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
             <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div class="flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-aviation-600"></span>
-                    <h3 class="font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wider">AIRCRAFT CAPACITY</h3>
+                    <h3 class="font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wider">AIRCRAFT CAPACITY (NAC)</h3>
                 </div>
                 <button @click="closeCapacityModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold">&times;</button>
             </div>
 
-            <div class="space-y-3 text-xs">
+            <div class="space-y-3.5 text-xs">
                 <div>
-                    <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Maximum Aircraft (Simultaneous Apron Capacity)</label>
-                    <input type="number" min="1" max="100" x-model.number="modalNac" class="filter-select w-full font-mono text-sm font-bold">
-                    <p class="text-[11px] text-slate-400 mt-1">Configured for {{ $airportCode }} ({{ $airportName }}).</p>
+                    <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Maximum Aircraft (Simultaneous Apron / Stand Capacity)</label>
+                    <div class="flex items-center gap-2">
+                        <input type="number" min="1" max="100" x-model.number="modalNac" class="filter-select w-full font-mono text-base font-bold">
+                        <span class="text-xs font-bold text-slate-500 font-mono">AIRCRAFT</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-1">Configured station: <strong class="text-aviation-600 dark:text-aviation-400">{{ $airportCode }} ({{ $airportName }})</strong>.</p>
+                </div>
+
+                {{-- Quick Presets for Indonesian Airports --}}
+                <div>
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Quick Presets</div>
+                    <div class="flex flex-wrap gap-1.5">
+                        <button type="button" @click="modalNac = 6" :class="modalNac === 6 ? 'bg-aviation-600 text-white font-bold' : 'bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300'" class="px-2.5 py-1 rounded-md text-xs font-mono transition">6 (BDO)</button>
+                        <button type="button" @click="modalNac = 8" :class="modalNac === 8 ? 'bg-aviation-600 text-white font-bold' : 'bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300'" class="px-2.5 py-1 rounded-md text-xs font-mono transition">8 (DJJ)</button>
+                        <button type="button" @click="modalNac = 10" :class="modalNac === 10 ? 'bg-aviation-600 text-white font-bold' : 'bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300'" class="px-2.5 py-1 rounded-md text-xs font-mono transition">10 (LOP/SRG)</button>
+                        <button type="button" @click="modalNac = 12" :class="modalNac === 12 ? 'bg-aviation-600 text-white font-bold' : 'bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300'" class="px-2.5 py-1 rounded-md text-xs font-mono transition">12 (JOG)</button>
+                        <button type="button" @click="modalNac = 15" :class="modalNac === 15 ? 'bg-aviation-600 text-white font-bold' : 'bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300'" class="px-2.5 py-1 rounded-md text-xs font-mono transition">15 (SUB/UPG)</button>
+                        <button type="button" @click="modalNac = 20" :class="modalNac === 20 ? 'bg-aviation-600 text-white font-bold' : 'bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300'" class="px-2.5 py-1 rounded-md text-xs font-mono transition">20 (DPS)</button>
+                        <button type="button" @click="modalNac = 30" :class="modalNac === 30 ? 'bg-aviation-600 text-white font-bold' : 'bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300'" class="px-2.5 py-1 rounded-md text-xs font-mono transition">30 (CGK)</button>
+                    </div>
                 </div>
 
                 <div class="p-3 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-slate-800 flex items-center gap-2.5">
                     <input type="checkbox" id="cargo_cb" x-model="cargoSeparateParking" class="rounded text-aviation-600 focus:ring-aviation-500">
                     <label for="cargo_cb" class="text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
-                        Cargo uses separate parking capacity (Excluded from Pax limit)
+                        Cargo uses dedicated parking stand (Excluded from Passenger Capacity limit)
                     </label>
                 </div>
             </div>

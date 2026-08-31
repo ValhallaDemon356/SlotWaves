@@ -349,4 +349,40 @@ class CapacityService
             'peak_demand'        => $peakDemand,
         ];
     }
+
+    /**
+     * Classify status based on passenger occupancy vs NAC limit and operational window.
+     */
+    public function classifyHourlyStatus(int $occupied, int $nac = 6, bool $isInOpsWindow = true): array
+    {
+        if (!$isInOpsWindow) {
+            return [
+                'status'    => 'OFF HOURS',
+                'remaining' => 0,
+                'exceeded'  => 0,
+            ];
+        }
+
+        if ($occupied < $nac) {
+            return [
+                'status'    => 'AVAILABLE',
+                'remaining' => max(0, $nac - $occupied),
+                'exceeded'  => 0,
+            ];
+        }
+
+        if ($occupied === $nac) {
+            return [
+                'status'    => 'FULL / MAX',
+                'remaining' => 0,
+                'exceeded'  => 0,
+            ];
+        }
+
+        return [
+            'status'    => 'OVER CAPACITY',
+            'remaining' => 0,
+            'exceeded'  => $occupied - $nac,
+        ];
+    }
 }
