@@ -59,23 +59,29 @@ class SyncHubudMasterDataCommand extends Command
         $unchanged = 0;
         $duplicate = 0;
 
-        $seeder = new HubudAirportSeeder();
-        // Invoke seeder dataset reflection or instantiation
-        // We'll execute the seeder run to ensure database is perfectly synced
-        $beforeAirports = Airport::all()->keyBy('iata_code');
-        $seeder->run();
-        $afterAirports = Airport::all()->keyBy('iata_code');
+        $beforeAirports = Airport::all()->keyBy('id');
+        $beforeCount    = $beforeAirports->count();
 
-        $seenIatas = [];
-        foreach ($afterAirports as $iata => $ap) {
+        // 1. Seed core InJourney & reference airports
+        $seeder = new HubudAirportSeeder();
+        $seeder->run();
+
+        // 2. Import complete Hubud master dataset (597 airports)
+        \Illuminate\Support\Facades\Artisan::call('slotwaves:import-hubud-airports');
+
+        $afterAirports = Airport::all();
+        $afterCount    = $afterAirports->count();
+
+        $seenIds = [];
+        foreach ($afterAirports as $ap) {
             $checked++;
-            if (isset($seenIatas[$iata])) {
+            if (isset($seenIds[$ap->id])) {
                 $duplicate++;
                 continue;
             }
-            $seenIatas[$iata] = true;
+            $seenIds[$ap->id] = true;
 
-            $before = $beforeAirports->get($iata);
+            $before = $beforeAirports->get($ap->id);
             if (!$before) {
                 $inserted++;
             } elseif ($before->updated_at != $ap->updated_at) {

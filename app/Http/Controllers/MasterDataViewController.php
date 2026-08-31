@@ -85,8 +85,11 @@ class MasterDataViewController extends Controller
 
             // Status Filter
             if ($request->filled('status') && $request->input('status') !== 'all') {
-                $isActive = $request->input('status') === 'active';
-                $airportQuery->where('is_active', $isActive);
+                if ($request->input('status') === 'active') {
+                    $airportQuery->whereRaw('is_active IS TRUE');
+                } else {
+                    $airportQuery->whereRaw('is_active IS FALSE');
+                }
             }
 
             // Data Source Filter
@@ -136,21 +139,21 @@ class MasterDataViewController extends Controller
             $airlines = $airlineQuery->orderBy('category')->orderBy('airline_code')->get();
 
             // ── 3. High-Level Summary Statistics (Optimized Grouped DB Queries) ──
-            $apCounts = Airport::where('is_active', true)
+            $apCounts = Airport::whereRaw('is_active IS TRUE')
                 ->selectRaw("management_type, COUNT(*) as aggregate_count")
                 ->groupBy('management_type')
                 ->pluck('aggregate_count', 'management_type');
 
             $totalAirports = $apCounts->sum();
-            $intlAirports  = Airport::where('is_active', true)->where('is_international', true)->count();
+            $intlAirports  = Airport::whereRaw('is_active IS TRUE AND is_international IS TRUE')->count();
 
-            $alCounts = Airline::where('is_active', true)
+            $alCounts = Airline::whereRaw('is_active IS TRUE')
                 ->selectRaw("category, COUNT(*) as aggregate_count")
                 ->groupBy('category')
                 ->pluck('aggregate_count', 'category');
 
             $totalAirlines  = $alCounts->sum();
-            $activeAirlines = Airline::where('is_active', true)->where('status', 'active')->count();
+            $activeAirlines = Airline::whereRaw("is_active IS TRUE AND status = 'active'")->count();
 
             $stats = [
                 'total_airports'       => $totalAirports,

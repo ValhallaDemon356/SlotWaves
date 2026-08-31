@@ -54,6 +54,15 @@ class UploadController extends Controller
             ->first();
 
         if ($recentUpload) {
+            if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success'      => true,
+                    'upload_id'    => $recentUpload->id,
+                    'status'       => 'completed',
+                    'redirect_url' => route('schedule.dashboard', $recentUpload->id),
+                    'message'      => 'Reusing recently completed schedule.',
+                ]);
+            }
             return redirect()->route('schedule.dashboard', $recentUpload->id);
         }
 
@@ -61,7 +70,7 @@ class UploadController extends Controller
         $storedPath = $file->store('uploads', 'local');
         $season = preg_match('/winter/i', $filename) ? 'winter' : 'summer';
         
-        // Try to match airport code from filename (e.g. BDO, CGK, HLP, KJT)
+        // Match airport code from filename (e.g. BDO, CGK, HLP, KJT)
         $airportId = null;
         if (preg_match('/\b([A-Z]{3,4})\b/i', $filename, $m)) {
             $airport = \App\Models\Airport::findByIata(strtoupper($m[1]));
@@ -82,9 +91,60 @@ class UploadController extends Controller
             'airport_id'        => $airportId,
         ]);
 
+        // If AJAX / JSON upload (from interactive staged frontend), return immediately
+        if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success'      => true,
+                'upload_id'    => $upload->id,
+                'status'       => 'pending',
+                'process_url'  => route('upload.process', $upload->id),
+                'status_url'   => route('upload.status', $upload->id),
+                'redirect_url' => route('schedule.dashboard', $upload->id),
+                'message'      => 'Schedule PDF uploaded and staged. Ready for processing.',
+            ]);
+        }
+
+        // Traditional synchronous fallback for standard non-JS form post
+        return $this->executeProcessing($upload);
+    }
+
+    /**
+     * Staged execution endpoint for PDF parsing, matching, and generation.
+     */
+    public function process(Upload $upload)
+    {
+        return $this->executeProcessing($upload);
+    }
+
+    /**
+     * Polling endpoint to check upload processing status.
+     */
+    public function status(Upload $upload)
+    {
+        return response()->json([
+            'id'                 => $upload->id,
+            'status'             => $upload->status,
+            'total_rows'         => $upload->total_rows ?? 0,
+            'valid_rows'         => $upload->valid_rows ?? 0,
+            'invalid_rows'       => $upload->invalid_rows ?? 0,
+            'duplicate_rows'     => $upload->duplicate_rows ?? 0,
+            'parsing_confidence' => $upload->parsing_confidence ?? 100,
+            'error_message'      => $upload->error_message,
+            'redirect_url'       => route('schedule.dashboard', $upload->id),
+        ]);
+    }
+
+    /**
+     * Centralized execution logic for processing an upload.
+     */
+    private function executeProcessing(Upload $upload)
+    {
+        $upload->update(['status' => 'processing']);
+        $storedPath = $upload->stored_path;
+
         try {
             if (!Storage::disk('local')->exists($storedPath)) {
-                throw new \RuntimeException("Uploaded file could not be located on storage disk.");
+                throw new \RuntimeException("Uploaded schedule file could not be located on storage disk.");
             }
 
             $absolutePath = Storage::disk('local')->path($storedPath);
@@ -95,7 +155,7 @@ class UploadController extends Controller
 
             // Step 2: Validate extracted flights against data integrity rules
             $validator        = new FlightScheduleValidator();
-            $validationResult = $validator->validate($parserResult['flights'], $filename);
+            $validationResult = $validator->validate($parserResult['flights'], $upload->original_filename);
 
             \Illuminate\Support\Facades\DB::transaction(function () use ($upload, $validationResult, $parserResult) {
                 // Step 3: Clear any prior flights/positions belonging exclusively to this upload ID
@@ -155,8 +215,26 @@ class UploadController extends Controller
                 'error_message' => $e->getMessage(),
             ]);
 
+            if (request()->expectsJson() || request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'status'  => 'failed',
+                    'error'   => $e->getMessage(),
+                ], 422);
+            }
+
             return redirect()->route('home')
                 ->withErrors(['pdf' => $e->getMessage()]);
+        }
+
+        if (request()->expectsJson() || request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'success'      => true,
+                'status'       => 'completed',
+                'total_rows'   => $upload->total_rows,
+                'valid_rows'   => $upload->valid_rows,
+                'redirect_url' => route('schedule.dashboard', $upload->id),
+            ]);
         }
 
         return redirect()->route('schedule.dashboard', $upload->id);

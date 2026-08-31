@@ -102,6 +102,17 @@
                     </div>
                 @endif
 
+                {{-- Reactive Client Error Notification --}}
+                <div x-show="errorMessage" x-cloak class="mb-5 p-3.5 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 rounded-xl text-red-700 dark:text-red-300 text-xs flex items-start gap-2.5">
+                    <svg class="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <div>
+                        <div class="font-bold">Ingestion Notice</div>
+                        <div class="mt-0.5 font-mono text-[11px]" x-text="errorMessage"></div>
+                    </div>
+                </div>
+
                 {{-- Form --}}
                 <form method="POST" action="{{ route('upload.store') }}" enctype="multipart/form-data" id="upload-form" @submit="startProcessing($event)">
                     @csrf
@@ -259,6 +270,7 @@ function uploadPortal() {
         isProcessing: false,
         progressPercent: 15,
         progressText: 'Reading Schedule...',
+        errorMessage: '',
 
         toggleTheme() {
             this.theme = this.theme === 'dark' ? 'light' : 'dark';
@@ -277,6 +289,7 @@ function uploadPortal() {
                 const file = ev.target.files[0];
                 this.selectedFileName = file.name;
                 this.selectedFileSize = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+                this.errorMessage = '';
             }
         },
 
@@ -289,34 +302,97 @@ function uploadPortal() {
                     input.files = ev.dataTransfer.files;
                     this.selectedFileName = file.name;
                     this.selectedFileSize = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+                    this.errorMessage = '';
                 }
             }
         },
 
-        startProcessing(ev) {
+        async startProcessing(ev) {
+            ev.preventDefault();
+
+            const input = document.getElementById('schedule_pdf');
+            if (!input.files || !input.files.length) {
+                return;
+            }
+
             this.isProcessing = true;
-            this.progressPercent = 20;
-            this.progressText = '1/6 Reading PDF Document...';
+            this.errorMessage = '';
+            this.progressPercent = 15;
+            this.progressText = '1/5 Staging Schedule Document...';
 
-            setTimeout(() => {
+            const csrfToken = document.querySelector('input[name="_token"]')?.value ||
+                              document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+            const formData = new FormData();
+            formData.append('schedule_pdf', input.files[0]);
+            formData.append('_token', csrfToken);
+
+            try {
+                // Step 1: Upload and Stage PDF
+                const uploadRes = await fetch('{{ route("upload.store") }}', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': csrfToken
+                    }
+                });
+
+                const uploadData = await uploadRes.json();
+
+                if (!uploadRes.ok || !uploadData.success) {
+                    throw new Error(uploadData.error || uploadData.message || 'Failed to stage schedule PDF.');
+                }
+
+                // If already completed (e.g. idempotent recent upload), redirect immediately
+                if (uploadData.status === 'completed') {
+                    this.progressPercent = 100;
+                    this.progressText = 'Schedule ready! Redirecting...';
+                    window.location.href = uploadData.redirect_url;
+                    return;
+                }
+
+                const uploadId = uploadData.upload_id;
+                const processUrl = uploadData.process_url || `/upload/${uploadId}/process`;
+
+                // Step 2: Trigger Centralized Processing Stage
                 this.progressPercent = 40;
-                this.progressText = '2/6 Extracting Flights...';
-            }, 350);
+                this.progressText = '2/5 Extracting & Validating Flights...';
 
-            setTimeout(() => {
-                this.progressPercent = 65;
-                this.progressText = '3/6 Matching Registry...';
-            }, 700);
+                const procRes = await fetch(processUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    body: JSON.stringify({ _token: csrfToken })
+                });
 
-            setTimeout(() => {
-                this.progressPercent = 85;
-                this.progressText = '4/6 Generating 24H Timeline...';
-            }, 1050);
+                this.progressPercent = 80;
+                this.progressText = '3/5 Generating 24-Hour Timeline & Capacity...';
 
-            setTimeout(() => {
-                this.progressPercent = 95;
-                this.progressText = '5/6 Calculating Capacity...';
-            }, 1400);
+                const procData = await procRes.json();
+
+                if (!procRes.ok || !procData.success) {
+                    throw new Error(procData.error || procData.message || 'Processing pipeline encountered an error.');
+                }
+
+                this.progressPercent = 100;
+                this.progressText = '4/5 Completed! Loading Dashboard...';
+
+                // Step 3: Transition to Dashboard
+                setTimeout(() => {
+                    window.location.href = procData.redirect_url || `/schedule/${uploadId}/dashboard`;
+                }, 300);
+
+            } catch (err) {
+                console.error('[SlotWaves Ingestion Error]', err);
+                this.isProcessing = false;
+                this.errorMessage = err.message || 'An unexpected error occurred during schedule ingestion.';
+            }
         }
     };
 }

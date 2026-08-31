@@ -72,7 +72,7 @@ class InitSupabaseDatabaseCommand extends Command
             $airportCount = 0;
         }
 
-        $shouldSeed = $this->option('seed') || $airportCount === 0;
+        $shouldSeed = $this->option('seed') || $airportCount < 600;
 
         if ($shouldSeed) {
             $this->line("Seeding official master data (Hubud Kemenhub + PT Angkasa Pura Indonesia)...");

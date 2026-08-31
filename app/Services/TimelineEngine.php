@@ -29,10 +29,15 @@ class TimelineEngine
     // Default block duration in minutes (visual width of each slot block)
     private const BLOCK_DURATION = 30;
 
-    public function build(Upload $upload): void
+    public function build(Upload $upload, $flights = null): void
     {
         // Clear old positions for this upload (re-run safe)
         TimelinePosition::where('upload_id', $upload->id)->delete();
+
+        // If not provided, fetch flights for this upload
+        if ($flights === null) {
+            $flights = $upload->flights()->orderBy('scheduled_time')->get();
+        }
 
         // Track stacking: ['section:hour' => currentRow]
         $stackTracker = [];

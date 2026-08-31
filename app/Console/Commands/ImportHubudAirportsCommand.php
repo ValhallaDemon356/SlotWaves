@@ -28,11 +28,15 @@ class ImportHubudAirportsCommand extends Command
 
         $jsonRaw = null;
 
-        // 1. Fetch from live API
-        if (function_exists('curl_init')) {
+        // 1. Fetch from live API with short timeout, fallback to local cache
+        if (File::exists($localCache)) {
+            $jsonRaw = File::get($localCache);
+        }
+
+        if (!$jsonRaw && function_exists('curl_init')) {
             $ch = curl_init($apiUrl);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 5);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) SlotWaves/1.0');
             $response = curl_exec($ch);
@@ -44,12 +48,6 @@ class ImportHubudAirportsCommand extends Command
                 File::put($localCache, $response);
                 $this->line("<info>[SUCCESS]</info> Connected to live API: {$apiUrl}");
             }
-        }
-
-        // Fallback to local cache if live fetch failed
-        if (!$jsonRaw && File::exists($localCache)) {
-            $this->warn("Using cached Hubud dataset from: {$localCache}");
-            $jsonRaw = File::get($localCache);
         }
 
         if (!$jsonRaw) {
@@ -66,11 +64,34 @@ class ImportHubudAirportsCommand extends Command
             return Command::FAILURE;
         }
 
-        $initialDbCount = Airport::count();
+        // Preload existing database records into memory to prevent N+1 queries
+        $existingAirports = Airport::all();
+        $initialDbCount = $existingAirports->count();
         $this->line("Source                  : HUBUD KEMENHUB");
         $this->line("Source Records          : {$sourceCount}");
         $this->line("Existing Database       : {$initialDbCount}");
         $this->line("");
+
+        $existingByBandaraId = [];
+        $existingByIata      = [];
+        $existingByIcao      = [];
+        $existingByNameProv  = [];
+
+        foreach ($existingAirports as $ap) {
+            if (!empty($ap->bandara_id)) {
+                $existingByBandaraId[(int)$ap->bandara_id] = $ap;
+            }
+            if (!empty($ap->iata_code)) {
+                $existingByIata[strtoupper($ap->iata_code)] = $ap;
+            }
+            if (!empty($ap->icao_code)) {
+                $existingByIcao[strtoupper($ap->icao_code)] = $ap;
+            }
+            $nameKey = strtolower(trim($ap->name));
+            $provKey = strtolower(trim($ap->province ?? ''));
+            $existingByNameProv["{$nameKey}|{$provKey}"] = $ap;
+            $existingByNameProv["{$nameKey}|"] = $ap;
+        }
 
         $now = Carbon::now();
         $hubudUrl = 'https://hubud.kemenhub.go.id/daftar-bandara';
@@ -147,33 +168,35 @@ class ImportHubudAirportsCommand extends Command
             // Determine if this is one of the 37 locked InJourney airports
             $isLockedInjourney = ($iata && in_array($iata, $lockedIatas));
 
-            // Matching priority:
-            // 1. Exact BandaraID match
-            // 2. Exact IATA match
-            // 3. Exact ICAO match (only if candidate has no distinct IATA/BandaraID)
-            // 4. Name + Province match (only if candidate has no BandaraID assigned yet)
+            // Matching priority via fast in-memory lookups
             $airport = null;
-            if ($bandaraId) {
-                $airport = Airport::findByBandaraId($bandaraId);
+            if ($bandaraId && isset($existingByBandaraId[$bandaraId])) {
+                $airport = $existingByBandaraId[$bandaraId];
             }
-            if (!$airport && $iata) {
-                $airport = Airport::findByIata($iata);
+            if (!$airport && $iata && isset($existingByIata[$iata])) {
+                $airport = $existingByIata[$iata];
             }
-            if (!$airport && $icao) {
-                $candidate = Airport::findByIcao($icao);
-                if ($candidate && (empty($candidate->iata_code) || empty($iata) || $candidate->iata_code === $iata)) {
+            if (!$airport && $icao && isset($existingByIcao[$icao])) {
+                $candidate = $existingByIcao[$icao];
+                if (empty($candidate->iata_code) || empty($iata) || $candidate->iata_code === $iata) {
                     if (empty($candidate->bandara_id) || $candidate->bandara_id === $bandaraId) {
                         $airport = $candidate;
                     }
                 }
             }
             if (!$airport) {
-                $candidate = Airport::whereRaw('LOWER(name) = ?', [strtolower($name)])
-                    ->where(function($q) use ($prov) {
-                        if ($prov) $q->whereRaw('LOWER(province) = ?', [strtolower($prov)]);
-                    })->first();
-                if ($candidate && empty($candidate->bandara_id)) {
-                    $airport = $candidate;
+                $nameKey = strtolower($name);
+                $provKey = strtolower($prov);
+                if (isset($existingByNameProv["{$nameKey}|{$provKey}"])) {
+                    $candidate = $existingByNameProv["{$nameKey}|{$provKey}"];
+                    if (empty($candidate->bandara_id)) {
+                        $airport = $candidate;
+                    }
+                } elseif (isset($existingByNameProv["{$nameKey}|"])) {
+                    $candidate = $existingByNameProv["{$nameKey}|"];
+                    if (empty($candidate->bandara_id)) {
+                        $airport = $candidate;
+                    }
                 }
             }
 
@@ -276,6 +299,11 @@ class ImportHubudAirportsCommand extends Command
                 $newAirport->source_url       = $hubudUrl;
                 $newAirport->source_checked_at= $now;
                 $newAirport->save();
+
+                // Register into in-memory lookup maps
+                if ($bandaraId) $existingByBandaraId[$bandaraId] = $newAirport;
+                if ($iata) $existingByIata[$iata] = $newAirport;
+                if ($icao) $existingByIcao[$icao] = $newAirport;
 
                 $newCount++;
                 $logEntries[] = "[INSERTED] ID:{$bandaraId} " . ($iata ?: $icao ?: 'NO_CODE') . " — {$name} [{$mgmtType}]";
