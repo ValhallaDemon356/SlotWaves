@@ -14,6 +14,26 @@ class UploadController extends Controller
 {
     public function index()
     {
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('uploads')) {
+                $latestUpload = Upload::where('status', 'completed')
+                    ->has('flights')
+                    ->latest('id')
+                    ->first();
+
+                if ($latestUpload) {
+                    return redirect()->route('schedule.dashboard', $latestUpload->id);
+                }
+            }
+        } catch (\Throwable $e) {
+            // Graceful fallback if database schema is not initialized yet
+        }
+
+        return view('home');
+    }
+
+    public function uploadPage()
+    {
         return view('home');
     }
 

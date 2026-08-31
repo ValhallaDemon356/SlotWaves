@@ -10,6 +10,7 @@ node_modules
 database/*.sqlite-shm
 database/*.sqlite-wal
 !database/database.sqlite
+!database/database.sqlite.b64
 *.log
 *.sql
 .phpunit.result.cache

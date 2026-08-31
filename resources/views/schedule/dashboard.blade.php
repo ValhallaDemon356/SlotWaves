@@ -601,6 +601,10 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                 <a href="{{ route('master-data.index') }}" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-aviation-600 dark:hover:text-aviation-300 hover:bg-slate-100 dark:hover:bg-navy-800 transition">
                     Master Data
                 </a>
+                <a href="{{ route('upload.index') }}" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-aviation-600 dark:hover:text-aviation-300 hover:bg-slate-100 dark:hover:bg-navy-800 transition flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                    <span>Import PDF</span>
+                </a>
             </div>
         </div>
 
@@ -672,6 +676,7 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
         <a href="#flight-list-section" @click="mobileNavOpen = false" class="block py-1 text-slate-700 dark:text-slate-200">List Pergerakan Hari Ini</a>
         <a href="{{ route('timeline.show', $upload->id) }}" class="block py-1 text-aviation-600 dark:text-aviation-400 font-bold">24-Hour Timeline View</a>
         <a href="{{ route('master-data.index') }}" class="block py-1 text-slate-700 dark:text-slate-200">Master Reference Data</a>
+        <a href="{{ route('upload.index') }}" class="block py-1 text-slate-700 dark:text-slate-200">Import Schedule PDF</a>
     </div>
 
     {{-- ══ 2. HERO BANNER: AIRPORT OPERATIONS & SCHEDULE OVERVIEW ═══════════════ --}}

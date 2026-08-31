@@ -48,9 +48,15 @@ function masterDataState() {
         </div>
 
         <div class="flex items-center gap-2.5">
-            <a href="{{ route('home') }}" class="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-aviation-600 dark:hover:text-aviation-300 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-navy-800/80 hover:bg-slate-100 transition shadow-2xs flex items-center gap-1">
-                &larr; Upload Portal
-            </a>
+            @if (!empty($activeUpload))
+                <a href="{{ route('schedule.dashboard', $activeUpload->id) }}" class="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-aviation-600 dark:hover:text-aviation-300 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-navy-800/80 hover:bg-slate-100 transition shadow-2xs flex items-center gap-1">
+                    &larr; Dashboard
+                </a>
+            @else
+                <a href="{{ route('upload.index') }}" class="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-aviation-600 dark:hover:text-aviation-300 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-navy-800/80 hover:bg-slate-100 transition shadow-2xs flex items-center gap-1">
+                    &larr; Upload Portal
+                </a>
+            @endif
             <button @click="toggleTheme()" type="button"
                     class="p-2 rounded-lg text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-navy-800 border border-slate-200 dark:border-slate-700/60 hover:bg-slate-200 dark:hover:bg-navy-700 transition cursor-pointer"
                     aria-label="Toggle theme">

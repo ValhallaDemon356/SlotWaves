@@ -7,9 +7,12 @@ use App\Http\Controllers\MasterDataViewController;
 use App\Http\Controllers\Api\MasterDataController;
 use Illuminate\Support\Facades\Route;
 
-// ── Home / Upload ──────────────────────────────────────────────────────────
-Route::get('/',       [UploadController::class, 'index'])->name('home');
-Route::post('/upload',[UploadController::class, 'store'])->name('upload.store');
+// ── Home / Dashboard / Upload Portal ───────────────────────────────────────
+Route::get('/',          [UploadController::class, 'index'])->name('home');
+Route::get('/dashboard', [UploadController::class, 'index'])->name('dashboard');
+Route::get('/import',    [UploadController::class, 'uploadPage'])->name('upload.index');
+Route::get('/upload',    [UploadController::class, 'uploadPage'])->name('upload.page');
+Route::post('/upload',   [UploadController::class, 'store'])->name('upload.store');
 
 // ── Master Reference Data Web View ─────────────────────────────────────────
 Route::get('/master-data', [MasterDataViewController::class, 'index'])->name('master-data.index');

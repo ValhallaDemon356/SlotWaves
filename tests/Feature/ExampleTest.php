@@ -8,7 +8,7 @@ class ExampleTest extends TestCase
 {
     public function test_home_page_loads(): void
     {
-        $response = $this->get('/');
+        $response = $this->followingRedirects()->get('/');
         $response->assertOk();
         $response->assertSee('SlotWaves');
     }

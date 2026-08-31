@@ -174,6 +174,18 @@ class MasterDataViewController extends Controller
                 'active_airlines'      => $activeAirlines,
             ];
 
-        return view('master-data.index', compact('airports', 'airlines', 'tab', 'stats', 'totalFilteredAirports'));
+            $activeUpload = null;
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasTable('uploads')) {
+                    $activeUpload = \App\Models\Upload::where('status', 'completed')
+                        ->has('flights')
+                        ->latest('id')
+                        ->first();
+                }
+            } catch (\Throwable $e) {
+                // Graceful fallback
+            }
+
+        return view('master-data.index', compact('airports', 'airlines', 'tab', 'stats', 'totalFilteredAirports', 'activeUpload'));
     }
 }

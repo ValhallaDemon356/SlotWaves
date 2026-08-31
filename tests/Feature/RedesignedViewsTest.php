@@ -20,13 +20,52 @@ class RedesignedViewsTest extends TestCase
         $this->seed(MasterDatabaseSeeder::class);
     }
 
-    public function test_home_page_renders_redesigned_ui(): void
+    public function test_home_page_renders_redesigned_ui_when_no_uploads(): void
     {
         $response = $this->get('/');
         $response->assertOk();
         $response->assertSee('SlotWaves');
         $response->assertSee('Flight Intelligence Pipeline');
         $response->assertSee('Import Flight Schedule');
+    }
+
+    public function test_import_page_renders_redesigned_ui(): void
+    {
+        $response = $this->get('/import');
+        $response->assertOk();
+        $response->assertSee('SlotWaves');
+        $response->assertSee('Flight Intelligence Pipeline');
+        $response->assertSee('Import Flight Schedule');
+    }
+
+    public function test_home_page_redirects_to_dashboard_when_upload_exists(): void
+    {
+        $airport = Airport::findByIata('BDO');
+        $upload = Upload::create([
+            'original_filename' => 'TEST_SCHEDULE.pdf',
+            'stored_path' => 'uploads/test.pdf',
+            'airport_iata' => 'BDO',
+            'airport_id' => $airport ? $airport->id : null,
+            'status' => 'completed',
+            'season' => 'summer',
+            'total_rows' => 1,
+            'valid_rows' => 1,
+        ]);
+
+        Flight::create([
+            'upload_id' => $upload->id,
+            'flight_number' => 'GA101',
+            'airline_code' => 'GA',
+            'scheduled_time' => '10:00:00',
+            'flight_type' => 'arrival_domestic',
+            'operating_days' => '1234567',
+        ]);
+
+        $response = $this->get('/');
+        $response->assertRedirect(route('schedule.dashboard', $upload->id));
+
+        $dashboardResponse = $this->get('/dashboard');
+        $dashboardResponse->assertRedirect(route('schedule.dashboard', $upload->id));
     }
 
     public function test_master_data_renders_redesigned_ui(): void
