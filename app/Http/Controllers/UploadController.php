@@ -12,29 +12,62 @@ use Illuminate\Support\Facades\Log;
 
 class UploadController extends Controller
 {
+    /**
+     * Initial landing page — ALWAYS renders the Upload Portal.
+     */
     public function index()
     {
+        $activeUpload = null;
         try {
-            if (\Illuminate\Support\Facades\Schema::hasTable('uploads')) {
-                $latestUpload = Upload::where('status', 'completed')
+            $activeUploadId = session('active_upload_id');
+            if ($activeUploadId) {
+                $activeUpload = Upload::where('id', $activeUploadId)
+                    ->where('status', 'completed')
                     ->has('flights')
-                    ->latest('id')
                     ->first();
-
-                if ($latestUpload) {
-                    return redirect()->route('schedule.dashboard', $latestUpload->id);
-                }
             }
         } catch (\Throwable $e) {
-            // Graceful fallback if database schema is not initialized yet
+            // Graceful fallback
         }
 
-        return view('home');
+        return view('home', compact('activeUpload'));
     }
 
+    /**
+     * Dedicated Upload Portal entry point.
+     */
     public function uploadPage()
     {
-        return view('home');
+        return $this->index();
+    }
+
+    /**
+     * /dashboard shortcut route — redirects to active session schedule or falls back to Upload Portal.
+     */
+    public function dashboardRedirect()
+    {
+        $activeUploadId = session('active_upload_id');
+        if ($activeUploadId) {
+            $upload = Upload::where('id', $activeUploadId)
+                ->where('status', 'completed')
+                ->has('flights')
+                ->first();
+
+            if ($upload) {
+                return redirect()->route('schedule.dashboard', $upload->id);
+            }
+        }
+
+        return redirect()->route('home');
+    }
+
+    /**
+     * Reset / New Import — clears active session and returns to Upload Portal.
+     */
+    public function resetSession()
+    {
+        session()->forget('active_upload_id');
+        return redirect()->route('home');
     }
 
     public function store(Request $request)
@@ -54,6 +87,7 @@ class UploadController extends Controller
             ->first();
 
         if ($recentUpload) {
+            session(['active_upload_id' => $recentUpload->id]);
             if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success'      => true,
@@ -203,6 +237,9 @@ class UploadController extends Controller
                     ],
                 ]);
             });
+
+            // Store active upload ID in session for session-based restoration
+            session(['active_upload_id' => $upload->id]);
 
         } catch (\Throwable $e) {
             Log::error("Failed to parse PDF ID {$upload->id}: " . $e->getMessage(), [

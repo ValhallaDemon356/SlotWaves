@@ -8,10 +8,12 @@ use App\Http\Controllers\Api\MasterDataController;
 use Illuminate\Support\Facades\Route;
 
 // ── Home / Dashboard / Upload Portal ───────────────────────────────────────
-Route::get('/',          [UploadController::class, 'index'])->name('home');
-Route::get('/dashboard', [UploadController::class, 'index'])->name('dashboard');
+Route::get('/',                        [UploadController::class, 'index'])->name('home');
+Route::get('/dashboard',               [UploadController::class, 'dashboardRedirect'])->name('dashboard');
 Route::get('/import',                  [UploadController::class, 'uploadPage'])->name('upload.index');
 Route::get('/upload',                  [UploadController::class, 'uploadPage'])->name('upload.page');
+Route::get('/reset',                   [UploadController::class, 'resetSession'])->name('schedule.reset');
+Route::get('/new-schedule',            [UploadController::class, 'resetSession'])->name('schedule.new');
 Route::post('/upload',                 [UploadController::class, 'store'])->name('upload.store');
 Route::get('/upload/{upload}/status',  [UploadController::class, 'status'])->name('upload.status');
 Route::post('/upload/{upload}/process',[UploadController::class, 'process'])->name('upload.process');

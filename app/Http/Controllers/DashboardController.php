@@ -29,6 +29,7 @@ class DashboardController extends Controller
     public function show(Request $request, Upload $upload)
     {
         $this->assertCompleted($upload);
+        session(['active_upload_id' => $upload->id]);
 
         $filters = $this->filterService->parseFilters($request->all());
         

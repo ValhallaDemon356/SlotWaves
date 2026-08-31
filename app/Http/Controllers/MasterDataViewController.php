@@ -179,10 +179,11 @@ class MasterDataViewController extends Controller
 
             $activeUpload = null;
             try {
-                if (\Illuminate\Support\Facades\Schema::hasTable('uploads')) {
-                    $activeUpload = \App\Models\Upload::where('status', 'completed')
+                $activeUploadId = session('active_upload_id');
+                if ($activeUploadId) {
+                    $activeUpload = \App\Models\Upload::where('id', $activeUploadId)
+                        ->where('status', 'completed')
                         ->has('flights')
-                        ->latest('id')
                         ->first();
                 }
             } catch (\Throwable $e) {
