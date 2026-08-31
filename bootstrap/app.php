@@ -12,7 +12,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (\Throwable $e, $request) {
@@ -32,15 +32,14 @@ if ($storagePath) {
 
 $app->booted(function () {
     try {
-        if (config('database.default') === 'sqlite') {
-            $dbPath = config('database.connections.sqlite.database');
-            if ($dbPath && file_exists($dbPath) && !\Illuminate\Support\Facades\Schema::hasTable('airports')) {
-                \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-                \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'Database\\Seeders\\MasterDatabaseSeeder', '--force' => true]);
-            }
+        if (!\Illuminate\Support\Facades\Schema::hasTable('airports')) {
+            \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+            \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'Database\\Seeders\\MasterDatabaseSeeder', '--force' => true]);
+        } elseif (\App\Models\Airport::count() === 0) {
+            \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'Database\\Seeders\\MasterDatabaseSeeder', '--force' => true]);
         }
     } catch (\Throwable $e) {
-        // Fallback gracefully
+        \Illuminate\Support\Facades\Log::warning('Bootstrap schema check: ' . $e->getMessage());
     }
 });
 

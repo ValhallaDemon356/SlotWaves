@@ -6,12 +6,21 @@
       "runtime": "vercel-php@0.7.2",
       "memory": 1024,
       "maxDuration": 30
+    },
+    "api/*.php": {
+      "runtime": "vercel-php@0.7.2",
+      "memory": 1024,
+      "maxDuration": 30
     }
   },
   "routes": [
     {
       "src": "/build/(.*)",
       "dest": "/public/build/$1"
+    },
+    {
+      "src": "/(css|js|images|fonts)/(.*)",
+      "dest": "/public/$1/$2"
     },
     {
       "src": "/(favicon\\.ico|robots\\.txt)",

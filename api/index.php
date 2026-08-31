@@ -114,80 +114,14 @@ if (!getenv('LOG_CHANNEL')) {
     $_SERVER['LOG_CHANNEL'] = 'stderr';
 }
 
-// Check database configuration: Prioritize Supabase PostgreSQL when DB_CONNECTION=pgsql or DB_URL / remote DB_HOST is present
+// Check database configuration: Default to Supabase PostgreSQL (pgsql)
 $dbConn = getenv('DB_CONNECTION') ?: ($_ENV['DB_CONNECTION'] ?? ($_SERVER['DB_CONNECTION'] ?? null));
 $dbUrl  = getenv('DB_URL') ?: ($_ENV['DB_URL'] ?? ($_SERVER['DB_URL'] ?? null));
-$dbHost = getenv('DB_HOST') ?: ($_ENV['DB_HOST'] ?? ($_SERVER['DB_HOST'] ?? null));
 
-if ($dbConn === 'pgsql' || !empty($dbUrl)) {
-    // Production Cloud Database (Supabase PostgreSQL)
-    if (!getenv('DB_CONNECTION')) {
-        putenv('DB_CONNECTION=pgsql');
-        $_ENV['DB_CONNECTION'] = 'pgsql';
-        $_SERVER['DB_CONNECTION'] = 'pgsql';
-    }
-} elseif ($dbConn === 'sqlite' || (empty($dbConn) && empty($dbHost))) {
-    // Local / Offline fallback SQLite
-    if (!getenv('DB_CONNECTION')) {
-        putenv('DB_CONNECTION=sqlite');
-        $_ENV['DB_CONNECTION'] = 'sqlite';
-        $_SERVER['DB_CONNECTION'] = 'sqlite';
-    }
-
-    $sqliteFile = $storageDir . '/database.sqlite';
-
-    $candidateSourcePaths = [
-        __DIR__ . '/../database/database.sqlite',
-        dirname(__DIR__) . '/database/database.sqlite',
-        '/var/task/user/database/database.sqlite',
-        '/var/task/database/database.sqlite',
-        getcwd() . '/database/database.sqlite',
-    ];
-
-    $b64Candidates = [
-        __DIR__ . '/../database/database.sqlite.b64',
-        dirname(__DIR__) . '/database/database.sqlite.b64',
-        '/var/task/user/database/database.sqlite.b64',
-        '/var/task/database/database.sqlite.b64',
-        getcwd() . '/database/database.sqlite.b64',
-    ];
-
-    if (!file_exists($sqliteFile) || filesize($sqliteFile) < 50000) {
-        $restored = false;
-        foreach ($candidateSourcePaths as $candidate) {
-            if (!empty($candidate) && file_exists($candidate) && filesize($candidate) > 50000) {
-                if (!empty($sqliteFile)) {
-                    @copy($candidate, $sqliteFile);
-                    $restored = true;
-                    break;
-                }
-            }
-        }
-        if (!$restored) {
-            foreach ($b64Candidates as $b64File) {
-                if (!empty($b64File) && file_exists($b64File) && filesize($b64File) > 50000) {
-                    $raw = @file_get_contents($b64File);
-                    if ($raw !== false) {
-                        $decoded = base64_decode($raw);
-                        if ($decoded && strlen($decoded) > 50000 && !empty($sqliteFile)) {
-                            @file_put_contents($sqliteFile, $decoded);
-                            $restored = true;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        if (!file_exists($sqliteFile) && !empty($sqliteFile)) {
-            @touch($sqliteFile);
-        }
-    }
-
-    if (!empty($sqliteFile)) {
-        putenv("DB_DATABASE={$sqliteFile}");
-        $_ENV['DB_DATABASE'] = $sqliteFile;
-        $_SERVER['DB_DATABASE'] = $sqliteFile;
-    }
+if (empty($dbConn) && (empty($dbUrl) || str_starts_with($dbUrl, 'postgres'))) {
+    putenv('DB_CONNECTION=pgsql');
+    $_ENV['DB_CONNECTION'] = 'pgsql';
+    $_SERVER['DB_CONNECTION'] = 'pgsql';
 }
 
 try {
