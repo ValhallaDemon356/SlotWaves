@@ -235,6 +235,7 @@ class CapacityService
             $hourlyOccupancy   = 0;
             $arrivalContrib    = 0;
             $ronContrib        = 0;
+            $opcCount          = 0;
 
             foreach ($rotations as $rot) {
                 if (!empty($rot['is_cargo']) || ($rot['passenger_units'] ?? 1) <= 0) {
@@ -266,14 +267,29 @@ class CapacityService
 
                     if ($status === 'UNPAIRED_DEP') {
                         $ronContrib += $units;
+                        $stdHour = (int) floor($e / 60);
+                        if ($h < $stdHour) {
+                            $opcCount += $units;
+                        }
                     } elseif ($status === 'UNPAIRED_ARR') {
                         $arrivalContrib += $units;
+                        $staHour = (int) floor($s / 60);
+                        if ($h > $staHour) {
+                            $opcCount += $units;
+                        }
                     } else {
                         // PAIRED
                         if ($s >= $hStart && $s < $hNext) {
                             $arrivalContrib += $units;
                         } else {
                             $ronContrib += $units; // Arrived in earlier hour and remains parked
+                        }
+                        if ($e < $s) {
+                            $staHour = (int) floor($s / 60);
+                            $stdHour = (int) floor($e / 60);
+                            if ($h > $staHour || $h < $stdHour) {
+                                $opcCount += $units;
+                            }
                         }
                     }
                 }
@@ -331,6 +347,7 @@ class CapacityService
             $data['occupied']                  = $hourlyOccupancy;
             $data['ron_contribution']          = $ronContrib;
             $data['arrival_contribution']      = $arrivalContrib;
+            $data['opc_count']                 = $opcCount;
             $data['remaining']                 = $remaining;
             $data['useable']                   = $remaining;
             $data['exceeded']                  = $exceeded;
@@ -346,6 +363,10 @@ class CapacityService
         }
         unset($data);
 
+        $opcTotal = count(array_filter($rotations, function ($r) {
+            return empty($r['is_cargo']) && ($r['rotation_status'] === 'UNPAIRED_ARR' || empty($r['departure']));
+        }));
+
         return [
             'hourly'             => $hourly,
             'nac'                => $nac,
@@ -359,6 +380,7 @@ class CapacityService
             'ops_end_hour'       => $endHour,
             'peak_hour'          => $peakHour,
             'peak_demand'        => $peakDemand,
+            'opc_count'          => $opcTotal,
         ];
     }
 

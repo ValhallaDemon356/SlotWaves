@@ -99,6 +99,7 @@ class DashboardController extends Controller
 
         // Calculate operational capacity stats dynamically from filtered flights and operational window
         $capacityStats = $this->capacityService->calculate($flights, null, $opsStartHour, $opsEndHour, $airportCapacity);
+        $stats['opc']  = $capacityStats['opc_count'] ?? 0;
 
         // Build rotation lookup map for flight movements
         $pairingLookup = [];
@@ -248,6 +249,7 @@ class DashboardController extends Controller
                 'rotation_id'     => $rot['rotation_id'],
                 'rotation_status' => $rot['rotation_status'],
                 'is_paired'       => $rot['is_paired'],
+                'is_ron'          => ($rot['rotation_status'] === 'UNPAIRED_ARR' || empty($rot['departure'])),
                 'is_cargo'        => $rot['is_cargo'] ?? false,
                 'passenger_units' => $rot['passenger_units'] ?? 1,
                 'start_minute'    => $rot['start_minute'],

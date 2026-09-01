@@ -196,6 +196,10 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
             return this.movements.filter(f => f.direction === 'departure' && this.isFlightInOps(f)).length;
         },
 
+        get inOpsOpcCount() {
+            return (this.rotations || []).filter(r => !r.is_cargo && (r.rotation_status === 'UNPAIRED_ARR' || r.is_ron)).length;
+        },
+
         get inOpsTotalCount() {
             return this.inOpsArrivalsCount + this.inOpsDeparturesCount;
         },
@@ -228,6 +232,7 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                 let passengerOccupied = 0;
                 let ronContrib = 0;
                 let arrContrib = 0;
+                let opcCount = 0;
 
                 for (const rot of (this.rotations || [])) {
                     if (rot.is_cargo || (rot.passenger_units || 1) <= 0) {
@@ -266,13 +271,28 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
 
                         if (status === 'UNPAIRED_DEP') {
                             ronContrib += units;
+                            const stdH = Math.floor(e / 60);
+                            if (h < stdH) {
+                                opcCount += units;
+                            }
                         } else if (status === 'UNPAIRED_ARR') {
                             arrContrib += units;
+                            const staH = Math.floor(s / 60);
+                            if (h > staH) {
+                                opcCount += units;
+                            }
                         } else {
                             if (s >= hStart && s < hNext) {
                                 arrContrib += units;
                             } else {
                                 ronContrib += units;
+                            }
+                            if (e < s) {
+                                const staH = Math.floor(s / 60);
+                                const stdH = Math.floor(e / 60);
+                                if (h > staH || h < stdH) {
+                                    opcCount += units;
+                                }
                             }
                         }
                     }
@@ -325,6 +345,7 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                     isOps: isOps,
                     arrCount: arrs.length,
                     depCount: deps.length,
+                    opcCount: opcCount,
                     passengerArrCount: passengerArrs.length,
                     passengerDepCount: passengerDeps.length,
                     passengerCount: passengerOccupied, // Aircraft occupied for capacity display
@@ -384,7 +405,7 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
         },
 
         get chartMaxScale() {
-            const maxVal = Math.max(...this.activeHourlyDistribution.map(d => d.total), 0);
+            const maxVal = Math.max(...this.activeHourlyDistribution.map(d => d.total + (d.opcCount || 0)), 0);
             return Math.max(this.nacLimit + 2, maxVal + 2, 8);
         },
 
@@ -575,11 +596,14 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                 if (this.selectedHour !== null && fH !== this.selectedHour) {
                     return false;
                 }
-                // Direction filter
+                // Direction / OPC filter
                 if (this.movementFilter === 'arrivals' && f.direction !== 'arrival') {
                     return false;
                 }
                 if (this.movementFilter === 'departures' && f.direction !== 'departure') {
+                    return false;
+                }
+                if (this.movementFilter === 'opc' && !f.is_ron) {
                     return false;
                 }
                 // Search query
@@ -602,6 +626,10 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
 
         get departuresCount() {
             return this.movements.filter(f => f.direction === 'departure').length;
+        },
+
+        get opcMovementsCount() {
+            return this.movements.filter(f => f.is_ron).length;
         },
 
         // Drawer
@@ -1030,6 +1058,19 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                             </div>
                             <div class="text-[10px] text-slate-400 mt-0.5">Penerbangan Berangkat (OPS)</div>
                         </div>
+
+                        {{-- OPC Stat --}}
+                        <div class="p-2.5 rounded-lg bg-white dark:bg-navy-900 border border-purple-200/80 dark:border-purple-900/60 shadow-2xs mt-2">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-purple-600 inline-block"></span>
+                                    <span class="text-xs font-bold text-slate-700 dark:text-slate-300">OPC</span>
+                                </div>
+                                <span class="text-lg font-black font-mono text-purple-600 dark:text-purple-400" x-text="inOpsOpcCount">{{ $stats['opc'] ?? 0 }}</span>
+                            </div>
+                            <div class="text-[10px] text-slate-400 mt-0.5">Occupancy Parking Stand</div>
+                            <div class="text-[9.5px] text-purple-600/80 dark:text-purple-400/80 font-medium">RON Stand Occupied (Next Day Dep)</div>
+                        </div>
                     </div>
 
                     {{-- Total Movements & Peak Highlights --}}
@@ -1168,6 +1209,12 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                                              ]"
                                              style="height: 98px">
                                             
+                                            {{-- OPC Block (Purple) --}}
+                                            <template x-if="item.opcCount > 0">
+                                                <div class="w-full bg-purple-600 rounded-xs transition-all duration-300 group-hover:brightness-110" 
+                                                     :style="'height: ' + Math.max(4, Math.round((item.opcCount / chartMaxScale) * 92)) + 'px'"></div>
+                                            </template>
+
                                             {{-- Arrivals Block (Orange) --}}
                                             <template x-if="item.arrCount > 0">
                                                 <div class="w-full bg-orange-500 rounded-xs transition-all duration-300 group-hover:brightness-110" 
@@ -1180,8 +1227,8 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                                                      :style="'height: ' + Math.max(4, Math.round((item.depCount / chartMaxScale) * 92)) + 'px'"></div>
                                             </template>
 
-                                            {{-- Baseline tick for 0 movements --}}
-                                            <template x-if="item.total === 0">
+                                            {{-- Baseline tick for 0 movements and 0 OPC --}}
+                                            <template x-if="item.total === 0 && (!item.opcCount || item.opcCount === 0)">
                                                 <div class="w-full h-1 bg-slate-200 dark:bg-navy-800 rounded-xs"></div>
                                             </template>
                                         </div>
@@ -1233,6 +1280,15 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                                                     <span class="font-bold" x-text="item.depCount + ' (Pax: ' + item.passengerDepCount + (item.cargoDepCount > 0 ? ', Cargo: ' + item.cargoDepCount : '') + ')'"></span>
                                                 </div>
 
+                                                {{-- OPC (RON Parking) --}}
+                                                <div class="flex items-center justify-between text-purple-300">
+                                                    <span class="flex items-center gap-1.5">
+                                                        <span class="w-2 h-2 rounded-full bg-purple-500 inline-block"></span>
+                                                        OPC (RON Parking):
+                                                    </span>
+                                                    <span class="font-bold" x-text="item.opcCount || 0"></span>
+                                                </div>
+
                                                 <template x-if="item.cargoCount > 0">
                                                     <div class="flex items-center justify-between text-amber-300 text-[10px] bg-amber-950/40 px-2 py-0.5 rounded border border-amber-800/40">
                                                         <span>Cargo (Separate Stand):</span>
@@ -1256,33 +1312,39 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                         </div>
 
                         {{-- Legend Strip --}}
-                        <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[11px] text-slate-500">
-                            <div class="flex flex-wrap items-center gap-3">
-                                <span class="inline-flex items-center gap-1.5">
-                                    <span class="w-2.5 h-2.5 rounded-full bg-[#16A34A] inline-block"></span>
-                                    <strong class="text-slate-700 dark:text-slate-300">Available</strong>
-                                </span>
-                                <span class="inline-flex items-center gap-1.5">
-                                    <span class="w-2.5 h-2.5 rounded-full bg-[#D97706] inline-block"></span>
-                                    <strong class="text-slate-700 dark:text-slate-300">Full / Max</strong>
-                                </span>
-                                <span class="inline-flex items-center gap-1.5">
-                                    <span class="w-2.5 h-2.5 rounded-full bg-[#9333EA] inline-block"></span>
-                                    <strong class="text-slate-700 dark:text-slate-300">Over Capacity</strong>
-                                </span>
-                                <span class="inline-flex items-center gap-1.5">
-                                    <span class="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-600 inline-block"></span>
-                                    <span class="text-slate-500 dark:text-slate-400">Off Hours</span>
-                                </span>
-                                <span class="inline-flex items-center gap-1 font-mono text-[10.5px] text-aviation-600 dark:text-aviation-400 cursor-pointer"
-                                      @click="openCapacityModal()" title="Click to configure Aircraft Capacity">
-                                    <span class="w-3.5 border-b-2 border-dashed border-aviation-500 inline-block"></span>
-                                    <span>Aircraft Capacity (<span x-text="nacLimit"></span> A/C) ⚙</span>
-                                </span>
+                        <div class="flex flex-col gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[11px] text-slate-500">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <div class="flex flex-wrap items-center gap-3">
+                                    <span class="inline-flex items-center gap-1.5">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-[#16A34A] inline-block"></span>
+                                        <strong class="text-slate-700 dark:text-slate-300">Available</strong>
+                                    </span>
+                                    <span class="inline-flex items-center gap-1.5">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-[#D97706] inline-block"></span>
+                                        <strong class="text-slate-700 dark:text-slate-300">Full / Max</strong>
+                                    </span>
+                                    <span class="inline-flex items-center gap-1.5">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-[#9333EA] inline-block"></span>
+                                        <strong class="text-slate-700 dark:text-slate-300">Over Capacity</strong>
+                                    </span>
+                                    <span class="inline-flex items-center gap-1.5">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-600 inline-block"></span>
+                                        <span class="text-slate-500 dark:text-slate-400">Off Hours</span>
+                                    </span>
+                                    <span class="inline-flex items-center gap-1 font-mono text-[10.5px] text-aviation-600 dark:text-aviation-400 cursor-pointer"
+                                          @click="openCapacityModal()" title="Click to configure Aircraft Capacity">
+                                        <span class="w-3.5 border-b-2 border-dashed border-aviation-500 inline-block"></span>
+                                        <span>Aircraft Capacity (<span x-text="nacLimit"></span> A/C) ⚙</span>
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-2.5 text-[10px] text-slate-400">
+                                    <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-xs bg-orange-500 inline-block"></span> ARR</span>
+                                    <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-xs bg-blue-600 inline-block"></span> DEP</span>
+                                    <span class="inline-flex items-center gap-1" title="OPC: Pesawat RON yang masih menempati parking stand untuk keberangkatan pada hari berikutnya"><span class="w-2 h-2 rounded-xs bg-purple-600 inline-block"></span> OPC (RON)</span>
+                                </div>
                             </div>
-                            <div class="flex items-center gap-2 text-[10px] text-slate-400">
-                                <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-xs bg-orange-500 inline-block"></span> ARR</span>
-                                <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-xs bg-blue-600 inline-block"></span> DEP</span>
+                            <div class="text-[10px] text-slate-400 dark:text-slate-500 italic">
+                                <strong class="text-purple-600 dark:text-purple-400 not-italic font-semibold">OPC:</strong> Pesawat RON yang masih menempati parking stand untuk keberangkatan pada hari berikutnya.
                             </div>
                         </div>
                     </div>
@@ -1706,7 +1768,7 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
             {{-- Interactive Filters Bar: Tabs & Search --}}
             <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5">
                 
-                {{-- Tabs: Semua / Arrivals / Departures --}}
+                {{-- Tabs: Semua / Arrivals / Departures / OPC --}}
                 <div class="inline-flex p-0.5 bg-slate-100 dark:bg-navy-950 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-semibold">
                     <button type="button" 
                             @click="movementFilter = 'all'"
@@ -1727,6 +1789,13 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                             class="px-3 py-1.5 rounded-md transition flex items-center gap-1.5 cursor-pointer">
                         <span class="w-2 h-2 rounded-full bg-blue-600"></span>
                         Departures (<span x-text="departuresCount"></span>)
+                    </button>
+                    <button type="button" 
+                            @click="movementFilter = 'opc'"
+                            :class="movementFilter === 'opc' ? 'bg-white dark:bg-navy-800 text-purple-600 dark:text-purple-400 shadow-2xs font-bold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'"
+                            class="px-3 py-1.5 rounded-md transition flex items-center gap-1.5 cursor-pointer">
+                        <span class="w-2 h-2 rounded-full bg-purple-600"></span>
+                        OPC (<span x-text="opcMovementsCount"></span>)
                     </button>
                 </div>
 
