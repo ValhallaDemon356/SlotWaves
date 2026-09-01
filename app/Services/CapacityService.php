@@ -225,139 +225,77 @@ class CapacityService
             $data['passenger_count'] = $data['passenger_arrivals_count'] + $data['passenger_departures_count'];
             $data['cargo_count']     = $data['cargo_arrivals_count'] + $data['cargo_departures_count'];
             $data['total_movements'] = $data['arrivals_count'] + $data['departures_count'];
-            $data['demand']          = $data['passenger_count']; // Passenger movements for aircraft capacity calculation
+            $data['demand']          = $data['total_movements']; // Movements demand for schedule checks
 
-            // Evaluate passenger aircraft occupancy for hour $h from rotation time intervals [s, e)
-            $hStart = $h * 60;
-            $hNext  = ($h + 1) * 60;
-
-            $occupiedRotations = [];
-            $hourlyOccupancy   = 0;
-            $arrivalContrib    = 0;
-            $ronContrib        = 0;
-            $opcCount          = 0;
-
+            // 1. Calculate OPC (RON parking stand occupancy for next-day departures) in hour $h
+            $opcCount = 0;
             foreach ($rotations as $rot) {
                 if (!empty($rot['is_cargo']) || ($rot['passenger_units'] ?? 1) <= 0) {
-                    continue; // Cargo excluded from passenger occupancy timeline
+                    continue; // Cargo excluded from passenger stand occupancy
                 }
 
                 $s      = $rot['start_minute'];
                 $e      = $rot['end_minute'];
                 $status = $rot['rotation_status'];
-                $intersects = false;
+                $units  = (int) ($rot['passenger_units'] ?? 1);
 
-                if ($status === 'PAIRED' && $e < $s) {
-                    // Overnight turnaround crossing midnight [s..1440) U [0..e)
-                    if ($s < $hNext || $e > $hStart) {
-                        $intersects = true;
+                if ($status === 'UNPAIRED_DEP') {
+                    $stdHour = (int) floor($e / 60);
+                    if ($h < $stdHour) {
+                        $opcCount += $units;
                     }
-                } else {
-                    // Normal interval [s, e)
-                    // Aircraft occupies airport if arrival < hNext AND departure > hStart
-                    if ($s < $hNext && $e > $hStart) {
-                        $intersects = true;
+                } elseif ($status === 'UNPAIRED_ARR') {
+                    $staHour = (int) floor($s / 60);
+                    if ($h > $staHour) {
+                        $opcCount += $units;
                     }
-                }
-
-                if ($intersects) {
-                    $occupiedRotations[] = $rot;
-                    $units = (int) ($rot['passenger_units'] ?? 1);
-                    $hourlyOccupancy += $units;
-
-                    if ($status === 'UNPAIRED_DEP') {
-                        $ronContrib += $units;
-                        $stdHour = (int) floor($e / 60);
-                        if ($h < $stdHour) {
-                            $opcCount += $units;
-                        }
-                    } elseif ($status === 'UNPAIRED_ARR') {
-                        $arrivalContrib += $units;
-                        $staHour = (int) floor($s / 60);
-                        if ($h > $staHour) {
-                            $opcCount += $units;
-                        }
-                    } else {
-                        // PAIRED
-                        if ($s >= $hStart && $s < $hNext) {
-                            $arrivalContrib += $units;
-                        } else {
-                            $ronContrib += $units; // Arrived in earlier hour and remains parked
-                        }
-                        if ($e < $s) {
-                            $staHour = (int) floor($s / 60);
-                            $stdHour = (int) floor($e / 60);
-                            if ($h > $staHour || $h < $stdHour) {
-                                $opcCount += $units;
-                            }
-                        }
+                } elseif ($status === 'PAIRED' && $e < $s) {
+                    $staHour = (int) floor($s / 60);
+                    $stdHour = (int) floor($e / 60);
+                    if ($h > $staHour || $h < $stdHour) {
+                        $opcCount += $units;
                     }
                 }
             }
 
-            // Build occupied and parked lists for tooltips/modal/debug
-            $occupiedList = [];
-            $parkedList   = [];
-
-            foreach ($occupiedRotations as $r) {
-                $displayFlight = $r['arrival']
-                    ? $r['arrival']->flight_number
-                    : ($r['departure'] ? $r['departure']->flight_number : $r['rotation_id']);
-
-                $statusText = $r['rotation_status'] === 'PAIRED'
-                    ? "Turnaround ({$r['sta']} → {$r['std']})"
-                    : "Parked ({$r['rotation_status']})";
-
-                $itemInfo = [
-                    'flight_number'   => $displayFlight,
-                    'aircraft_type'   => $r['aircraft_type'] ?? '—',
-                    'rotation_status' => $r['rotation_status'],
-                    'status_text'     => $statusText,
-                    'sta'             => $r['sta'],
-                    'std'             => $r['std'],
-                    'pair_text'       => $r['arrival'] && $r['departure']
-                        ? "{$r['arrival']->flight_number} → {$r['departure']->flight_number}"
-                        : ($r['arrival'] ? "Unpaired Arr ({$r['arrival']->flight_number})" : "Unpaired Dep ({$r['departure']->flight_number})"),
-                ];
-
-                $occupiedList[] = $itemInfo;
-                if ($r['rotation_status'] !== 'PAIRED' || empty($r['departure'])) {
-                    $parkedList[] = $itemInfo;
-                }
-            }
+            // 2. REFACTORED STANDARD: Aircraft Demand = Arrivals + Departures + OPC
+            // No cumulative occupancy from previous hours. No subtracting Departures from Arrivals.
+            $aircraftDemand = $data['arrivals_count'] + $data['departures_count'] + $opcCount;
+            $utilization    = $nac > 0 ? (int) round(($aircraftDemand / $nac) * 100) : 0;
+            $remaining      = max(0, $nac - $aircraftDemand);
+            $exceeded       = max(0, $aircraftDemand - $nac);
 
             $isInOpsWindow = ($h >= $startHour && $h < $endHour);
-            $remaining     = max(0, $nac - $hourlyOccupancy);
-            $exceeded      = max(0, $hourlyOccupancy - $nac);
 
-            // Capacity comparisons: PASSENGER ONLY simultaneous occupancy vs Capacity Limit
+            // Status rules:
+            // Demand < NAC => AVAILABLE
+            // Demand === NAC => FULL / MAX
+            // Demand > NAC => OVER CAPACITY
             if (!$isInOpsWindow && ($opsStartHour !== null || $opsEndHour !== null)) {
                 $status = 'OFF HOURS';
             } else {
-                if ($hourlyOccupancy < $nac) {
+                if ($aircraftDemand < $nac) {
                     $status = 'AVAILABLE';
-                } elseif ($hourlyOccupancy === $nac) {
+                } elseif ($aircraftDemand === $nac) {
                     $status = 'FULL / MAX';
                 } else {
                     $status = 'OVER CAPACITY';
                 }
             }
 
-            $data['end_of_interval_occupancy'] = $hourlyOccupancy;
-            $data['occupied']                  = $hourlyOccupancy;
-            $data['ron_contribution']          = $ronContrib;
-            $data['arrival_contribution']      = $arrivalContrib;
             $data['opc_count']                 = $opcCount;
+            $data['aircraft_demand']           = $aircraftDemand;
+            $data['utilization']               = $utilization;
+            $data['occupied']                  = $aircraftDemand;
+            $data['end_of_interval_occupancy'] = $aircraftDemand;
             $data['remaining']                 = $remaining;
             $data['useable']                   = $remaining;
             $data['exceeded']                  = $exceeded;
             $data['status']                    = $status;
-            $data['occupied_aircraft']         = $occupiedList;
-            $data['parked_aircraft']           = $parkedList;
 
-            // Only consider hours within the active operational window for peak window & peak demand
-            if ($isInOpsWindow && $hourlyOccupancy > $peakDemand) {
-                $peakDemand = $hourlyOccupancy;
+            // Track peak within active operational window
+            if ($isInOpsWindow && $aircraftDemand > $peakDemand) {
+                $peakDemand = $aircraftDemand;
                 $peakHour   = $data['label'];
             }
         }

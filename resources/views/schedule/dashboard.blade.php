@@ -224,16 +224,8 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                 const cargoTotal = cargoArrs.length + cargoDeps.length;
                 const isOps = this.isOpsHour(h);
 
-                // Calculate true PASSENGER aircraft occupancy from time intervals [s, e)
-                const hStart = h * 60;
-                const hNext  = (h + 1) * 60;
-
-                const occupiedRotations = [];
-                let passengerOccupied = 0;
-                let ronContrib = 0;
-                let arrContrib = 0;
+                // 1. Calculate OPC in hour h (RON aircraft parked in this hour)
                 let opcCount = 0;
-
                 for (const rot of (this.rotations || [])) {
                     if (rot.is_cargo || (rot.passenger_units || 1) <= 0) {
                         continue; // Exclude cargo
@@ -242,6 +234,7 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                     let s = rot.start_minute;
                     let e = rot.end_minute;
                     const status = rot.rotation_status;
+                    const units = rot.passenger_units || 1;
 
                     if (this.timezoneMode === 'UTC') {
                         const offsetMin = this.timezoneOffset || 420;
@@ -251,56 +244,33 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                         if (e < 0) e += 1440;
                     }
 
-                    let intersects = false;
-                    if (status === 'PAIRED' && e < s) {
-                        // Overnight turnaround crossing midnight
-                        if (s < hNext || e > hStart) {
-                            intersects = true;
+                    if (status === 'UNPAIRED_DEP') {
+                        const stdH = Math.floor(e / 60);
+                        if (h < stdH) {
+                            opcCount += units;
                         }
-                    } else {
-                        // Normal interval [s, e)
-                        if (s < hNext && e > hStart) {
-                            intersects = true;
+                    } else if (status === 'UNPAIRED_ARR') {
+                        const staH = Math.floor(s / 60);
+                        if (h > staH) {
+                            opcCount += units;
                         }
-                    }
-
-                    if (intersects) {
-                        occupiedRotations.push(rot);
-                        const units = rot.passenger_units || 1;
-                        passengerOccupied += units;
-
-                        if (status === 'UNPAIRED_DEP') {
-                            ronContrib += units;
-                            const stdH = Math.floor(e / 60);
-                            if (h < stdH) {
-                                opcCount += units;
-                            }
-                        } else if (status === 'UNPAIRED_ARR') {
-                            arrContrib += units;
-                            const staH = Math.floor(s / 60);
-                            if (h > staH) {
-                                opcCount += units;
-                            }
-                        } else {
-                            if (s >= hStart && s < hNext) {
-                                arrContrib += units;
-                            } else {
-                                ronContrib += units;
-                            }
-                            if (e < s) {
-                                const staH = Math.floor(s / 60);
-                                const stdH = Math.floor(e / 60);
-                                if (h > staH || h < stdH) {
-                                    opcCount += units;
-                                }
-                            }
+                    } else if (status === 'PAIRED' && e < s) {
+                        const staH = Math.floor(s / 60);
+                        const stdH = Math.floor(e / 60);
+                        if (h > staH || h < stdH) {
+                            opcCount += units;
                         }
                     }
                 }
 
-                // Peak tracking based on passenger aircraft occupancy in active ops window
-                if (isOps && passengerOccupied > maxInOps) {
-                    maxInOps = passengerOccupied;
+                // 2. REFACTORED STANDARD: Aircraft Demand = Arrivals + Departures + OPC
+                // No cumulative occupancy from previous hours. No subtracting Departures from Arrivals.
+                const aircraftDemand = arrs.length + deps.length + opcCount;
+                const utilization = this.nacLimit > 0 ? Math.round((aircraftDemand / this.nacLimit) * 100) : 0;
+
+                // Peak tracking based on Aircraft Demand in active ops window
+                if (isOps && aircraftDemand > maxInOps) {
+                    maxInOps = aircraftDemand;
                     peakHourStr = `${String(h).padStart(2, '0')}:00–${String(h).padStart(2, '0')}:59`;
                 }
 
@@ -311,16 +281,19 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                 let remaining = 0;
                 let exceeded = 0;
 
-                // Status is based strictly on PASSENGER aircraft occupancy vs Aircraft Capacity (NAC)
+                // Status rules:
+                // Demand < NAC => AVAILABLE
+                // Demand === NAC => FULL / MAX
+                // Demand > NAC => OVER CAPACITY
                 if (isOps) {
-                    if (passengerOccupied < this.nacLimit) {
+                    if (aircraftDemand < this.nacLimit) {
                         status = 'AVAILABLE';
                         statusLabel = 'Available';
                         statusKey = 'available';
                         statusColor = 'emerald'; // Green (#16A34A)
-                        remaining = this.nacLimit - passengerOccupied;
+                        remaining = this.nacLimit - aircraftDemand;
                         exceeded = 0;
-                    } else if (passengerOccupied === this.nacLimit) {
+                    } else if (aircraftDemand === this.nacLimit) {
                         status = 'FULL / MAX';
                         statusLabel = 'Full / Max';
                         statusKey = 'full';
@@ -333,7 +306,7 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                         statusKey = 'over-capacity';
                         statusColor = 'purple'; // Purple (#9333EA)
                         remaining = 0;
-                        exceeded = passengerOccupied - this.nacLimit;
+                        exceeded = aircraftDemand - this.nacLimit;
                     }
                 }
 
@@ -346,17 +319,18 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                     arrCount: arrs.length,
                     depCount: deps.length,
                     opcCount: opcCount,
+                    aircraftDemand: aircraftDemand,
+                    utilization: utilization,
                     passengerArrCount: passengerArrs.length,
                     passengerDepCount: passengerDeps.length,
-                    passengerCount: passengerOccupied, // Aircraft occupied for capacity display
+                    passengerCount: aircraftDemand, // Kept for backwards compatibility
                     cargoArrCount: cargoArrs.length,
                     cargoDepCount: cargoDeps.length,
                     cargoCount: cargoTotal,
                     totalMovements: totalMovements,
                     total: totalMovements,
-                    occupied: passengerOccupied,
-                    ronContrib: ronContrib,
-                    arrContrib: arrContrib,
+                    occupied: aircraftDemand,
+                    demand: aircraftDemand,
                     isPeak: false,
                     status: status,
                     statusLabel: statusLabel,
@@ -364,9 +338,7 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                     statusColor: statusColor,
                     remaining: remaining,
                     exceeded: exceeded,
-                    occupiedRotations: occupiedRotations,
-                    arrList: arrs,
-                    depList: deps
+                    flights: [...arrs, ...deps],
                 };
 
                 allList.push(item);
@@ -375,10 +347,10 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                 }
             }
 
-            // Mark Peak strictly within active operational window
+            // Mark the peak hour items
             if (maxInOps > 0) {
                 for (const item of allList) {
-                    if (item.isOps && item.occupied === maxInOps) {
+                    if (item.isOps && item.aircraftDemand === maxInOps) {
                         item.isPeak = true;
                     }
                 }
@@ -1270,14 +1242,14 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                                                         <span class="w-2 h-2 rounded-full bg-orange-500 inline-block"></span>
                                                         Arrivals:
                                                     </span>
-                                                    <span class="font-bold" x-text="item.arrCount + ' (Pax: ' + item.passengerArrCount + (item.cargoArrCount > 0 ? ', Cargo: ' + item.cargoArrCount : '') + ')'"></span>
+                                                    <span class="font-bold" x-text="item.arrCount"></span>
                                                 </div>
                                                 <div class="flex items-center justify-between text-blue-300">
                                                     <span class="flex items-center gap-1.5">
                                                         <span class="w-2 h-2 rounded-full bg-blue-600 inline-block"></span>
                                                         Departures:
                                                     </span>
-                                                    <span class="font-bold" x-text="item.depCount + ' (Pax: ' + item.passengerDepCount + (item.cargoDepCount > 0 ? ', Cargo: ' + item.cargoDepCount : '') + ')'"></span>
+                                                    <span class="font-bold" x-text="item.depCount"></span>
                                                 </div>
 
                                                 {{-- OPC (RON Parking) --}}
@@ -1296,9 +1268,13 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                                                     </div>
                                                 </template>
 
-                                                <div class="flex items-center justify-between font-bold text-white pt-1 border-t border-slate-800">
-                                                    <span>Pax Aircraft Capacity:</span>
-                                                    <span class="text-xs font-black text-emerald-400" x-text="item.passengerCount + ' / ' + nacLimit + ' A/C'"></span>
+                                                <div class="flex items-center justify-between font-bold text-white pt-1.5 border-t border-slate-800">
+                                                    <span>Aircraft Demand:</span>
+                                                    <span class="text-xs font-black" :class="item.status === 'OVER CAPACITY' ? 'text-purple-400' : (item.status === 'FULL / MAX' ? 'text-amber-400' : 'text-emerald-400')" x-text="item.aircraftDemand + ' / ' + nacLimit + ' A/C'"></span>
+                                                </div>
+                                                <div class="flex items-center justify-between font-bold text-slate-300">
+                                                    <span>Utilization:</span>
+                                                    <span class="text-xs font-black" :class="item.utilization > 100 ? 'text-purple-400' : (item.utilization === 100 ? 'text-amber-400' : 'text-emerald-400')" x-text="item.utilization + '%'"></span>
                                                 </div>
                                             </div>
 

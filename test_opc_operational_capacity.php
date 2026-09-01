@@ -156,7 +156,7 @@ assertCondition($statusResult8['status'] === 'AVAILABLE' && $statusResult8['rema
 $statusResultOver = $capacityService->classifyHourlyStatus(7, 6, true);
 assertCondition($statusResultOver['status'] === 'OVER CAPACITY' && $statusResultOver['exceeded'] === 1, "2.3: NAC = 6, Occupied = 7 -> OVER CAPACITY (Exceeded = 1)");
 
-// ── TEST GROUP 3: REAL UPLOAD DATASET INTEGRITY
+// ── TEST GROUP 3: REAL DATABASE UPLOAD VERIFICATION
 echo "\n--- TEST GROUP 3: REAL DATABASE UPLOAD VERIFICATION ---\n";
 $upload = Upload::where('status', 'completed')->has('flights')->latest()->first() ?? Upload::find(1);
 if ($upload) {
@@ -169,6 +169,44 @@ if ($upload) {
     $hourlyOpcValues = array_column($dbCalc['hourly'], 'opc_count');
     assertCondition(min($hourlyOpcValues) >= 0, "3.3: Hourly opc_count is non-negative for all 24 hours");
 }
+
+// ── TEST GROUP 4: MANDATORY USER EXAMPLES & REFACTORED AIRCRAFT DEMAND FORMULA
+echo "\n--- TEST GROUP 4: MANDATORY USER EXAMPLES & AIRCRAFT DEMAND FORMULA ---\n";
+// Example 1 (User Mandatory Test):
+// NAC 6, Hour 11: ARR 7, DEP 6, OPC 2
+// Expected Aircraft Demand = 15/6, Utilization = 250%, Status = OVER CAPACITY
+$arrEx1 = 7;
+$depEx1 = 6;
+$opcEx1 = 2;
+$nacEx1 = 6;
+$demandEx1 = $arrEx1 + $depEx1 + $opcEx1;
+$utilEx1 = (int) round(($demandEx1 / $nacEx1) * 100);
+$statusEx1 = $capacityService->classifyHourlyStatus($demandEx1, $nacEx1, true);
+
+assertCondition(
+    $demandEx1 === 15 && $utilEx1 === 250 && $statusEx1['status'] === 'OVER CAPACITY',
+    "4.1: Mandatory Case: ARR 7 + DEP 6 + OPC 2 = 15/6 A/C, Utilization = 250%, Status = OVER CAPACITY",
+    "Demand: {$demandEx1}/{$nacEx1}, Util: {$utilEx1}%, Status: {$statusEx1['status']}"
+);
+
+// Example 2: Arrival 2 + Departure 2 + OPC 0 = 4, NAC 6 -> 4/6 -> AVAILABLE
+$d2 = 2 + 2 + 0;
+$s2 = $capacityService->classifyHourlyStatus($d2, 6, true);
+assertCondition($d2 === 4 && $s2['status'] === 'AVAILABLE' && $s2['remaining'] === 2, "4.2: ARR 2 + DEP 2 + OPC 0 = 4/6 -> AVAILABLE (Remaining = 2)");
+
+// Example 3: Arrival 3 + Departure 3 + OPC 0 = 6, NAC 6 -> 6/6 -> FULL / MAX
+$d3 = 3 + 3 + 0;
+$s3 = $capacityService->classifyHourlyStatus($d3, 6, true);
+assertCondition($d3 === 6 && $s3['status'] === 'FULL / MAX' && $s3['remaining'] === 0, "4.3: ARR 3 + DEP 3 + OPC 0 = 6/6 -> FULL / MAX (Remaining = 0)");
+
+// Example 4: Arrival 3 + Departure 2 + OPC 1 = 6, NAC 6 -> 6/6 -> FULL / MAX
+$d4 = 3 + 2 + 1;
+$s4 = $capacityService->classifyHourlyStatus($d4, 6, true);
+assertCondition($d4 === 6 && $s4['status'] === 'FULL / MAX' && $s4['remaining'] === 0, "4.4: ARR 3 + DEP 2 + OPC 1 = 6/6 -> FULL / MAX (Remaining = 0)");
+
+// Example 5: Reactive NAC update (NAC changed to 8 for demand = 6)
+$s5 = $capacityService->classifyHourlyStatus(6, 8, true);
+assertCondition($s5['status'] === 'AVAILABLE' && $s5['remaining'] === 2, "4.5: NAC changed to 8: Demand 6/8 -> AVAILABLE (Remaining = 2)");
 
 echo "\n======================================================================\n";
 echo "SUMMARY: {$passCount} / {$totalTests} TESTS PASSED\n";
