@@ -102,9 +102,9 @@ class CapacityEngineTest extends TestCase
 
         $res = $this->capacityService->calculate($this->upload->flights()->get());
 
-        // Occupied from 10:10 to 10:39, peak occupancy in 10:00-10:59 is 1
-        $this->assertEquals(1, $res['hourly'][10]['occupied']);
-        $this->assertEquals(5, $res['hourly'][10]['remaining']);
+        // Under Arrivals + Departures + OPC standard: 1 Arr + 1 Dep = 2 movements in hour 10
+        $this->assertEquals(2, $res['hourly'][10]['occupied']);
+        $this->assertEquals(4, $res['hourly'][10]['remaining']);
         // 11:00 should be 0 occupied
         $this->assertEquals(0, $res['hourly'][11]['occupied']);
         $this->assertEquals(6, $res['hourly'][11]['remaining']);
