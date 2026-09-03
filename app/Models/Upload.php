@@ -20,10 +20,13 @@ class Upload extends Model
         'duplicate_rows',
         'parsing_confidence',
         'validation_summary',
+        'report_type',
+        'report_data',
     ];
 
     protected $casts = [
         'validation_summary' => 'array',
+        'report_data'        => 'array',
         'parsing_confidence' => 'float',
     ];
 

@@ -1,0 +1,134 @@
+	<title>&nbsp;OASYS Report-11</title>		<script type="text/javascript">
+			var _paq = _paq || [];
+			/* tracker methods like "setCustomDimension" should be called before "trackPageView" */
+			_paq.push(['trackPageView']);
+			_paq.push(['enableLinkTracking']);
+			(function() {
+				var u = "//matomo.angkasapura2.co.id/matomo/";
+				_paq.push(['setTrackerUrl', u + 'piwik.php']);
+				_paq.push(['setSiteId', '6']);
+				var d = document,
+					g = d.createElement('script'),
+					s = d.getElementsByTagName('script')[0];
+				g.type = 'text/javascript';
+				g.async = true;
+				g.defer = true;
+				g.src = u + 'piwik.js';
+				s.parentNode.insertBefore(g, s);
+			})();
+		</script>
+<link rel="shortcut icon" href="https://oasys.angkasapura2.co.id/dist/img/favicon.ico" type="image/x-icon">	
+<CENTER><B>DATA STATISTIK (DAU-11)
+<BR> (CGK)<BR>TANGGAL 2026-08-01 s/d  2026-08-01<br>PENERBANGAN DOMESTIK & INTERNASIONAL<br>ALL TERMINAL </B></CENTER>
+<BR>
+
+<table width="100%" border="1" cellspacing="1" cellpadding="3" align="center"   class="table table-striped">
+  <tr>
+    <td rowspan="3" align = 'center' >NO<br />
+        <br /></td>
+    <td rowspan="3" align = 'center' >TANGGAL<br /></td>
+    <td colspan="4" align = 'center' >PESAWAT<br /></td>
+    <td rowspan="3" align = 'center' >TOTAL<BR>PESAWAT<br /></td>
+    <td colspan="12" align = 'center' >PENUMPANG<br /></td>
+    <td rowspan="3" align = 'center' >TOTAL<BR>PENUMPANG<br /></td>
+  </tr>
+  <tr>
+    <td colspan="2" align = 'center' >INTERNASIONAL</td>
+    <td colspan="2" align = 'center' >DOMESTIK</td>
+    <td colspan="6" align = 'center' >INTERNASIONAL</td>
+    <td colspan="6" align = 'center' >DOMESTIK</td>
+  </tr>
+  <tr>
+    <td align = 'center' >DTG<br /></td>
+    <td align = 'center' >BKT</td>
+    <td align = 'center' >DTG</td>
+    <td align = 'center' >BKT</td>
+    <td align = 'center' >DTG</td>
+    <td align = 'center' >BKT<br /></td>
+    <td align = 'center' >TRANSIT <br /></td>
+    <td align = 'center' >TRANSFER<br /></td>
+    <td align = 'center' >CREW</td>
+    <td align = 'center' >EX CREW <br /></td>
+    <td align = 'center' >DTG<br /></td>
+    <td align = 'center' >BKT<br /></td>
+    <td align = 'center' >TRANSIT <br /></td>
+    <td align = 'center' >TRANSFER<br /></td>
+    <td align = 'center' >CREW </td>
+    <td align = 'center' >EX CREW </td>
+  </tr>
+   <tr>
+    <td align = 'center' >1<br></td>
+    <td align = 'center' >2026-08-01<br></td>
+    <td align = 'right' >0<br></td>
+    <td align = 'right' >0<br></td>
+    <td align = 'right' >371<br></td>
+    <td align = 'right' >364<br></td>
+    <td align = 'right' >735<br></td>
+
+    <td align = 'right' >0<br></td>	
+    <td align = 'right' >0<br></td>	
+    <td align = 'right' >0<br></td>	
+    <td align = 'right' >0<br></td>	
+    <td align = 'right' >0<br></td>	
+    <td align = 'right' >0<br></td>	
+
+    <td align = 'right' >49031<br></td>	
+    <td align = 'right' >41105<br></td>	
+    <td align = 'right' >6245<br></td>	
+    <td align = 'right' >0<br></td>	
+    <td align = 'right' >729<br></td>	
+    <td align = 'right' >0<br></td>
+	
+    <td align = 'right' >97110<br></td>	
+  </tr>
+  <tr>
+    <td align = 'center' >2<br></td>
+    <td align = 'center' >2026-08-01<br></td>
+    <td align = 'right' >139<br></td>
+    <td align = 'right' >145<br></td>
+    <td align = 'right' >0<br></td>
+    <td align = 'right' >0<br></td>
+    <td align = 'right' >284<br></td>
+
+    <td align = 'right' >26390<br></td>	
+    <td align = 'right' >26476<br></td>	
+    <td align = 'right' >51<br></td>	
+    <td align = 'right' >0<br></td>	
+    <td align = 'right' >301<br></td>	
+    <td align = 'right' >0<br></td>	
+
+    <td align = 'right' >0<br></td>	
+    <td align = 'right' >0<br></td>	
+    <td align = 'right' >0<br></td>	
+    <td align = 'right' >0<br></td>	
+    <td align = 'right' >0<br></td>	
+    <td align = 'right' >0<br></td>
+	
+    <td align = 'right' >53218<br></td>	
+  </tr>
+  <tr>
+    <td align = 'center' colspan = '2' >TOTAL<br></td>
+    <td align = 'right' >139<br></td>
+    <td align = 'right' >145<br></td>
+    <td align = 'right' >371<br></td>
+    <td align = 'right' >364<br></td>
+    <td align = 'right' >1019<br></td>
+
+    <td align = 'right' >26390<br></td>	
+    <td align = 'right' >26476<br></td>	
+    <td align = 'right' >51<br></td>	
+    <td align = 'right' >0<br></td>	
+    <td align = 'right' >301<br></td>	
+    <td align = 'right' >0<br></td>	
+
+    <td align = 'right' >49031<br></td>	
+    <td align = 'right' >41105<br></td>	
+    <td align = 'right' >6245<br></td>	
+    <td align = 'right' >0<br></td>	
+    <td align = 'right' >729<br></td>	
+    <td align = 'right' >0<br></td>
+	
+    <td align = 'right' >150328<br></td>	
+  </tr>
+
+</table>

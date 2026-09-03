@@ -1,0 +1,1392 @@
+	<title>&nbsp;OASYS Report-06</title>		<script type="text/javascript">
+			var _paq = _paq || [];
+			/* tracker methods like "setCustomDimension" should be called before "trackPageView" */
+			_paq.push(['trackPageView']);
+			_paq.push(['enableLinkTracking']);
+			(function() {
+				var u = "//matomo.angkasapura2.co.id/matomo/";
+				_paq.push(['setTrackerUrl', u + 'piwik.php']);
+				_paq.push(['setSiteId', '6']);
+				var d = document,
+					g = d.createElement('script'),
+					s = d.getElementsByTagName('script')[0];
+				g.type = 'text/javascript';
+				g.async = true;
+				g.defer = true;
+				g.src = u + 'piwik.js';
+				s.parentNode.insertBefore(g, s);
+			})();
+		</script>
+<link rel="shortcut icon" href="https://oasys.angkasapura2.co.id/dist/img/favicon.ico" type="image/x-icon">	
+<CENTER><B>DATA ANGKUTAN UDARA MENURUT TIPE PESAWAT (DAU-06)
+<BR>TANGERANG BANTEN - SOEKARNO HATTA  (CGK)<BR>TANGGAL 2026-08-01 s/d  2026-08-01<br>PENERBANGAN DOMESTIK & INTERNASIONAL<br>ALL TERMINAL</B></CENTER>
+<BR>
+<table width="100%" border="1" cellspacing="1" cellpadding="3" align="center" bgcolor="#000000"  class="table table-striped">
+  <tr> 
+    <td rowspan="2" bgcolor="#FFFFFF"> 
+      <div align="center"><b><br>
+        NO</b></div>
+    </td>
+    <td rowspan="2" bgcolor="#FFFFFF"> 
+      <div align="center"><b>TIPE<br>
+        PESAWAT</b></div>
+    </td>
+    <td colspan="3" bgcolor="#FFFFFF"> 
+      <div align="center"><b>PESAWAT</b></div>
+    </td>
+    <td colspan="5" bgcolor="#FFFFFF"> 
+      <div align="center"><b>PENUMPANG</b></div>
+    </td>
+    <td colspan="3" bgcolor="#FFFFFF">
+      <div align="center"><b>AWAK</b></div>
+    </td>
+    <td colspan="3" bgcolor="#FFFFFF"> 
+      <div align="center"><b>BAGASI</b></div>
+    </td>
+    <td colspan="3" bgcolor="#FFFFFF"> 
+      <div align="center"><b>KARGO (Kg)</b></div>
+    </td>
+    <td colspan="3" bgcolor="#FFFFFF"> 
+      <div align="center"><b>POS (Kg)</b></div>
+    </td>
+  </tr>
+  <tr> 
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>DTG</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>BRK</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>JML (3+4)</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>DTG</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>BRK</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>TRANSIT</b></div>
+    </td>
+    <td bgcolor="#FFFFFF">
+      <div align="center"><b>TRANSFER</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>JML (6+7+8+9)</b></div>
+    </td>
+    <td bgcolor="#FFFFFF">
+      <div align="center"><b>CREW</b></div>
+    </td>
+    <td bgcolor="#FFFFFF">
+      <div align="center"><b>EXTRA CREW</b></div>
+    </td>
+    <td bgcolor="#FFFFFF">
+      <div align="center"><b>JML (11+12)</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>DTG</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>BRK</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>JML (14+15)</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>DTG</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>BRK</b></div>
+    </td>
+    <td bgcolor="#FFFFFF" width="4%"> 
+      <div align="center"><b>JML (17+18)</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>DTG</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>BRK</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>JML (20+21)</b></div>
+    </td>
+  </tr>
+  <tr> 
+    <td bgcolor="#CCCCCC" width="1%"> 
+      <div align="center"><b>1</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="14%"> 
+      <div align="center"><b>2</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>3</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>4</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>5</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>6</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>7</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>8</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%">
+      <div align="center"><b>9</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="5%"> 
+      <div align="center"><b>10</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>11</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>12</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="5%"> 
+      <div align="center"><b>13</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>14</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>15</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="5%"> 
+      <div align="center"><b>16</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>17</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>18</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="5%"> 
+      <div align="center"><b>19</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>20</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>21</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="5%"> 
+      <div align="center"><b>22</b></div>
+    </td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>1</td>
+    <td bgcolor="#FFFFFF">AIRBUS 320 200</td>
+    <td bgcolor="#FFFFFF" align=right>170</td>
+    <td bgcolor="#FFFFFF" align=right>168</td>
+    <td bgcolor="#FFFFFF" align=right>338</td>
+    <td bgcolor="#FFFFFF" align=right>22796</td>
+    <td bgcolor="#FFFFFF" align=right>18605</td>
+    <td bgcolor="#FFFFFF" align=right>2803</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>44204</td>
+    <td bgcolor="#FFFFFF" align=right>247</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>247</td>
+    <td bgcolor="#FFFFFF" align=right>189268</td>
+    <td bgcolor="#FFFFFF" align=right>176459</td>
+    <td bgcolor="#FFFFFF" align=right>365727</td>
+    <td bgcolor="#FFFFFF" align=right>126161</td>
+    <td bgcolor="#FFFFFF" align=right>218694</td>
+    <td bgcolor="#FFFFFF" align=right>344855</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>2</td>
+    <td bgcolor="#FFFFFF">BOEING 737 800</td>
+    <td bgcolor="#FFFFFF" align=right>134</td>
+    <td bgcolor="#FFFFFF" align=right>131</td>
+    <td bgcolor="#FFFFFF" align=right>265</td>
+    <td bgcolor="#FFFFFF" align=right>17500</td>
+    <td bgcolor="#FFFFFF" align=right>15379</td>
+    <td bgcolor="#FFFFFF" align=right>1054</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>33933</td>
+    <td bgcolor="#FFFFFF" align=right>318</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>318</td>
+    <td bgcolor="#FFFFFF" align=right>188915</td>
+    <td bgcolor="#FFFFFF" align=right>200665</td>
+    <td bgcolor="#FFFFFF" align=right>389580</td>
+    <td bgcolor="#FFFFFF" align=right>147911</td>
+    <td bgcolor="#FFFFFF" align=right>206005</td>
+    <td bgcolor="#FFFFFF" align=right>353916</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>3</td>
+    <td bgcolor="#FFFFFF">AIRBUS 320 214</td>
+    <td bgcolor="#FFFFFF" align=right>39</td>
+    <td bgcolor="#FFFFFF" align=right>40</td>
+    <td bgcolor="#FFFFFF" align=right>79</td>
+    <td bgcolor="#FFFFFF" align=right>5080</td>
+    <td bgcolor="#FFFFFF" align=right>4266</td>
+    <td bgcolor="#FFFFFF" align=right>890</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>10236</td>
+    <td bgcolor="#FFFFFF" align=right>97</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>97</td>
+    <td bgcolor="#FFFFFF" align=right>49719</td>
+    <td bgcolor="#FFFFFF" align=right>53537</td>
+    <td bgcolor="#FFFFFF" align=right>103256</td>
+    <td bgcolor="#FFFFFF" align=right>42236</td>
+    <td bgcolor="#FFFFFF" align=right>54593</td>
+    <td bgcolor="#FFFFFF" align=right>96829</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>4</td>
+    <td bgcolor="#FFFFFF">AIRBUS 320 232</td>
+    <td bgcolor="#FFFFFF" align=right>27</td>
+    <td bgcolor="#FFFFFF" align=right>27</td>
+    <td bgcolor="#FFFFFF" align=right>54</td>
+    <td bgcolor="#FFFFFF" align=right>3769</td>
+    <td bgcolor="#FFFFFF" align=right>3108</td>
+    <td bgcolor="#FFFFFF" align=right>605</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>7482</td>
+    <td bgcolor="#FFFFFF" align=right>67</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>67</td>
+    <td bgcolor="#FFFFFF" align=right>28713</td>
+    <td bgcolor="#FFFFFF" align=right>30157</td>
+    <td bgcolor="#FFFFFF" align=right>58870</td>
+    <td bgcolor="#FFFFFF" align=right>28341</td>
+    <td bgcolor="#FFFFFF" align=right>42249</td>
+    <td bgcolor="#FFFFFF" align=right>70590</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>5</td>
+    <td bgcolor="#FFFFFF">BOEING 777 300ER</td>
+    <td bgcolor="#FFFFFF" align=right>13</td>
+    <td bgcolor="#FFFFFF" align=right>16</td>
+    <td bgcolor="#FFFFFF" align=right>29</td>
+    <td bgcolor="#FFFFFF" align=right>4585</td>
+    <td bgcolor="#FFFFFF" align=right>5116</td>
+    <td bgcolor="#FFFFFF" align=right>10</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>9711</td>
+    <td bgcolor="#FFFFFF" align=right>30</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>30</td>
+    <td bgcolor="#FFFFFF" align=right>106701</td>
+    <td bgcolor="#FFFFFF" align=right>97316</td>
+    <td bgcolor="#FFFFFF" align=right>204017</td>
+    <td bgcolor="#FFFFFF" align=right>83078</td>
+    <td bgcolor="#FFFFFF" align=right>120118</td>
+    <td bgcolor="#FFFFFF" align=right>203196</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>6</td>
+    <td bgcolor="#FFFFFF">BOEING 737 900ER</td>
+    <td bgcolor="#FFFFFF" align=right>11</td>
+    <td bgcolor="#FFFFFF" align=right>11</td>
+    <td bgcolor="#FFFFFF" align=right>22</td>
+    <td bgcolor="#FFFFFF" align=right>1902</td>
+    <td bgcolor="#FFFFFF" align=right>1858</td>
+    <td bgcolor="#FFFFFF" align=right>314</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4074</td>
+    <td bgcolor="#FFFFFF" align=right>39</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>39</td>
+    <td bgcolor="#FFFFFF" align=right>12650</td>
+    <td bgcolor="#FFFFFF" align=right>14847</td>
+    <td bgcolor="#FFFFFF" align=right>27497</td>
+    <td bgcolor="#FFFFFF" align=right>10629</td>
+    <td bgcolor="#FFFFFF" align=right>23217</td>
+    <td bgcolor="#FFFFFF" align=right>33846</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>7</td>
+    <td bgcolor="#FFFFFF">AIRBUS 350 900</td>
+    <td bgcolor="#FFFFFF" align=right>10</td>
+    <td bgcolor="#FFFFFF" align=right>10</td>
+    <td bgcolor="#FFFFFF" align=right>20</td>
+    <td bgcolor="#FFFFFF" align=right>2661</td>
+    <td bgcolor="#FFFFFF" align=right>2697</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>5358</td>
+    <td bgcolor="#FFFFFF" align=right>30</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>30</td>
+    <td bgcolor="#FFFFFF" align=right>56948</td>
+    <td bgcolor="#FFFFFF" align=right>51426</td>
+    <td bgcolor="#FFFFFF" align=right>108374</td>
+    <td bgcolor="#FFFFFF" align=right>108905</td>
+    <td bgcolor="#FFFFFF" align=right>80194</td>
+    <td bgcolor="#FFFFFF" align=right>189099</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>8</td>
+    <td bgcolor="#FFFFFF">AIRBUS 330 300</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>9</td>
+    <td bgcolor="#FFFFFF" align=right>16</td>
+    <td bgcolor="#FFFFFF" align=right>1571</td>
+    <td bgcolor="#FFFFFF" align=right>1767</td>
+    <td bgcolor="#FFFFFF" align=right>29</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3367</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>25975</td>
+    <td bgcolor="#FFFFFF" align=right>30482</td>
+    <td bgcolor="#FFFFFF" align=right>56457</td>
+    <td bgcolor="#FFFFFF" align=right>36987</td>
+    <td bgcolor="#FFFFFF" align=right>35065</td>
+    <td bgcolor="#FFFFFF" align=right>72052</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>9</td>
+    <td bgcolor="#FFFFFF">BOEING 737 300F</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>14</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>30</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>30</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>10</td>
+    <td bgcolor="#FFFFFF">BOEING 737 500</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>14</td>
+    <td bgcolor="#FFFFFF" align=right>757</td>
+    <td bgcolor="#FFFFFF" align=right>716</td>
+    <td bgcolor="#FFFFFF" align=right>21</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1494</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>7283</td>
+    <td bgcolor="#FFFFFF" align=right>6882</td>
+    <td bgcolor="#FFFFFF" align=right>14165</td>
+    <td bgcolor="#FFFFFF" align=right>1804</td>
+    <td bgcolor="#FFFFFF" align=right>6960</td>
+    <td bgcolor="#FFFFFF" align=right>8764</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>11</td>
+    <td bgcolor="#FFFFFF">BOEING 737 MAX 8</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>14</td>
+    <td bgcolor="#FFFFFF" align=right>1117</td>
+    <td bgcolor="#FFFFFF" align=right>1098</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2215</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>16349</td>
+    <td bgcolor="#FFFFFF" align=right>13708</td>
+    <td bgcolor="#FFFFFF" align=right>30057</td>
+    <td bgcolor="#FFFFFF" align=right>2782</td>
+    <td bgcolor="#FFFFFF" align=right>7696</td>
+    <td bgcolor="#FFFFFF" align=right>10478</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>12</td>
+    <td bgcolor="#FFFFFF">BOEING 787 900</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>14</td>
+    <td bgcolor="#FFFFFF" align=right>1656</td>
+    <td bgcolor="#FFFFFF" align=right>1574</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3230</td>
+    <td bgcolor="#FFFFFF" align=right>18</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>18</td>
+    <td bgcolor="#FFFFFF" align=right>30068</td>
+    <td bgcolor="#FFFFFF" align=right>28815</td>
+    <td bgcolor="#FFFFFF" align=right>58883</td>
+    <td bgcolor="#FFFFFF" align=right>66892</td>
+    <td bgcolor="#FFFFFF" align=right>62516</td>
+    <td bgcolor="#FFFFFF" align=right>129408</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>13</td>
+    <td bgcolor="#FFFFFF">AIRBUS 320 320</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>13</td>
+    <td bgcolor="#FFFFFF" align=right>1063</td>
+    <td bgcolor="#FFFFFF" align=right>736</td>
+    <td bgcolor="#FFFFFF" align=right>200</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1999</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>7471</td>
+    <td bgcolor="#FFFFFF" align=right>6958</td>
+    <td bgcolor="#FFFFFF" align=right>14429</td>
+    <td bgcolor="#FFFFFF" align=right>2614</td>
+    <td bgcolor="#FFFFFF" align=right>7707</td>
+    <td bgcolor="#FFFFFF" align=right>10321</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>14</td>
+    <td bgcolor="#FFFFFF">AIRBUS A320 214</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>10</td>
+    <td bgcolor="#FFFFFF" align=right>553</td>
+    <td bgcolor="#FFFFFF" align=right>452</td>
+    <td bgcolor="#FFFFFF" align=right>25</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1030</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6040</td>
+    <td bgcolor="#FFFFFF" align=right>4867</td>
+    <td bgcolor="#FFFFFF" align=right>10907</td>
+    <td bgcolor="#FFFFFF" align=right>7108</td>
+    <td bgcolor="#FFFFFF" align=right>8504</td>
+    <td bgcolor="#FFFFFF" align=right>15612</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>15</td>
+    <td bgcolor="#FFFFFF">AIRBUS A321 211</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>10</td>
+    <td bgcolor="#FFFFFF" align=right>747</td>
+    <td bgcolor="#FFFFFF" align=right>585</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1332</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>8228</td>
+    <td bgcolor="#FFFFFF" align=right>6626</td>
+    <td bgcolor="#FFFFFF" align=right>14854</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>5045</td>
+    <td bgcolor="#FFFFFF" align=right>5045</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>16</td>
+    <td bgcolor="#FFFFFF">AIRBUS 350 941</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>10</td>
+    <td bgcolor="#FFFFFF" align=right>1147</td>
+    <td bgcolor="#FFFFFF" align=right>1147</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2294</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>19778</td>
+    <td bgcolor="#FFFFFF" align=right>18261</td>
+    <td bgcolor="#FFFFFF" align=right>38039</td>
+    <td bgcolor="#FFFFFF" align=right>51113</td>
+    <td bgcolor="#FFFFFF" align=right>29339</td>
+    <td bgcolor="#FFFFFF" align=right>80452</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>17</td>
+    <td bgcolor="#FFFFFF">AIRBUS 321 211</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>8</td>
+    <td bgcolor="#FFFFFF" align=right>663</td>
+    <td bgcolor="#FFFFFF" align=right>596</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1259</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>9210</td>
+    <td bgcolor="#FFFFFF" align=right>6701</td>
+    <td bgcolor="#FFFFFF" align=right>15911</td>
+    <td bgcolor="#FFFFFF" align=right>1381</td>
+    <td bgcolor="#FFFFFF" align=right>4828</td>
+    <td bgcolor="#FFFFFF" align=right>6209</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>18</td>
+    <td bgcolor="#FFFFFF">AIRBUS A320 200</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>516</td>
+    <td bgcolor="#FFFFFF" align=right>311</td>
+    <td bgcolor="#FFFFFF" align=right>124</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>951</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4545</td>
+    <td bgcolor="#FFFFFF" align=right>3411</td>
+    <td bgcolor="#FFFFFF" align=right>7956</td>
+    <td bgcolor="#FFFFFF" align=right>4992</td>
+    <td bgcolor="#FFFFFF" align=right>3232</td>
+    <td bgcolor="#FFFFFF" align=right>8224</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>19</td>
+    <td bgcolor="#FFFFFF">BOEING 737 900</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>602</td>
+    <td bgcolor="#FFFFFF" align=right>498</td>
+    <td bgcolor="#FFFFFF" align=right>64</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1164</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>3909</td>
+    <td bgcolor="#FFFFFF" align=right>4073</td>
+    <td bgcolor="#FFFFFF" align=right>7982</td>
+    <td bgcolor="#FFFFFF" align=right>1823</td>
+    <td bgcolor="#FFFFFF" align=right>4236</td>
+    <td bgcolor="#FFFFFF" align=right>6059</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>20</td>
+    <td bgcolor="#FFFFFF">AIRBUS 320 271N</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>338</td>
+    <td bgcolor="#FFFFFF" align=right>463</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>801</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>2401</td>
+    <td bgcolor="#FFFFFF" align=right>4695</td>
+    <td bgcolor="#FFFFFF" align=right>7096</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>21</td>
+    <td bgcolor="#FFFFFF">AIRBUS A320 232</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>339</td>
+    <td bgcolor="#FFFFFF" align=right>332</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>671</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2875</td>
+    <td bgcolor="#FFFFFF" align=right>3205</td>
+    <td bgcolor="#FFFFFF" align=right>6080</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>22</td>
+    <td bgcolor="#FFFFFF">AIRBUS A321 253NX</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>383</td>
+    <td bgcolor="#FFFFFF" align=right>347</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>730</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>6109</td>
+    <td bgcolor="#FFFFFF" align=right>3412</td>
+    <td bgcolor="#FFFFFF" align=right>9521</td>
+    <td bgcolor="#FFFFFF" align=right>1656</td>
+    <td bgcolor="#FFFFFF" align=right>3620</td>
+    <td bgcolor="#FFFFFF" align=right>5276</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>23</td>
+    <td bgcolor="#FFFFFF">AIRBUS 321 200</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>340</td>
+    <td bgcolor="#FFFFFF" align=right>334</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>674</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>5955</td>
+    <td bgcolor="#FFFFFF" align=right>5348</td>
+    <td bgcolor="#FFFFFF" align=right>11303</td>
+    <td bgcolor="#FFFFFF" align=right>2867</td>
+    <td bgcolor="#FFFFFF" align=right>4027</td>
+    <td bgcolor="#FFFFFF" align=right>6894</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>24</td>
+    <td bgcolor="#FFFFFF">AIRBUS A320 251N</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>311</td>
+    <td bgcolor="#FFFFFF" align=right>310</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>621</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>5313</td>
+    <td bgcolor="#FFFFFF" align=right>4292</td>
+    <td bgcolor="#FFFFFF" align=right>9605</td>
+    <td bgcolor="#FFFFFF" align=right>2259</td>
+    <td bgcolor="#FFFFFF" align=right>1691</td>
+    <td bgcolor="#FFFFFF" align=right>3950</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>25</td>
+    <td bgcolor="#FFFFFF">AIRBUS 330 200</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>452</td>
+    <td bgcolor="#FFFFFF" align=right>493</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>945</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>9732</td>
+    <td bgcolor="#FFFFFF" align=right>8673</td>
+    <td bgcolor="#FFFFFF" align=right>18405</td>
+    <td bgcolor="#FFFFFF" align=right>11715</td>
+    <td bgcolor="#FFFFFF" align=right>3903</td>
+    <td bgcolor="#FFFFFF" align=right>15618</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>26</td>
+    <td bgcolor="#FFFFFF">BOEING 737 800 MAX</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>310</td>
+    <td bgcolor="#FFFFFF" align=right>303</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>613</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>3732</td>
+    <td bgcolor="#FFFFFF" align=right>3423</td>
+    <td bgcolor="#FFFFFF" align=right>7155</td>
+    <td bgcolor="#FFFFFF" align=right>695</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>695</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>27</td>
+    <td bgcolor="#FFFFFF">BOEING 777 300</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>861</td>
+    <td bgcolor="#FFFFFF" align=right>801</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1662</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>15842</td>
+    <td bgcolor="#FFFFFF" align=right>10729</td>
+    <td bgcolor="#FFFFFF" align=right>26571</td>
+    <td bgcolor="#FFFFFF" align=right>15192</td>
+    <td bgcolor="#FFFFFF" align=right>5731</td>
+    <td bgcolor="#FFFFFF" align=right>20923</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>28</td>
+    <td bgcolor="#FFFFFF">BOEING 787 800</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>394</td>
+    <td bgcolor="#FFFFFF" align=right>503</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>898</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>8832</td>
+    <td bgcolor="#FFFFFF" align=right>3025</td>
+    <td bgcolor="#FFFFFF" align=right>11857</td>
+    <td bgcolor="#FFFFFF" align=right>10229</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>10229</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>29</td>
+    <td bgcolor="#FFFFFF">AIRBUS 321 251N</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>377</td>
+    <td bgcolor="#FFFFFF" align=right>179</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>556</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>8289</td>
+    <td bgcolor="#FFFFFF" align=right>3407</td>
+    <td bgcolor="#FFFFFF" align=right>11696</td>
+    <td bgcolor="#FFFFFF" align=right>2735</td>
+    <td bgcolor="#FFFFFF" align=right>1318</td>
+    <td bgcolor="#FFFFFF" align=right>4053</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>30</td>
+    <td bgcolor="#FFFFFF">AIRBUS 330 343</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>228</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>228</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>5372</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>5372</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>31</td>
+    <td bgcolor="#FFFFFF">BOING 737 900ER</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>210</td>
+    <td bgcolor="#FFFFFF" align=right>216</td>
+    <td bgcolor="#FFFFFF" align=right>144</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>570</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1373</td>
+    <td bgcolor="#FFFFFF" align=right>2664</td>
+    <td bgcolor="#FFFFFF" align=right>4037</td>
+    <td bgcolor="#FFFFFF" align=right>3138</td>
+    <td bgcolor="#FFFFFF" align=right>3443</td>
+    <td bgcolor="#FFFFFF" align=right>6581</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>32</td>
+    <td bgcolor="#FFFFFF">AIRBUS A320 271N</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>179</td>
+    <td bgcolor="#FFFFFF" align=right>176</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>355</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1705</td>
+    <td bgcolor="#FFFFFF" align=right>1804</td>
+    <td bgcolor="#FFFFFF" align=right>3509</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>33</td>
+    <td bgcolor="#FFFFFF">AIRBUS 321 231</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>172</td>
+    <td bgcolor="#FFFFFF" align=right>185</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>357</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>2988</td>
+    <td bgcolor="#FFFFFF" align=right>3925</td>
+    <td bgcolor="#FFFFFF" align=right>6913</td>
+    <td bgcolor="#FFFFFF" align=right>245</td>
+    <td bgcolor="#FFFFFF" align=right>1898</td>
+    <td bgcolor="#FFFFFF" align=right>2143</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>34</td>
+    <td bgcolor="#FFFFFF">AIRBUS 321</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>178</td>
+    <td bgcolor="#FFFFFF" align=right>186</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>364</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2584</td>
+    <td bgcolor="#FFFFFF" align=right>2106</td>
+    <td bgcolor="#FFFFFF" align=right>4690</td>
+    <td bgcolor="#FFFFFF" align=right>2151</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2151</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>35</td>
+    <td bgcolor="#FFFFFF">AIRBUS 321 252NX</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>164</td>
+    <td bgcolor="#FFFFFF" align=right>177</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>341</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3109</td>
+    <td bgcolor="#FFFFFF" align=right>4002</td>
+    <td bgcolor="#FFFFFF" align=right>7111</td>
+    <td bgcolor="#FFFFFF" align=right>264</td>
+    <td bgcolor="#FFFFFF" align=right>877</td>
+    <td bgcolor="#FFFFFF" align=right>1141</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>36</td>
+    <td bgcolor="#FFFFFF">AIRBUS A330 343</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>352</td>
+    <td bgcolor="#FFFFFF" align=right>261</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>613</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>37</td>
+    <td bgcolor="#FFFFFF">BOEING 737 300</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>38</td>
+    <td bgcolor="#FFFFFF">B737 800 800</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>108</td>
+    <td bgcolor="#FFFFFF" align=right>85</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>193</td>
+    <td bgcolor="#FFFFFF" align=right>10</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>10</td>
+    <td bgcolor="#FFFFFF" align=right>1124</td>
+    <td bgcolor="#FFFFFF" align=right>1794</td>
+    <td bgcolor="#FFFFFF" align=right>2918</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>1133</td>
+    <td bgcolor="#FFFFFF" align=right>1136</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>39</td>
+    <td bgcolor="#FFFFFF">AIRBUS A321 251NX</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>195</td>
+    <td bgcolor="#FFFFFF" align=right>177</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>372</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2598</td>
+    <td bgcolor="#FFFFFF" align=right>54</td>
+    <td bgcolor="#FFFFFF" align=right>2652</td>
+    <td bgcolor="#FFFFFF" align=right>2121</td>
+    <td bgcolor="#FFFFFF" align=right>499</td>
+    <td bgcolor="#FFFFFF" align=right>2620</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>40</td>
+    <td bgcolor="#FFFFFF">BOEING B737 MAX 8</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>156</td>
+    <td bgcolor="#FFFFFF" align=right>181</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>337</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>2219</td>
+    <td bgcolor="#FFFFFF" align=right>1811</td>
+    <td bgcolor="#FFFFFF" align=right>4030</td>
+    <td bgcolor="#FFFFFF" align=right>1801</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1801</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>41</td>
+    <td bgcolor="#FFFFFF">BOEING B737 900ER</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>179</td>
+    <td bgcolor="#FFFFFF" align=right>103</td>
+    <td bgcolor="#FFFFFF" align=right>9</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>291</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1145</td>
+    <td bgcolor="#FFFFFF" align=right>734</td>
+    <td bgcolor="#FFFFFF" align=right>1879</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>134</td>
+    <td bgcolor="#FFFFFF" align=right>134</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>42</td>
+    <td bgcolor="#FFFFFF">BOEING 767 300</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>169</td>
+    <td bgcolor="#FFFFFF" align=right>137</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>306</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3903</td>
+    <td bgcolor="#FFFFFF" align=right>2438</td>
+    <td bgcolor="#FFFFFF" align=right>6341</td>
+    <td bgcolor="#FFFFFF" align=right>9913</td>
+    <td bgcolor="#FFFFFF" align=right>9146</td>
+    <td bgcolor="#FFFFFF" align=right>19059</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>43</td>
+    <td bgcolor="#FFFFFF">AIRBUS 787 100</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>337</td>
+    <td bgcolor="#FFFFFF" align=right>337</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>674</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6028</td>
+    <td bgcolor="#FFFFFF" align=right>6394</td>
+    <td bgcolor="#FFFFFF" align=right>12422</td>
+    <td bgcolor="#FFFFFF" align=right>1200</td>
+    <td bgcolor="#FFFFFF" align=right>13532</td>
+    <td bgcolor="#FFFFFF" align=right>14732</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>44</td>
+    <td bgcolor="#FFFFFF">CESSNA CITATION LONGITUDE</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>45</td>
+    <td bgcolor="#FFFFFF">AIRBUS 320 NEO</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>139</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>142</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1107</td>
+    <td bgcolor="#FFFFFF" align=right>1107</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2044</td>
+    <td bgcolor="#FFFFFF" align=right>2044</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>46</td>
+    <td bgcolor="#FFFFFF">BOEING 330 900</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>323</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>323</td>
+    <td bgcolor="#FFFFFF" align=right>10</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>10</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4500</td>
+    <td bgcolor="#FFFFFF" align=right>4500</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>47</td>
+    <td bgcolor="#FFFFFF">AIRBUS 330 900</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>323</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>323</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6190</td>
+    <td bgcolor="#FFFFFF" align=right>6190</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6867</td>
+    <td bgcolor="#FFFFFF" align=right>6867</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>48</td>
+    <td bgcolor="#FFFFFF">BOEING 737 400F</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF" align=center>49</td>
+    <td bgcolor="#FFFFFF">HAWKER BEECHCRAFT 400A</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">
+      <div align="center"><b>TOTAL</b></div>
+    </td>
+    <td bgcolor="#FFFFFF" align=right><b>510 </b></td>
+    <td bgcolor="#FFFFFF" align=right><b>509</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>1019</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>75421</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>67581</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>6296</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>0</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>149298</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>1030</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>0</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>1030</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>874998</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>844923</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>1719921</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>792941</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>980061</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>1773002</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>0</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>0</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>0</b></td>
+  </tr>
+</table>
+<br>
+Catatan:<br>
+- PENUMPANG DTG/BRK = DEWASA + ANAK + BAYI
+<br>
+- UNTUK DATA CGK MASIH BERGERAK SAMPAI H-20<br><br>
+<i>published : 03/09/2026 14:06:50</i><br>
+

@@ -25,8 +25,8 @@ class RedesignedViewsTest extends TestCase
         $response = $this->get('/');
         $response->assertOk();
         $response->assertSee('SlotWaves');
-        $response->assertSee('Flight Intelligence Pipeline');
-        $response->assertSee('Import Flight Schedule');
+        $response->assertSee('Select Type Data to Generate');
+        $response->assertSee('Airport Slot Schedule');
     }
 
     public function test_import_page_renders_redesigned_ui(): void
@@ -34,8 +34,7 @@ class RedesignedViewsTest extends TestCase
         $response = $this->get('/import');
         $response->assertOk();
         $response->assertSee('SlotWaves');
-        $response->assertSee('Flight Intelligence Pipeline');
-        $response->assertSee('Import Flight Schedule');
+        $response->assertSee('Select Type Data to Generate');
     }
 
     public function test_home_page_redirects_to_dashboard_when_upload_exists(): void
@@ -61,10 +60,13 @@ class RedesignedViewsTest extends TestCase
             'operating_days' => '1234567',
         ]);
 
+        // Home is report generator and does not automatically redirect
         $response = $this->get('/');
-        $response->assertRedirect(route('schedule.dashboard', $upload->id));
+        $response->assertOk();
+        $response->assertSee('Select Type Data to Generate');
 
-        $dashboardResponse = $this->get('/dashboard');
+        // /dashboard route redirects to active session schedule
+        $dashboardResponse = $this->withSession(['active_upload_id' => $upload->id])->get('/dashboard');
         $dashboardResponse->assertRedirect(route('schedule.dashboard', $upload->id));
     }
 

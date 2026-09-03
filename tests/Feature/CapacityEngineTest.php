@@ -100,7 +100,7 @@ class CapacityEngineTest extends TestCase
             'flight_type'    => 'departure_domestic',
         ]);
 
-        $res = $this->capacityService->calculate($this->upload->flights);
+        $res = $this->capacityService->calculate($this->upload->flights()->get());
 
         // Occupied from 10:10 to 10:39, peak occupancy in 10:00-10:59 is 1
         $this->assertEquals(1, $res['hourly'][10]['occupied']);

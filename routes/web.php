@@ -8,15 +8,26 @@ use App\Http\Controllers\Api\MasterDataController;
 use Illuminate\Support\Facades\Route;
 
 // ── Home / Dashboard / Upload Portal ───────────────────────────────────────
-Route::get('/',                        [UploadController::class, 'index'])->name('home');
-Route::get('/dashboard',               [UploadController::class, 'dashboardRedirect'])->name('dashboard');
-Route::get('/import',                  [UploadController::class, 'uploadPage'])->name('upload.index');
-Route::get('/upload',                  [UploadController::class, 'uploadPage'])->name('upload.page');
-Route::get('/reset',                   [UploadController::class, 'resetSession'])->name('schedule.reset');
-Route::get('/new-schedule',            [UploadController::class, 'resetSession'])->name('schedule.new');
-Route::post('/upload',                 [UploadController::class, 'store'])->name('upload.store');
-Route::get('/upload/{upload}/status',  [UploadController::class, 'status'])->name('upload.status');
-Route::post('/upload/{upload}/process',[UploadController::class, 'process'])->name('upload.process');
+Route::get('/',                           [UploadController::class, 'index'])->name('home');
+Route::get('/dashboard',                  [UploadController::class, 'dashboardRedirect'])->name('dashboard');
+Route::get('/import',                     [UploadController::class, 'uploadPage'])->name('upload.index');
+Route::get('/upload',                     [UploadController::class, 'uploadPage'])->name('upload.page');
+Route::get('/reset',                      [UploadController::class, 'resetSession'])->name('schedule.reset');
+Route::get('/new-schedule',               [UploadController::class, 'resetSession'])->name('schedule.new');
+Route::post('/upload',                    [UploadController::class, 'store'])->name('upload.store');
+Route::post('/upload/validate-template',  [UploadController::class, 'validateTemplate'])->name('upload.validate-template');
+Route::get('/upload/{upload}/status',     [UploadController::class, 'status'])->name('upload.status');
+Route::post('/upload/{upload}/process',   [UploadController::class, 'process'])->name('upload.process');
+
+// ── DAU Reference Templates Download ───────────────────────────────────────
+Route::get('/templates/download/{reportType}', [\App\Http\Controllers\DauDashboardController::class, 'downloadTemplate'])->name('templates.download');
+
+// ── DAU Analytical Dashboards & Exports ────────────────────────────────────
+Route::prefix('dau/{upload}')->group(function () {
+    Route::get('/dashboard',    [\App\Http\Controllers\DauDashboardController::class, 'show'])->name('dau.dashboard');
+    Route::get('/export/pdf',   [\App\Http\Controllers\DauDashboardController::class, 'exportPdf'])->name('dau.export.pdf');
+    Route::get('/export/excel', [\App\Http\Controllers\DauDashboardController::class, 'exportExcel'])->name('dau.export.excel');
+});
 
 // ── Master Reference Data Web View ─────────────────────────────────────────
 Route::get('/master-data', [MasterDataViewController::class, 'index'])->name('master-data.index');

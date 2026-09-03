@@ -1,0 +1,3887 @@
+	<title>&nbsp;OASYS Report-10B</title>		<script type="text/javascript">
+			var _paq = _paq || [];
+			/* tracker methods like "setCustomDimension" should be called before "trackPageView" */
+			_paq.push(['trackPageView']);
+			_paq.push(['enableLinkTracking']);
+			(function() {
+				var u = "//matomo.angkasapura2.co.id/matomo/";
+				_paq.push(['setTrackerUrl', u + 'piwik.php']);
+				_paq.push(['setSiteId', '6']);
+				var d = document,
+					g = d.createElement('script'),
+					s = d.getElementsByTagName('script')[0];
+				g.type = 'text/javascript';
+				g.async = true;
+				g.defer = true;
+				g.src = u + 'piwik.js';
+				s.parentNode.insertBefore(g, s);
+			})();
+		</script>
+<link rel="shortcut icon" href="https://oasys.angkasapura2.co.id/dist/img/favicon.ico" type="image/x-icon">	
+<CENTER><B>DATA ANGKUTAN UDARA JAM PUNCAK PESAWAT/PENUMPANG (DAU-10B) <br> BLOCK ON/OFF
+<BR>TANGERANG BANTEN - SOEKARNO HATTA  (CGK)<BR>TANGGAL 2026-08-01 s/d  2026-08-01<br>PENERBANGAN DOMESTIK & INTERNASIONAL<br>ALL TERMINAL </B></CENTER>
+<BR>
+
+<br>
+<form name="form1" method="post" action="https://oasys.angkasapura2.co.id/dau/addax/DailyReportTotal/X/terminal">
+  <select name="terminal">
+    <option value="">ALL</option>
+  	<option value="1">1</option>
+  	<option value="1A">1A</option>
+  	<option value="1B">1B</option>
+  	<option value="1C">1C</option>
+  	<option value="2">2</option>
+  	<option value="2D">2D</option>
+  	<option value="2E">2E</option>
+  	<option value="2F">2F</option>
+  	<option value="3">3</option>
+  	<option value="3U">3U</option>
+    </select>
+  <input type="hidden" name="DAU" value="10B">
+  <input type="hidden" name="tipeviewDAU" value="print">
+  <input type="hidden" name="BRANCH_CODE" value="CGK">
+  <input type="hidden" name="transactions_dateDAU" value="2026/08/01 - 2026/08/01">
+  <input type="hidden" name="DomInt" value="ALL">
+   <input type="hidden" name="SUFFIX" value="ALL"> 
+  
+  <input type="hidden" name="SUFFIX" value="ALL">     
+  <input type="submit" name="Submit" value="<< PILIH TERMINAL >>">
+</form>
+
+<table width="100%" border="1" cellspacing="1" cellpadding="3" align="center" bgcolor="#000000"  class="table table-striped">
+  <tr> 
+    <td rowspan="2" bgcolor="#FFFFFF"> 
+      <div align="center"><b><br>
+        NO</b></div>
+    </td>
+    <td rowspan="2" bgcolor="#FFFFFF"> 
+      <div align="center"><b>JAM</b></div>
+    </td>
+    <td rowspan="2" bgcolor="#FFFFFF"> 
+      <div align="center"><b>TERMINAL</b></div>
+    </td>	
+    <td colspan="3" bgcolor="#FFFFFF"> 
+      <div align="center"><b>PESAWAT</b></div>
+    </td>
+    <td colspan="5" bgcolor="#FFFFFF"> 
+      <div align="center"><b>PENUMPANG</b></div>
+    </td>
+    <td colspan="3" bgcolor="#FFFFFF">
+      <div align="center"><b>AWAK</b></div>
+    </td>
+    <td colspan="3" bgcolor="#FFFFFF"> 
+      <div align="center"><b>BAGASI</b></div>
+    </td>
+    <td colspan="3" bgcolor="#FFFFFF"> 
+      <div align="center"><b>KARGO (Kg)</b></div>
+    </td>
+    <td colspan="3" bgcolor="#FFFFFF"> 
+      <div align="center"><b>POS (Kg)</b></div>
+    </td>
+  </tr>
+  <tr> 
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>DTG</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>BRK</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>JML (3+4)</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>DTG</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>BRK</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>TRANSIT</b></div>
+    </td>
+    <td bgcolor="#FFFFFF">
+      <div align="center"><b>TRANSFER</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>JML (6+7+8+9)</b></div>
+    </td>
+    <td bgcolor="#FFFFFF">
+      <div align="center"><b>CREW</b></div>
+    </td>
+    <td bgcolor="#FFFFFF">
+      <div align="center"><b>EXTRA CREW</b></div>
+    </td>
+    <td bgcolor="#FFFFFF">
+      <div align="center"><b>JML (11+12)</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>DTG</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>BRK</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>JML (14+15)</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>DTG</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>BRK</b></div>
+    </td>
+    <td bgcolor="#FFFFFF" width="4%"> 
+      <div align="center"><b>JML (17+18)</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>DTG</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>BRK</b></div>
+    </td>
+    <td bgcolor="#FFFFFF"> 
+      <div align="center"><b>JML (20+21)</b></div>
+    </td>
+  </tr>
+  <tr> 
+     <td bgcolor="#CCCCCC"> 
+      <div align="center"><b>0</b></div>
+    </td> 
+    <td bgcolor="#CCCCCC" > 
+      <div align="center"><b>1</b></div>
+    </td>
+    <td bgcolor="#CCCCCC"> 
+      <div align="center"><b>2</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>3</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>4</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>5</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>6</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>7</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>8</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%">
+      <div align="center"><b>9</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="5%"> 
+      <div align="center"><b>10</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>11</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>12</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="5%"> 
+      <div align="center"><b>13</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>14</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>15</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="5%"> 
+      <div align="center"><b>16</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>17</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>18</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="5%"> 
+      <div align="center"><b>19</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>20</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="4%"> 
+      <div align="center"><b>21</b></div>
+    </td>
+    <td bgcolor="#CCCCCC" width="5%"> 
+      <div align="center"><b>22</b></div>
+    </td>
+	
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>1</td>
+    <td bgcolor="#FFFFFF">00.01 - 01.00</td>
+    <td bgcolor="#FFFFFF">1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>2</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1B</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>63</td>
+    <td bgcolor="#FFFFFF" align=right>88</td>
+    <td bgcolor="#FFFFFF" align=right>8</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>159</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>402</td>
+    <td bgcolor="#FFFFFF" align=right>872</td>
+    <td bgcolor="#FFFFFF" align=right>1274</td>
+    <td bgcolor="#FFFFFF" align=right>636</td>
+    <td bgcolor="#FFFFFF" align=right>1120</td>
+    <td bgcolor="#FFFFFF" align=right>1756</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>3</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1C</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>146</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>146</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1537</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1537</td>
+    <td bgcolor="#FFFFFF" align=right>801</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>801</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>4</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2D</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>358</td>
+    <td bgcolor="#FFFFFF" align=right>14</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>372</td>
+    <td bgcolor="#FFFFFF" align=right>20</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>20</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>5803</td>
+    <td bgcolor="#FFFFFF" align=right>5803</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>7452</td>
+    <td bgcolor="#FFFFFF" align=right>7452</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>5</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2E</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>148</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>148</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1055</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1055</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>6</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2F</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>123</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>123</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2451</td>
+    <td bgcolor="#FFFFFF" align=right>2451</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>7</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">3U</td>
+    <td bgcolor="#FFFFFF" align=right>10</td>
+    <td bgcolor="#FFFFFF" align=right>9</td>
+    <td bgcolor="#FFFFFF" align=right>19</td>
+    <td bgcolor="#FFFFFF" align=right>2621</td>
+    <td bgcolor="#FFFFFF" align=right>2180</td>
+    <td bgcolor="#FFFFFF" align=right>11</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4812</td>
+    <td bgcolor="#FFFFFF" align=right>56</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>56</td>
+    <td bgcolor="#FFFFFF" align=right>54537</td>
+    <td bgcolor="#FFFFFF" align=right>36979</td>
+    <td bgcolor="#FFFFFF" align=right>91516</td>
+    <td bgcolor="#FFFFFF" align=right>55505</td>
+    <td bgcolor="#FFFFFF" align=right>42260</td>
+    <td bgcolor="#FFFFFF" align=right>97765</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>8</td>
+    <td bgcolor="#FFFFFF">01.01 - 02.00</td>
+    <td bgcolor="#FFFFFF">1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>9</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1B</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>172</td>
+    <td bgcolor="#FFFFFF" align=right>17</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>189</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1210</td>
+    <td bgcolor="#FFFFFF" align=right>1210</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3248</td>
+    <td bgcolor="#FFFFFF" align=right>3248</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>10</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1C</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>100</td>
+    <td bgcolor="#FFFFFF" align=right>158</td>
+    <td bgcolor="#FFFFFF" align=right>15</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>273</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>725</td>
+    <td bgcolor="#FFFFFF" align=right>1307</td>
+    <td bgcolor="#FFFFFF" align=right>2032</td>
+    <td bgcolor="#FFFFFF" align=right>3885</td>
+    <td bgcolor="#FFFFFF" align=right>2727</td>
+    <td bgcolor="#FFFFFF" align=right>6612</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>11</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2D</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>135</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>141</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1935</td>
+    <td bgcolor="#FFFFFF" align=right>1935</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3322</td>
+    <td bgcolor="#FFFFFF" align=right>3322</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>12</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2F</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>151</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>151</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1968</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1968</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>13</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">3U</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>8</td>
+    <td bgcolor="#FFFFFF" align=right>10</td>
+    <td bgcolor="#FFFFFF" align=right>329</td>
+    <td bgcolor="#FFFFFF" align=right>1473</td>
+    <td bgcolor="#FFFFFF" align=right>16</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1818</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>5908</td>
+    <td bgcolor="#FFFFFF" align=right>31575</td>
+    <td bgcolor="#FFFFFF" align=right>37483</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>31324</td>
+    <td bgcolor="#FFFFFF" align=right>31324</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>14</td>
+    <td bgcolor="#FFFFFF">02.01 - 03.00</td>
+    <td bgcolor="#FFFFFF">1C</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>90</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>102</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>866</td>
+    <td bgcolor="#FFFFFF" align=right>866</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3741</td>
+    <td bgcolor="#FFFFFF" align=right>3741</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>15</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2D</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>486</td>
+    <td bgcolor="#FFFFFF" align=right>41</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>527</td>
+    <td bgcolor="#FFFFFF" align=right>26</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>26</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6777</td>
+    <td bgcolor="#FFFFFF" align=right>6777</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>10352</td>
+    <td bgcolor="#FFFFFF" align=right>10352</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>16</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">3U</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>139</td>
+    <td bgcolor="#FFFFFF" align=right>1548</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1690</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>1276</td>
+    <td bgcolor="#FFFFFF" align=right>30925</td>
+    <td bgcolor="#FFFFFF" align=right>32201</td>
+    <td bgcolor="#FFFFFF" align=right>2259</td>
+    <td bgcolor="#FFFFFF" align=right>53488</td>
+    <td bgcolor="#FFFFFF" align=right>55747</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>17</td>
+    <td bgcolor="#FFFFFF">03.01 - 04.00</td>
+    <td bgcolor="#FFFFFF">1B</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>182</td>
+    <td bgcolor="#FFFFFF" align=right>11</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>193</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>878</td>
+    <td bgcolor="#FFFFFF" align=right>878</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1313</td>
+    <td bgcolor="#FFFFFF" align=right>1313</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>18</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1C</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>146</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>148</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1535</td>
+    <td bgcolor="#FFFFFF" align=right>1535</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3797</td>
+    <td bgcolor="#FFFFFF" align=right>3797</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>19</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2D</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>148</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>149</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1810</td>
+    <td bgcolor="#FFFFFF" align=right>1810</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3494</td>
+    <td bgcolor="#FFFFFF" align=right>3494</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>20</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">3U</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>134</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>134</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1544</td>
+    <td bgcolor="#FFFFFF" align=right>1544</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1691</td>
+    <td bgcolor="#FFFFFF" align=right>1691</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>21</td>
+    <td bgcolor="#FFFFFF">04.01 - 05.00</td>
+    <td bgcolor="#FFFFFF">1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>22</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1B</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>502</td>
+    <td bgcolor="#FFFFFF" align=right>36</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>538</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>5116</td>
+    <td bgcolor="#FFFFFF" align=right>5116</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>8693</td>
+    <td bgcolor="#FFFFFF" align=right>8693</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>23</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1C</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>243</td>
+    <td bgcolor="#FFFFFF" align=right>30</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>273</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2285</td>
+    <td bgcolor="#FFFFFF" align=right>2285</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6764</td>
+    <td bgcolor="#FFFFFF" align=right>6764</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>24</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2D</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>232</td>
+    <td bgcolor="#FFFFFF" align=right>14</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>246</td>
+    <td bgcolor="#FFFFFF" align=right>14</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>14</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3354</td>
+    <td bgcolor="#FFFFFF" align=right>3354</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4631</td>
+    <td bgcolor="#FFFFFF" align=right>4631</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>25</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2E</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>283</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>289</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1738</td>
+    <td bgcolor="#FFFFFF" align=right>1738</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>7025</td>
+    <td bgcolor="#FFFFFF" align=right>7025</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>26</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2F</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>132</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>132</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>379</td>
+    <td bgcolor="#FFFFFF" align=right>379</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1835</td>
+    <td bgcolor="#FFFFFF" align=right>1835</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>27</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">3U</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>213</td>
+    <td bgcolor="#FFFFFF" align=right>309</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>522</td>
+    <td bgcolor="#FFFFFF" align=right>13</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>13</td>
+    <td bgcolor="#FFFFFF" align=right>3883</td>
+    <td bgcolor="#FFFFFF" align=right>4808</td>
+    <td bgcolor="#FFFFFF" align=right>8691</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3134</td>
+    <td bgcolor="#FFFFFF" align=right>3134</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>28</td>
+    <td bgcolor="#FFFFFF">05.01 - 06.00</td>
+    <td bgcolor="#FFFFFF">1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>29</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1B</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>327</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>330</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2629</td>
+    <td bgcolor="#FFFFFF" align=right>2629</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2337</td>
+    <td bgcolor="#FFFFFF" align=right>2337</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>30</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1C</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>579</td>
+    <td bgcolor="#FFFFFF" align=right>39</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>618</td>
+    <td bgcolor="#FFFFFF" align=right>18</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>18</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4257</td>
+    <td bgcolor="#FFFFFF" align=right>4257</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>13952</td>
+    <td bgcolor="#FFFFFF" align=right>13952</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>31</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2D</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>232</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>237</td>
+    <td bgcolor="#FFFFFF" align=right>14</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>14</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2789</td>
+    <td bgcolor="#FFFFFF" align=right>2789</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3759</td>
+    <td bgcolor="#FFFFFF" align=right>3759</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>32</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2E</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>513</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>517</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3793</td>
+    <td bgcolor="#FFFFFF" align=right>3793</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>7769</td>
+    <td bgcolor="#FFFFFF" align=right>7769</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>33</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2F</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>114</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>114</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>555</td>
+    <td bgcolor="#FFFFFF" align=right>555</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3448</td>
+    <td bgcolor="#FFFFFF" align=right>3448</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>34</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">3U</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>772</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>777</td>
+    <td bgcolor="#FFFFFF" align=right>19</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>19</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>9299</td>
+    <td bgcolor="#FFFFFF" align=right>9299</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>17758</td>
+    <td bgcolor="#FFFFFF" align=right>17758</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>35</td>
+    <td bgcolor="#FFFFFF">06.01 - 07.00</td>
+    <td bgcolor="#FFFFFF">1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>36</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1B</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>160</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>160</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1058</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1058</td>
+    <td bgcolor="#FFFFFF" align=right>1086</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1086</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>37</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1C</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>8</td>
+    <td bgcolor="#FFFFFF" align=right>120</td>
+    <td bgcolor="#FFFFFF" align=right>911</td>
+    <td bgcolor="#FFFFFF" align=right>45</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1076</td>
+    <td bgcolor="#FFFFFF" align=right>24</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>24</td>
+    <td bgcolor="#FFFFFF" align=right>725</td>
+    <td bgcolor="#FFFFFF" align=right>6304</td>
+    <td bgcolor="#FFFFFF" align=right>7029</td>
+    <td bgcolor="#FFFFFF" align=right>39</td>
+    <td bgcolor="#FFFFFF" align=right>9451</td>
+    <td bgcolor="#FFFFFF" align=right>9490</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>38</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2D</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>88</td>
+    <td bgcolor="#FFFFFF" align=right>427</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>522</td>
+    <td bgcolor="#FFFFFF" align=right>20</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>20</td>
+    <td bgcolor="#FFFFFF" align=right>807</td>
+    <td bgcolor="#FFFFFF" align=right>3227</td>
+    <td bgcolor="#FFFFFF" align=right>4034</td>
+    <td bgcolor="#FFFFFF" align=right>1832</td>
+    <td bgcolor="#FFFFFF" align=right>1697</td>
+    <td bgcolor="#FFFFFF" align=right>3529</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>39</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2E</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>8</td>
+    <td bgcolor="#FFFFFF" align=right>10</td>
+    <td bgcolor="#FFFFFF" align=right>323</td>
+    <td bgcolor="#FFFFFF" align=right>1136</td>
+    <td bgcolor="#FFFFFF" align=right>13</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1472</td>
+    <td bgcolor="#FFFFFF" align=right>17</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>17</td>
+    <td bgcolor="#FFFFFF" align=right>1375</td>
+    <td bgcolor="#FFFFFF" align=right>7838</td>
+    <td bgcolor="#FFFFFF" align=right>9213</td>
+    <td bgcolor="#FFFFFF" align=right>1441</td>
+    <td bgcolor="#FFFFFF" align=right>12295</td>
+    <td bgcolor="#FFFFFF" align=right>13736</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>40</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2F</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>390</td>
+    <td bgcolor="#FFFFFF" align=right>370</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>760</td>
+    <td bgcolor="#FFFFFF" align=right>18</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>18</td>
+    <td bgcolor="#FFFFFF" align=right>11778</td>
+    <td bgcolor="#FFFFFF" align=right>1116</td>
+    <td bgcolor="#FFFFFF" align=right>12894</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4974</td>
+    <td bgcolor="#FFFFFF" align=right>4974</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>41</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">3U</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>13</td>
+    <td bgcolor="#FFFFFF" align=right>14</td>
+    <td bgcolor="#FFFFFF" align=right>168</td>
+    <td bgcolor="#FFFFFF" align=right>1291</td>
+    <td bgcolor="#FFFFFF" align=right>17</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1476</td>
+    <td bgcolor="#FFFFFF" align=right>13</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>13</td>
+    <td bgcolor="#FFFFFF" align=right>1867</td>
+    <td bgcolor="#FFFFFF" align=right>16592</td>
+    <td bgcolor="#FFFFFF" align=right>18459</td>
+    <td bgcolor="#FFFFFF" align=right>695</td>
+    <td bgcolor="#FFFFFF" align=right>22024</td>
+    <td bgcolor="#FFFFFF" align=right>22719</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>42</td>
+    <td bgcolor="#FFFFFF">07.01 - 08.00</td>
+    <td bgcolor="#FFFFFF">1B</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>329</td>
+    <td bgcolor="#FFFFFF" align=right>195</td>
+    <td bgcolor="#FFFFFF" align=right>14</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>538</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1747</td>
+    <td bgcolor="#FFFFFF" align=right>1109</td>
+    <td bgcolor="#FFFFFF" align=right>2856</td>
+    <td bgcolor="#FFFFFF" align=right>542</td>
+    <td bgcolor="#FFFFFF" align=right>1553</td>
+    <td bgcolor="#FFFFFF" align=right>2095</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>43</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1C</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>419</td>
+    <td bgcolor="#FFFFFF" align=right>260</td>
+    <td bgcolor="#FFFFFF" align=right>13</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>692</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2797</td>
+    <td bgcolor="#FFFFFF" align=right>1941</td>
+    <td bgcolor="#FFFFFF" align=right>4738</td>
+    <td bgcolor="#FFFFFF" align=right>3568</td>
+    <td bgcolor="#FFFFFF" align=right>7007</td>
+    <td bgcolor="#FFFFFF" align=right>10575</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>44</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2D</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>556</td>
+    <td bgcolor="#FFFFFF" align=right>235</td>
+    <td bgcolor="#FFFFFF" align=right>18</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>809</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>5100</td>
+    <td bgcolor="#FFFFFF" align=right>1611</td>
+    <td bgcolor="#FFFFFF" align=right>6711</td>
+    <td bgcolor="#FFFFFF" align=right>5623</td>
+    <td bgcolor="#FFFFFF" align=right>4091</td>
+    <td bgcolor="#FFFFFF" align=right>9714</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>45</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2E</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>449</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>449</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>2778</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2778</td>
+    <td bgcolor="#FFFFFF" align=right>2454</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2454</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>46</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2F</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>114</td>
+    <td bgcolor="#FFFFFF" align=right>731</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>845</td>
+    <td bgcolor="#FFFFFF" align=right>22</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>22</td>
+    <td bgcolor="#FFFFFF" align=right>586</td>
+    <td bgcolor="#FFFFFF" align=right>11130</td>
+    <td bgcolor="#FFFFFF" align=right>11716</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6878</td>
+    <td bgcolor="#FFFFFF" align=right>6878</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>47</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">3U</td>
+    <td bgcolor="#FFFFFF" align=right>10</td>
+    <td bgcolor="#FFFFFF" align=right>17</td>
+    <td bgcolor="#FFFFFF" align=right>27</td>
+    <td bgcolor="#FFFFFF" align=right>1403</td>
+    <td bgcolor="#FFFFFF" align=right>2277</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3685</td>
+    <td bgcolor="#FFFFFF" align=right>36</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>36</td>
+    <td bgcolor="#FFFFFF" align=right>19288</td>
+    <td bgcolor="#FFFFFF" align=right>24177</td>
+    <td bgcolor="#FFFFFF" align=right>43465</td>
+    <td bgcolor="#FFFFFF" align=right>37831</td>
+    <td bgcolor="#FFFFFF" align=right>38707</td>
+    <td bgcolor="#FFFFFF" align=right>76538</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>48</td>
+    <td bgcolor="#FFFFFF">08.01 - 09.00</td>
+    <td bgcolor="#FFFFFF">1B</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>421</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>421</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3092</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3092</td>
+    <td bgcolor="#FFFFFF" align=right>4576</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4576</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>49</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1C</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>11</td>
+    <td bgcolor="#FFFFFF" align=right>844</td>
+    <td bgcolor="#FFFFFF" align=right>526</td>
+    <td bgcolor="#FFFFFF" align=right>45</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1415</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>6275</td>
+    <td bgcolor="#FFFFFF" align=right>3206</td>
+    <td bgcolor="#FFFFFF" align=right>9481</td>
+    <td bgcolor="#FFFFFF" align=right>7143</td>
+    <td bgcolor="#FFFFFF" align=right>5422</td>
+    <td bgcolor="#FFFFFF" align=right>12565</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>50</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2D</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>8</td>
+    <td bgcolor="#FFFFFF" align=right>673</td>
+    <td bgcolor="#FFFFFF" align=right>301</td>
+    <td bgcolor="#FFFFFF" align=right>22</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>996</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>5185</td>
+    <td bgcolor="#FFFFFF" align=right>2656</td>
+    <td bgcolor="#FFFFFF" align=right>7841</td>
+    <td bgcolor="#FFFFFF" align=right>9660</td>
+    <td bgcolor="#FFFFFF" align=right>1330</td>
+    <td bgcolor="#FFFFFF" align=right>10990</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>51</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2E</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>288</td>
+    <td bgcolor="#FFFFFF" align=right>511</td>
+    <td bgcolor="#FFFFFF" align=right>34</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>833</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1799</td>
+    <td bgcolor="#FFFFFF" align=right>3252</td>
+    <td bgcolor="#FFFFFF" align=right>5051</td>
+    <td bgcolor="#FFFFFF" align=right>3741</td>
+    <td bgcolor="#FFFFFF" align=right>1513</td>
+    <td bgcolor="#FFFFFF" align=right>5254</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>52</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2F</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>141</td>
+    <td bgcolor="#FFFFFF" align=right>318</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>459</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>844</td>
+    <td bgcolor="#FFFFFF" align=right>2139</td>
+    <td bgcolor="#FFFFFF" align=right>2983</td>
+    <td bgcolor="#FFFFFF" align=right>250</td>
+    <td bgcolor="#FFFFFF" align=right>4283</td>
+    <td bgcolor="#FFFFFF" align=right>4533</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>53</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">3U</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>24</td>
+    <td bgcolor="#FFFFFF" align=right>2126</td>
+    <td bgcolor="#FFFFFF" align=right>1540</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3671</td>
+    <td bgcolor="#FFFFFF" align=right>26</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>26</td>
+    <td bgcolor="#FFFFFF" align=right>26090</td>
+    <td bgcolor="#FFFFFF" align=right>19075</td>
+    <td bgcolor="#FFFFFF" align=right>45165</td>
+    <td bgcolor="#FFFFFF" align=right>30641</td>
+    <td bgcolor="#FFFFFF" align=right>19084</td>
+    <td bgcolor="#FFFFFF" align=right>49725</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>54</td>
+    <td bgcolor="#FFFFFF">09.01 - 10.00</td>
+    <td bgcolor="#FFFFFF">1</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>55</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1B</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>334</td>
+    <td bgcolor="#FFFFFF" align=right>349</td>
+    <td bgcolor="#FFFFFF" align=right>57</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>740</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>1696</td>
+    <td bgcolor="#FFFFFF" align=right>2428</td>
+    <td bgcolor="#FFFFFF" align=right>4124</td>
+    <td bgcolor="#FFFFFF" align=right>2793</td>
+    <td bgcolor="#FFFFFF" align=right>2461</td>
+    <td bgcolor="#FFFFFF" align=right>5254</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>56</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1C</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>11</td>
+    <td bgcolor="#FFFFFF" align=right>627</td>
+    <td bgcolor="#FFFFFF" align=right>935</td>
+    <td bgcolor="#FFFFFF" align=right>154</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1716</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>4702</td>
+    <td bgcolor="#FFFFFF" align=right>6513</td>
+    <td bgcolor="#FFFFFF" align=right>11215</td>
+    <td bgcolor="#FFFFFF" align=right>4608</td>
+    <td bgcolor="#FFFFFF" align=right>3575</td>
+    <td bgcolor="#FFFFFF" align=right>8183</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>57</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2D</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>11</td>
+    <td bgcolor="#FFFFFF" align=right>870</td>
+    <td bgcolor="#FFFFFF" align=right>608</td>
+    <td bgcolor="#FFFFFF" align=right>42</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1520</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>8115</td>
+    <td bgcolor="#FFFFFF" align=right>6975</td>
+    <td bgcolor="#FFFFFF" align=right>15090</td>
+    <td bgcolor="#FFFFFF" align=right>4658</td>
+    <td bgcolor="#FFFFFF" align=right>7274</td>
+    <td bgcolor="#FFFFFF" align=right>11932</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>58</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2E</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>692</td>
+    <td bgcolor="#FFFFFF" align=right>146</td>
+    <td bgcolor="#FFFFFF" align=right>9</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>847</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>5092</td>
+    <td bgcolor="#FFFFFF" align=right>1049</td>
+    <td bgcolor="#FFFFFF" align=right>6141</td>
+    <td bgcolor="#FFFFFF" align=right>3440</td>
+    <td bgcolor="#FFFFFF" align=right>3398</td>
+    <td bgcolor="#FFFFFF" align=right>6838</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>59</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2F</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>148</td>
+    <td bgcolor="#FFFFFF" align=right>701</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>849</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>880</td>
+    <td bgcolor="#FFFFFF" align=right>9286</td>
+    <td bgcolor="#FFFFFF" align=right>10166</td>
+    <td bgcolor="#FFFFFF" align=right>304</td>
+    <td bgcolor="#FFFFFF" align=right>15284</td>
+    <td bgcolor="#FFFFFF" align=right>15588</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>60</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">3U</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>14</td>
+    <td bgcolor="#FFFFFF" align=right>19</td>
+    <td bgcolor="#FFFFFF" align=right>717</td>
+    <td bgcolor="#FFFFFF" align=right>2162</td>
+    <td bgcolor="#FFFFFF" align=right>71</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2950</td>
+    <td bgcolor="#FFFFFF" align=right>14</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>14</td>
+    <td bgcolor="#FFFFFF" align=right>7872</td>
+    <td bgcolor="#FFFFFF" align=right>27828</td>
+    <td bgcolor="#FFFFFF" align=right>35700</td>
+    <td bgcolor="#FFFFFF" align=right>4015</td>
+    <td bgcolor="#FFFFFF" align=right>27729</td>
+    <td bgcolor="#FFFFFF" align=right>31744</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>61</td>
+    <td bgcolor="#FFFFFF">10.01 - 11.00</td>
+    <td bgcolor="#FFFFFF">1B</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>377</td>
+    <td bgcolor="#FFFFFF" align=right>605</td>
+    <td bgcolor="#FFFFFF" align=right>65</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1047</td>
+    <td bgcolor="#FFFFFF" align=right>13</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>13</td>
+    <td bgcolor="#FFFFFF" align=right>2441</td>
+    <td bgcolor="#FFFFFF" align=right>4951</td>
+    <td bgcolor="#FFFFFF" align=right>7392</td>
+    <td bgcolor="#FFFFFF" align=right>5098</td>
+    <td bgcolor="#FFFFFF" align=right>1050</td>
+    <td bgcolor="#FFFFFF" align=right>6148</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>62</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1C</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>9</td>
+    <td bgcolor="#FFFFFF" align=right>963</td>
+    <td bgcolor="#FFFFFF" align=right>402</td>
+    <td bgcolor="#FFFFFF" align=right>66</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1431</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>7882</td>
+    <td bgcolor="#FFFFFF" align=right>4521</td>
+    <td bgcolor="#FFFFFF" align=right>12403</td>
+    <td bgcolor="#FFFFFF" align=right>5111</td>
+    <td bgcolor="#FFFFFF" align=right>4159</td>
+    <td bgcolor="#FFFFFF" align=right>9270</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>63</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2D</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>10</td>
+    <td bgcolor="#FFFFFF" align=right>749</td>
+    <td bgcolor="#FFFFFF" align=right>479</td>
+    <td bgcolor="#FFFFFF" align=right>140</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1368</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>5859</td>
+    <td bgcolor="#FFFFFF" align=right>5941</td>
+    <td bgcolor="#FFFFFF" align=right>11800</td>
+    <td bgcolor="#FFFFFF" align=right>5669</td>
+    <td bgcolor="#FFFFFF" align=right>6718</td>
+    <td bgcolor="#FFFFFF" align=right>12387</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>64</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2E</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>605</td>
+    <td bgcolor="#FFFFFF" align=right>273</td>
+    <td bgcolor="#FFFFFF" align=right>26</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>904</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>4244</td>
+    <td bgcolor="#FFFFFF" align=right>2361</td>
+    <td bgcolor="#FFFFFF" align=right>6605</td>
+    <td bgcolor="#FFFFFF" align=right>5445</td>
+    <td bgcolor="#FFFFFF" align=right>2382</td>
+    <td bgcolor="#FFFFFF" align=right>7827</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>65</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2F</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>538</td>
+    <td bgcolor="#FFFFFF" align=right>75</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>613</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>12744</td>
+    <td bgcolor="#FFFFFF" align=right>767</td>
+    <td bgcolor="#FFFFFF" align=right>13511</td>
+    <td bgcolor="#FFFFFF" align=right>1458</td>
+    <td bgcolor="#FFFFFF" align=right>209</td>
+    <td bgcolor="#FFFFFF" align=right>1667</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>66</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">3U</td>
+    <td bgcolor="#FFFFFF" align=right>15</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>22</td>
+    <td bgcolor="#FFFFFF" align=right>2325</td>
+    <td bgcolor="#FFFFFF" align=right>1044</td>
+    <td bgcolor="#FFFFFF" align=right>24</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3393</td>
+    <td bgcolor="#FFFFFF" align=right>19</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>19</td>
+    <td bgcolor="#FFFFFF" align=right>32322</td>
+    <td bgcolor="#FFFFFF" align=right>13246</td>
+    <td bgcolor="#FFFFFF" align=right>45568</td>
+    <td bgcolor="#FFFFFF" align=right>15315</td>
+    <td bgcolor="#FFFFFF" align=right>6010</td>
+    <td bgcolor="#FFFFFF" align=right>21325</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>67</td>
+    <td bgcolor="#FFFFFF">11.01 - 12.00</td>
+    <td bgcolor="#FFFFFF">1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>68</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1B</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>467</td>
+    <td bgcolor="#FFFFFF" align=right>362</td>
+    <td bgcolor="#FFFFFF" align=right>60</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>889</td>
+    <td bgcolor="#FFFFFF" align=right>20</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>20</td>
+    <td bgcolor="#FFFFFF" align=right>2597</td>
+    <td bgcolor="#FFFFFF" align=right>2519</td>
+    <td bgcolor="#FFFFFF" align=right>5116</td>
+    <td bgcolor="#FFFFFF" align=right>386</td>
+    <td bgcolor="#FFFFFF" align=right>3270</td>
+    <td bgcolor="#FFFFFF" align=right>3656</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>69</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1C</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>8</td>
+    <td bgcolor="#FFFFFF" align=right>11</td>
+    <td bgcolor="#FFFFFF" align=right>423</td>
+    <td bgcolor="#FFFFFF" align=right>928</td>
+    <td bgcolor="#FFFFFF" align=right>200</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1551</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>2851</td>
+    <td bgcolor="#FFFFFF" align=right>9292</td>
+    <td bgcolor="#FFFFFF" align=right>12143</td>
+    <td bgcolor="#FFFFFF" align=right>1031</td>
+    <td bgcolor="#FFFFFF" align=right>13110</td>
+    <td bgcolor="#FFFFFF" align=right>14141</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>70</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2D</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>11</td>
+    <td bgcolor="#FFFFFF" align=right>710</td>
+    <td bgcolor="#FFFFFF" align=right>617</td>
+    <td bgcolor="#FFFFFF" align=right>196</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1523</td>
+    <td bgcolor="#FFFFFF" align=right>14</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>14</td>
+    <td bgcolor="#FFFFFF" align=right>6462</td>
+    <td bgcolor="#FFFFFF" align=right>8178</td>
+    <td bgcolor="#FFFFFF" align=right>14640</td>
+    <td bgcolor="#FFFFFF" align=right>10944</td>
+    <td bgcolor="#FFFFFF" align=right>3295</td>
+    <td bgcolor="#FFFFFF" align=right>14239</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>71</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2E</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>9</td>
+    <td bgcolor="#FFFFFF" align=right>787</td>
+    <td bgcolor="#FFFFFF" align=right>468</td>
+    <td bgcolor="#FFFFFF" align=right>166</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1421</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>7287</td>
+    <td bgcolor="#FFFFFF" align=right>5040</td>
+    <td bgcolor="#FFFFFF" align=right>12327</td>
+    <td bgcolor="#FFFFFF" align=right>1057</td>
+    <td bgcolor="#FFFFFF" align=right>6514</td>
+    <td bgcolor="#FFFFFF" align=right>7571</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>72</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2F</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>258</td>
+    <td bgcolor="#FFFFFF" align=right>721</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>979</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1276</td>
+    <td bgcolor="#FFFFFF" align=right>8906</td>
+    <td bgcolor="#FFFFFF" align=right>10182</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6427</td>
+    <td bgcolor="#FFFFFF" align=right>6427</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>73</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">3U</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>11</td>
+    <td bgcolor="#FFFFFF" align=right>23</td>
+    <td bgcolor="#FFFFFF" align=right>1560</td>
+    <td bgcolor="#FFFFFF" align=right>1350</td>
+    <td bgcolor="#FFFFFF" align=right>22</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2932</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>21696</td>
+    <td bgcolor="#FFFFFF" align=right>15892</td>
+    <td bgcolor="#FFFFFF" align=right>37588</td>
+    <td bgcolor="#FFFFFF" align=right>18269</td>
+    <td bgcolor="#FFFFFF" align=right>18066</td>
+    <td bgcolor="#FFFFFF" align=right>36335</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>74</td>
+    <td bgcolor="#FFFFFF">12.01 - 13.00</td>
+    <td bgcolor="#FFFFFF">1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>75</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1B</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>358</td>
+    <td bgcolor="#FFFFFF" align=right>238</td>
+    <td bgcolor="#FFFFFF" align=right>15</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>611</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>2928</td>
+    <td bgcolor="#FFFFFF" align=right>1862</td>
+    <td bgcolor="#FFFFFF" align=right>4790</td>
+    <td bgcolor="#FFFFFF" align=right>3621</td>
+    <td bgcolor="#FFFFFF" align=right>224</td>
+    <td bgcolor="#FFFFFF" align=right>3845</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>76</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1C</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>590</td>
+    <td bgcolor="#FFFFFF" align=right>310</td>
+    <td bgcolor="#FFFFFF" align=right>40</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>940</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4983</td>
+    <td bgcolor="#FFFFFF" align=right>3697</td>
+    <td bgcolor="#FFFFFF" align=right>8680</td>
+    <td bgcolor="#FFFFFF" align=right>2728</td>
+    <td bgcolor="#FFFFFF" align=right>1853</td>
+    <td bgcolor="#FFFFFF" align=right>4581</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>77</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2D</td>
+    <td bgcolor="#FFFFFF" align=right>8</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>9</td>
+    <td bgcolor="#FFFFFF" align=right>1037</td>
+    <td bgcolor="#FFFFFF" align=right>115</td>
+    <td bgcolor="#FFFFFF" align=right>57</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1209</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>9636</td>
+    <td bgcolor="#FFFFFF" align=right>1298</td>
+    <td bgcolor="#FFFFFF" align=right>10934</td>
+    <td bgcolor="#FFFFFF" align=right>5224</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>5224</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>78</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2E</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>823</td>
+    <td bgcolor="#FFFFFF" align=right>120</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>943</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>7566</td>
+    <td bgcolor="#FFFFFF" align=right>7566</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>5940</td>
+    <td bgcolor="#FFFFFF" align=right>5940</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>79</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2F</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>259</td>
+    <td bgcolor="#FFFFFF" align=right>566</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>825</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3455</td>
+    <td bgcolor="#FFFFFF" align=right>8725</td>
+    <td bgcolor="#FFFFFF" align=right>12180</td>
+    <td bgcolor="#FFFFFF" align=right>1381</td>
+    <td bgcolor="#FFFFFF" align=right>2338</td>
+    <td bgcolor="#FFFFFF" align=right>3719</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>80</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">3U</td>
+    <td bgcolor="#FFFFFF" align=right>14</td>
+    <td bgcolor="#FFFFFF" align=right>13</td>
+    <td bgcolor="#FFFFFF" align=right>27</td>
+    <td bgcolor="#FFFFFF" align=right>2048</td>
+    <td bgcolor="#FFFFFF" align=right>1711</td>
+    <td bgcolor="#FFFFFF" align=right>92</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3851</td>
+    <td bgcolor="#FFFFFF" align=right>13</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>13</td>
+    <td bgcolor="#FFFFFF" align=right>25259</td>
+    <td bgcolor="#FFFFFF" align=right>24176</td>
+    <td bgcolor="#FFFFFF" align=right>49435</td>
+    <td bgcolor="#FFFFFF" align=right>19371</td>
+    <td bgcolor="#FFFFFF" align=right>25389</td>
+    <td bgcolor="#FFFFFF" align=right>44760</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>81</td>
+    <td bgcolor="#FFFFFF">13.01 - 14.00</td>
+    <td bgcolor="#FFFFFF">1B</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>273</td>
+    <td bgcolor="#FFFFFF" align=right>312</td>
+    <td bgcolor="#FFFFFF" align=right>48</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>633</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1777</td>
+    <td bgcolor="#FFFFFF" align=right>2896</td>
+    <td bgcolor="#FFFFFF" align=right>4673</td>
+    <td bgcolor="#FFFFFF" align=right>1020</td>
+    <td bgcolor="#FFFFFF" align=right>5530</td>
+    <td bgcolor="#FFFFFF" align=right>6550</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>82</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1C</td>
+    <td bgcolor="#FFFFFF" align=right>8</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>14</td>
+    <td bgcolor="#FFFFFF" align=right>1298</td>
+    <td bgcolor="#FFFFFF" align=right>617</td>
+    <td bgcolor="#FFFFFF" align=right>250</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2165</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>10848</td>
+    <td bgcolor="#FFFFFF" align=right>6123</td>
+    <td bgcolor="#FFFFFF" align=right>16971</td>
+    <td bgcolor="#FFFFFF" align=right>13341</td>
+    <td bgcolor="#FFFFFF" align=right>3821</td>
+    <td bgcolor="#FFFFFF" align=right>17162</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>83</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2D</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>785</td>
+    <td bgcolor="#FFFFFF" align=right>442</td>
+    <td bgcolor="#FFFFFF" align=right>330</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1557</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>7661</td>
+    <td bgcolor="#FFFFFF" align=right>6768</td>
+    <td bgcolor="#FFFFFF" align=right>14429</td>
+    <td bgcolor="#FFFFFF" align=right>6185</td>
+    <td bgcolor="#FFFFFF" align=right>5633</td>
+    <td bgcolor="#FFFFFF" align=right>11818</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>84</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2E</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>179</td>
+    <td bgcolor="#FFFFFF" align=right>254</td>
+    <td bgcolor="#FFFFFF" align=right>84</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>517</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1243</td>
+    <td bgcolor="#FFFFFF" align=right>2730</td>
+    <td bgcolor="#FFFFFF" align=right>3973</td>
+    <td bgcolor="#FFFFFF" align=right>18</td>
+    <td bgcolor="#FFFFFF" align=right>1089</td>
+    <td bgcolor="#FFFFFF" align=right>1107</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>85</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2F</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>669</td>
+    <td bgcolor="#FFFFFF" align=right>287</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>956</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6042</td>
+    <td bgcolor="#FFFFFF" align=right>2608</td>
+    <td bgcolor="#FFFFFF" align=right>8650</td>
+    <td bgcolor="#FFFFFF" align=right>3821</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3821</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>86</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">3U</td>
+    <td bgcolor="#FFFFFF" align=right>16</td>
+    <td bgcolor="#FFFFFF" align=right>13</td>
+    <td bgcolor="#FFFFFF" align=right>29</td>
+    <td bgcolor="#FFFFFF" align=right>2785</td>
+    <td bgcolor="#FFFFFF" align=right>1659</td>
+    <td bgcolor="#FFFFFF" align=right>78</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4522</td>
+    <td bgcolor="#FFFFFF" align=right>34</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>34</td>
+    <td bgcolor="#FFFFFF" align=right>43861</td>
+    <td bgcolor="#FFFFFF" align=right>22302</td>
+    <td bgcolor="#FFFFFF" align=right>66163</td>
+    <td bgcolor="#FFFFFF" align=right>60850</td>
+    <td bgcolor="#FFFFFF" align=right>12473</td>
+    <td bgcolor="#FFFFFF" align=right>73323</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>87</td>
+    <td bgcolor="#FFFFFF">14.01 - 15.00</td>
+    <td bgcolor="#FFFFFF">1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>88</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1B</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>375</td>
+    <td bgcolor="#FFFFFF" align=right>328</td>
+    <td bgcolor="#FFFFFF" align=right>87</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>790</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>2905</td>
+    <td bgcolor="#FFFFFF" align=right>3245</td>
+    <td bgcolor="#FFFFFF" align=right>6150</td>
+    <td bgcolor="#FFFFFF" align=right>5475</td>
+    <td bgcolor="#FFFFFF" align=right>6958</td>
+    <td bgcolor="#FFFFFF" align=right>12433</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>89</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1C</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>703</td>
+    <td bgcolor="#FFFFFF" align=right>823</td>
+    <td bgcolor="#FFFFFF" align=right>208</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1734</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>5903</td>
+    <td bgcolor="#FFFFFF" align=right>8777</td>
+    <td bgcolor="#FFFFFF" align=right>14680</td>
+    <td bgcolor="#FFFFFF" align=right>5699</td>
+    <td bgcolor="#FFFFFF" align=right>12545</td>
+    <td bgcolor="#FFFFFF" align=right>18244</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>90</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2D</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>912</td>
+    <td bgcolor="#FFFFFF" align=right>656</td>
+    <td bgcolor="#FFFFFF" align=right>187</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1755</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>8722</td>
+    <td bgcolor="#FFFFFF" align=right>9956</td>
+    <td bgcolor="#FFFFFF" align=right>18678</td>
+    <td bgcolor="#FFFFFF" align=right>5222</td>
+    <td bgcolor="#FFFFFF" align=right>4741</td>
+    <td bgcolor="#FFFFFF" align=right>9963</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>91</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2E</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>157</td>
+    <td bgcolor="#FFFFFF" align=right>387</td>
+    <td bgcolor="#FFFFFF" align=right>240</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>784</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>1773</td>
+    <td bgcolor="#FFFFFF" align=right>3920</td>
+    <td bgcolor="#FFFFFF" align=right>5693</td>
+    <td bgcolor="#FFFFFF" align=right>917</td>
+    <td bgcolor="#FFFFFF" align=right>6285</td>
+    <td bgcolor="#FFFFFF" align=right>7202</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>92</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2F</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>129</td>
+    <td bgcolor="#FFFFFF" align=right>186</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>315</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1107</td>
+    <td bgcolor="#FFFFFF" align=right>2106</td>
+    <td bgcolor="#FFFFFF" align=right>3213</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>93</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">3U</td>
+    <td bgcolor="#FFFFFF" align=right>11</td>
+    <td bgcolor="#FFFFFF" align=right>14</td>
+    <td bgcolor="#FFFFFF" align=right>25</td>
+    <td bgcolor="#FFFFFF" align=right>1954</td>
+    <td bgcolor="#FFFFFF" align=right>2210</td>
+    <td bgcolor="#FFFFFF" align=right>137</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4301</td>
+    <td bgcolor="#FFFFFF" align=right>21</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>21</td>
+    <td bgcolor="#FFFFFF" align=right>32862</td>
+    <td bgcolor="#FFFFFF" align=right>37517</td>
+    <td bgcolor="#FFFFFF" align=right>70379</td>
+    <td bgcolor="#FFFFFF" align=right>5585</td>
+    <td bgcolor="#FFFFFF" align=right>62329</td>
+    <td bgcolor="#FFFFFF" align=right>67914</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>94</td>
+    <td bgcolor="#FFFFFF">15.01 - 16.00</td>
+    <td bgcolor="#FFFFFF">1B</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>107</td>
+    <td bgcolor="#FFFFFF" align=right>261</td>
+    <td bgcolor="#FFFFFF" align=right>76</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>444</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>740</td>
+    <td bgcolor="#FFFFFF" align=right>1941</td>
+    <td bgcolor="#FFFFFF" align=right>2681</td>
+    <td bgcolor="#FFFFFF" align=right>513</td>
+    <td bgcolor="#FFFFFF" align=right>2061</td>
+    <td bgcolor="#FFFFFF" align=right>2574</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>95</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1C</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>9</td>
+    <td bgcolor="#FFFFFF" align=right>816</td>
+    <td bgcolor="#FFFFFF" align=right>312</td>
+    <td bgcolor="#FFFFFF" align=right>121</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1249</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6705</td>
+    <td bgcolor="#FFFFFF" align=right>3649</td>
+    <td bgcolor="#FFFFFF" align=right>10354</td>
+    <td bgcolor="#FFFFFF" align=right>2779</td>
+    <td bgcolor="#FFFFFF" align=right>906</td>
+    <td bgcolor="#FFFFFF" align=right>3685</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>96</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2D</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>11</td>
+    <td bgcolor="#FFFFFF" align=right>931</td>
+    <td bgcolor="#FFFFFF" align=right>505</td>
+    <td bgcolor="#FFFFFF" align=right>85</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1521</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>9112</td>
+    <td bgcolor="#FFFFFF" align=right>7606</td>
+    <td bgcolor="#FFFFFF" align=right>16718</td>
+    <td bgcolor="#FFFFFF" align=right>3419</td>
+    <td bgcolor="#FFFFFF" align=right>8759</td>
+    <td bgcolor="#FFFFFF" align=right>12178</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>97</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2E</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>177</td>
+    <td bgcolor="#FFFFFF" align=right>456</td>
+    <td bgcolor="#FFFFFF" align=right>160</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>793</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>1198</td>
+    <td bgcolor="#FFFFFF" align=right>4956</td>
+    <td bgcolor="#FFFFFF" align=right>6154</td>
+    <td bgcolor="#FFFFFF" align=right>789</td>
+    <td bgcolor="#FFFFFF" align=right>5757</td>
+    <td bgcolor="#FFFFFF" align=right>6546</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>98</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2F</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>409</td>
+    <td bgcolor="#FFFFFF" align=right>406</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>815</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>6529</td>
+    <td bgcolor="#FFFFFF" align=right>5856</td>
+    <td bgcolor="#FFFFFF" align=right>12385</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>396</td>
+    <td bgcolor="#FFFFFF" align=right>396</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>99</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">3U</td>
+    <td bgcolor="#FFFFFF" align=right>17</td>
+    <td bgcolor="#FFFFFF" align=right>13</td>
+    <td bgcolor="#FFFFFF" align=right>30</td>
+    <td bgcolor="#FFFFFF" align=right>2783</td>
+    <td bgcolor="#FFFFFF" align=right>1357</td>
+    <td bgcolor="#FFFFFF" align=right>87</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4227</td>
+    <td bgcolor="#FFFFFF" align=right>19</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>19</td>
+    <td bgcolor="#FFFFFF" align=right>38857</td>
+    <td bgcolor="#FFFFFF" align=right>20938</td>
+    <td bgcolor="#FFFFFF" align=right>59795</td>
+    <td bgcolor="#FFFFFF" align=right>41161</td>
+    <td bgcolor="#FFFFFF" align=right>29398</td>
+    <td bgcolor="#FFFFFF" align=right>70559</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>100</td>
+    <td bgcolor="#FFFFFF">16.01 - 17.00</td>
+    <td bgcolor="#FFFFFF">1</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>101</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1B</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>715</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>715</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>5475</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>5475</td>
+    <td bgcolor="#FFFFFF" align=right>4256</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4256</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>102</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1C</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>8</td>
+    <td bgcolor="#FFFFFF" align=right>556</td>
+    <td bgcolor="#FFFFFF" align=right>348</td>
+    <td bgcolor="#FFFFFF" align=right>122</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1026</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3746</td>
+    <td bgcolor="#FFFFFF" align=right>3509</td>
+    <td bgcolor="#FFFFFF" align=right>7255</td>
+    <td bgcolor="#FFFFFF" align=right>2622</td>
+    <td bgcolor="#FFFFFF" align=right>5794</td>
+    <td bgcolor="#FFFFFF" align=right>8416</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>103</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2D</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>8</td>
+    <td bgcolor="#FFFFFF" align=right>577</td>
+    <td bgcolor="#FFFFFF" align=right>246</td>
+    <td bgcolor="#FFFFFF" align=right>124</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>947</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4565</td>
+    <td bgcolor="#FFFFFF" align=right>3339</td>
+    <td bgcolor="#FFFFFF" align=right>7904</td>
+    <td bgcolor="#FFFFFF" align=right>5445</td>
+    <td bgcolor="#FFFFFF" align=right>5191</td>
+    <td bgcolor="#FFFFFF" align=right>10636</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>104</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2E</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>180</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>180</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1362</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1362</td>
+    <td bgcolor="#FFFFFF" align=right>841</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>841</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>105</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2F</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>376</td>
+    <td bgcolor="#FFFFFF" align=right>603</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>979</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3054</td>
+    <td bgcolor="#FFFFFF" align=right>10074</td>
+    <td bgcolor="#FFFFFF" align=right>13128</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6377</td>
+    <td bgcolor="#FFFFFF" align=right>6377</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>106</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">3U</td>
+    <td bgcolor="#FFFFFF" align=right>13</td>
+    <td bgcolor="#FFFFFF" align=right>8</td>
+    <td bgcolor="#FFFFFF" align=right>21</td>
+    <td bgcolor="#FFFFFF" align=right>2007</td>
+    <td bgcolor="#FFFFFF" align=right>1032</td>
+    <td bgcolor="#FFFFFF" align=right>54</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3093</td>
+    <td bgcolor="#FFFFFF" align=right>14</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>14</td>
+    <td bgcolor="#FFFFFF" align=right>30444</td>
+    <td bgcolor="#FFFFFF" align=right>16762</td>
+    <td bgcolor="#FFFFFF" align=right>47206</td>
+    <td bgcolor="#FFFFFF" align=right>21566</td>
+    <td bgcolor="#FFFFFF" align=right>8062</td>
+    <td bgcolor="#FFFFFF" align=right>29628</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>107</td>
+    <td bgcolor="#FFFFFF">17.01 - 18.00</td>
+    <td bgcolor="#FFFFFF">1B</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>442</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>442</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3690</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3690</td>
+    <td bgcolor="#FFFFFF" align=right>5439</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>5439</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>108</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1C</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>11</td>
+    <td bgcolor="#FFFFFF" align=right>754</td>
+    <td bgcolor="#FFFFFF" align=right>609</td>
+    <td bgcolor="#FFFFFF" align=right>148</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1511</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>5701</td>
+    <td bgcolor="#FFFFFF" align=right>5783</td>
+    <td bgcolor="#FFFFFF" align=right>11484</td>
+    <td bgcolor="#FFFFFF" align=right>10034</td>
+    <td bgcolor="#FFFFFF" align=right>10231</td>
+    <td bgcolor="#FFFFFF" align=right>20265</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>109</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2D</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>10</td>
+    <td bgcolor="#FFFFFF" align=right>718</td>
+    <td bgcolor="#FFFFFF" align=right>383</td>
+    <td bgcolor="#FFFFFF" align=right>142</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1243</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>6209</td>
+    <td bgcolor="#FFFFFF" align=right>5270</td>
+    <td bgcolor="#FFFFFF" align=right>11479</td>
+    <td bgcolor="#FFFFFF" align=right>1494</td>
+    <td bgcolor="#FFFFFF" align=right>4518</td>
+    <td bgcolor="#FFFFFF" align=right>6012</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>110</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2E</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>746</td>
+    <td bgcolor="#FFFFFF" align=right>143</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>893</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4543</td>
+    <td bgcolor="#FFFFFF" align=right>1239</td>
+    <td bgcolor="#FFFFFF" align=right>5782</td>
+    <td bgcolor="#FFFFFF" align=right>580</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>580</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>111</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2F</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>265</td>
+    <td bgcolor="#FFFFFF" align=right>557</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>822</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3163</td>
+    <td bgcolor="#FFFFFF" align=right>4465</td>
+    <td bgcolor="#FFFFFF" align=right>7628</td>
+    <td bgcolor="#FFFFFF" align=right>534</td>
+    <td bgcolor="#FFFFFF" align=right>2785</td>
+    <td bgcolor="#FFFFFF" align=right>3319</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>112</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">3U</td>
+    <td bgcolor="#FFFFFF" align=right>13</td>
+    <td bgcolor="#FFFFFF" align=right>9</td>
+    <td bgcolor="#FFFFFF" align=right>22</td>
+    <td bgcolor="#FFFFFF" align=right>2375</td>
+    <td bgcolor="#FFFFFF" align=right>1273</td>
+    <td bgcolor="#FFFFFF" align=right>78</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3726</td>
+    <td bgcolor="#FFFFFF" align=right>26</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>26</td>
+    <td bgcolor="#FFFFFF" align=right>40917</td>
+    <td bgcolor="#FFFFFF" align=right>20474</td>
+    <td bgcolor="#FFFFFF" align=right>61391</td>
+    <td bgcolor="#FFFFFF" align=right>35792</td>
+    <td bgcolor="#FFFFFF" align=right>15531</td>
+    <td bgcolor="#FFFFFF" align=right>51323</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>113</td>
+    <td bgcolor="#FFFFFF">18.01 - 19.00</td>
+    <td bgcolor="#FFFFFF">1</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>114</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1B</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>9</td>
+    <td bgcolor="#FFFFFF" align=right>586</td>
+    <td bgcolor="#FFFFFF" align=right>534</td>
+    <td bgcolor="#FFFFFF" align=right>159</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1279</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>5060</td>
+    <td bgcolor="#FFFFFF" align=right>5530</td>
+    <td bgcolor="#FFFFFF" align=right>10590</td>
+    <td bgcolor="#FFFFFF" align=right>2508</td>
+    <td bgcolor="#FFFFFF" align=right>8281</td>
+    <td bgcolor="#FFFFFF" align=right>10789</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>115</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1C</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>11</td>
+    <td bgcolor="#FFFFFF" align=right>669</td>
+    <td bgcolor="#FFFFFF" align=right>515</td>
+    <td bgcolor="#FFFFFF" align=right>198</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1382</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4771</td>
+    <td bgcolor="#FFFFFF" align=right>5956</td>
+    <td bgcolor="#FFFFFF" align=right>10727</td>
+    <td bgcolor="#FFFFFF" align=right>1856</td>
+    <td bgcolor="#FFFFFF" align=right>2134</td>
+    <td bgcolor="#FFFFFF" align=right>3990</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>116</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2D</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>8</td>
+    <td bgcolor="#FFFFFF" align=right>886</td>
+    <td bgcolor="#FFFFFF" align=right>207</td>
+    <td bgcolor="#FFFFFF" align=right>52</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1145</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>7295</td>
+    <td bgcolor="#FFFFFF" align=right>3599</td>
+    <td bgcolor="#FFFFFF" align=right>10894</td>
+    <td bgcolor="#FFFFFF" align=right>5993</td>
+    <td bgcolor="#FFFFFF" align=right>2918</td>
+    <td bgcolor="#FFFFFF" align=right>8911</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>117</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2E</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>313</td>
+    <td bgcolor="#FFFFFF" align=right>616</td>
+    <td bgcolor="#FFFFFF" align=right>123</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1052</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2206</td>
+    <td bgcolor="#FFFFFF" align=right>3806</td>
+    <td bgcolor="#FFFFFF" align=right>6012</td>
+    <td bgcolor="#FFFFFF" align=right>1563</td>
+    <td bgcolor="#FFFFFF" align=right>12112</td>
+    <td bgcolor="#FFFFFF" align=right>13675</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>118</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2F</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>147</td>
+    <td bgcolor="#FFFFFF" align=right>116</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>263</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1275</td>
+    <td bgcolor="#FFFFFF" align=right>1362</td>
+    <td bgcolor="#FFFFFF" align=right>2637</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>119</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">3U</td>
+    <td bgcolor="#FFFFFF" align=right>14</td>
+    <td bgcolor="#FFFFFF" align=right>9</td>
+    <td bgcolor="#FFFFFF" align=right>23</td>
+    <td bgcolor="#FFFFFF" align=right>2196</td>
+    <td bgcolor="#FFFFFF" align=right>1540</td>
+    <td bgcolor="#FFFFFF" align=right>17</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3753</td>
+    <td bgcolor="#FFFFFF" align=right>13</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>13</td>
+    <td bgcolor="#FFFFFF" align=right>28771</td>
+    <td bgcolor="#FFFFFF" align=right>27672</td>
+    <td bgcolor="#FFFFFF" align=right>56443</td>
+    <td bgcolor="#FFFFFF" align=right>43762</td>
+    <td bgcolor="#FFFFFF" align=right>31801</td>
+    <td bgcolor="#FFFFFF" align=right>75563</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>120</td>
+    <td bgcolor="#FFFFFF">19.01 - 20.00</td>
+    <td bgcolor="#FFFFFF">1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>121</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1B</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>215</td>
+    <td bgcolor="#FFFFFF" align=right>385</td>
+    <td bgcolor="#FFFFFF" align=right>184</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>784</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1686</td>
+    <td bgcolor="#FFFFFF" align=right>4545</td>
+    <td bgcolor="#FFFFFF" align=right>6231</td>
+    <td bgcolor="#FFFFFF" align=right>563</td>
+    <td bgcolor="#FFFFFF" align=right>3680</td>
+    <td bgcolor="#FFFFFF" align=right>4243</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>122</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1C</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>8</td>
+    <td bgcolor="#FFFFFF" align=right>616</td>
+    <td bgcolor="#FFFFFF" align=right>324</td>
+    <td bgcolor="#FFFFFF" align=right>105</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1045</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>4877</td>
+    <td bgcolor="#FFFFFF" align=right>3295</td>
+    <td bgcolor="#FFFFFF" align=right>8172</td>
+    <td bgcolor="#FFFFFF" align=right>7044</td>
+    <td bgcolor="#FFFFFF" align=right>2208</td>
+    <td bgcolor="#FFFFFF" align=right>9252</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>123</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2D</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>10</td>
+    <td bgcolor="#FFFFFF" align=right>824</td>
+    <td bgcolor="#FFFFFF" align=right>316</td>
+    <td bgcolor="#FFFFFF" align=right>207</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1347</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6402</td>
+    <td bgcolor="#FFFFFF" align=right>5673</td>
+    <td bgcolor="#FFFFFF" align=right>12075</td>
+    <td bgcolor="#FFFFFF" align=right>6718</td>
+    <td bgcolor="#FFFFFF" align=right>10114</td>
+    <td bgcolor="#FFFFFF" align=right>16832</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>124</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2E</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>533</td>
+    <td bgcolor="#FFFFFF" align=right>206</td>
+    <td bgcolor="#FFFFFF" align=right>77</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>816</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3048</td>
+    <td bgcolor="#FFFFFF" align=right>2456</td>
+    <td bgcolor="#FFFFFF" align=right>5504</td>
+    <td bgcolor="#FFFFFF" align=right>1531</td>
+    <td bgcolor="#FFFFFF" align=right>1910</td>
+    <td bgcolor="#FFFFFF" align=right>3441</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>125</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2F</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>257</td>
+    <td bgcolor="#FFFFFF" align=right>116</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>373</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>1977</td>
+    <td bgcolor="#FFFFFF" align=right>1246</td>
+    <td bgcolor="#FFFFFF" align=right>3223</td>
+    <td bgcolor="#FFFFFF" align=right>391</td>
+    <td bgcolor="#FFFFFF" align=right>989</td>
+    <td bgcolor="#FFFFFF" align=right>1380</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>126</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">3U</td>
+    <td bgcolor="#FFFFFF" align=right>17</td>
+    <td bgcolor="#FFFFFF" align=right>10</td>
+    <td bgcolor="#FFFFFF" align=right>27</td>
+    <td bgcolor="#FFFFFF" align=right>2247</td>
+    <td bgcolor="#FFFFFF" align=right>1715</td>
+    <td bgcolor="#FFFFFF" align=right>18</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3980</td>
+    <td bgcolor="#FFFFFF" align=right>40</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>40</td>
+    <td bgcolor="#FFFFFF" align=right>24895</td>
+    <td bgcolor="#FFFFFF" align=right>22395</td>
+    <td bgcolor="#FFFFFF" align=right>47290</td>
+    <td bgcolor="#FFFFFF" align=right>29954</td>
+    <td bgcolor="#FFFFFF" align=right>43472</td>
+    <td bgcolor="#FFFFFF" align=right>73426</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>127</td>
+    <td bgcolor="#FFFFFF">20.01 - 21.00</td>
+    <td bgcolor="#FFFFFF">1B</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>243</td>
+    <td bgcolor="#FFFFFF" align=right>185</td>
+    <td bgcolor="#FFFFFF" align=right>25</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>453</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1573</td>
+    <td bgcolor="#FFFFFF" align=right>1481</td>
+    <td bgcolor="#FFFFFF" align=right>3054</td>
+    <td bgcolor="#FFFFFF" align=right>3216</td>
+    <td bgcolor="#FFFFFF" align=right>1588</td>
+    <td bgcolor="#FFFFFF" align=right>4804</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>128</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1C</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>280</td>
+    <td bgcolor="#FFFFFF" align=right>218</td>
+    <td bgcolor="#FFFFFF" align=right>43</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>541</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1773</td>
+    <td bgcolor="#FFFFFF" align=right>2085</td>
+    <td bgcolor="#FFFFFF" align=right>3858</td>
+    <td bgcolor="#FFFFFF" align=right>1234</td>
+    <td bgcolor="#FFFFFF" align=right>2420</td>
+    <td bgcolor="#FFFFFF" align=right>3654</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>129</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2D</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>311</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>311</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2237</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2237</td>
+    <td bgcolor="#FFFFFF" align=right>3741</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3741</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>130</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2F</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>387</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>387</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4762</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4762</td>
+    <td bgcolor="#FFFFFF" align=right>1044</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1044</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>131</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">3U</td>
+    <td bgcolor="#FFFFFF" align=right>11</td>
+    <td bgcolor="#FFFFFF" align=right>9</td>
+    <td bgcolor="#FFFFFF" align=right>20</td>
+    <td bgcolor="#FFFFFF" align=right>1812</td>
+    <td bgcolor="#FFFFFF" align=right>1735</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3547</td>
+    <td bgcolor="#FFFFFF" align=right>31</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>31</td>
+    <td bgcolor="#FFFFFF" align=right>25153</td>
+    <td bgcolor="#FFFFFF" align=right>29423</td>
+    <td bgcolor="#FFFFFF" align=right>54576</td>
+    <td bgcolor="#FFFFFF" align=right>28155</td>
+    <td bgcolor="#FFFFFF" align=right>33004</td>
+    <td bgcolor="#FFFFFF" align=right>61159</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>132</td>
+    <td bgcolor="#FFFFFF">21.01 - 22.00</td>
+    <td bgcolor="#FFFFFF">1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>133</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1B</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>252</td>
+    <td bgcolor="#FFFFFF" align=right>50</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>302</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2499</td>
+    <td bgcolor="#FFFFFF" align=right>2499</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>3664</td>
+    <td bgcolor="#FFFFFF" align=right>3664</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>134</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1C</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>703</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>703</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4676</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4676</td>
+    <td bgcolor="#FFFFFF" align=right>2590</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2590</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>135</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2D</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>529</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>529</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>4940</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>4940</td>
+    <td bgcolor="#FFFFFF" align=right>6343</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6343</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>136</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2F</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>199</td>
+    <td bgcolor="#FFFFFF" align=right>112</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>311</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>1020</td>
+    <td bgcolor="#FFFFFF" align=right>910</td>
+    <td bgcolor="#FFFFFF" align=right>1930</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1872</td>
+    <td bgcolor="#FFFFFF" align=right>1872</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>137</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">3U</td>
+    <td bgcolor="#FFFFFF" align=right>8</td>
+    <td bgcolor="#FFFFFF" align=right>4</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>1095</td>
+    <td bgcolor="#FFFFFF" align=right>783</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1878</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>12707</td>
+    <td bgcolor="#FFFFFF" align=right>12769</td>
+    <td bgcolor="#FFFFFF" align=right>25476</td>
+    <td bgcolor="#FFFFFF" align=right>4108</td>
+    <td bgcolor="#FFFFFF" align=right>25733</td>
+    <td bgcolor="#FFFFFF" align=right>29841</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>138</td>
+    <td bgcolor="#FFFFFF">22.01 - 23.00</td>
+    <td bgcolor="#FFFFFF">1B</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>370</td>
+    <td bgcolor="#FFFFFF" align=right>121</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>491</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>3250</td>
+    <td bgcolor="#FFFFFF" align=right>1287</td>
+    <td bgcolor="#FFFFFF" align=right>4537</td>
+    <td bgcolor="#FFFFFF" align=right>86</td>
+    <td bgcolor="#FFFFFF" align=right>1002</td>
+    <td bgcolor="#FFFFFF" align=right>1088</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>139</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1C</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>180</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>180</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1278</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1278</td>
+    <td bgcolor="#FFFFFF" align=right>761</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>761</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>140</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2D</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>136</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>143</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1820</td>
+    <td bgcolor="#FFFFFF" align=right>1820</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1818</td>
+    <td bgcolor="#FFFFFF" align=right>1818</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>141</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">2F</td>
+    <td bgcolor="#FFFFFF" align=right>5</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>521</td>
+    <td bgcolor="#FFFFFF" align=right>117</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>638</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>5436</td>
+    <td bgcolor="#FFFFFF" align=right>390</td>
+    <td bgcolor="#FFFFFF" align=right>5826</td>
+    <td bgcolor="#FFFFFF" align=right>1810</td>
+    <td bgcolor="#FFFFFF" align=right>1601</td>
+    <td bgcolor="#FFFFFF" align=right>3411</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>142</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">3U</td>
+    <td bgcolor="#FFFFFF" align=right>9</td>
+    <td bgcolor="#FFFFFF" align=right>3</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>2128</td>
+    <td bgcolor="#FFFFFF" align=right>718</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2847</td>
+    <td bgcolor="#FFFFFF" align=right>24</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>24</td>
+    <td bgcolor="#FFFFFF" align=right>41875</td>
+    <td bgcolor="#FFFFFF" align=right>1265</td>
+    <td bgcolor="#FFFFFF" align=right>43140</td>
+    <td bgcolor="#FFFFFF" align=right>70879</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>70879</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>143</td>
+    <td bgcolor="#FFFFFF">23.01 - 24.00</td>
+    <td bgcolor="#FFFFFF">1B</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2</td>
+    <td bgcolor="#FFFFFF" align=right>389</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>389</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>2848</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2848</td>
+    <td bgcolor="#FFFFFF" align=right>1074</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1074</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>144</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">1C</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1</td>
+    <td bgcolor="#FFFFFF" align=right>152</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>152</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>724</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>724</td>
+    <td bgcolor="#FFFFFF" align=right>1438</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>1438</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr> 
+    <td bgcolor="#FFFFFF" align=center>145</td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">3U</td>
+    <td bgcolor="#FFFFFF" align=right>6</td>
+    <td bgcolor="#FFFFFF" align=right>7</td>
+    <td bgcolor="#FFFFFF" align=right>13</td>
+    <td bgcolor="#FFFFFF" align=right>1112</td>
+    <td bgcolor="#FFFFFF" align=right>1285</td>
+    <td bgcolor="#FFFFFF" align=right>21</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>2418</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>12</td>
+    <td bgcolor="#FFFFFF" align=right>21008</td>
+    <td bgcolor="#FFFFFF" align=right>22791</td>
+    <td bgcolor="#FFFFFF" align=right>43799</td>
+    <td bgcolor="#FFFFFF" align=right>23048</td>
+    <td bgcolor="#FFFFFF" align=right>3152</td>
+    <td bgcolor="#FFFFFF" align=right>26200</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+    <td bgcolor="#FFFFFF" align=right>0</td>
+  </tr>
+    <tr>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF"></td>
+    <td bgcolor="#FFFFFF">
+      <div align="center"><b>TOTAL</b></div>
+    </td>
+    <td bgcolor="#FFFFFF" align=right><b>510 </b></td>
+    <td bgcolor="#FFFFFF" align=right><b>509</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>1019</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>75421</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>67581</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>6296</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>0</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>149298</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>1030</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>0</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>1030</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>874998</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>844923</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>1719921</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>792941</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>980061</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>1773002</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>0</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>0</b></td>
+    <td bgcolor="#FFFFFF" align=right><b>0</b></td>
+  </tr>
+</table>
+<br>
+Catatan:<br>
+- PENUMPANG DTG/BRK = DEWASA + ANAK + BAYI
+<br>
+- UNTUK DATA CGK MASIH BERGERAK SAMPAI H-20<br><br>
+<i>published : 03/09/2026 14:07:21</i><br>
+
+<br>
+<form name="form1" method="post" action="https://oasys.angkasapura2.co.id/dau/adda/DailyReportTotal/X/excel">
+  <input type="hidden" name="DAU" value="10B">
+  <input type="hidden" name="terminal" value="">
+  <input type="hidden" name="tipeviewDAU" value="print">
+  <input type="hidden" name="BRANCH_CODE" value="CGK">
+  <input type="hidden" name="transactions_dateDAU" value="2026/08/01 - 2026/08/01">
+  <input type="hidden" name="DomInt" value="ALL">
+  <input type="hidden" name="SUFFIX" value="ALL">
+  <input type="submit" name="Submit" value="<< DOWNLOAD FORMAT EXCEL >>">
+</form>
+
