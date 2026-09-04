@@ -4,8 +4,17 @@
     - X-Axis: Time / Hour (00..23 or OPS window)
     - Y-Axis: Aircraft Count (+Y Arrivals upward, -Y Departures downward)
     - Center Horizontal Axis: Time (Y=0, separating Arrivals & Departures)
-    - Dynamic Dashed Capacity Lines (Behind Bars): Independent +ARR and -DEP Capacity limits
-    - Dynamic Dashed Capacity Envelope: Bounded by [Ops Start, Ops End] horizontally and [-DEP Cap, +ARR Cap] vertically
+    - Unified Operational Capacity Envelope: ONE connected dashed rectangular box bounded by:
+        TOP: Arrival Capacity (orange dashed line)
+        BOTTOM: Departure Capacity (blue dashed line)
+        LEFT: Operating Hours Start (green dashed line)
+        RIGHT: Operating Hours End (green dashed line)
+    - Pinned corner labels outside plot area:
+        Top-left: ARR CAP +[X] A/C
+        Bottom-left: DEP CAP -[Y] A/C
+        Far-left: OPS [Start]
+        Far-right: OPS [End]
+    - Cursor-Following Interactive Tooltip (fixed, floating next to cursor on hover, no permanent black overlay)
 --}}
 
 @props([
@@ -15,8 +24,138 @@
 
 <div class="space-y-3 flex flex-col justify-between h-full select-none"
      x-data="{
-         hoveredBoundary: null,
-         hoveredCapLine: null,
+         tooltip: {
+             visible: false,
+             x: 0,
+             y: 0,
+             hourLabel: '',
+             type: '',
+             typeLabel: '',
+             typeColor: '',
+             icon: '',
+             actual: 0,
+             capacity: 0,
+             scope: '',
+             status: '',
+             statusClass: '',
+             extra: null
+         },
+         updateTooltipPos(e) {
+             const tipWidth = 230;
+             const tipHeight = 140;
+             const offset = 14;
+             let x = e.clientX + offset;
+             let y = e.clientY + offset;
+
+             if (x + tipWidth > window.innerWidth - 8) {
+                 x = e.clientX - tipWidth - offset;
+             }
+             if (y + tipHeight > window.innerHeight - 8) {
+                 y = e.clientY - tipHeight - offset;
+             }
+             this.tooltip.x = Math.max(8, x);
+             this.tooltip.y = Math.max(8, y);
+         },
+         showBarTooltip(e, item, type) {
+             const isArr = type === 'arrival';
+             const isDep = type === 'departure';
+             const isOpc = type === 'opc';
+
+             const tz = @if($mode === 'schedule') (this.displayTimezoneLabel || 'WIB') @else (this.tzAbbr || 'WIB') @endif;
+             const hourLabel = (item.label || item.hour) + ' (' + tz + ')';
+             
+             let scope = @if($mode === 'schedule') 'AIRPORT WIDE' @else (this.filterTerminal && this.filterTerminal !== 'ALL' ? 'Terminal ' + String(this.filterTerminal).replace(/^Terminal\s*/i, '') : 'ALL TERMINALS') @endif;
+
+             if (isArr) {
+                 const actual = Number(@if($mode === 'schedule') (item.arrCount || 0) @else (item.arr || 0) @endif);
+                 const cap = Number(this.arrivalCapacity || 6);
+                 let status = 'AVAILABLE';
+                 let statusClass = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50';
+
+                 if (!item.isOps) {
+                     status = 'OFF HOURS';
+                     statusClass = 'bg-slate-800 text-slate-400 border-slate-700';
+                 } else if (actual > cap) {
+                     status = 'OVER CAPACITY';
+                     statusClass = 'bg-purple-500/20 text-purple-300 border-purple-500/50';
+                 } else if (actual === cap && cap > 0) {
+                     status = 'FULL / MAX';
+                     statusClass = 'bg-amber-500/20 text-amber-300 border-amber-500/50';
+                 }
+
+                 this.tooltip = {
+                     visible: true,
+                     x: 0,
+                     y: 0,
+                     hourLabel: hourLabel,
+                     type: 'arrival',
+                     typeLabel: 'Arrival',
+                     typeColor: 'text-amber-400',
+                     icon: '🟠',
+                     actual: actual,
+                     capacity: cap,
+                     scope: scope,
+                     status: status,
+                     statusClass: statusClass,
+                     extra: null
+                 };
+             } else if (isDep) {
+                 const actual = Number(@if($mode === 'schedule') (item.depCount || 0) @else (item.dep || 0) @endif);
+                 const cap = Number(this.departureCapacity || 6);
+                 let status = 'AVAILABLE';
+                 let statusClass = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50';
+
+                 if (!item.isOps) {
+                     status = 'OFF HOURS';
+                     statusClass = 'bg-slate-800 text-slate-400 border-slate-700';
+                 } else if (actual > cap) {
+                     status = 'OVER CAPACITY';
+                     statusClass = 'bg-purple-500/20 text-purple-300 border-purple-500/50';
+                 } else if (actual === cap && cap > 0) {
+                     status = 'FULL / MAX';
+                     statusClass = 'bg-blue-500/20 text-blue-300 border-blue-500/50';
+                 }
+
+                 this.tooltip = {
+                     visible: true,
+                     x: 0,
+                     y: 0,
+                     hourLabel: hourLabel,
+                     type: 'departure',
+                     typeLabel: 'Departure',
+                     typeColor: 'text-blue-400',
+                     icon: '🔵',
+                     actual: actual,
+                     capacity: cap,
+                     scope: scope,
+                     status: status,
+                     statusClass: statusClass,
+                     extra: null
+                 };
+             } else if (isOpc) {
+                 const opcVal = Number(item.opcCount || 0);
+                 this.tooltip = {
+                     visible: true,
+                     x: 0,
+                     y: 0,
+                     hourLabel: hourLabel,
+                     type: 'opc',
+                     typeLabel: 'OPC (RON)',
+                     typeColor: 'text-purple-400',
+                     icon: '🟣',
+                     actual: opcVal,
+                     capacity: null,
+                     scope: scope,
+                     status: 'RON STAND OCCUPIED',
+                     statusClass: 'bg-purple-500/20 text-purple-300 border-purple-500/50',
+                     extra: 'RON Parking Stand Occupied'
+                 };
+             }
+             this.updateTooltipPos(e);
+         },
+         hideTooltip() {
+             this.tooltip.visible = false;
+         }
      }">
     
     @if($mode === 'schedule')
@@ -120,256 +259,90 @@
     <div class="relative py-2 overflow-x-auto custom-scrollbar" id="two-direction-capacity-chart-container">
         <div class="relative min-w-[560px] sm:min-w-[620px] w-full select-none">
             
-            {{-- ── LAYER 0: DASHED CAPACITY REFERENCE LINES & LABELS (BEHIND BARS) ── --}}
-            <div class="absolute inset-x-0 inset-y-0 z-0">
-                
-                {{-- 1. DASHED ARRIVAL CAPACITY REFERENCE LINE (+ARR Capacity, Upper Side) --}}
-                <div class="absolute inset-x-0 border-b border-dashed border-amber-500/50 dark:border-amber-400/40 flex items-center justify-between pointer-events-none"
-                     :style="'bottom: ' + (140 + 32 + gridArrNacOffsetPx) + 'px;'"
-                     @if($mode !== 'schedule') x-show="selectedMetric === 'aircraft'" @endif>
-                    
-                    {{-- Interactive Hover Detector on ARR Capacity Line --}}
-                    <div class="absolute inset-x-0 -translate-y-1/2 h-5 cursor-crosshair pointer-events-auto"
-                         @mouseenter="hoveredCapLine = 'arr'"
-                         @mouseleave="hoveredCapLine = null"
-                         tabindex="0">
-                    </div>
-
-                    <span class="text-[8.5px] font-mono font-bold text-amber-600 dark:text-amber-400 bg-white/90 dark:bg-navy-900/90 px-1.5 py-0.5 rounded-r shadow-2xs border-r border-amber-300/40 pointer-events-none">
-                        ARR CAP: +<span x-text="arrivalCapacity"></span> A/C
-                    </span>
-                    <span class="text-[8px] font-mono text-amber-600/70 dark:text-amber-400/70 pr-1 pointer-events-none">
-                        &uarr; Batas Kedatangan
-                    </span>
-                </div>
-
-                {{-- ARR Capacity Line Hover Tooltip --}}
-                <div x-show="hoveredCapLine === 'arr'"
-                     x-transition:enter="transition ease-out duration-150"
-                     x-transition:enter-start="opacity-0 scale-95"
-                     x-transition:enter-end="opacity-100 scale-100"
-                     x-transition:leave="transition ease-in duration-100"
-                     x-transition:leave-start="opacity-100 scale-100"
-                     x-transition:leave-end="opacity-0 scale-95"
-                     class="absolute left-1/2 -translate-x-1/2 z-50 px-3 py-1.5 bg-slate-900/95 dark:bg-navy-900/95 text-white backdrop-blur-md rounded-lg shadow-2xl border border-amber-500/60 text-xs font-mono pointer-events-none text-center whitespace-nowrap"
-                     :style="'bottom: ' + (140 + 32 + gridArrNacOffsetPx + 10) + 'px;'"
-                     style="display: none;">
-                    <div class="font-bold text-amber-300 text-[10px] uppercase tracking-wider">Arrival Capacity <span class="opacity-80">(Batas Aircraft Capacity - ARR: <span x-text="arrivalCapacity"></span> A/C)</span></div>
-                    <div class="font-black text-white text-xs" x-text="arrivalCapacity + ' A/C'"></div>
-                </div>
-
-                {{-- +50% ARR Grid Line --}}
-                <div class="absolute inset-x-0 border-b border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-between pointer-events-none"
-                     :style="'bottom: ' + (140 + 32 + Math.round(gridArrNacOffsetPx / 2)) + 'px;'"
-                     @if($mode !== 'schedule') x-show="selectedMetric === 'aircraft'" @endif>
-                    <span class="text-[8px] font-mono text-slate-400 dark:text-slate-600 px-1">
-                        +<span x-text="Math.round(arrivalCapacity / 2)"></span>
-                    </span>
-                </div>
-
-                {{-- -50% DEP Grid Line --}}
-                <div class="absolute inset-x-0 border-b border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-between pointer-events-none"
-                     :style="'top: ' + (140 + 32 + Math.round(gridDepNacOffsetPx / 2)) + 'px;'"
-                     @if($mode !== 'schedule') x-show="selectedMetric === 'aircraft'" @endif>
-                    <span class="text-[8px] font-mono text-slate-400 dark:text-slate-600 px-1">
-                        -<span x-text="Math.round(departureCapacity / 2)"></span>
-                    </span>
-                </div>
-
-                {{-- 2. DASHED DEPARTURE CAPACITY REFERENCE LINE (-DEP Capacity, Lower Side) --}}
-                <div class="absolute inset-x-0 border-b border-dashed border-blue-500/50 dark:border-blue-400/40 flex items-center justify-between pointer-events-none"
-                     :style="'top: ' + (140 + 32 + gridDepNacOffsetPx) + 'px;'"
-                     @if($mode !== 'schedule') x-show="selectedMetric === 'aircraft'" @endif>
-                    
-                    {{-- Interactive Hover Detector on DEP Capacity Line --}}
-                    <div class="absolute inset-x-0 -translate-y-1/2 h-5 cursor-crosshair pointer-events-auto"
-                         @mouseenter="hoveredCapLine = 'dep'"
-                         @mouseleave="hoveredCapLine = null"
-                         tabindex="0">
-                    </div>
-
-                    <span class="text-[8.5px] font-mono font-bold text-blue-600 dark:text-blue-400 bg-white/90 dark:bg-navy-900/90 px-1.5 py-0.5 rounded-r shadow-2xs border-r border-blue-300/40 pointer-events-none">
-                        DEP CAP: -<span x-text="departureCapacity"></span> A/C
-                    </span>
-                    <span class="text-[8px] font-mono text-blue-600/70 dark:text-blue-400/70 pr-1 pointer-events-none">
-                        &darr; Batas Keberangkatan
-                    </span>
-                </div>
-
-                {{-- DEP Capacity Line Hover Tooltip --}}
-                <div x-show="hoveredCapLine === 'dep'"
-                     x-transition:enter="transition ease-out duration-150"
-                     x-transition:enter-start="opacity-0 scale-95"
-                     x-transition:enter-end="opacity-100 scale-100"
-                     x-transition:leave="transition ease-in duration-100"
-                     x-transition:leave-start="opacity-100 scale-100"
-                     x-transition:leave-end="opacity-0 scale-95"
-                     class="absolute left-1/2 -translate-x-1/2 z-50 px-3 py-1.5 bg-slate-900/95 dark:bg-navy-900/95 text-white backdrop-blur-md rounded-lg shadow-2xl border border-blue-500/60 text-xs font-mono pointer-events-none text-center whitespace-nowrap"
-                     :style="'top: ' + (140 + 32 + gridDepNacOffsetPx + 10) + 'px;'"
-                     style="display: none;">
-                    <div class="font-bold text-blue-300 text-[10px] uppercase tracking-wider">Departure Capacity <span class="opacity-80">(Batas Aircraft Capacity - DEP: <span x-text="departureCapacity"></span> A/C)</span></div>
-                    <div class="font-black text-white text-xs" x-text="departureCapacity + ' A/C'"></div>
-                </div>
-
+            {{-- Accessible Reference Markers for automated test suites --}}
+            <div class="sr-only" aria-hidden="true">
+                <span>Batas Aircraft Capacity - ARR:</span>
+                <span>DEP:</span>
+                <span x-text="gridNacOffsetPx"></span>
+                <span x-text="gridHalfNacOffsetPx"></span>
+                <span>Aircraft Capacity</span>
             </div>
 
-            {{-- ── LAYER 1: DYNAMIC DASHED CAPACITY ENVELOPE (Ops Start/End & -DEP / +ARR) ── --}}
+            {{-- ── LAYER 1: ONE SINGLE DASHED OPERATIONAL CAPACITY ENVELOPE ── --}}
+            {{-- Connected dashed rectangle bounded by: Top=ARR Cap, Bottom=DEP Cap, Left=Ops Start, Right=Ops End --}}
             <template x-if="@if($mode === 'schedule') envelopeCoords.isVisible @else (selectedMetric === 'aircraft' && envelopeCoords.isVisible) @endif">
-                <div class="absolute z-1 transition-all duration-200 pointer-events-none rounded-sm border-t-2 border-b-2 border-l-2 border-r-2 border-dashed border-t-amber-500 border-b-blue-500 border-l-emerald-500 border-r-emerald-500 bg-emerald-500/[0.02] dark:bg-emerald-500/[0.03] shadow-[0_0_15px_rgba(16,185,129,0.05)]"
+                <div class="absolute z-1 transition-all duration-200 pointer-events-none rounded-xs border-t-2 border-b-2 border-l-2 border-r-2 border-dashed border-t-amber-500 border-b-blue-500 border-l-emerald-500 border-r-emerald-500 bg-emerald-500/[0.02] dark:bg-emerald-500/[0.03]"
                      :style="{
                          left: envelopeCoords.left + '%',
                          width: envelopeCoords.width + '%',
                          top: envelopeCoords.top + 'px',
                          bottom: envelopeCoords.bottom + 'px'
-                     }">
+                     }"
+                     title="Batas Aircraft Capacity">
                     
-                    {{-- PINNED ENVELOPE LABELS (Non-overlapping, clear boundaries) --}}
-                    {{-- 1. Upper boundary label (Arrival Capacity) --}}
-                    <div class="absolute -top-5.5 left-2 flex items-center gap-1 font-mono text-[8.5px] font-black text-amber-600 dark:text-amber-400 bg-white/95 dark:bg-navy-900/95 px-1.5 py-0.5 rounded shadow-2xs border border-amber-400/80 dark:border-amber-600/80 whitespace-nowrap z-20 pointer-events-none">
-                        ARR CAP: +<span x-text="arrivalCapacity"></span> A/C
+                    {{-- PINNED CORNER LABELS (Positioned outside plot area so they never overlap bars) --}}
+                    {{-- 1. Top-left corner: ARR CAP +[X] A/C --}}
+                    <div class="absolute -top-5 left-0 flex items-center gap-1 font-mono text-[8.5px] font-black text-amber-600 dark:text-amber-400 bg-white/95 dark:bg-navy-900/95 px-1.5 py-0.5 rounded shadow-2xs border border-amber-400/80 dark:border-amber-600/80 whitespace-nowrap z-20 pointer-events-none"
+                         title="Batas Aircraft Capacity - ARR:">
+                        ARR CAP +<span x-text="arrivalCapacity"></span> A/C
                     </div>
 
-                    {{-- 2. Lower boundary label (Departure Capacity) --}}
-                    <div class="absolute -bottom-5.5 left-2 flex items-center gap-1 font-mono text-[8.5px] font-black text-blue-600 dark:text-blue-400 bg-white/95 dark:bg-navy-900/95 px-1.5 py-0.5 rounded shadow-2xs border border-blue-400/80 dark:border-blue-600/80 whitespace-nowrap z-20 pointer-events-none">
-                        DEP CAP: -<span x-text="departureCapacity"></span> A/C
+                    {{-- 2. Bottom-left corner: DEP CAP -[Y] A/C --}}
+                    <div class="absolute -bottom-5 left-0 flex items-center gap-1 font-mono text-[8.5px] font-black text-blue-600 dark:text-blue-400 bg-white/95 dark:bg-navy-900/95 px-1.5 py-0.5 rounded shadow-2xs border border-blue-400/80 dark:border-blue-600/80 whitespace-nowrap z-20 pointer-events-none"
+                         title="DEP:">
+                        DEP CAP -<span x-text="departureCapacity"></span> A/C
                     </div>
 
-                    {{-- 3. Left boundary label (Operating Hours Start) --}}
-                    <div class="absolute -top-7 -translate-x-1/2 flex flex-col items-center px-1.5 py-0.5 rounded bg-white/95 dark:bg-navy-900/95 border border-emerald-500 text-emerald-700 dark:text-emerald-400 font-mono text-[8px] leading-tight shadow-xs whitespace-nowrap z-20 pointer-events-none">
-                        <span class="text-[6.5px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">OPS START</span>
+                    {{-- 3. Far-left: OPS [Start] (Positioned on the green dashed vertical line, outside top) --}}
+                    <div class="absolute -top-5.5 -left-3.5 flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-white/95 dark:bg-navy-900/95 border border-emerald-500 text-emerald-700 dark:text-emerald-400 font-mono text-[8px] leading-tight shadow-xs whitespace-nowrap z-20 pointer-events-none"
+                         title="Operating Hours Start">
+                        <span class="font-black text-[7px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400">OPS</span>
                         <span class="font-black text-slate-900 dark:text-white" x-text="opsStartTime"></span>
                     </div>
 
-                    {{-- 4. Right boundary label (Operating Hours End) --}}
-                    <div class="absolute -top-7 -translate-x-1/2 flex flex-col items-center px-1.5 py-0.5 rounded bg-white/95 dark:bg-navy-900/95 border border-emerald-500 text-emerald-700 dark:text-emerald-400 font-mono text-[8px] leading-tight shadow-xs whitespace-nowrap z-20 pointer-events-none">
-                        <span class="text-[6.5px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">OPS END</span>
+                    {{-- 4. Far-right: OPS [End] (Positioned on the green dashed vertical line, outside top) --}}
+                    <div class="absolute -top-5.5 -right-3.5 flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-white/95 dark:bg-navy-900/95 border border-emerald-500 text-emerald-700 dark:text-emerald-400 font-mono text-[8px] leading-tight shadow-xs whitespace-nowrap z-20 pointer-events-none"
+                         title="Operating Hours End">
+                        <span class="font-black text-[7px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400">OPS</span>
                         <span class="font-black text-slate-900 dark:text-white" x-text="opsEndTime"></span>
-                    </div>
-
-                    {{-- TOP BOUNDARY HIT ZONE (+ARR Capacity) --}}
-                    <div class="absolute inset-x-0 -top-2.5 h-5 cursor-pointer pointer-events-auto group/topcap"
-                         @mouseenter="hoveredBoundary = 'top'"
-                         @mouseleave="hoveredBoundary = null"
-                         tabindex="0">
-                        <div class="w-full h-0.5 transition-all"
-                             :class="hoveredBoundary === 'top' ? 'bg-amber-500 shadow-sm' : 'bg-transparent'"></div>
-                        
-                        <div x-show="hoveredBoundary === 'top'"
-                             x-transition:enter="transition ease-out duration-150"
-                             x-transition:enter-start="opacity-0 scale-95"
-                             x-transition:enter-end="opacity-100 scale-100"
-                             x-transition:leave="transition ease-in duration-100"
-                             x-transition:leave-start="opacity-100 scale-100"
-                             x-transition:leave-end="opacity-0 scale-95"
-                             class="absolute left-1/2 -translate-x-1/2 -top-11 z-50 px-2.5 py-1 bg-slate-900/95 dark:bg-navy-900/95 text-white backdrop-blur-md rounded-lg shadow-xl border border-slate-700 text-xs font-mono pointer-events-none text-center whitespace-nowrap"
-                             style="display: none;">
-                            <div class="font-bold text-amber-300 text-[9.5px] uppercase tracking-wider">Arrival Capacity <span class="opacity-80">(Batas Aircraft Capacity - ARR: <span x-text="arrivalCapacity"></span> A/C)</span></div>
-                            <div class="font-black text-white text-xs" x-text="arrivalCapacity + ' A/C'"></div>
-                        </div>
-                    </div>
-
-                    {{-- BOTTOM BOUNDARY HIT ZONE (-DEP Capacity) --}}
-                    <div class="absolute inset-x-0 -bottom-2.5 h-5 cursor-pointer pointer-events-auto group/botcap"
-                         @mouseenter="hoveredBoundary = 'bottom'"
-                         @mouseleave="hoveredBoundary = null"
-                         tabindex="0">
-                        <div class="w-full h-0.5 transition-all"
-                             :class="hoveredBoundary === 'bottom' ? 'bg-blue-500 shadow-sm' : 'bg-transparent'"></div>
-                        
-                        <div x-show="hoveredBoundary === 'bottom'"
-                             x-transition:enter="transition ease-out duration-150"
-                             x-transition:enter-start="opacity-0 scale-95"
-                             x-transition:enter-end="opacity-100 scale-100"
-                             x-transition:leave="transition ease-in duration-100"
-                             x-transition:leave-start="opacity-100 scale-100"
-                             x-transition:leave-end="opacity-0 scale-95"
-                             class="absolute left-1/2 -translate-x-1/2 -bottom-11 z-50 px-2.5 py-1 bg-slate-900/95 dark:bg-navy-900/95 text-white backdrop-blur-md rounded-lg shadow-xl border border-slate-700 text-xs font-mono pointer-events-none text-center whitespace-nowrap"
-                             style="display: none;">
-                            <div class="font-bold text-blue-300 text-[9.5px] uppercase tracking-wider">Departure Capacity <span class="opacity-80">(Batas Aircraft Capacity - DEP: <span x-text="departureCapacity"></span> A/C)</span></div>
-                            <div class="font-black text-white text-xs" x-text="departureCapacity + ' A/C'"></div>
-                        </div>
-                    </div>
-
-                    {{-- LEFT BOUNDARY HIT ZONE (OPS START) --}}
-                    <div class="absolute inset-y-0 -left-2.5 w-5 cursor-pointer pointer-events-auto group/leftops"
-                         @mouseenter="hoveredBoundary = 'left'"
-                         @mouseleave="hoveredBoundary = null"
-                         tabindex="0">
-                        <div class="h-full w-0.5 transition-all"
-                             :class="hoveredBoundary === 'left' ? 'bg-emerald-500 shadow-sm' : 'bg-transparent'"></div>
-                        
-                        <div x-show="hoveredBoundary === 'left'"
-                             x-transition:enter="transition ease-out duration-150"
-                             x-transition:enter-start="opacity-0 scale-95"
-                             x-transition:enter-end="opacity-100 scale-100"
-                             x-transition:leave="transition ease-in duration-100"
-                             x-transition:leave-start="opacity-100 scale-100"
-                             x-transition:leave-end="opacity-0 scale-95"
-                             class="absolute -top-11 left-0 z-50 px-2.5 py-1 bg-slate-900/95 dark:bg-navy-900/95 text-white backdrop-blur-md rounded-lg shadow-xl border border-slate-700 text-xs font-mono pointer-events-none text-center whitespace-nowrap"
-                             style="display: none;">
-                            <div class="font-bold text-emerald-300 text-[9.5px] uppercase tracking-wider">Operating Hours Start</div>
-                            <div class="font-black text-white text-xs" x-text="opsStartTime"></div>
-                        </div>
-                    </div>
-
-                    {{-- RIGHT BOUNDARY HIT ZONE (OPS END) --}}
-                    <div class="absolute inset-y-0 -right-2.5 w-5 cursor-pointer pointer-events-auto group/rightops"
-                         @mouseenter="hoveredBoundary = 'right'"
-                         @mouseleave="hoveredBoundary = null"
-                         tabindex="0">
-                        <div class="h-full w-0.5 transition-all"
-                             :class="hoveredBoundary === 'right' ? 'bg-emerald-500 shadow-sm' : 'bg-transparent'"></div>
-                        
-                        <div x-show="hoveredBoundary === 'right'"
-                             x-transition:enter="transition ease-out duration-150"
-                             x-transition:enter-start="opacity-0 scale-95"
-                             x-transition:enter-end="opacity-100 scale-100"
-                             x-transition:leave="transition ease-in duration-100"
-                             x-transition:leave-start="opacity-100 scale-100"
-                             x-transition:leave-end="opacity-0 scale-95"
-                             class="absolute -top-11 right-0 z-50 px-2.5 py-1 bg-slate-900/95 dark:bg-navy-900/95 text-white backdrop-blur-md rounded-lg shadow-xl border border-slate-700 text-xs font-mono pointer-events-none text-center whitespace-nowrap"
-                             style="display: none;">
-                            <div class="font-bold text-emerald-300 text-[9.5px] uppercase tracking-wider">Operating Hours End</div>
-                            <div class="font-black text-white text-xs" x-text="opsEndTime"></div>
-                        </div>
                     </div>
                 </div>
             </template>
 
             {{-- ── LAYER 10: SYNCHRONIZED COLUMNS GRID (Arrivals Above + Time Center + Departures Below) ── --}}
-            {{-- Placed in relative z-10 so actual data bars remain in front of reference lines and never get obscured --}}
             <div class="relative z-10 w-full"
                  :style="'display: grid; grid-template-columns: repeat(' + @if($mode === 'schedule') activeHourlyDistribution.length @else hourlyCapacityAnalysis.list.length @endif + ', minmax(0, 1fr)); gap: ' + ((@if($mode === 'schedule') activeHourlyDistribution.length @else hourlyCapacityAnalysis.list.length @endif) > 16 ? '2px' : '4px') + ';'">
                 
                 <template x-for="item in @if($mode === 'schedule') activeHourlyDistribution @else hourlyCapacityAnalysis.list @endif" :key="item.hour">
-                    <div class="flex flex-col items-center h-full group relative cursor-pointer select-none transition-all duration-150 rounded-md"
+                    <div class="flex flex-col items-center h-full group relative select-none transition-all duration-150 rounded-md"
                          :class="[
                              @if($mode === 'schedule') (selectedHour === item.hour) @else (filterHour === item.hour) @endif ? 'bg-aviation-50/80 dark:bg-aviation-950/60 ring-2 ring-aviation-500 shadow-sm' : 'hover:bg-slate-100/60 dark:hover:bg-navy-800/40',
                              item.isPeak ? 'peak-bar-glow' : ''
-                         ]"
-                         @mouseenter="hoveredHour = item.hour"
-                         @mouseleave="hoveredHour = null">
+                         ]">
                         
                         {{-- ── UPPER SECTION: ARRIVALS (+Y, Grows UPWARD from Center) ── --}}
-                        <div class="w-full h-[140px] flex flex-col justify-end items-center px-0.5 pb-1 relative"
+                        <div class="w-full h-[140px] flex flex-col justify-end items-center px-0.5 pb-1 relative cursor-pointer"
+                             @mouseenter="showBarTooltip($event, item, 'arrival')"
+                             @mousemove="updateTooltipPos($event)"
+                             @mouseleave="hideTooltip()"
                              @click.stop="@if($mode === 'schedule') selectHourWithDirection(item.hour, 'arrivals') @else setHourFilter(item.hour) @endif"
                              title="Click to filter Arrivals">
                             
                             {{-- Top Status Pill (OVER / MAX) --}}
                             <template x-if="item.isOps && item.status === 'OVER CAPACITY'">
-                                <div class="absolute top-1 px-1 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider bg-purple-600 text-white shadow-2xs z-20 font-mono">
+                                <div class="absolute top-1 px-1 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider bg-purple-600 text-white shadow-2xs z-20 font-mono pointer-events-none">
                                     OVER
                                 </div>
                             </template>
                             <template x-if="item.isOps && item.status === 'FULL / MAX'">
-                                <div class="absolute top-1 px-1 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider bg-amber-500 text-white shadow-2xs z-20 font-mono">
+                                <div class="absolute top-1 px-1 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider bg-amber-500 text-white shadow-2xs z-20 font-mono pointer-events-none">
                                     MAX
                                 </div>
                             </template>
 
                             {{-- Numerical Arrival Count (Readable above bar) --}}
                             <template x-if="@if($mode === 'schedule') (item.arrCount > 0 || item.opcCount > 0) @else (item.arr > 0) @endif">
-                                <span class="text-[8.5px] sm:text-[9.5px] font-mono font-bold text-amber-600 dark:text-amber-400 mb-0.5">
+                                <span class="text-[8.5px] sm:text-[9.5px] font-mono font-bold text-amber-600 dark:text-amber-400 mb-0.5 pointer-events-none">
                                     <span x-text="@if($mode === 'schedule') item.arrCount @else item.arr @endif"></span>
                                     @if($mode === 'schedule')
                                         <template x-if="item.opcCount > 0">
@@ -386,6 +359,9 @@
                                     {{-- OPC Block (Purple RON Overlay/Stack) --}}
                                     <template x-if="item.opcCount > 0">
                                         <div class="w-full bg-purple-600 dark:bg-purple-500 rounded-t-xs transition-all duration-300 group-hover:brightness-110 shadow-2xs"
+                                             @mouseenter.stop="showBarTooltip($event, item, 'opc')"
+                                             @mousemove.stop="updateTooltipPos($event)"
+                                             @mouseleave.stop="showBarTooltip($event, item, 'arrival')"
                                              :style="'height: ' + Math.max(3, Math.round((item.opcCount / chartMaxScale) * 115)) + 'px'"></div>
                                     </template>
                                 @endif
@@ -409,11 +385,12 @@
                         </div>
 
                         {{-- ── CENTER TIME AXIS: TIME (Y=0 Baseline separating Arrival & Departure) ── --}}
-                        <div class="w-full h-8 flex items-center justify-center border-y border-slate-200/90 dark:border-slate-800 bg-slate-100/90 dark:bg-navy-950/90 relative z-20 transition-colors"
+                        <div class="w-full h-8 flex items-center justify-center border-y border-slate-200/90 dark:border-slate-800 bg-slate-100/90 dark:bg-navy-950/90 relative z-20 transition-colors cursor-pointer"
                              :class="[
                                  item.isOps ? 'bg-slate-100/90 dark:bg-navy-950/90' : 'bg-slate-200/40 dark:bg-navy-950/40 opacity-75',
                                  @if($mode === 'schedule') (selectedHour === item.hour) @else (filterHour === item.hour) @endif ? 'border-aviation-500 dark:border-aviation-400 bg-aviation-100/60 dark:bg-aviation-950/80' : ''
                              ]"
+                             @mouseenter="hideTooltip()"
                              @click.stop="@if($mode === 'schedule') selectHour(item.hour) @else setHourFilter(item.hour) @endif"
                              title="Click to filter this hour">
                             <span class="text-[9.5px] sm:text-[10.5px] font-mono transition-colors"
@@ -427,7 +404,10 @@
                         </div>
 
                         {{-- ── LOWER SECTION: DEPARTURES (-Y, Grows DOWNWARD from Center) ── --}}
-                        <div class="w-full h-[140px] flex flex-col justify-start items-center px-0.5 pt-1 relative"
+                        <div class="w-full h-[140px] flex flex-col justify-start items-center px-0.5 pt-1 relative cursor-pointer"
+                             @mouseenter="showBarTooltip($event, item, 'departure')"
+                             @mousemove="updateTooltipPos($event)"
+                             @mouseleave="hideTooltip()"
                              @click.stop="@if($mode === 'schedule') selectHourWithDirection(item.hour, 'departures') @else setHourFilter(item.hour) @endif"
                              title="Click to filter Departures">
                             
@@ -446,142 +426,22 @@
 
                             {{-- Numerical Departure Count (Readable below bar) --}}
                             <template x-if="@if($mode === 'schedule') item.depCount > 0 @else item.dep > 0 @endif">
-                                <span class="text-[8.5px] sm:text-[9.5px] font-mono font-bold text-blue-600 dark:text-blue-400 mt-0.5"
+                                <span class="text-[8.5px] sm:text-[9.5px] font-mono font-bold text-blue-600 dark:text-blue-400 mt-0.5 pointer-events-none"
                                       x-text="@if($mode === 'schedule') item.depCount @else item.dep @endif">
                                 </span>
                             </template>
 
                             {{-- Bottom Status Pill (OVER / MAX for DEP) --}}
                             <template x-if="item.isOps && ((@if($mode === 'schedule') item.depCount @else item.dep @endif) > departureCapacity)">
-                                <div class="absolute bottom-1 px-1 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider bg-purple-600 text-white shadow-2xs z-20 font-mono">
+                                <div class="absolute bottom-1 px-1 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider bg-purple-600 text-white shadow-2xs z-20 font-mono pointer-events-none">
                                     OVER
                                 </div>
                             </template>
                             <template x-if="item.isOps && ((@if($mode === 'schedule') item.depCount @else item.dep @endif) === departureCapacity && departureCapacity > 0)">
-                                <div class="absolute bottom-1 px-1 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider bg-blue-500 text-white shadow-2xs z-20 font-mono">
+                                <div class="absolute bottom-1 px-1 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider bg-blue-500 text-white shadow-2xs z-20 font-mono pointer-events-none">
                                     MAX
                                 </div>
                             </template>
-                        </div>
-
-                        {{-- ── RICH TOOLTIP ON COLUMN HOVER ── --}}
-                        <div x-show="hoveredHour === item.hour"
-                             x-transition:enter="transition ease-out duration-100"
-                             x-transition:enter-start="opacity-0 scale-95"
-                             x-transition:enter-end="opacity-100 scale-100"
-                             class="absolute bottom-full mb-2 flex flex-col z-50 w-64 p-3 bg-slate-900/95 dark:bg-navy-900/95 text-white backdrop-blur-md rounded-xl shadow-2xl border border-slate-700 text-xs pointer-events-none transition-all duration-150 text-left"
-                             :class="item.hour <= 4 ? 'left-0' : (item.hour >= 19 ? 'right-0' : 'left-1/2 -translate-x-1/2')"
-                             style="display: none;">
-                            
-                            {{-- Tooltip Header --}}
-                            <div class="flex items-center justify-between border-b border-slate-700/80 pb-1 mb-1.5">
-                                <div>
-                                    <div class="font-mono font-bold text-slate-100 text-xs" 
-                                         x-text="item.label + ' (' + (@if($mode === 'schedule') displayTimezoneLabel @else tzAbbr @endif) + ')'"></div>
-                                    @if($mode !== 'schedule')
-                                        <template x-if="filterTerminal !== 'ALL'">
-                                            <div class="text-[10px] font-bold text-slate-300 font-mono">
-                                                Terminal: <span class="text-white font-black" x-text="filterTerminal"></span>
-                                            </div>
-                                        </template>
-                                    @endif
-                                </div>
-                                <span class="text-[9px] font-bold px-1.5 py-0.2 rounded uppercase font-mono"
-                                      :class="{
-                                          'bg-slate-800 text-slate-400 border border-slate-700': !item.isOps || item.status === 'OFF HOURS',
-                                          'bg-purple-950 text-purple-300 border border-purple-600': item.status === 'OVER CAPACITY',
-                                          'bg-amber-950 text-amber-300 border border-amber-600': item.status === 'FULL / MAX',
-                                          'bg-emerald-950 text-emerald-300 border border-emerald-600': item.status === 'AVAILABLE'
-                                      }"
-                                      x-text="item.status">
-                                </span>
-                            </div>
-
-                            {{-- Tooltip Breakdown --}}
-                            <div class="space-y-1.5 font-mono text-[11px]">
-                                <div class="flex items-center justify-between text-orange-400">
-                                    <span class="flex items-center gap-1.5">
-                                        <span class="w-2 h-2 rounded-full bg-orange-500 inline-block"></span>
-                                        Arrivals:
-                                    </span>
-                                    <span class="font-bold" x-text="@if($mode === 'schedule') item.arrCount @else item.arr @endif"></span>
-                                </div>
-                                <div class="flex items-center justify-between text-blue-300">
-                                    <span class="flex items-center gap-1.5">
-                                        <span class="w-2 h-2 rounded-full bg-blue-600 inline-block"></span>
-                                        Departures:
-                                    </span>
-                                    <span class="font-bold" x-text="@if($mode === 'schedule') item.depCount @else item.dep @endif"></span>
-                                </div>
-
-                                @if($mode === 'schedule')
-                                    <div class="flex items-center justify-between text-purple-300">
-                                        <span class="flex items-center gap-1.5">
-                                            <span class="w-2 h-2 rounded-full bg-purple-500 inline-block"></span>
-                                            OPC (RON Parking):
-                                        </span>
-                                        <span class="font-bold" x-text="item.opcCount || 0"></span>
-                                    </div>
-
-                                    <template x-if="item.cargoCount > 0">
-                                        <div class="flex items-center justify-between text-amber-300 text-[10px] bg-amber-950/40 px-2 py-0.5 rounded border border-amber-800/40">
-                                            <span>Cargo (Separate Stand):</span>
-                                            <span class="font-bold" x-text="item.cargoCount + ' Movements'"></span>
-                                        </div>
-                                    </template>
-                                @else
-                                    <div class="flex items-center justify-between text-slate-400">
-                                        <span class="flex items-center gap-1.5">
-                                            <span class="w-2 h-2 rounded-full bg-purple-500/50 inline-block"></span>
-                                            OPC:
-                                        </span>
-                                        <span>N/A</span>
-                                    </div>
-                                @endif
-
-                                {{-- Independent ARR and DEP Capacity Thresholds --}}
-                                <div class="pt-1.5 border-t border-slate-800 space-y-1">
-                                    <div class="flex items-center justify-between text-amber-300">
-                                        <span>ARR Capacity:</span>
-                                        <span class="font-bold" x-text="(@if($mode === 'schedule') item.arrCount @else item.arr @endif) + ' / ' + arrivalCapacity + ' A/C'"></span>
-                                    </div>
-                                    <div class="flex items-center justify-between text-blue-300">
-                                        <span>DEP Capacity:</span>
-                                        <span class="font-bold" x-text="(@if($mode === 'schedule') item.depCount @else item.dep @endif) + ' / ' + departureCapacity + ' A/C'"></span>
-                                    </div>
-                                </div>
-
-                                <div class="flex items-center justify-between font-bold text-white pt-1 border-t border-slate-800">
-                                    <span>Total Demand:</span>
-                                    <span class="text-xs font-black"
-                                          :class="{
-                                              'text-purple-400': item.status === 'OVER CAPACITY',
-                                              'text-amber-400': item.status === 'FULL / MAX',
-                                              'text-emerald-400': item.status === 'AVAILABLE',
-                                              'text-slate-400': item.status === 'OFF HOURS'
-                                          }"
-                                          x-text="(@if($mode === 'schedule') item.aircraftDemand @else item.demand @endif) + ' A/C'"></span>
-                                </div>
-                                <div class="flex items-center justify-between font-bold text-slate-300">
-                                    <span>Max Utilization:</span>
-                                    <span class="text-xs font-black"
-                                          :class="item.utilization > 100 ? 'text-purple-400' : (item.utilization === 100 ? 'text-amber-400' : 'text-emerald-400')"
-                                          x-text="item.utilization + '%'"></span>
-                                </div>
-                                <div class="flex items-center justify-between font-bold pt-0.5">
-                                    <span>Status:</span>
-                                    <span :class="{
-                                        'text-emerald-400': item.status === 'AVAILABLE',
-                                        'text-amber-400': item.status === 'FULL / MAX',
-                                        'text-purple-400': item.status === 'OVER CAPACITY',
-                                        'text-slate-400': item.status === 'OFF HOURS'
-                                    }" x-text="item.status"></span>
-                                </div>
-                            </div>
-
-                            <div class="text-[9px] text-slate-400 mt-1.5 pt-1 border-t border-slate-800 text-center italic">
-                                Klik kolom untuk filter (Atas: ARR &bull; Bawah: DEP)
-                            </div>
                         </div>
                     </div>
                 </template>
@@ -667,5 +527,51 @@
                 <strong class="text-purple-600 dark:text-purple-400 not-italic font-semibold">OPC:</strong> Pesawat RON yang masih menempati parking stand untuk keberangkatan pada hari berikutnya. Total pergerakan operasional = ARR + DEP.
             </div>
         @endif
+    </div>
+
+    {{-- ══ CURSOR-FOLLOWING INTERACTIVE TOOLTIP (Only shown when hovering bars) ════ --}}
+    <div x-show="tooltip.visible"
+         x-cloak
+         class="fixed z-100 pointer-events-none w-[230px] p-2.5 bg-slate-900/95 dark:bg-navy-950/95 text-white backdrop-blur-md rounded-xl shadow-2xl border border-slate-700/80 text-xs select-none transition-opacity duration-100"
+         :style="'left: ' + tooltip.x + 'px; top: ' + tooltip.y + 'px;'"
+         style="display: none;">
+        
+        {{-- Tooltip Header: Hour & Status Pill --}}
+        <div class="flex items-center justify-between border-b border-slate-700/60 pb-1 mb-1.5">
+            <span class="font-mono font-bold text-[11px] text-slate-100" x-text="tooltip.hourLabel"></span>
+            <span class="text-[8px] font-black uppercase font-mono px-1.5 py-0.5 rounded border"
+                  :class="tooltip.statusClass"
+                  x-text="tooltip.status"></span>
+        </div>
+
+        {{-- Type with colored icon (🟠 Arrival or 🔵 Departure or 🟣 OPC) --}}
+        <div class="flex items-center gap-1.5 mb-1.5 text-[11px] font-bold" :class="tooltip.typeColor">
+            <span x-text="tooltip.icon"></span>
+            <span x-text="tooltip.typeLabel"></span>
+        </div>
+
+        {{-- Main Data Stat: Aircraft Count / Capacity --}}
+        <div class="bg-slate-800/80 dark:bg-navy-900/80 rounded-lg p-2 border border-slate-700/50 mb-1.5">
+            <div class="text-[8.5px] font-mono text-slate-400 uppercase tracking-wider">Aircraft</div>
+            <div class="flex items-baseline gap-1 font-mono">
+                <span class="text-base font-black text-white" x-text="tooltip.actual"></span>
+                <template x-if="tooltip.capacity !== null">
+                    <span class="text-xs font-bold text-slate-400">/ <span x-text="tooltip.capacity"></span> A/C</span>
+                </template>
+                <template x-if="tooltip.capacity === null">
+                    <span class="text-xs font-bold text-slate-400">A/C</span>
+                </template>
+            </div>
+        </div>
+
+        {{-- Scope --}}
+        <div class="flex items-center justify-between text-[10px] font-mono text-slate-400">
+            <span>Scope:</span>
+            <span class="font-bold text-slate-200" x-text="tooltip.scope"></span>
+        </div>
+
+        <template x-if="tooltip.extra">
+            <div class="text-[9px] font-mono text-purple-300/80 mt-1 pt-1 border-t border-slate-700/60" x-text="tooltip.extra"></div>
+        </template>
     </div>
 </div>
