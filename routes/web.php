@@ -25,6 +25,7 @@ Route::get('/templates/download/{reportType}', [\App\Http\Controllers\DauDashboa
 // ── DAU Analytical Dashboards & Exports ────────────────────────────────────
 Route::prefix('dau/{upload}')->group(function () {
     Route::get('/dashboard',    [\App\Http\Controllers\DauDashboardController::class, 'show'])->name('dau.dashboard');
+    Route::match(['POST', 'PATCH'], '/operational-settings', [\App\Http\Controllers\DauDashboardController::class, 'saveOperationalSettings'])->name('dau.operational-settings.save');
     Route::get('/export/pdf',   [\App\Http\Controllers\DauDashboardController::class, 'exportPdf'])->name('dau.export.pdf');
     Route::get('/export/excel', [\App\Http\Controllers\DauDashboardController::class, 'exportExcel'])->name('dau.export.excel');
 });

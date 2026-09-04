@@ -383,35 +383,40 @@
         {{-- ══ DAU-10A CAPACITY SUMMARY ════════════════════════════════════════ --}}
         <table class="kpi-table" style="margin-bottom: 6px; border: 1.5px solid #0284c7; background: #f0f9ff;">
             <tr>
-                <td class="kpi-cell" style="width: 16.6%; background: #ffffff;">
-                    <div class="kpi-label">Aircraft Capacity</div>
-                    <div class="kpi-value" style="color: #0f172a;">{{ $capacitySummary['nac'] ?? 6 }} A/C</div>
-                    <div class="kpi-sub">Batas Maksimum NAC</div>
+                <td class="kpi-cell" style="width: 14%; background: #ffffff;">
+                    <div class="kpi-label">ARR Capacity</div>
+                    <div class="kpi-value" style="color: #d97706;">{{ $arrNac ?? ($capacitySummary['arr_nac'] ?? 6) }} A/C</div>
+                    <div class="kpi-sub">Batas Arrival</div>
                 </td>
-                <td class="kpi-cell" style="width: 16.6%; background: #ffffff;">
+                <td class="kpi-cell" style="width: 14%; background: #ffffff;">
+                    <div class="kpi-label">DEP Capacity</div>
+                    <div class="kpi-value" style="color: #0284c7;">{{ $depNac ?? ($capacitySummary['dep_nac'] ?? 6) }} A/C</div>
+                    <div class="kpi-sub">Batas Departure</div>
+                </td>
+                <td class="kpi-cell" style="width: 15%; background: #ffffff;">
+                    <div class="kpi-label">Operating Hours</div>
+                    <div class="kpi-value" style="color: #059669; font-size: 8pt;">{{ $opsStart ?? '00:00' }} - {{ $opsEnd ?? '24:00' }}</div>
+                    <div class="kpi-sub">Jam Operasional</div>
+                </td>
+                <td class="kpi-cell" style="width: 14%; background: #ffffff;">
                     <div class="kpi-label">Peak Aircraft</div>
-                    <div class="kpi-value" style="color: #d97706;">{{ number_format($capacitySummary['peak_aircraft'] ?? 0) }} A/C</div>
+                    <div class="kpi-value" style="color: #0f172a;">{{ number_format($capacitySummary['peak_aircraft'] ?? 0) }} A/C</div>
                     <div class="kpi-sub">{{ $capacitySummary['peak_hour'] ?? '—' }}</div>
                 </td>
-                <td class="kpi-cell" style="width: 16.6%; background: #ffffff;">
-                    <div class="kpi-label">Peak Hour</div>
-                    <div class="kpi-value" style="color: #2563eb; font-size: 8pt;">{{ $capacitySummary['peak_hour'] ?? '—' }}</div>
-                    <div class="kpi-sub">Demand Tertinggi</div>
-                </td>
-                <td class="kpi-cell" style="width: 16.6%; background: #ffffff;">
+                <td class="kpi-cell" style="width: 14%; background: #ffffff;">
                     <div class="kpi-label">Available Hours</div>
                     <div class="kpi-value" style="color: #059669;">{{ $capacitySummary['available_hours'] ?? 0 }} Jam</div>
-                    <div class="kpi-sub">Demand &lt; NAC</div>
+                    <div class="kpi-sub">Demand &lt; Capacity</div>
                 </td>
-                <td class="kpi-cell" style="width: 16.6%; background: #ffffff;">
+                <td class="kpi-cell" style="width: 14%; background: #ffffff;">
                     <div class="kpi-label">Full / Max Hours</div>
                     <div class="kpi-value" style="color: #d97706;">{{ $capacitySummary['full_hours'] ?? 0 }} Jam</div>
-                    <div class="kpi-sub">Demand == NAC</div>
+                    <div class="kpi-sub">Demand == Capacity</div>
                 </td>
-                <td class="kpi-cell" style="width: 16.6%; background: #ffffff;">
+                <td class="kpi-cell" style="width: 15%; background: #ffffff;">
                     <div class="kpi-label">Over Capacity</div>
                     <div class="kpi-value" style="color: #7c3aed;">{{ $capacitySummary['over_capacity_hours'] ?? 0 }} Jam</div>
-                    <div class="kpi-sub">Demand &gt; NAC</div>
+                    <div class="kpi-sub">Demand &gt; Capacity</div>
                 </td>
             </tr>
         </table>
@@ -457,8 +462,11 @@
     @elseif ($reportType === 'DAU10A')
         {{-- DAU-10A DISTRIBUSI PER JAM & HOURLY CAPACITY STATUS --}}
         @php
-            $nacVal = (int)($capacitySummary['nac'] ?? 6);
-            $maxAmpPdf = max($nacVal, 1);
+            $arrNacVal = (int)($arrNac ?? ($capacitySummary['arr_nac'] ?? 6));
+            $depNacVal = (int)($depNac ?? ($capacitySummary['dep_nac'] ?? 6));
+            $opsStartStr = $opsStart ?? '00:00';
+            $opsEndStr = $opsEnd ?? '24:00';
+            $maxAmpPdf = max($arrNacVal, $depNacVal, 1);
             foreach ($hourlyData as $hd) {
                 $a = (int)($hd['aircraft_arrival'] ?? 0);
                 $d = (int)($hd['aircraft_departure'] ?? 0);
@@ -470,13 +478,14 @@
         <div class="chart-box">
             <div class="chart-header" style="display: table; width: 100%;">
                 <div style="display: table-cell; text-align: left;">
-                    DISTRIBUSI PER JAM — Two-Direction Aircraft Capacity Envelope (Batas &plusmn;NAC: {{ $nacVal }} A/C)
+                    DISTRIBUSI PER JAM — Two-Direction Aircraft Capacity Envelope (ARR Cap: {{ $arrNacVal }} A/C | DEP Cap: {{ $depNacVal }} A/C | Ops: {{ $opsStartStr }}-{{ $opsEndStr }})
                 </div>
                 <div style="display: table-cell; text-align: right; font-size: 5.5pt; color: #475569;">
                     <span style="display: inline-block; width: 7px; height: 7px; background: #f59e0b; vertical-align: middle;"></span> ARR &uarr; &nbsp;
                     <span style="display: inline-block; width: 7px; height: 7px; background: #0284c7; vertical-align: middle;"></span> DEP &darr; &nbsp;
                     <span style="display: inline-block; width: 7px; height: 7px; background: #9333ea; opacity: 0.5; vertical-align: middle;"></span> OPC (N/A) &nbsp;
-                    <span style="display: inline-block; width: 14px; border-top: 1.5px dashed #64748b; vertical-align: middle;"></span> Envelope (&plusmn;{{ $nacVal }} A/C)
+                    <span style="display: inline-block; width: 14px; border-top: 1.5px dashed #d97706; vertical-align: middle;"></span> +ARR Cap ({{ $arrNacVal }}) &nbsp;
+                    <span style="display: inline-block; width: 14px; border-top: 1.5px dashed #0284c7; vertical-align: middle;"></span> -DEP Cap ({{ $depNacVal }})
                 </div>
             </div>
 
@@ -489,8 +498,30 @@
                             $depVal = (int)($hd['aircraft_departure'] ?? 0);
                             $demVal = $arrVal + $depVal;
                             $arrH = $arrVal > 0 ? max(3, round(($arrVal / $maxAmpPdf) * 32)) : 0;
-                            $statusText = $demVal > $nacVal ? 'OVER' : ($demVal === $nacVal ? 'FULL' : 'AVAIL');
-                            $statusCol  = $demVal > $nacVal ? '#7c3aed' : ($demVal === $nacVal ? '#d97706' : '#059669');
+
+                            $isOffHour = false;
+                            if ($opsStartStr !== '00:00' || ($opsEndStr !== '24:00' && $opsEndStr !== '23:59')) {
+                                $hNum = (int)explode(':', explode(' - ', $hd['hour'])[0] ?? $hd['hour'])[0];
+                                $sNum = (int)explode(':', $opsStartStr)[0];
+                                $eNum = (int)explode(':', $opsEndStr)[0];
+                                if ($hNum < $sNum || $hNum >= $eNum) {
+                                    $isOffHour = true;
+                                }
+                            }
+
+                            if ($isOffHour) {
+                                $statusText = 'OFF';
+                                $statusCol = '#64748b';
+                            } elseif ($arrVal > $arrNacVal || $depVal > $depNacVal) {
+                                $statusText = 'OVER';
+                                $statusCol = '#7c3aed';
+                            } elseif ($arrVal === $arrNacVal || $depVal === $depNacVal) {
+                                $statusText = 'FULL';
+                                $statusCol = '#d97706';
+                            } else {
+                                $statusText = 'AVAIL';
+                                $statusCol = '#059669';
+                            }
                         @endphp
                         <td style="width: {{ 100 / max(1, count($hourlyData)) }}%; vertical-align: bottom; text-align: center; padding: 1px 1px 0 1px;">
                             <div style="font-size: 4.5pt; font-weight: bold; color: {{ $statusCol }}; margin-bottom: 1px;">
@@ -542,19 +573,19 @@
         {{-- Hourly Capacity Status Table --}}
         <div class="chart-box" style="margin-top: 5px;">
             <div class="chart-header">
-                HOURLY CAPACITY STATUS (Evaluasi Demand vs NAC: {{ $capacitySummary['nac'] ?? 6 }} A/C)
+                HOURLY CAPACITY STATUS (Evaluasi ARR Cap: {{ $arrNacVal }} A/C | DEP Cap: {{ $depNacVal }} A/C | Ops: {{ $opsStartStr }}-{{ $opsEndStr }})
             </div>
             <table class="data-table" style="margin-top: 1px;">
                 <thead>
                     <tr>
                         <th style="width: 14%; text-align: left;">Hour</th>
-                        <th class="text-right" style="width: 12%;">ARR</th>
-                        <th class="text-right" style="width: 12%;">DEP</th>
-                        <th class="text-center" style="width: 10%;">OPC</th>
-                        <th class="text-right" style="width: 16%;">Aircraft Demand</th>
-                        <th class="text-center" style="width: 10%;">NAC</th>
-                        <th class="text-right" style="width: 12%;">Utilization</th>
-                        <th class="text-center" style="width: 14%;">Status</th>
+                        <th class="text-right" style="width: 11%;">ARR</th>
+                        <th class="text-center" style="width: 11%; color: #d97706;">ARR Cap</th>
+                        <th class="text-right" style="width: 11%;">DEP</th>
+                        <th class="text-center" style="width: 11%; color: #0284c7;">DEP Cap</th>
+                        <th class="text-center" style="width: 8%;">OPC</th>
+                        <th class="text-right" style="width: 18%;">Aircraft Demand</th>
+                        <th class="text-center" style="width: 16%;">Status</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -562,15 +593,13 @@
                         <tr>
                             <td class="font-bold text-left">{{ $hcs['hour'] }}</td>
                             <td class="text-right" style="color: #d97706; font-weight: bold;">{{ number_format($hcs['arr']) }}</td>
+                            <td class="text-center font-bold" style="color: #d97706;">{{ $hcs['arr_nac'] ?? $arrNacVal }}</td>
                             <td class="text-right" style="color: #0284c7; font-weight: bold;">{{ number_format($hcs['dep']) }}</td>
+                            <td class="text-center font-bold" style="color: #0284c7;">{{ $hcs['dep_nac'] ?? $depNacVal }}</td>
                             <td class="text-center" style="color: #64748b;">{{ $hcs['opc'] }}</td>
                             <td class="text-right font-bold">{{ number_format($hcs['demand']) }}</td>
-                            <td class="text-center">{{ $hcs['nac'] }}</td>
-                            <td class="text-right font-bold" style="color: {{ $hcs['utilization'] > 100 ? '#7c3aed' : ($hcs['utilization'] == 100 ? '#d97706' : '#059669') }};">
-                                {{ $hcs['utilization'] }}%
-                            </td>
                             <td class="text-center">
-                                <span class="{{ $hcs['status'] === 'AVAILABLE' ? 'badge-available' : ($hcs['status'] === 'FULL / MAX' ? 'badge-full' : 'badge-over') }}">
+                                <span class="{{ $hcs['status'] === 'AVAILABLE' ? 'badge-available' : ($hcs['status'] === 'FULL / MAX' ? 'badge-full' : ($hcs['status'] === 'OFF HOURS' ? 'badge-off' : 'badge-over')) }}">
                                     {{ $hcs['status'] }}
                                 </span>
                             </td>

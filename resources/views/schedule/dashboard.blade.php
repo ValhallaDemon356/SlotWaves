@@ -34,11 +34,18 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
         timezoneAbbr: initialTzAbbr || 'WIB',
 
         // Capacity Configuration & Modal State
+        arrivalCapacity: {{ $stats['arrival_capacity'] ?? ($stats['aircraft_capacity'] ?? 6) }},
+        departureCapacity: {{ $stats['departure_capacity'] ?? ($stats['aircraft_capacity'] ?? 6) }},
+        nacLimit: {{ $stats['aircraft_capacity'] ?? 6 }},
+        modalArrCap: {{ $stats['arrival_capacity'] ?? ($stats['aircraft_capacity'] ?? 6) }},
+        modalDepCap: {{ $stats['departure_capacity'] ?? ($stats['aircraft_capacity'] ?? 6) }},
+        modalNac: {{ $stats['aircraft_capacity'] ?? 6 }},
+        unifiedModalOpen: false,
         capacityModalOpen: false,
-        modalNac: initialNac || 6,
         cargoSeparateParking: true,
         capacityHovered: false,
         hoveredBoundary: null,
+        hoveredCapLine: null,
         saveSettingsUrl: '{{ route('schedule.operational-settings.save', $upload->id) }}',
 
         // Dynamic OPS Hours State
@@ -113,16 +120,25 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                 }
             } catch (e) {}
 
-            // Restore custom Aircraft Capacity (NAC) from localStorage if available
+            // Restore custom Aircraft Capacity (ARR and DEP) from localStorage if available
             try {
-                const savedNac = localStorage.getItem('slotwaves_nac_{{ $upload->id }}');
-                if (savedNac) {
-                    const parsedNac = parseInt(savedNac, 10);
-                    if (!isNaN(parsedNac) && parsedNac >= 1 && parsedNac <= 100) {
-                        this.nacLimit = parsedNac;
-                        this.modalNac = parsedNac;
+                const savedArr = localStorage.getItem('slotwaves_arr_cap_{{ $upload->id }}');
+                const savedDep = localStorage.getItem('slotwaves_dep_cap_{{ $upload->id }}');
+                if (savedArr) {
+                    const pArr = parseInt(savedArr, 10);
+                    if (!isNaN(pArr) && pArr >= 1 && pArr <= 150) {
+                        this.arrivalCapacity = pArr;
+                        this.modalArrCap = pArr;
                     }
                 }
+                if (savedDep) {
+                    const pDep = parseInt(savedDep, 10);
+                    if (!isNaN(pDep) && pDep >= 1 && pDep <= 150) {
+                        this.departureCapacity = pDep;
+                        this.modalDepCap = pDep;
+                    }
+                }
+                this.nacLimit = Math.max(this.arrivalCapacity, this.departureCapacity);
             } catch (e) {}
         },
 
@@ -282,19 +298,35 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                 let remaining = 0;
                 let exceeded = 0;
 
-                // Status rules:
-                // Demand < NAC => AVAILABLE
-                // Demand === NAC => FULL / MAX
-                // Demand > NAC => OVER CAPACITY
+                // Status rules per Section 17:
+                // ARR status independently compares ARR demand against ARR capacity
+                // DEP status independently compares DEP demand against DEP capacity
                 if (isOps) {
-                    if (aircraftDemand < this.nacLimit) {
-                        status = 'AVAILABLE';
-                        statusLabel = 'Available';
-                        statusKey = 'available';
-                        statusColor = 'emerald'; // Green (#16A34A)
-                        remaining = this.nacLimit - aircraftDemand;
-                        exceeded = 0;
-                    } else if (aircraftDemand === this.nacLimit) {
+                    const arrDemand = arrs.length;
+                    const depDemand = deps.length;
+
+                    let arrStatus = 'AVAILABLE';
+                    if (arrDemand > this.arrivalCapacity) {
+                        arrStatus = 'OVER CAPACITY';
+                    } else if (arrDemand === this.arrivalCapacity) {
+                        arrStatus = 'FULL / MAX';
+                    }
+
+                    let depStatus = 'AVAILABLE';
+                    if (depDemand > this.departureCapacity) {
+                        depStatus = 'OVER CAPACITY';
+                    } else if (depDemand === this.departureCapacity) {
+                        depStatus = 'FULL / MAX';
+                    }
+
+                    if (arrStatus === 'OVER CAPACITY' || depStatus === 'OVER CAPACITY') {
+                        status = 'OVER CAPACITY';
+                        statusLabel = 'Over Capacity';
+                        statusKey = 'over-capacity';
+                        statusColor = 'purple'; // Purple (#9333EA)
+                        remaining = 0;
+                        exceeded = Math.max(arrDemand - this.arrivalCapacity, depDemand - this.departureCapacity, 0);
+                    } else if (arrStatus === 'FULL / MAX' || depStatus === 'FULL / MAX') {
                         status = 'FULL / MAX';
                         statusLabel = 'Full / Max';
                         statusKey = 'full';
@@ -302,12 +334,12 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                         remaining = 0;
                         exceeded = 0;
                     } else {
-                        status = 'OVER CAPACITY';
-                        statusLabel = 'Over Capacity';
-                        statusKey = 'over-capacity';
-                        statusColor = 'purple'; // Purple (#9333EA)
-                        remaining = 0;
-                        exceeded = aircraftDemand - this.nacLimit;
+                        status = 'AVAILABLE';
+                        statusLabel = 'Available';
+                        statusKey = 'available';
+                        statusColor = 'emerald'; // Green (#16A34A)
+                        remaining = Math.min(this.arrivalCapacity - arrDemand, this.departureCapacity - depDemand);
+                        exceeded = 0;
                     }
                 }
 
@@ -380,17 +412,26 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
         get chartMaxScale() {
             const maxArr = Math.max(...this.activeHourlyDistribution.map(d => (d.arrCount || 0) + (d.opcCount || 0)), 0);
             const maxDep = Math.max(...this.activeHourlyDistribution.map(d => (d.depCount || 0)), 0);
-            const maxMovement = Math.max(maxArr, maxDep, this.nacLimit);
+            const maxMovement = Math.max(maxArr, maxDep, this.arrivalCapacity, this.departureCapacity, this.nacLimit);
             return Math.max(maxMovement + 2, 8);
         },
 
-        get gridNacOffsetPx() {
-            const ratio = Math.min(1, Math.max(0, this.nacLimit / this.chartMaxScale));
+        get gridArrNacOffsetPx() {
+            const ratio = Math.min(1, Math.max(0, this.arrivalCapacity / this.chartMaxScale));
             return Math.round(ratio * 115);
         },
 
+        get gridDepNacOffsetPx() {
+            const ratio = Math.min(1, Math.max(0, this.departureCapacity / this.chartMaxScale));
+            return Math.round(ratio * 115);
+        },
+
+        get gridNacOffsetPx() {
+            return this.gridArrNacOffsetPx;
+        },
+
         get gridHalfNacOffsetPx() {
-            const ratio = Math.min(1, Math.max(0, (this.nacLimit * 0.5) / this.chartMaxScale));
+            const ratio = Math.min(1, Math.max(0, (this.arrivalCapacity * 0.5) / this.chartMaxScale));
             return Math.round(ratio * 115);
         },
 
@@ -417,9 +458,10 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
             const leftPct = (startIndex / totalCols) * 100;
             const widthPct = ((endIndex - startIndex + 1) / totalCols) * 100;
             
-            const ratio = Math.min(1, Math.max(0, this.nacLimit / this.chartMaxScale));
-            const topPx = Math.max(4, Math.round(140 - (ratio * 115)));
-            const bottomPx = Math.max(4, Math.round(140 - (ratio * 115)));
+            const arrRatio = Math.min(1, Math.max(0, this.arrivalCapacity / this.chartMaxScale));
+            const depRatio = Math.min(1, Math.max(0, this.departureCapacity / this.chartMaxScale));
+            const topPx = Math.max(4, Math.round(140 - (arrRatio * 115)));
+            const bottomPx = Math.max(4, Math.round(140 - (depRatio * 115)));
             
             return {
                 left: leftPct,
@@ -446,30 +488,77 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
             return Math.max(0, this.nacLimit - this.peakStats.peakDemand);
         },
 
-        // Aircraft Capacity Modal Actions
-        openCapacityModal() {
-            this.modalNac = this.nacLimit;
-            this.capacityModalOpen = true;
+        // Unified Modal: EDIT AIRCRAFT CAPACITY & OPERATING HOURS
+        openUnifiedModal() {
+            this.modalArrCap   = this.arrivalCapacity;
+            this.modalDepCap   = this.departureCapacity;
+            this.modalOpsStart = this.opsStartTime;
+            this.modalOpsEnd   = this.opsEndTime;
+            this.modalError    = '';
+            this.unifiedModalOpen = true;
         },
 
-        closeCapacityModal() {
-            this.capacityModalOpen = false;
+        closeUnifiedModal() {
+            this.unifiedModalOpen = false;
+            this.modalError = '';
         },
 
-        applyCapacity() {
-            const newNac = parseInt(this.modalNac, 10);
-            if (isNaN(newNac) || newNac < 1 || newNac > 100) {
+        openCapacityModal() { this.openUnifiedModal(); },
+        closeCapacityModal() { this.closeUnifiedModal(); },
+        openOpsModal() { this.openUnifiedModal(); },
+        closeOpsModal() { this.closeUnifiedModal(); },
+
+        applyUnifiedSettings() {
+            this.modalError = '';
+            const arr = parseInt(this.modalArrCap, 10);
+            const dep = parseInt(this.modalDepCap, 10);
+
+            if (isNaN(arr) || arr <= 0) {
+                this.modalError = 'ARRIVAL CAPACITY MUST BE A POSITIVE NUMBER.';
+                return;
+            }
+            if (isNaN(dep) || dep <= 0) {
+                this.modalError = 'DEPARTURE CAPACITY MUST BE A POSITIVE NUMBER.';
                 return;
             }
 
-            this.nacLimit = newNac;
-            this.capacityModalOpen = false;
+            const sRaw = (this.modalOpsStart || '').trim();
+            const eRaw = (this.modalOpsEnd || '').trim();
 
+            if (!sRaw.match(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/)) {
+                this.modalError = 'OPERATING START TIME MUST USE HH:MM.';
+                return;
+            }
+            if (!eRaw.match(/^([01]?[0-9]|2[0-4]):[0-5][0-9]$/)) {
+                this.modalError = 'OPERATING END TIME MUST USE HH:MM.';
+                return;
+            }
+
+            if (sRaw === eRaw) {
+                this.modalError = 'START TIME AND END TIME CANNOT BE IDENTICAL.';
+                return;
+            }
+
+            this.arrivalCapacity = arr;
+            this.departureCapacity = dep;
+            this.nacLimit = Math.max(arr, dep);
+            this.opsStartTime = sRaw;
+            this.opsEndTime = eRaw;
+            this.modalError = '';
+            this.unifiedModalOpen = false;
+
+            // Save to localStorage
             try {
+                localStorage.setItem('slotwaves_arr_cap_{{ $upload->id }}', String(arr));
+                localStorage.setItem('slotwaves_dep_cap_{{ $upload->id }}', String(dep));
                 localStorage.setItem('slotwaves_nac_{{ $upload->id }}', String(this.nacLimit));
+                localStorage.setItem('slotwaves_ops_hours_{{ $upload->id }}', JSON.stringify({
+                    start: this.opsStartTime,
+                    end: this.opsEndTime
+                }));
             } catch (e) {}
 
-            this.showToast(`Aircraft Capacity updated to ${this.nacLimit} Aircraft (Excludes Cargo)`);
+            this.showToast(`Aircraft Capacity (ARR: ${arr}, DEP: ${dep} A/C) & Operating Hours (${sRaw} → ${eRaw}) saved.`);
 
             // Async background sync to Airport Configuration backend
             fetch(this.saveSettingsUrl, {
@@ -480,75 +569,18 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({
-                    aircraft_capacity: this.nacLimit
+                    arrival_capacity: arr,
+                    departure_capacity: dep,
+                    aircraft_capacity: this.nacLimit,
+                    ops_start: sRaw,
+                    ops_end: eRaw
                 })
             }).catch(() => {});
-        },
-
-        // Dynamic OPS Hours Modal Actions
-        openOpsModal() {
-            this.modalOpsStart = this.opsStartTime;
-            this.modalOpsEnd   = this.opsEndTime;
-            this.modalError    = '';
-            this.opsModalOpen  = true;
-        },
-
-        closeOpsModal() {
-            this.opsModalOpen = false;
-            this.modalError   = '';
-        },
-
-        applyOpsHours() {
-            const sRaw = (this.modalOpsStart || '').trim();
-            const eRaw = (this.modalOpsEnd || '').trim();
-            const sH = parseInt(sRaw.split(':')[0], 10);
-            const eH = parseInt(eRaw.split(':')[0], 10);
-
-            if (isNaN(sH) || isNaN(eH) || sH < 0 || sH > 23 || eH < 1 || eH > 24) {
-                this.modalError = 'Please enter valid operating hours (00:00 to 24:00).';
-                return;
-            }
-
-            if (sH >= eH) {
-                this.modalError = 'End time must be later than start time.';
-                return;
-            }
-
-            this.opsStartTime = `${String(sH).padStart(2, '0')}:00`;
-            this.opsEndTime   = `${String(eH).padStart(2, '0')}:00`;
-            this.modalError   = '';
-
-            // Save to localStorage
-            try {
-                localStorage.setItem('slotwaves_ops_hours_{{ $upload->id }}', JSON.stringify({
-                    start: this.opsStartTime,
-                    end: this.opsEndTime
-                }));
-            } catch (e) {}
-
-            // Async background sync to TimelineSetting backend
-            fetch(this.opsSaveUrl, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': this.csrfToken,
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    ops_start: this.opsStartTime,
-                    ops_end: this.opsEndTime
-                })
-            }).catch(() => {});
-
-            this.showToast(`Operational hours updated to ${this.opsStartTime} → ${this.opsEndTime} (${this.activeHoursCount} Active Hours)`);
-            this.opsModalOpen = false;
         },
 
         resetOpsHours() {
             this.modalOpsStart = this.defaultOpsStart;
             this.modalOpsEnd   = this.defaultOpsEnd;
-            this.applyOpsHours();
-            this.showToast('Operational hours reset to default (06:00 → 20:00)');
         },
 
         showToast(msg) {
@@ -1821,39 +1853,78 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
         </div>
     </div>
 
-    {{-- ══ 5. MODALS: AIRCRAFT CAPACITY & OPS HOURS ═════════════════════════════ --}}
-    {{-- Modal 1: Aircraft Capacity Setting --}}
-    <div x-show="capacityModalOpen" x-transition class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4" style="display: none;">
-        <div @click.away="closeCapacityModal()" class="w-full max-w-md bg-white dark:bg-navy-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
+    {{-- ══ 5. UNIFIED MODAL: EDIT AIRCRAFT CAPACITY & OPERATING HOURS ═════════ --}}
+    <div x-show="unifiedModalOpen" x-transition class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4" style="display: none;">
+        <div @click.away="closeUnifiedModal()" class="w-full max-w-lg bg-white dark:bg-navy-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
+            {{-- Header --}}
             <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div class="flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-aviation-600"></span>
-                    <h3 class="font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wider">AIRCRAFT CAPACITY (NAC)</h3>
+                    <h3 class="font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wider">EDIT AIRCRAFT CAPACITY &amp; OPERATING HOURS</h3>
                 </div>
-                <button @click="closeCapacityModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold">&times;</button>
+                <button type="button" @click="closeUnifiedModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold cursor-pointer">&times;</button>
             </div>
 
-            <div class="space-y-3.5 text-xs">
-                <div>
-                    <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Maximum Aircraft (Simultaneous Apron / Stand Capacity)</label>
-                    <div class="flex items-center gap-2">
-                        <input type="number" min="1" max="100" x-model.number="modalNac" class="filter-select w-full font-mono text-base font-bold">
-                        <span class="text-xs font-bold text-slate-500 font-mono">AIRCRAFT</span>
+            {{-- Airport Identification --}}
+            <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-slate-800 text-xs">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Airport</div>
+                <div class="font-black text-slate-900 dark:text-white text-sm">
+                    {{ $airportName ?? 'Soekarno Hatta' }} ({{ $airportCode ?? 'CGK' }})
+                </div>
+            </div>
+
+            <div class="space-y-4 text-xs">
+                {{-- AIRCRAFT CAPACITY / NAC SECTION --}}
+                <div class="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-3">
+                    <div class="text-[10.5px] font-black uppercase tracking-wider text-aviation-600 dark:text-aviation-400">
+                        AIRCRAFT CAPACITY / NAC
                     </div>
-                    <p class="text-[11px] text-slate-400 mt-1">Configured station: <strong class="text-aviation-600 dark:text-aviation-400">{{ $airportCode }} ({{ $airportName }})</strong>.</p>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {{-- Arrival Capacity --}}
+                        <div class="p-3 rounded-xl bg-amber-50/50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/50 space-y-1">
+                            <label class="block font-bold text-amber-900 dark:text-amber-200 text-xs">ARRIVAL CAPACITY</label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" min="1" max="150" x-model.number="modalArrCap" class="filter-select w-full font-mono text-base font-bold text-amber-700 dark:text-amber-300">
+                                <span class="text-xs font-bold text-slate-500 font-mono">A/C</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight pt-1">
+                                Maximum aircraft demand allowed for ARRIVAL.
+                            </p>
+                        </div>
+
+                        {{-- Departure Capacity --}}
+                        <div class="p-3 rounded-xl bg-blue-50/50 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/50 space-y-1">
+                            <label class="block font-bold text-blue-900 dark:text-blue-200 text-xs">DEPARTURE CAPACITY</label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" min="1" max="150" x-model.number="modalDepCap" class="filter-select w-full font-mono text-base font-bold text-blue-700 dark:text-blue-300">
+                                <span class="text-xs font-bold text-slate-500 font-mono">A/C</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight pt-1">
+                                Maximum aircraft demand allowed for DEPARTURE.
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
-                {{-- Quick Presets for Indonesian Airports --}}
-                <div>
-                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Quick Presets</div>
-                    <div class="flex flex-wrap gap-1.5">
-                        <button type="button" @click="modalNac = 6" :class="modalNac === 6 ? 'bg-aviation-600 text-white font-bold' : 'bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300'" class="px-2.5 py-1 rounded-md text-xs font-mono transition">6 (BDO)</button>
-                        <button type="button" @click="modalNac = 8" :class="modalNac === 8 ? 'bg-aviation-600 text-white font-bold' : 'bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300'" class="px-2.5 py-1 rounded-md text-xs font-mono transition">8 (DJJ)</button>
-                        <button type="button" @click="modalNac = 10" :class="modalNac === 10 ? 'bg-aviation-600 text-white font-bold' : 'bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300'" class="px-2.5 py-1 rounded-md text-xs font-mono transition">10 (LOP/SRG)</button>
-                        <button type="button" @click="modalNac = 12" :class="modalNac === 12 ? 'bg-aviation-600 text-white font-bold' : 'bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300'" class="px-2.5 py-1 rounded-md text-xs font-mono transition">12 (JOG)</button>
-                        <button type="button" @click="modalNac = 15" :class="modalNac === 15 ? 'bg-aviation-600 text-white font-bold' : 'bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300'" class="px-2.5 py-1 rounded-md text-xs font-mono transition">15 (SUB/UPG)</button>
-                        <button type="button" @click="modalNac = 20" :class="modalNac === 20 ? 'bg-aviation-600 text-white font-bold' : 'bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300'" class="px-2.5 py-1 rounded-md text-xs font-mono transition">20 (DPS)</button>
-                        <button type="button" @click="modalNac = 30" :class="modalNac === 30 ? 'bg-aviation-600 text-white font-bold' : 'bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300'" class="px-2.5 py-1 rounded-md text-xs font-mono transition">30 (CGK)</button>
+                {{-- OPERATING HOURS SECTION --}}
+                <div class="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-3">
+                    <div class="text-[10.5px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                        OPERATING HOURS
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">START TIME</label>
+                            <input type="text" x-model="modalOpsStart" placeholder="06:00" class="filter-select w-full font-mono text-center font-bold">
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">END TIME</label>
+                            <input type="text" x-model="modalOpsEnd" placeholder="20:00" class="filter-select w-full font-mono text-center font-bold">
+                        </div>
+                    </div>
+                    <div class="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
+                        Example: 06:00 &rarr; 20:00
                     </div>
                 </div>
 
@@ -1863,53 +1934,16 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                         Cargo uses dedicated parking stand (Excluded from Passenger Capacity limit)
                     </label>
                 </div>
-            </div>
-
-            <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-                <button type="button" @click="closeCapacityModal()" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-navy-800">Cancel</button>
-                <button type="button" @click="applyCapacity()" class="btn-aviation-primary px-4 py-1.5 rounded-lg text-xs font-bold shadow-xs">Save Configuration</button>
-            </div>
-        </div>
-    </div>
-
-    {{-- Modal 2: OPS Hours Setting --}}
-    <div x-show="opsModalOpen" x-transition class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4" style="display: none;">
-        <div @click.away="closeOpsModal()" class="w-full max-w-md bg-white dark:bg-navy-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                <div class="flex items-center gap-2">
-                    <span class="radar-dot w-2 h-2 rounded-full bg-emerald-500"></span>
-                    <h3 class="font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wider">EDIT OPERATIONAL HOURS</h3>
-                </div>
-                <button @click="closeOpsModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold">&times;</button>
-            </div>
-
-            <div class="space-y-3 text-xs">
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">OPS Start Time</label>
-                        <input type="text" x-model="modalOpsStart" placeholder="06:00" class="filter-select w-full font-mono text-center font-bold">
-                    </div>
-                    <div>
-                        <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">OPS End Time</label>
-                        <input type="text" x-model="modalOpsEnd" placeholder="20:00" class="filter-select w-full font-mono text-center font-bold">
-                    </div>
-                </div>
 
                 <template x-if="modalError">
-                    <div class="p-2 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-600 text-xs" x-text="modalError"></div>
+                    <div class="p-2.5 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-600 text-xs font-semibold" x-text="modalError"></div>
                 </template>
-
-                <p class="text-[11px] text-slate-400">
-                    Changing operational hours reactively updates Today's Flight Activity, Capacity calculations, and visual timeline references without reloading.
-                </p>
             </div>
 
-            <div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
-                <button type="button" @click="resetOpsHours()" class="text-xs font-semibold text-slate-500 hover:underline">Reset to Default</button>
-                <div class="flex items-center gap-2">
-                    <button type="button" @click="closeOpsModal()" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-navy-800">Cancel</button>
-                    <button type="button" @click="applyOpsHours()" class="btn-aviation-primary px-4 py-1.5 rounded-lg text-xs font-bold shadow-xs">Save</button>
-                </div>
+            {{-- Footer Buttons --}}
+            <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button type="button" @click="closeUnifiedModal()" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-navy-800 hover:bg-slate-200 transition">Cancel</button>
+                <button type="button" @click="applyUnifiedSettings()" class="btn-aviation-primary px-5 py-2 rounded-lg text-xs font-bold shadow-xs">Save</button>
             </div>
         </div>
     </div>

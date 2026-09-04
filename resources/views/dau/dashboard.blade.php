@@ -566,11 +566,21 @@
                             </button>
                         </div>
 
-                        {{-- Aircraft Capacity Control with Edit Button --}}
-                        <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-navy-900 shadow-2xs">
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">AIRCRAFT CAPACITY:</span>
-                            <span class="text-xs font-black font-mono text-aviation-600 dark:text-aviation-400" x-text="aircraftCapacity + ' A/C'"></span>
-                            <button type="button" @click="openCapacityModal()"
+                        {{-- Capacity & Operating Hours Display with Unified Edit Button --}}
+                        <div class="flex flex-wrap items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-navy-900 shadow-2xs text-xs">
+                            <span class="sr-only">AIRCRAFT CAPACITY:</span>
+                            <div class="flex items-center gap-1.5 font-mono">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 hidden xl:inline">AIRCRAFT CAPACITY:</span>
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">ARR CAP:</span>
+                                <span class="font-black text-slate-900 dark:text-white" x-text="arrivalCapacity + ' A/C'"></span>
+                                <span class="text-slate-300 dark:text-slate-700">|</span>
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">DEP CAP:</span>
+                                <span class="font-black text-slate-900 dark:text-white" x-text="departureCapacity + ' A/C'"></span>
+                                <span class="text-slate-300 dark:text-slate-700">|</span>
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">OPS:</span>
+                                <span class="font-bold text-slate-700 dark:text-slate-300" x-text="opsStartTime + ' - ' + opsEndTime + ' ' + tzAbbr"></span>
+                            </div>
+                            <button type="button" @click="openUnifiedModal()"
                                     class="ml-1 px-2.5 py-0.5 text-[11px] font-bold rounded-md bg-aviation-50 dark:bg-aviation-950 text-aviation-600 dark:text-aviation-400 border border-aviation-200 dark:border-aviation-800 hover:bg-aviation-100 dark:hover:bg-aviation-900 transition cursor-pointer flex items-center gap-1">
                                 <span>EDIT</span> <span>⚙</span>
                             </button>
@@ -695,16 +705,19 @@
                             <div class="text-[10px] text-slate-500 mt-1 font-mono">Highest Demand</div>
                         </div>
 
-                        {{-- Aircraft Capacity / NAC --}}
+                        {{-- Aircraft Capacity (ARR / DEP) --}}
                         <div class="glass-card p-4 shadow-sm border-t-2 border-t-slate-700">
                             <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
-                                <span>Aircraft Capacity</span>
-                                <button type="button" @click="openCapacityModal()" class="text-[10px] text-aviation-600 hover:underline">Edit ⚙</button>
+                                <span>Capacity (ARR / DEP)</span>
+                                <button type="button" @click="openUnifiedModal()" class="text-[10px] text-aviation-600 hover:underline cursor-pointer">Edit ⚙</button>
                             </div>
-                            <div class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-1 font-mono">
-                                <span x-text="aircraftCapacity"></span> <span class="text-xs font-normal text-slate-400">A/C</span>
+                            <div class="text-lg sm:text-xl font-black text-slate-900 dark:text-white mt-1 font-mono flex items-center gap-1">
+                                <span class="text-amber-600 dark:text-amber-400" x-text="arrivalCapacity"></span>
+                                <span class="text-slate-300 dark:text-slate-600">/</span>
+                                <span class="text-blue-600 dark:text-blue-400" x-text="departureCapacity"></span>
+                                <span class="text-xs font-normal text-slate-400 ml-0.5">A/C</span>
                             </div>
-                            <div class="text-[10px] text-slate-500 mt-1 font-mono">Maximum NAC</div>
+                            <div class="text-[10px] text-slate-500 mt-1 font-mono" x-text="'Ops: ' + opsStartTime + ' - ' + opsEndTime"></div>
                         </div>
 
                         {{-- Over Capacity Hours --}}
@@ -713,7 +726,7 @@
                             <div class="text-xl sm:text-2xl font-black text-purple-600 dark:text-purple-400 mt-1 font-mono">
                                 <span x-text="hourlyCapacityAnalysis.summary.over"></span> <span class="text-xs font-normal text-slate-400">Jam</span>
                             </div>
-                            <div class="text-[10px] text-slate-500 mt-1 font-mono">Demand &gt; NAC</div>
+                            <div class="text-[10px] text-slate-500 mt-1 font-mono">Demand &gt; Capacity</div>
                         </div>
 
                         {{-- Full / Max Hours --}}
@@ -722,7 +735,7 @@
                             <div class="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 mt-1 font-mono">
                                 <span x-text="hourlyCapacityAnalysis.summary.full"></span> <span class="text-xs font-normal text-slate-400">Jam</span>
                             </div>
-                            <div class="text-[10px] text-slate-500 mt-1 font-mono">Demand == NAC</div>
+                            <div class="text-[10px] text-slate-500 mt-1 font-mono">Demand == Capacity</div>
                         </div>
 
                         {{-- Available Hours --}}
@@ -731,7 +744,7 @@
                             <div class="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1 font-mono">
                                 <span x-text="hourlyCapacityAnalysis.summary.available"></span> <span class="text-xs font-normal text-slate-400">Jam</span>
                             </div>
-                            <div class="text-[10px] text-slate-500 mt-1 font-mono">Demand &lt; NAC</div>
+                            <div class="text-[10px] text-slate-500 mt-1 font-mono">Demand &lt; Capacity</div>
                         </div>
                     </div>
 
@@ -740,7 +753,7 @@
                         <div class="space-y-0.5">
                             <div class="text-[11px] font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
                                 <span>CAPACITY STATUS SUMMARY</span>
-                                <span class="text-[10px] font-mono font-normal text-slate-400">(Batas NAC: <strong class="text-aviation-600 font-bold" x-text="aircraftCapacity + ' A/C'"></strong>)</span>
+                                <span class="text-[10px] font-mono font-normal text-slate-400">(ARR: <strong class="text-amber-600 font-bold" x-text="arrivalCapacity + ' A/C'"></strong> | DEP: <strong class="text-blue-600 font-bold" x-text="departureCapacity + ' A/C'"></strong>)</span>
                             </div>
                             <p class="text-xs text-slate-500">Evaluasi langsung status jam operasional bandara terhadap batas kapasitas penerbangan.</p>
                         </div>
@@ -826,11 +839,11 @@
                                     <tr>
                                         <th class="px-3 py-2 text-left">Hour</th>
                                         <th class="px-3 py-2 text-right">ARR</th>
+                                        <th class="px-2 py-2 text-center text-amber-600">ARR Cap</th>
                                         <th class="px-3 py-2 text-right">DEP</th>
-                                        <th class="px-3 py-2 text-center">OPC</th>
+                                        <th class="px-2 py-2 text-center text-blue-600">DEP Cap</th>
+                                        <th class="px-2 py-2 text-center">OPC</th>
                                         <th class="px-3 py-2 text-right">Aircraft Demand</th>
-                                        <th class="px-3 py-2 text-center">NAC</th>
-                                        <th class="px-3 py-2 text-right">Utilization</th>
                                         <th class="px-3 py-2 text-center">Status</th>
                                     </tr>
                                 </thead>
@@ -840,13 +853,11 @@
                                             :class="filterHour === row.hour ? 'bg-aviation-50/70 dark:bg-aviation-950/40 font-bold' : ''">
                                             <td class="px-3 py-2 text-left font-bold text-slate-900 dark:text-white" x-text="formatHourDisplay(row.hour)"></td>
                                             <td class="px-3 py-2 text-right text-amber-600 font-bold" x-text="formatNumber(row.arr)"></td>
+                                            <td class="px-2 py-2 text-center font-mono font-bold text-slate-500" x-text="row.arrCap"></td>
                                             <td class="px-3 py-2 text-right text-blue-600 font-bold" x-text="formatNumber(row.dep)"></td>
-                                            <td class="px-3 py-2 text-center text-slate-400" x-text="row.opc"></td>
+                                            <td class="px-2 py-2 text-center font-mono font-bold text-slate-500" x-text="row.depCap"></td>
+                                            <td class="px-2 py-2 text-center text-slate-400" x-text="row.opc"></td>
                                             <td class="px-3 py-2 text-right font-black text-slate-900 dark:text-white" x-text="formatNumber(row.demand)"></td>
-                                            <td class="px-3 py-2 text-center font-bold text-slate-500" x-text="row.nac"></td>
-                                            <td class="px-3 py-2 text-right font-bold"
-                                                :class="row.utilization > 100 ? 'text-purple-600 dark:text-purple-400' : (row.utilization === 100 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400')"
-                                                x-text="row.utilization + '%'"></td>
                                             <td class="px-3 py-2 text-center">
                                                 <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider inline-block"
                                                       :class="{
@@ -1136,63 +1147,98 @@
         SlotWaves Report System • OASYS Source Verification Active • {{ $meta['airport_name'] ?? 'CGK' }}
     </footer>
 
-    {{-- ══ AIRCRAFT CAPACITY EDIT MODAL ═════════════════════════════════════ --}}
-    <div x-show="isCapacityModalOpen"
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition ease-in duration-150"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0"
-         class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
-         style="display: none;">
-        <div @click.away="isCapacityModalOpen = false"
-             class="glass-card max-w-md w-full p-6 shadow-2xl rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-navy-900 space-y-5">
+    {{-- ══ 5. UNIFIED MODAL: EDIT AIRCRAFT CAPACITY & OPERATING HOURS ═════════ --}}
+    <div x-show="unifiedModalOpen" x-transition class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4" style="display: none;">
+        <div @click.away="closeUnifiedModal()" class="w-full max-w-lg bg-white dark:bg-navy-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
+            {{-- Header --}}
             <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                <h3 class="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
-                    <span>EDIT AIRCRAFT CAPACITY</span>
-                    <span class="text-xs font-mono text-aviation-600 dark:text-aviation-400">⚙</span>
-                </h3>
-                <button type="button" @click="isCapacityModalOpen = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg font-bold cursor-pointer">&times;</button>
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-aviation-600"></span>
+                    <h3 class="font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wider">EDIT AIRCRAFT CAPACITY &amp; OPERATING HOURS</h3>
+                </div>
+                <button type="button" @click="closeUnifiedModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg font-bold cursor-pointer">&times;</button>
+            </div>
+
+            {{-- Airport Identification --}}
+            <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-slate-800 text-xs">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Airport</div>
+                <div class="font-black text-slate-900 dark:text-white text-sm">
+                    {{ $meta['airport_name'] ?? 'TANGERANG BANTEN - SOEKARNO HATTA' }} ({{ $meta['airport_code'] ?? 'CGK' }})
+                </div>
             </div>
 
             <div class="space-y-4 text-xs">
-                <div>
-                    <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Airport:</label>
-                    <div class="font-bold text-slate-800 dark:text-slate-100 mt-0.5 text-sm">
-                        {{ $meta['airport_name'] ?? 'TANGERANG BANTEN - SOEKARNO HATTA' }} ({{ $meta['airport_code'] ?? 'CGK' }})
+                {{-- AIRCRAFT CAPACITY / NAC SECTION --}}
+                <div class="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-3">
+                    <div class="text-[10.5px] font-black uppercase tracking-wider text-aviation-600 dark:text-aviation-400">
+                        AIRCRAFT CAPACITY / NAC
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {{-- Arrival Capacity --}}
+                        <div class="p-3 rounded-xl bg-amber-50/50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/50 space-y-1">
+                            <label class="block font-bold text-amber-900 dark:text-amber-200 text-xs">ARRIVAL CAPACITY</label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" min="1" max="150" x-model.number="modalArrCap" class="w-full px-3 py-1.5 text-base font-mono font-bold rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-navy-950 text-amber-700 dark:text-amber-300 focus:ring-2 focus:ring-amber-500 focus:outline-hidden">
+                                <span class="text-xs font-bold text-slate-500 font-mono">A/C</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight pt-1">
+                                Maximum aircraft demand allowed for ARRIVAL.
+                            </p>
+                        </div>
+
+                        {{-- Departure Capacity --}}
+                        <div class="p-3 rounded-xl bg-blue-50/50 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/50 space-y-1">
+                            <label class="block font-bold text-blue-900 dark:text-blue-200 text-xs">DEPARTURE CAPACITY</label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" min="1" max="150" x-model.number="modalDepCap" class="w-full px-3 py-1.5 text-base font-mono font-bold rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-navy-950 text-blue-700 dark:text-blue-300 focus:ring-2 focus:ring-blue-500 focus:outline-hidden">
+                                <span class="text-xs font-bold text-slate-500 font-mono">A/C</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight pt-1">
+                                Maximum aircraft demand allowed for DEPARTURE.
+                            </p>
+                        </div>
                     </div>
                 </div>
 
-                <div class="space-y-1.5">
-                    <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Aircraft Capacity / NAC:</label>
-                    <div class="flex items-center gap-2">
-                        <input type="number" min="1" max="150" step="1" x-model.number="capacityInput" @keydown.enter="saveCapacity()"
-                               class="w-32 px-3 py-2 text-sm font-mono font-bold rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-navy-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-aviation-500 focus:outline-hidden">
-                        <span class="font-bold font-mono text-slate-600 dark:text-slate-300 text-sm">A/C</span>
+                {{-- OPERATING HOURS SECTION --}}
+                <div class="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-3">
+                    <div class="text-[10.5px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                        OPERATING HOURS
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">START TIME</label>
+                            <input type="text" x-model="modalOpsStart" placeholder="00:00" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-navy-950 text-slate-900 dark:text-white font-mono text-center font-bold">
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">END TIME</label>
+                            <input type="text" x-model="modalOpsEnd" placeholder="24:00" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-navy-950 text-slate-900 dark:text-white font-mono text-center font-bold">
+                        </div>
+                    </div>
+                    <div class="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
+                        Example: 06:00 &rarr; 20:00 atau 00:00 &rarr; 24:00 (24 Jam)
                     </div>
                 </div>
 
-                <div class="p-3 rounded-xl bg-aviation-50/70 dark:bg-aviation-950/40 border border-aviation-200/80 dark:border-aviation-800 text-slate-600 dark:text-slate-300 space-y-1">
-                    <div class="font-bold text-aviation-900 dark:text-aviation-200 flex items-center gap-1.5">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <span>Information:</span>
-                    </div>
-                    <p>This is the maximum aircraft demand allowed for the selected airport.</p>
-                </div>
+                <template x-if="modalError">
+                    <div class="p-2.5 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-600 text-xs font-semibold" x-text="modalError"></div>
+                </template>
             </div>
 
+            {{-- Footer Buttons --}}
             <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-                <button type="button" @click="isCapacityModalOpen = false"
-                        class="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-navy-800 transition cursor-pointer">
-                    Cancel
-                </button>
-                <button type="button" @click="saveCapacity()"
-                        class="px-4 py-2 text-xs font-bold text-white rounded-lg bg-aviation-600 hover:bg-aviation-700 transition cursor-pointer shadow-sm">
-                    Save
-                </button>
+                <button type="button" @click="closeUnifiedModal()" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-navy-800 hover:bg-slate-200 transition cursor-pointer">Cancel</button>
+                <button type="button" @click="applyUnifiedSettings()" class="px-5 py-2 rounded-lg text-xs font-bold text-white bg-aviation-600 hover:bg-aviation-700 transition cursor-pointer shadow-xs">Save</button>
             </div>
         </div>
+    </div>
+
+    {{-- Reactive Toast Notification --}}
+    <div x-show="opsToastOpen" x-transition class="fixed bottom-5 right-5 z-50 p-3.5 rounded-xl bg-slate-900/95 text-white shadow-2xl border border-slate-700 text-xs font-semibold flex items-center gap-2 font-mono" style="display: none;">
+        <span class="text-emerald-400">✓</span>
+        <span x-text="opsToastMessage"></span>
     </div>
 
 </div>
@@ -1221,12 +1267,27 @@ function dauEnhancedDashboard() {
 
         // DAU-10A Dual Mode & Aircraft Capacity (NAC) State
         dauViewMode: 'heatmap', // 'heatmap' | 'distribution'
-        aircraftCapacity: Number(@json($initialNac ?? 6)),
-        capacityInput: Number(@json($initialNac ?? 6)),
-        isCapacityModalOpen: false,
+        arrivalCapacity: Number(@json($initialArrivalCapacity ?? ($initialNac ?? 6))),
+        departureCapacity: Number(@json($initialDepartureCapacity ?? ($initialNac ?? 6))),
+        modalArrCap: Number(@json($initialArrivalCapacity ?? ($initialNac ?? 6))),
+        modalDepCap: Number(@json($initialDepartureCapacity ?? ($initialNac ?? 6))),
+        modalOpsStart: @json($opsStartTime ?? '00:00'),
+        modalOpsEnd: @json($opsEndTime ?? '24:00'),
+        modalError: '',
+        unifiedModalOpen: false,
+        opsToastOpen: false,
+        opsToastMessage: '',
         hoveredHour: null,
         hoveredBoundary: null,
-        openNacModal() { this.openCapacityModal(); },
+        get aircraftCapacity() {
+            return Math.max(Number(this.arrivalCapacity) || 6, Number(this.departureCapacity) || 6);
+        },
+        set aircraftCapacity(val) {
+            this.arrivalCapacity = Number(val) || 6;
+            this.departureCapacity = Number(val) || 6;
+        },
+        openNacModal() { this.openUnifiedModal(); },
+        openCapacityModal() { this.openUnifiedModal(); },
         timezoneMode: 'LOCAL', // 'LOCAL' | 'UTC'
         tzAbbr: @json($tzAbbr ?? 'WIB'),
         tzOffset: Number(@json($tzOffset ?? 7)),
@@ -1252,6 +1313,16 @@ function dauEnhancedDashboard() {
         activeTerminalComparison: [],
 
         initDashboard() {
+            const airportKey = (this.meta.airport_code || 'CGK').toLowerCase();
+            const storedArr = localStorage.getItem(`slotwaves_arr_cap_${airportKey}`);
+            const storedDep = localStorage.getItem(`slotwaves_dep_cap_${airportKey}`);
+            const storedStart = localStorage.getItem(`slotwaves_ops_start_${airportKey}`);
+            const storedEnd = localStorage.getItem(`slotwaves_ops_end_${airportKey}`);
+            if (storedArr) this.arrivalCapacity = parseInt(storedArr, 10);
+            if (storedDep) this.departureCapacity = parseInt(storedDep, 10);
+            if (storedStart) this.opsStartTime = storedStart;
+            if (storedEnd) this.opsEndTime = storedEnd;
+
             this.applyFilters();
         },
 
@@ -1556,17 +1627,81 @@ function dauEnhancedDashboard() {
             return max;
         },
 
-        openCapacityModal() {
-            this.capacityInput = this.aircraftCapacity;
-            this.isCapacityModalOpen = true;
+        openUnifiedModal() {
+            this.modalArrCap = this.arrivalCapacity;
+            this.modalDepCap = this.departureCapacity;
+            this.modalOpsStart = this.opsStartTime;
+            this.modalOpsEnd = this.opsEndTime;
+            this.modalError = '';
+            this.unifiedModalOpen = true;
+        },
+
+        closeUnifiedModal() {
+            this.unifiedModalOpen = false;
+            this.modalError = '';
+        },
+
+        async applyUnifiedSettings() {
+            const arr = parseInt(this.modalArrCap, 10);
+            const dep = parseInt(this.modalDepCap, 10);
+            if (isNaN(arr) || arr < 1) {
+                this.modalError = 'Arrival Capacity harus minimal 1 A/C';
+                return;
+            }
+            if (isNaN(dep) || dep < 1) {
+                this.modalError = 'Departure Capacity harus minimal 1 A/C';
+                return;
+            }
+            const timeRegex = /^(?:[01]\d|2[0-3]|24):[0-5]\d$/;
+            if (!timeRegex.test(this.modalOpsStart) || !timeRegex.test(this.modalOpsEnd)) {
+                this.modalError = 'Format jam harus HH:MM (contoh 06:00 atau 24:00)';
+                return;
+            }
+
+            this.arrivalCapacity = arr;
+            this.departureCapacity = dep;
+            this.opsStartTime = this.modalOpsStart;
+            this.opsEndTime = this.modalOpsEnd;
+
+            // Persist to localStorage for instantaneous recovery
+            try {
+                const airportKey = (this.meta.airport_code || 'CGK').toLowerCase();
+                localStorage.setItem(`slotwaves_arr_cap_${airportKey}`, arr);
+                localStorage.setItem(`slotwaves_dep_cap_${airportKey}`, dep);
+                localStorage.setItem(`slotwaves_ops_start_${airportKey}`, this.modalOpsStart);
+                localStorage.setItem(`slotwaves_ops_end_${airportKey}`, this.modalOpsEnd);
+            } catch (e) {}
+
+            // Persist to server backend
+            try {
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                await fetch("{{ route('dau.operational-settings.save', $upload->id) }}", {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token || ''
+                    },
+                    body: JSON.stringify({
+                        arrival_capacity: arr,
+                        departure_capacity: dep,
+                        aircraft_capacity: Math.max(arr, dep),
+                        ops_start: this.modalOpsStart,
+                        ops_end: this.modalOpsEnd
+                    })
+                });
+            } catch (err) {
+                console.warn('Could not save operational settings to server:', err);
+            }
+
+            this.closeUnifiedModal();
+            this.opsToastMessage = `Aircraft Capacity (ARR: ${arr} A/C, DEP: ${dep} A/C) & Operating Hours (${this.opsStartTime}-${this.opsEndTime}) berhasil disimpan`;
+            this.opsToastOpen = true;
+            setTimeout(() => { this.opsToastOpen = false; }, 3000);
         },
 
         saveCapacity() {
-            const val = Number(this.capacityInput);
-            if (!isNaN(val) && val > 0) {
-                this.aircraftCapacity = Math.round(val);
-            }
-            this.isCapacityModalOpen = false;
+            this.applyUnifiedSettings();
         },
 
         formatHourDisplay(hourStr) {
@@ -1592,7 +1727,9 @@ function dauEnhancedDashboard() {
         },
 
         get maxDemandPerHour() {
-            let max = Number(this.aircraftCapacity) || 6;
+            const arrCap = Number(this.arrivalCapacity) || 6;
+            const depCap = Number(this.departureCapacity) || 6;
+            let max = Math.max(arrCap, depCap);
             this.activeHourlyDistribution.forEach(h => {
                 const demand = Number(h.aircraft_arrival || 0) + Number(h.aircraft_departure || 0);
                 if (demand > max) max = demand;
@@ -1610,20 +1747,31 @@ function dauEnhancedDashboard() {
             const list = this.hourlyCapacityAnalysis.list;
             const maxArr = Math.max(...list.map(d => d.arr || 0), 0);
             const maxDep = Math.max(...list.map(d => d.dep || 0), 0);
-            const nac = Number(this.aircraftCapacity) || 6;
-            const maxVal = Math.max(nac, maxArr, maxDep, 1);
+            const arrCap = Number(this.arrivalCapacity) || 6;
+            const depCap = Number(this.departureCapacity) || 6;
+            const maxVal = Math.max(arrCap, depCap, maxArr, maxDep, 1);
             return Math.max(maxVal + 2, 8);
         },
 
-        get gridNacOffsetPx() {
-            const nac = Number(this.aircraftCapacity) || 6;
-            const ratio = Math.min(1, Math.max(0, nac / this.chartMaxScale));
+        get gridArrNacOffsetPx() {
+            const arrCap = Number(this.arrivalCapacity) || 6;
+            const ratio = Math.min(1, Math.max(0, arrCap / this.chartMaxScale));
             return Math.round(ratio * 115);
         },
 
+        get gridDepNacOffsetPx() {
+            const depCap = Number(this.departureCapacity) || 6;
+            const ratio = Math.min(1, Math.max(0, depCap / this.chartMaxScale));
+            return Math.round(ratio * 115);
+        },
+
+        get gridNacOffsetPx() {
+            return this.gridArrNacOffsetPx;
+        },
+
         get gridHalfNacOffsetPx() {
-            const nac = Number(this.aircraftCapacity) || 6;
-            const ratio = Math.min(1, Math.max(0, (nac * 0.5) / this.chartMaxScale));
+            const arrCap = Number(this.arrivalCapacity) || 6;
+            const ratio = Math.min(1, Math.max(0, (arrCap * 0.5) / this.chartMaxScale));
             return Math.round(ratio * 115);
         },
 
@@ -1639,10 +1787,14 @@ function dauEnhancedDashboard() {
             if (startIndex === -1 || endIndex === -1) return { left: 0, width: 100, top: 20, bottom: 20, isVisible: false };
             const leftPct = (startIndex / totalCols) * 100;
             const widthPct = ((endIndex - startIndex + 1) / totalCols) * 100;
-            const nac = Number(this.aircraftCapacity) || 6;
-            const ratio = Math.min(1, Math.max(0, nac / this.chartMaxScale));
-            const topPx = Math.max(4, Math.round(140 - (ratio * 115)));
-            const bottomPx = Math.max(4, Math.round(140 - (ratio * 115)));
+
+            const arrCap = Number(this.arrivalCapacity) || 6;
+            const depCap = Number(this.departureCapacity) || 6;
+            const topRatio = Math.min(1, Math.max(0, arrCap / this.chartMaxScale));
+            const bottomRatio = Math.min(1, Math.max(0, depCap / this.chartMaxScale));
+
+            const topPx = Math.max(4, Math.round(140 - (topRatio * 115)));
+            const bottomPx = Math.max(4, Math.round(140 - (bottomRatio * 115)));
             return { left: leftPct, width: widthPct, top: topPx, bottom: bottomPx, isVisible: true };
         },
 
@@ -1653,7 +1805,8 @@ function dauEnhancedDashboard() {
         },
 
         get hourlyCapacityAnalysis() {
-            const nac = Number(this.aircraftCapacity) || 6;
+            const arrCap = Number(this.arrivalCapacity) || 6;
+            const depCap = Number(this.departureCapacity) || 6;
             let availableCount = 0;
             let fullCount = 0;
             let overCount = 0;
@@ -1662,11 +1815,10 @@ function dauEnhancedDashboard() {
             const list = this.activeHourlyDistribution.map(item => {
                 const arr = Number(item.aircraft_arrival || 0);
                 const dep = Number(item.aircraft_departure || 0);
-                // In DAU-10A, OPC is not provided in source data; demand = ARR + DEP without fabrication
+                // In DAU-10A, demand = ARR + DEP without fabrication
                 const demand = arr + dep;
-                const util = nac > 0 ? Math.round((demand / nac) * 100) : 0;
+                const util = (arrCap + depCap) > 0 ? Math.round((demand / (arrCap + depCap)) * 100) : 0;
 
-                let status = 'AVAILABLE';
                 const is24h = (this.opsStartTime === '00:00' && (this.opsEndTime === '24:00' || this.opsEndTime === '23:59'));
                 let isOffHour = false;
                 if (!is24h) {
@@ -1678,18 +1830,45 @@ function dauEnhancedDashboard() {
                     }
                 }
 
+                let arrStatus = 'AVAILABLE';
+                let depStatus = 'AVAILABLE';
+                let overallStatus = 'AVAILABLE';
+
                 if (isOffHour) {
-                    status = 'OFF HOURS';
+                    arrStatus = 'OFF HOURS';
+                    depStatus = 'OFF HOURS';
+                    overallStatus = 'OFF HOURS';
                     offCount++;
-                } else if (demand > nac) {
-                    status = 'OVER CAPACITY';
-                    overCount++;
-                } else if (demand === nac) {
-                    status = 'FULL / MAX';
-                    fullCount++;
                 } else {
-                    status = 'AVAILABLE';
-                    availableCount++;
+                    // Directional ARR evaluation
+                    if (arr > arrCap) {
+                        arrStatus = 'OVER CAPACITY';
+                    } else if (arr === arrCap) {
+                        arrStatus = 'FULL / MAX';
+                    } else {
+                        arrStatus = 'AVAILABLE';
+                    }
+
+                    // Directional DEP evaluation
+                    if (dep > depCap) {
+                        depStatus = 'OVER CAPACITY';
+                    } else if (dep === depCap) {
+                        depStatus = 'FULL / MAX';
+                    } else {
+                        depStatus = 'AVAILABLE';
+                    }
+
+                    // Hourly Summary Status (Section 17 rule)
+                    if (arrStatus === 'OVER CAPACITY' || depStatus === 'OVER CAPACITY') {
+                        overallStatus = 'OVER CAPACITY';
+                        overCount++;
+                    } else if (arrStatus === 'FULL / MAX' || depStatus === 'FULL / MAX') {
+                        overallStatus = 'FULL / MAX';
+                        fullCount++;
+                    } else {
+                        overallStatus = 'AVAILABLE';
+                        availableCount++;
+                    }
                 }
 
                 return {
@@ -1699,11 +1878,15 @@ function dauEnhancedDashboard() {
                     isOps: !isOffHour,
                     arr: arr,
                     dep: dep,
+                    arrCap: arrCap,
+                    depCap: depCap,
+                    arrStatus: arrStatus,
+                    depStatus: depStatus,
                     opc: 'N/A',
                     demand: demand,
-                    nac: nac,
+                    nac: Math.max(arrCap, depCap),
                     utilization: util,
-                    status: status
+                    status: overallStatus
                 };
             });
 
@@ -1811,6 +1994,8 @@ function dauEnhancedDashboard() {
             params.set('terminal', this.filterTerminal);
             params.set('hour', this.filterHour);
             params.set('metric', this.selectedMetric);
+            params.set('arr_nac', this.arrivalCapacity);
+            params.set('dep_nac', this.departureCapacity);
             params.set('nac', this.aircraftCapacity);
             if (this.reportType === 'DAU10B') {
                 params.set('operation', this.filterOperation);

@@ -95,16 +95,20 @@ class DauDashboardController extends Controller
 
         // Airport capacity, operational hours and timezone configuration
         $initialNac = (int) config('slotwaves.nac', 6);
+        $initialArrivalCapacity = (int) config('slotwaves.nac', 6);
+        $initialDepartureCapacity = (int) config('slotwaves.nac', 6);
         $airport = null;
         try {
             $airport = $upload->airport ?: \App\Models\Airport::where('iata_code', $meta['airport_code'] ?? 'CGK')->first();
             if ($airport) {
                 $initialNac = (int) $airport->getEffectiveCapacity();
+                $initialArrivalCapacity = (int) $airport->getEffectiveArrivalCapacity();
+                $initialDepartureCapacity = (int) $airport->getEffectiveDepartureCapacity();
             }
         } catch (\Throwable $e) {}
 
-        $opsStartTime = $airport?->ops_start_time ?? '00:00';
-        $opsEndTime   = $airport?->ops_end_time ?? '24:00';
+        $opsStartTime = $airport?->ops_start_time ?? '06:00';
+        $opsEndTime   = $airport?->ops_end_time ?? '20:00';
         $tzAbbr       = $airport ? $airport->getTimezoneAbbreviation() : 'WIB';
         $tzOffset     = $airport ? (int) round($airport->getTimezoneOffsetMinutes() / 60) : 7;
 
@@ -124,6 +128,8 @@ class DauDashboardController extends Controller
             'terminalComparison',
             'matrixRecords',
             'initialNac',
+            'initialArrivalCapacity',
+            'initialDepartureCapacity',
             'opsStartTime',
             'opsEndTime',
             'tzAbbr',
@@ -245,28 +251,44 @@ class DauDashboardController extends Controller
 
         $filename .= '.pdf';
 
-        // Resolve Aircraft Capacity (NAC) for report
-        $reqNac = $request->query('nac');
-        if ($reqNac !== null && is_numeric($reqNac) && (int)$reqNac > 0) {
-            $nac = (int) $reqNac;
-        } else {
-            $nac = (int) config('slotwaves.nac', 6);
-            try {
-                $airport = $upload->airport ?: \App\Models\Airport::where('iata_code', $meta['airport_code'] ?? 'CGK')->first();
-                if ($airport) {
-                    $nac = (int) $airport->getEffectiveCapacity();
-                }
-            } catch (\Throwable $e) {}
-        }
+        // Resolve Aircraft Capacity (ARR and DEP) for report
+        $airport = null;
+        try {
+            $airport = $upload->airport ?: \App\Models\Airport::where('iata_code', $meta['airport_code'] ?? 'CGK')->first();
+        } catch (\Throwable $e) {}
+
+        $reqArrNac = $request->query('arr_nac', $request->query('nac'));
+        $reqDepNac = $request->query('dep_nac', $request->query('nac'));
+
+        $arrNac = ($reqArrNac !== null && is_numeric($reqArrNac) && (int)$reqArrNac > 0)
+            ? (int) $reqArrNac
+            : ($airport ? $airport->getEffectiveArrivalCapacity() : (int) config('slotwaves.nac', 6));
+
+        $depNac = ($reqDepNac !== null && is_numeric($reqDepNac) && (int)$reqDepNac > 0)
+            ? (int) $reqDepNac
+            : ($airport ? $airport->getEffectiveDepartureCapacity() : (int) config('slotwaves.nac', 6));
+
+        $nac = max($arrNac, $depNac);
+
+        $opsStart = $airport?->ops_start_time ?? '06:00';
+        $opsEnd   = $airport?->ops_end_time ?? '20:00';
+        $is24h    = ($opsStart === '00:00' && ($opsEnd === '24:00' || $opsEnd === '23:59'));
+        $startNum = (int) explode(':', $opsStart)[0];
+        $endNum   = (int) explode(':', $opsEnd)[0];
 
         // Compute DAU-10A Capacity Status & Summary
         $capacitySummary = [
-            'nac'                  => $nac,
+            'nac'                 => $nac,
+            'arr_nac'             => $arrNac,
+            'dep_nac'             => $depNac,
+            'ops_start'           => $opsStart,
+            'ops_end'             => $opsEnd,
             'peak_aircraft'       => $peaks['peak_aircraft'],
             'peak_hour'           => $peaks['peak_aircraft_hour'],
             'available_hours'     => 0,
             'full_hours'          => 0,
             'over_capacity_hours' => 0,
+            'off_hours'           => 0,
         ];
 
         $hourlyCapacityStatus = [];
@@ -277,11 +299,17 @@ class DauDashboardController extends Controller
                 $demand = $arr + $dep;
                 $util = $nac > 0 ? round(($demand / $nac) * 100) : 0;
 
+                $hNum = (int) explode(':', explode(' - ', $hd['hour'])[0])[0];
+                $isOffHour = (!$is24h && ($hNum < $startNum || $hNum >= $endNum));
+
                 $status = 'AVAILABLE';
-                if ($demand > $nac) {
+                if ($isOffHour) {
+                    $status = 'OFF HOURS';
+                    $capacitySummary['off_hours']++;
+                } elseif ($arr > $arrNac || $dep > $depNac) {
                     $status = 'OVER CAPACITY';
                     $capacitySummary['over_capacity_hours']++;
-                } elseif ($demand === $nac) {
+                } elseif ($arr === $arrNac || $dep === $depNac) {
                     $status = 'FULL / MAX';
                     $capacitySummary['full_hours']++;
                 } else {
@@ -293,11 +321,14 @@ class DauDashboardController extends Controller
                     'hour'        => $hd['hour'],
                     'arr'         => $arr,
                     'dep'         => $dep,
+                    'arr_nac'     => $arrNac,
+                    'dep_nac'     => $depNac,
                     'opc'         => 'N/A',
                     'demand'      => $demand,
                     'nac'         => $nac,
                     'utilization' => $util,
                     'status'      => $status,
+                    'is_ops'      => !$isOffHour,
                 ];
             }
         }
@@ -317,6 +348,10 @@ class DauDashboardController extends Controller
             'filters'              => $filters,
             'metric'               => $filters['metric'],
             'nac'                  => $nac,
+            'arrNac'               => $arrNac,
+            'depNac'               => $depNac,
+            'opsStart'             => $opsStart,
+            'opsEnd'               => $opsEnd,
             'capacitySummary'      => $capacitySummary,
             'hourlyCapacityStatus' => $hourlyCapacityStatus,
         ])
@@ -423,6 +458,63 @@ class DauDashboardController extends Controller
 
             fclose($handle);
         }, 200, $headers);
+    }
+
+    /**
+     * Persist airport operational settings (Arrival/Departure Capacity, Ops Hours) for DAU upload
+     */
+    public function saveOperationalSettings(Request $request, Upload $upload)
+    {
+        $validated = $request->validate([
+            'arrival_capacity'   => 'nullable|integer|min:1|max:150',
+            'departure_capacity' => 'nullable|integer|min:1|max:150',
+            'aircraft_capacity'  => 'nullable|integer|min:1|max:150',
+            'ops_start'          => 'nullable|string|max:10',
+            'ops_end'            => 'nullable|string|max:10',
+        ]);
+
+        $meta = $upload->report_data['meta'] ?? [];
+        $airport = $upload->airport ?: \App\Models\Airport::where('iata_code', $meta['airport_code'] ?? 'CGK')->first();
+
+        if ($airport) {
+            $updates = [];
+            if (!empty($validated['arrival_capacity'])) {
+                $updates['arrival_capacity'] = (int) $validated['arrival_capacity'];
+            }
+            if (!empty($validated['departure_capacity'])) {
+                $updates['departure_capacity'] = (int) $validated['departure_capacity'];
+            }
+            if (!empty($validated['aircraft_capacity'])) {
+                $updates['aircraft_capacity'] = (int) $validated['aircraft_capacity'];
+                if (empty($updates['arrival_capacity'])) $updates['arrival_capacity'] = (int) $validated['aircraft_capacity'];
+                if (empty($updates['departure_capacity'])) $updates['departure_capacity'] = (int) $validated['aircraft_capacity'];
+            } elseif (!empty($updates['arrival_capacity']) || !empty($updates['departure_capacity'])) {
+                $updates['aircraft_capacity'] = max(
+                    $updates['arrival_capacity'] ?? $airport->arrival_capacity ?? 6,
+                    $updates['departure_capacity'] ?? $airport->departure_capacity ?? 6
+                );
+            }
+            if (!empty($validated['ops_start'])) {
+                $updates['ops_start_time'] = str_contains($validated['ops_start'], ':') ? $validated['ops_start'] : sprintf('%02d:00', $validated['ops_start']);
+            }
+            if (!empty($validated['ops_end'])) {
+                $updates['ops_end_time'] = str_contains($validated['ops_end'], ':') ? $validated['ops_end'] : sprintf('%02d:00', $validated['ops_end']);
+            }
+            if (!empty($updates)) {
+                $airport->update($updates);
+            }
+        }
+
+        return response()->json([
+            'status'             => 'success',
+            'success'            => true,
+            'message'            => 'Airport Operational Settings updated successfully.',
+            'arrival_capacity'   => $airport ? $airport->getEffectiveArrivalCapacity() : ($validated['arrival_capacity'] ?? 6),
+            'departure_capacity' => $airport ? $airport->getEffectiveDepartureCapacity() : ($validated['departure_capacity'] ?? 6),
+            'aircraft_capacity'  => $airport ? $airport->getEffectiveCapacity() : ($validated['aircraft_capacity'] ?? 6),
+            'ops_start'          => $airport ? $airport->ops_start_time : '06:00',
+            'ops_end'            => $airport ? $airport->ops_end_time : '20:00',
+        ]);
     }
 
     /**

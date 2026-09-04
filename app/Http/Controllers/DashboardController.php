@@ -42,22 +42,26 @@ class DashboardController extends Controller
         $airport = $this->reports->resolveAirportPublic($upload);
 
         // Airport Operational Settings: Capacity, Timezone, Operating Hours
-        $airportCapacity = $airport ? $airport->getEffectiveCapacity() : (int) config('slotwaves.nac', 6);
-        $airportTimezone = $airport ? $airport->getTimezone() : 'Asia/Jakarta';
-        $timezoneOffset  = $airport ? $airport->getTimezoneOffsetMinutes() : 420;
-        $timezoneAbbr    = $airport ? $airport->getTimezoneAbbreviation() : 'WIB';
+        $airportCapacity   = $airport ? $airport->getEffectiveCapacity() : (int) config('slotwaves.nac', 6);
+        $arrivalCapacity   = $airport ? $airport->getEffectiveArrivalCapacity() : (int) config('slotwaves.nac', 6);
+        $departureCapacity = $airport ? $airport->getEffectiveDepartureCapacity() : (int) config('slotwaves.nac', 6);
+        $airportTimezone   = $airport ? $airport->getTimezone() : 'Asia/Jakarta';
+        $timezoneOffset    = $airport ? $airport->getTimezoneOffsetMinutes() : 420;
+        $timezoneAbbr      = $airport ? $airport->getTimezoneAbbreviation() : 'WIB';
 
         // Summary stats react dynamically to the filtered flight set!
         $stats = [
-            'total'             => $flights->count(),
-            'arrivals'          => $flights->filter(fn($f) => str_contains($f->flight_type, 'arrival'))->count(),
-            'departures'        => $flights->filter(fn($f) => str_contains($f->flight_type, 'departure'))->count(),
-            'domestic'          => $flights->filter(fn($f) => str_contains($f->flight_type, 'domestic'))->count(),
-            'international'     => $flights->filter(fn($f) => str_contains($f->flight_type, 'international'))->count(),
-            'aircraft_capacity' => $airportCapacity,
-            'timezone'          => $airportTimezone,
-            'timezone_offset'   => $timezoneOffset,
-            'timezone_abbr'     => $timezoneAbbr,
+            'total'              => $flights->count(),
+            'arrivals'           => $flights->filter(fn($f) => str_contains($f->flight_type, 'arrival'))->count(),
+            'departures'         => $flights->filter(fn($f) => str_contains($f->flight_type, 'departure'))->count(),
+            'domestic'           => $flights->filter(fn($f) => str_contains($f->flight_type, 'domestic'))->count(),
+            'international'      => $flights->filter(fn($f) => str_contains($f->flight_type, 'international'))->count(),
+            'aircraft_capacity'  => $airportCapacity,
+            'arrival_capacity'   => $arrivalCapacity,
+            'departure_capacity' => $departureCapacity,
+            'timezone'           => $airportTimezone,
+            'timezone_offset'    => $timezoneOffset,
+            'timezone_abbr'      => $timezoneAbbr,
         ];
 
         // Operating hours: prioritize query params (?ops_start=06:00&ops_end=19:00), then saved settings, then airport default, then fallback (6 and 20)
@@ -324,18 +328,37 @@ class DashboardController extends Controller
     public function saveOperationalSettings(Request $request, Upload $upload)
     {
         $validated = $request->validate([
-            'aircraft_capacity' => 'nullable|integer|min:1|max:100',
-            'timezone'          => 'nullable|string|max:50',
-            'ops_start'         => 'nullable|string|max:10',
-            'ops_end'           => 'nullable|string|max:10',
+            'arrival_capacity'   => 'nullable|integer|min:1|max:150',
+            'departure_capacity' => 'nullable|integer|min:1|max:150',
+            'aircraft_capacity'  => 'nullable|integer|min:1|max:150',
+            'timezone'           => 'nullable|string|max:50',
+            'ops_start'          => 'nullable|string|max:10',
+            'ops_end'            => 'nullable|string|max:10',
         ]);
 
         $airport = $this->reports->resolveAirportPublic($upload);
 
         if ($airport) {
             $updates = [];
+            if (!empty($validated['arrival_capacity'])) {
+                $updates['arrival_capacity'] = (int) $validated['arrival_capacity'];
+            }
+            if (!empty($validated['departure_capacity'])) {
+                $updates['departure_capacity'] = (int) $validated['departure_capacity'];
+            }
             if (!empty($validated['aircraft_capacity'])) {
                 $updates['aircraft_capacity'] = (int) $validated['aircraft_capacity'];
+                if (empty($updates['arrival_capacity'])) {
+                    $updates['arrival_capacity'] = (int) $validated['aircraft_capacity'];
+                }
+                if (empty($updates['departure_capacity'])) {
+                    $updates['departure_capacity'] = (int) $validated['aircraft_capacity'];
+                }
+            } elseif (!empty($updates['arrival_capacity']) || !empty($updates['departure_capacity'])) {
+                $updates['aircraft_capacity'] = max(
+                    $updates['arrival_capacity'] ?? $airport->arrival_capacity ?? 6,
+                    $updates['departure_capacity'] ?? $airport->departure_capacity ?? 6
+                );
             }
             if (!empty($validated['timezone'])) {
                 $updates['timezone'] = $validated['timezone'];
@@ -364,12 +387,15 @@ class DashboardController extends Controller
         }
 
         return response()->json([
-            'success'           => true,
-            'message'           => 'Airport Operational Settings updated successfully.',
-            'aircraft_capacity' => $airport ? $airport->getEffectiveCapacity() : ($validated['aircraft_capacity'] ?? 6),
-            'timezone'          => $airport ? $airport->getTimezone() : ($validated['timezone'] ?? 'Asia/Jakarta'),
-            'ops_start'         => $airport ? $airport->ops_start_time : '06:00',
-            'ops_end'           => $airport ? $airport->ops_end_time : '20:00',
+            'status'             => 'success',
+            'success'            => true,
+            'message'            => 'Airport Operational Settings updated successfully.',
+            'arrival_capacity'   => $airport ? $airport->getEffectiveArrivalCapacity() : ($validated['arrival_capacity'] ?? 6),
+            'departure_capacity' => $airport ? $airport->getEffectiveDepartureCapacity() : ($validated['departure_capacity'] ?? 6),
+            'aircraft_capacity'  => $airport ? $airport->getEffectiveCapacity() : ($validated['aircraft_capacity'] ?? 6),
+            'timezone'           => $airport ? $airport->getTimezone() : ($validated['timezone'] ?? 'Asia/Jakarta'),
+            'ops_start'          => $airport ? $airport->ops_start_time : '06:00',
+            'ops_end'            => $airport ? $airport->ops_end_time : '20:00',
         ]);
     }
 

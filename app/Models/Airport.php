@@ -45,6 +45,8 @@ class Airport extends Model
         'status',
         'operating_status',
         'aircraft_capacity',
+        'arrival_capacity',
+        'departure_capacity',
         'timezone',
         'ops_start_time',
         'ops_end_time',
@@ -58,8 +60,10 @@ class Airport extends Model
     ];
 
     protected $casts = [
-        'bandara_id'        => 'integer',
-        'aircraft_capacity' => 'integer',
+        'bandara_id'         => 'integer',
+        'aircraft_capacity'  => 'integer',
+        'arrival_capacity'   => 'integer',
+        'departure_capacity' => 'integer',
         'latitude'          => 'float',
         'longitude'         => 'float',
         'is_international'  => 'boolean',
@@ -236,11 +240,27 @@ class Airport extends Model
     }
 
     /**
+     * Return configured arrival aircraft capacity or default 6.
+     */
+    public function getEffectiveArrivalCapacity(): int
+    {
+        return $this->arrival_capacity ?: ($this->aircraft_capacity ?: (int) config('slotwaves.nac', 6));
+    }
+
+    /**
+     * Return configured departure aircraft capacity or default 6.
+     */
+    public function getEffectiveDepartureCapacity(): int
+    {
+        return $this->departure_capacity ?: ($this->aircraft_capacity ?: (int) config('slotwaves.nac', 6));
+    }
+
+    /**
      * Return configured aircraft capacity or default 6.
      */
     public function getEffectiveCapacity(): int
     {
-        return $this->aircraft_capacity ?: (int) config('slotwaves.nac', 6);
+        return max($this->getEffectiveArrivalCapacity(), $this->getEffectiveDepartureCapacity());
     }
 
     /**
