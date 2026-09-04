@@ -805,10 +805,22 @@
                                 <p class="text-xs text-slate-500">Two-Direction Operational Aircraft Capacity Envelope & Demand Analysis.</p>
                             </div>
 
-                            <div class="flex flex-wrap items-center gap-3 text-xs font-mono">
+                            <div class="flex flex-wrap items-center gap-2.5 text-xs font-mono">
+                                {{-- Inline Terminal Selector for Distribusi Per Jam --}}
+                                <div class="flex items-center gap-1.5 p-1 rounded-lg bg-slate-100 dark:bg-navy-800 border border-slate-200 dark:border-slate-700">
+                                    <span class="text-[9.5px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 pl-1.5 font-mono">TERMINAL:</span>
+                                    <select x-model="filterTerminal" @change="applyFilters()"
+                                            class="px-2 py-0.5 text-xs font-mono font-bold rounded bg-white dark:bg-navy-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 shadow-2xs focus:ring-1 focus:ring-aviation-500 cursor-pointer">
+                                        <option value="ALL">ALL TERMINALS</option>
+                                        @foreach ($terminals as $t)
+                                            <option value="{{ $t }}">Terminal {{ $t }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
                                 <template x-if="filterHour !== 'ALL'">
                                     <button type="button" @click="setHourFilter('ALL')"
-                                            class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-aviation-100 text-aviation-800 dark:bg-aviation-950 dark:text-aviation-300 border border-aviation-300 hover:bg-aviation-200 transition cursor-pointer">
+                                            class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-aviation-100 text-aviation-800 dark:bg-aviation-950 dark:text-aviation-300 border border-aviation-300 hover:bg-aviation-200 transition cursor-pointer">
                                         Clear Hour Filter (✕)
                                     </button>
                                 </template>
@@ -1175,50 +1187,59 @@
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {{-- Arrival Capacity --}}
-                        <div class="p-3 rounded-xl bg-amber-50/50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/50 space-y-1">
-                            <label class="block font-bold text-amber-900 dark:text-amber-200 text-xs">ARRIVAL CAPACITY</label>
+                        {{-- Arrival Capacity (Orange Accent) --}}
+                        <div class="p-3.5 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border-2 border-amber-300 dark:border-amber-700/60 space-y-1.5 shadow-2xs">
+                            <div class="flex items-center justify-between">
+                                <label class="block font-black text-amber-900 dark:text-amber-200 text-xs">ARRIVAL CAPACITY</label>
+                                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                            </div>
                             <div class="flex items-center gap-2">
                                 <input type="number" min="1" max="150" x-model.number="modalArrCap" class="w-full px-3 py-1.5 text-base font-mono font-bold rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-navy-950 text-amber-700 dark:text-amber-300 focus:ring-2 focus:ring-amber-500 focus:outline-hidden">
-                                <span class="text-xs font-bold text-slate-500 font-mono">A/C</span>
+                                <span class="text-xs font-bold text-amber-700 dark:text-amber-300 font-mono">A/C</span>
                             </div>
-                            <p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight pt-1">
-                                Maximum aircraft demand allowed for ARRIVAL.
+                            <p class="text-[10px] text-amber-800/80 dark:text-amber-300/70 leading-tight pt-0.5">
+                                Maximum configured Arrival demand.
                             </p>
                         </div>
 
-                        {{-- Departure Capacity --}}
-                        <div class="p-3 rounded-xl bg-blue-50/50 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/50 space-y-1">
-                            <label class="block font-bold text-blue-900 dark:text-blue-200 text-xs">DEPARTURE CAPACITY</label>
+                        {{-- Departure Capacity (Blue Accent) --}}
+                        <div class="p-3.5 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border-2 border-blue-300 dark:border-blue-700/60 space-y-1.5 shadow-2xs">
+                            <div class="flex items-center justify-between">
+                                <label class="block font-black text-blue-900 dark:text-blue-200 text-xs">DEPARTURE CAPACITY</label>
+                                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                            </div>
                             <div class="flex items-center gap-2">
                                 <input type="number" min="1" max="150" x-model.number="modalDepCap" class="w-full px-3 py-1.5 text-base font-mono font-bold rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-navy-950 text-blue-700 dark:text-blue-300 focus:ring-2 focus:ring-blue-500 focus:outline-hidden">
-                                <span class="text-xs font-bold text-slate-500 font-mono">A/C</span>
+                                <span class="text-xs font-bold text-blue-700 dark:text-blue-300 font-mono">A/C</span>
                             </div>
-                            <p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight pt-1">
-                                Maximum aircraft demand allowed for DEPARTURE.
+                            <p class="text-[10px] text-blue-800/80 dark:text-blue-300/70 leading-tight pt-0.5">
+                                Maximum configured Departure demand.
                             </p>
                         </div>
                     </div>
                 </div>
 
-                {{-- OPERATING HOURS SECTION --}}
+                {{-- OPERATING HOURS SECTION (Green Accent) --}}
                 <div class="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-3">
-                    <div class="text-[10.5px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                        OPERATING HOURS
+                    <div class="text-[10.5px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center justify-between">
+                        <span>OPERATING HOURS</span>
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">START TIME</label>
-                            <input type="text" x-model="modalOpsStart" placeholder="00:00" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-navy-950 text-slate-900 dark:text-white font-mono text-center font-bold">
+                    <div class="p-3.5 rounded-xl bg-emerald-50/40 dark:bg-emerald-950/20 border-2 border-emerald-300 dark:border-emerald-700/60 space-y-2 shadow-2xs">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block font-black text-emerald-900 dark:text-emerald-200 text-xs mb-1">START TIME</label>
+                                <input type="text" x-model="modalOpsStart" placeholder="00:00" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-navy-950 text-slate-900 dark:text-white font-mono text-center font-bold">
+                            </div>
+                            <div>
+                                <label class="block font-black text-emerald-900 dark:text-emerald-200 text-xs mb-1">END TIME</label>
+                                <input type="text" x-model="modalOpsEnd" placeholder="24:00" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-navy-950 text-slate-900 dark:text-white font-mono text-center font-bold">
+                            </div>
                         </div>
-                        <div>
-                            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">END TIME</label>
-                            <input type="text" x-model="modalOpsEnd" placeholder="24:00" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-navy-950 text-slate-900 dark:text-white font-mono text-center font-bold">
-                        </div>
-                    </div>
-                    <div class="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
-                        Example: 06:00 &rarr; 20:00 atau 00:00 &rarr; 24:00 (24 Jam)
+                        <p class="text-[10px] text-emerald-800/80 dark:text-emerald-300/70 leading-tight">
+                            Defines the active horizontal chart window. (Example: 06:00 &rarr; 21:00)
+                        </p>
                     </div>
                 </div>
 
@@ -1441,6 +1462,23 @@ function dauEnhancedDashboard() {
 
             const hourlyMap = {};
             const termMap = {};
+
+            // Pre-populate all available hours so the 24-hour timeline envelope never collapses when filtering by a specific terminal
+            (this.hours || []).forEach(h => {
+                hourlyMap[h] = {
+                    hour: h,
+                    aircraft_arrival: 0,
+                    aircraft_departure: 0,
+                    aircraft_total: 0,
+                    passenger_arrival: 0,
+                    passenger_departure: 0,
+                    passenger_total: 0,
+                    crew_total: 0,
+                    baggage: 0,
+                    cargo: 0,
+                    pos: 0,
+                };
+            });
 
             this.filteredRecords.forEach(r => {
                 const h = r.hour || r.period || 'N/A';
@@ -1997,6 +2035,8 @@ function dauEnhancedDashboard() {
             params.set('arr_nac', this.arrivalCapacity);
             params.set('dep_nac', this.departureCapacity);
             params.set('nac', this.aircraftCapacity);
+            params.set('ops_start', this.opsStartTime);
+            params.set('ops_end', this.opsEndTime);
             if (this.reportType === 'DAU10B') {
                 params.set('operation', this.filterOperation);
             }

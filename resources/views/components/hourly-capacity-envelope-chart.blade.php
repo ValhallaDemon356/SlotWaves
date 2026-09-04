@@ -23,14 +23,23 @@
         {{-- Chart Header Badges & Segmented Window Toggle --}}
         <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800/80 pb-2">
             <div class="flex flex-wrap items-center gap-2">
-                {{-- Unified Edit Trigger Button --}}
-                <button type="button" @click="openUnifiedModal()"
-                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10.5px] font-black uppercase tracking-wider bg-aviation-50 text-aviation-700 dark:bg-aviation-950/80 dark:text-aviation-300 border border-aviation-200 dark:border-aviation-800 hover:bg-aviation-100 transition cursor-pointer shadow-2xs"
-                        title="Click to edit Aircraft Capacity & Operational Hours">
-                    <span class="radar-dot w-1.5 h-1.5 rounded-full bg-aviation-500"></span>
-                    <span>ARR: <strong class="font-mono" x-text="arrivalCapacity"></strong> A/C &bull; DEP: <strong class="font-mono" x-text="departureCapacity"></strong> A/C &bull; OPS <span x-text="opsStartTime"></span>&rarr;<span x-text="opsEndTime"></span></span>
-                    <span class="text-[9.5px] underline ml-0.5 font-bold">Edit ⚙</span>
-                </button>
+                {{-- Aircraft Capacity Badge & Edit Button --}}
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10.5px] font-mono bg-white dark:bg-navy-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
+                    <span class="text-[9.5px] font-black uppercase tracking-wider text-slate-400">AIRCRAFT CAPACITY</span>
+                    <span class="text-slate-300 dark:text-slate-700">|</span>
+                    <span class="text-amber-600 dark:text-amber-400 font-bold">ARR: <strong x-text="arrivalCapacity"></strong> A/C</span>
+                    <span class="text-slate-300 dark:text-slate-700">|</span>
+                    <span class="text-blue-600 dark:text-blue-400 font-bold">DEP: <strong x-text="departureCapacity"></strong> A/C</span>
+                    <button type="button" @click="openUnifiedModal()" class="ml-1 text-[9.5px] font-black text-aviation-600 dark:text-aviation-400 hover:underline cursor-pointer">EDIT ⚙</button>
+                </div>
+
+                {{-- Ops Hours Badge & Edit Button --}}
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10.5px] font-mono bg-white dark:bg-navy-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
+                    <span class="text-[9.5px] font-black uppercase tracking-wider text-slate-400">OPS HOURS</span>
+                    <span class="text-slate-300 dark:text-slate-700">|</span>
+                    <span class="text-emerald-600 dark:text-emerald-400 font-bold"><span x-text="opsStartTime"></span> &rarr; <span x-text="opsEndTime"></span></span>
+                    <button type="button" @click="openUnifiedModal()" class="ml-1 text-[9.5px] font-black text-aviation-600 dark:text-aviation-400 hover:underline cursor-pointer">EDIT ⚙</button>
+                </div>
                 
                 {{-- Segmented Time Filter: OPS Window vs All 24 Hours --}}
                 <div class="inline-flex p-0.5 bg-slate-100 dark:bg-navy-950 rounded-md border border-slate-200 dark:border-slate-800 text-[10px] font-semibold">
@@ -72,18 +81,28 @@
         {{-- DAU Mode Header Control Bar --}}
         <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800/80 pb-2">
             <div class="flex flex-wrap items-center gap-2">
-                <button type="button" @click="openUnifiedModal()"
-                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10.5px] font-black uppercase tracking-wider bg-aviation-50 text-aviation-700 dark:bg-aviation-950/80 dark:text-aviation-300 border border-aviation-200 dark:border-aviation-800 hover:bg-aviation-100 transition cursor-pointer shadow-2xs"
-                        title="Click to edit Aircraft Capacity & Operational Hours">
-                    <span class="radar-dot w-1.5 h-1.5 rounded-full bg-aviation-500"></span>
-                    <span>ARR: <strong class="font-mono" x-text="arrivalCapacity"></strong> A/C &bull; DEP: <strong class="font-mono" x-text="departureCapacity"></strong> A/C &bull; OPS <span x-text="opsStartTime"></span>&rarr;<span x-text="opsEndTime"></span></span>
-                    <span class="text-[9.5px] underline ml-0.5 font-bold">Edit ⚙</span>
-                </button>
+                {{-- Aircraft Capacity Badge & Edit Button --}}
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10.5px] font-mono bg-white dark:bg-navy-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
+                    <span class="text-[9.5px] font-black uppercase tracking-wider text-slate-400">AIRCRAFT CAPACITY</span>
+                    <span class="text-slate-300 dark:text-slate-700">|</span>
+                    <span class="text-amber-600 dark:text-amber-400 font-bold">ARR: <strong x-text="arrivalCapacity"></strong> A/C</span>
+                    <span class="text-slate-300 dark:text-slate-700">|</span>
+                    <span class="text-blue-600 dark:text-blue-400 font-bold">DEP: <strong x-text="departureCapacity"></strong> A/C</span>
+                    <button type="button" @click="openUnifiedModal()" class="ml-1 text-[9.5px] font-black text-aviation-600 dark:text-aviation-400 hover:underline cursor-pointer">EDIT ⚙</button>
+                </div>
+
+                {{-- Ops Hours Badge & Edit Button --}}
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10.5px] font-mono bg-white dark:bg-navy-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
+                    <span class="text-[9.5px] font-black uppercase tracking-wider text-slate-400">OPS HOURS</span>
+                    <span class="text-slate-300 dark:text-slate-700">|</span>
+                    <span class="text-emerald-600 dark:text-emerald-400 font-bold"><span x-text="opsStartTime"></span> &rarr; <span x-text="opsEndTime"></span></span>
+                    <button type="button" @click="openUnifiedModal()" class="ml-1 text-[9.5px] font-black text-aviation-600 dark:text-aviation-400 hover:underline cursor-pointer">EDIT ⚙</button>
+                </div>
 
                 <template x-if="filterTerminal !== 'ALL'">
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-slate-900 text-white dark:bg-white dark:text-slate-900">
-                        <span>Terminal: <span x-text="filterTerminal"></span></span>
-                        <button type="button" @click="setTerminal('ALL')" class="hover:text-red-400 font-bold ml-0.5">&times;</button>
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-mono font-bold bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-2xs">
+                        <span>TERMINAL: <span x-text="filterTerminal"></span></span>
+                        <button type="button" @click="setTerminal('ALL')" class="hover:text-red-400 font-bold ml-1 cursor-pointer">&times;</button>
                     </span>
                 </template>
             </div>
@@ -105,7 +124,7 @@
             <div class="absolute inset-x-0 inset-y-0 z-0">
                 
                 {{-- 1. DASHED ARRIVAL CAPACITY REFERENCE LINE (+ARR Capacity, Upper Side) --}}
-                <div class="absolute inset-x-0 border-b border-dashed border-amber-500/60 dark:border-amber-400/50 flex items-center justify-between pointer-events-none"
+                <div class="absolute inset-x-0 border-b border-dashed border-amber-500/50 dark:border-amber-400/40 flex items-center justify-between pointer-events-none"
                      :style="'bottom: ' + (140 + 32 + gridArrNacOffsetPx) + 'px;'"
                      @if($mode !== 'schedule') x-show="selectedMetric === 'aircraft'" @endif>
                     
@@ -117,7 +136,7 @@
                     </div>
 
                     <span class="text-[8.5px] font-mono font-bold text-amber-600 dark:text-amber-400 bg-white/90 dark:bg-navy-900/90 px-1.5 py-0.5 rounded-r shadow-2xs border-r border-amber-300/40 pointer-events-none">
-                        ARR Cap: +<span x-text="arrivalCapacity"></span> A/C
+                        ARR CAP: +<span x-text="arrivalCapacity"></span> A/C
                     </span>
                     <span class="text-[8px] font-mono text-amber-600/70 dark:text-amber-400/70 pr-1 pointer-events-none">
                         &uarr; Batas Kedatangan
@@ -135,7 +154,8 @@
                      class="absolute left-1/2 -translate-x-1/2 z-50 px-3 py-1.5 bg-slate-900/95 dark:bg-navy-900/95 text-white backdrop-blur-md rounded-lg shadow-2xl border border-amber-500/60 text-xs font-mono pointer-events-none text-center whitespace-nowrap"
                      :style="'bottom: ' + (140 + 32 + gridArrNacOffsetPx + 10) + 'px;'"
                      style="display: none;">
-                    <div class="font-bold text-amber-300 text-[10px] uppercase tracking-wider">Batas Aircraft Capacity - ARR: <span x-text="arrivalCapacity"></span> A/C</div>
+                    <div class="font-bold text-amber-300 text-[10px] uppercase tracking-wider">Arrival Capacity <span class="opacity-80">(Batas Aircraft Capacity - ARR: <span x-text="arrivalCapacity"></span> A/C)</span></div>
+                    <div class="font-black text-white text-xs" x-text="arrivalCapacity + ' A/C'"></div>
                 </div>
 
                 {{-- +50% ARR Grid Line --}}
@@ -157,7 +177,7 @@
                 </div>
 
                 {{-- 2. DASHED DEPARTURE CAPACITY REFERENCE LINE (-DEP Capacity, Lower Side) --}}
-                <div class="absolute inset-x-0 border-b border-dashed border-blue-500/60 dark:border-blue-400/50 flex items-center justify-between pointer-events-none"
+                <div class="absolute inset-x-0 border-b border-dashed border-blue-500/50 dark:border-blue-400/40 flex items-center justify-between pointer-events-none"
                      :style="'top: ' + (140 + 32 + gridDepNacOffsetPx) + 'px;'"
                      @if($mode !== 'schedule') x-show="selectedMetric === 'aircraft'" @endif>
                     
@@ -169,7 +189,7 @@
                     </div>
 
                     <span class="text-[8.5px] font-mono font-bold text-blue-600 dark:text-blue-400 bg-white/90 dark:bg-navy-900/90 px-1.5 py-0.5 rounded-r shadow-2xs border-r border-blue-300/40 pointer-events-none">
-                        DEP Cap: -<span x-text="departureCapacity"></span> A/C
+                        DEP CAP: -<span x-text="departureCapacity"></span> A/C
                     </span>
                     <span class="text-[8px] font-mono text-blue-600/70 dark:text-blue-400/70 pr-1 pointer-events-none">
                         &darr; Batas Keberangkatan
@@ -187,23 +207,45 @@
                      class="absolute left-1/2 -translate-x-1/2 z-50 px-3 py-1.5 bg-slate-900/95 dark:bg-navy-900/95 text-white backdrop-blur-md rounded-lg shadow-2xl border border-blue-500/60 text-xs font-mono pointer-events-none text-center whitespace-nowrap"
                      :style="'top: ' + (140 + 32 + gridDepNacOffsetPx + 10) + 'px;'"
                      style="display: none;">
-                    <div class="font-bold text-blue-300 text-[10px] uppercase tracking-wider">Batas Aircraft Capacity - DEP: <span x-text="departureCapacity"></span> A/C</div>
+                    <div class="font-bold text-blue-300 text-[10px] uppercase tracking-wider">Departure Capacity <span class="opacity-80">(Batas Aircraft Capacity - DEP: <span x-text="departureCapacity"></span> A/C)</span></div>
+                    <div class="font-black text-white text-xs" x-text="departureCapacity + ' A/C'"></div>
                 </div>
 
             </div>
 
             {{-- ── LAYER 1: DYNAMIC DASHED CAPACITY ENVELOPE (Ops Start/End & -DEP / +ARR) ── --}}
             <template x-if="@if($mode === 'schedule') envelopeCoords.isVisible @else (selectedMetric === 'aircraft' && envelopeCoords.isVisible) @endif">
-                <div class="absolute z-1 transition-all duration-200 pointer-events-none rounded-sm"
+                <div class="absolute z-1 transition-all duration-200 pointer-events-none rounded-sm border-t-2 border-b-2 border-l-2 border-r-2 border-dashed border-t-amber-500 border-b-blue-500 border-l-emerald-500 border-r-emerald-500 bg-emerald-500/[0.02] dark:bg-emerald-500/[0.03] shadow-[0_0_15px_rgba(16,185,129,0.05)]"
                      :style="{
                          left: envelopeCoords.left + '%',
                          width: envelopeCoords.width + '%',
                          top: envelopeCoords.top + 'px',
-                         bottom: envelopeCoords.bottom + 'px',
-                         border: '1.5px dashed rgba(99, 102, 241, 0.45)',
-                         backgroundColor: 'rgba(99, 102, 241, 0.025)'
+                         bottom: envelopeCoords.bottom + 'px'
                      }">
                     
+                    {{-- PINNED ENVELOPE LABELS (Non-overlapping, clear boundaries) --}}
+                    {{-- 1. Upper boundary label (Arrival Capacity) --}}
+                    <div class="absolute -top-5.5 left-2 flex items-center gap-1 font-mono text-[8.5px] font-black text-amber-600 dark:text-amber-400 bg-white/95 dark:bg-navy-900/95 px-1.5 py-0.5 rounded shadow-2xs border border-amber-400/80 dark:border-amber-600/80 whitespace-nowrap z-20 pointer-events-none">
+                        ARR CAP: +<span x-text="arrivalCapacity"></span> A/C
+                    </div>
+
+                    {{-- 2. Lower boundary label (Departure Capacity) --}}
+                    <div class="absolute -bottom-5.5 left-2 flex items-center gap-1 font-mono text-[8.5px] font-black text-blue-600 dark:text-blue-400 bg-white/95 dark:bg-navy-900/95 px-1.5 py-0.5 rounded shadow-2xs border border-blue-400/80 dark:border-blue-600/80 whitespace-nowrap z-20 pointer-events-none">
+                        DEP CAP: -<span x-text="departureCapacity"></span> A/C
+                    </div>
+
+                    {{-- 3. Left boundary label (Operating Hours Start) --}}
+                    <div class="absolute -top-7 -translate-x-1/2 flex flex-col items-center px-1.5 py-0.5 rounded bg-white/95 dark:bg-navy-900/95 border border-emerald-500 text-emerald-700 dark:text-emerald-400 font-mono text-[8px] leading-tight shadow-xs whitespace-nowrap z-20 pointer-events-none">
+                        <span class="text-[6.5px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">OPS START</span>
+                        <span class="font-black text-slate-900 dark:text-white" x-text="opsStartTime"></span>
+                    </div>
+
+                    {{-- 4. Right boundary label (Operating Hours End) --}}
+                    <div class="absolute -top-7 -translate-x-1/2 flex flex-col items-center px-1.5 py-0.5 rounded bg-white/95 dark:bg-navy-900/95 border border-emerald-500 text-emerald-700 dark:text-emerald-400 font-mono text-[8px] leading-tight shadow-xs whitespace-nowrap z-20 pointer-events-none">
+                        <span class="text-[6.5px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">OPS END</span>
+                        <span class="font-black text-slate-900 dark:text-white" x-text="opsEndTime"></span>
+                    </div>
+
                     {{-- TOP BOUNDARY HIT ZONE (+ARR Capacity) --}}
                     <div class="absolute inset-x-0 -top-2.5 h-5 cursor-pointer pointer-events-auto group/topcap"
                          @mouseenter="hoveredBoundary = 'top'"
@@ -221,7 +263,8 @@
                              x-transition:leave-end="opacity-0 scale-95"
                              class="absolute left-1/2 -translate-x-1/2 -top-11 z-50 px-2.5 py-1 bg-slate-900/95 dark:bg-navy-900/95 text-white backdrop-blur-md rounded-lg shadow-xl border border-slate-700 text-xs font-mono pointer-events-none text-center whitespace-nowrap"
                              style="display: none;">
-                            <div class="font-bold text-amber-300 text-[9.5px] uppercase tracking-wider">Batas Aircraft Capacity - ARR: <span x-text="arrivalCapacity"></span> A/C</div>
+                            <div class="font-bold text-amber-300 text-[9.5px] uppercase tracking-wider">Arrival Capacity <span class="opacity-80">(Batas Aircraft Capacity - ARR: <span x-text="arrivalCapacity"></span> A/C)</span></div>
+                            <div class="font-black text-white text-xs" x-text="arrivalCapacity + ' A/C'"></div>
                         </div>
                     </div>
 
@@ -242,7 +285,8 @@
                              x-transition:leave-end="opacity-0 scale-95"
                              class="absolute left-1/2 -translate-x-1/2 -bottom-11 z-50 px-2.5 py-1 bg-slate-900/95 dark:bg-navy-900/95 text-white backdrop-blur-md rounded-lg shadow-xl border border-slate-700 text-xs font-mono pointer-events-none text-center whitespace-nowrap"
                              style="display: none;">
-                            <div class="font-bold text-blue-300 text-[9.5px] uppercase tracking-wider">Batas Aircraft Capacity - DEP: <span x-text="departureCapacity"></span> A/C</div>
+                            <div class="font-bold text-blue-300 text-[9.5px] uppercase tracking-wider">Departure Capacity <span class="opacity-80">(Batas Aircraft Capacity - DEP: <span x-text="departureCapacity"></span> A/C)</span></div>
+                            <div class="font-black text-white text-xs" x-text="departureCapacity + ' A/C'"></div>
                         </div>
                     </div>
 
@@ -406,6 +450,18 @@
                                       x-text="@if($mode === 'schedule') item.depCount @else item.dep @endif">
                                 </span>
                             </template>
+
+                            {{-- Bottom Status Pill (OVER / MAX for DEP) --}}
+                            <template x-if="item.isOps && ((@if($mode === 'schedule') item.depCount @else item.dep @endif) > departureCapacity)">
+                                <div class="absolute bottom-1 px-1 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider bg-purple-600 text-white shadow-2xs z-20 font-mono">
+                                    OVER
+                                </div>
+                            </template>
+                            <template x-if="item.isOps && ((@if($mode === 'schedule') item.depCount @else item.dep @endif) === departureCapacity && departureCapacity > 0)">
+                                <div class="absolute bottom-1 px-1 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider bg-blue-500 text-white shadow-2xs z-20 font-mono">
+                                    MAX
+                                </div>
+                            </template>
                         </div>
 
                         {{-- ── RICH TOOLTIP ON COLUMN HOVER ── --}}
@@ -535,71 +591,74 @@
 
     {{-- ══ CHART LEGEND & EDIT CONTROLS ════════════════════════════════════ --}}
     <div class="flex flex-col gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[11px] text-slate-500 select-none">
-        <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            {{-- Primary Legend Elements --}}
             <div class="flex flex-wrap items-center gap-3">
-                <span class="inline-flex items-center gap-1.5">
-                    <span class="w-2.5 h-2.5 rounded-full bg-[#16A34A] inline-block"></span>
-                    <strong class="text-slate-700 dark:text-slate-300">Available</strong>
-                </span>
-                <span class="inline-flex items-center gap-1.5">
-                    <span class="w-2.5 h-2.5 rounded-full bg-[#D97706] inline-block"></span>
-                    <strong class="text-slate-700 dark:text-slate-300">Full / Max</strong>
-                </span>
-                <span class="inline-flex items-center gap-1.5">
-                    <span class="w-2.5 h-2.5 rounded-full bg-[#9333EA] inline-block"></span>
-                    <strong class="text-slate-700 dark:text-slate-300">Over Capacity</strong>
-                </span>
-                <span class="inline-flex items-center gap-1.5">
-                    <span class="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-600 inline-block"></span>
-                    <span class="text-slate-500 dark:text-slate-400">Off Hours</span>
-                </span>
-                
-                {{-- Arrival Capacity Reference Line Trigger --}}
-                <span class="inline-flex items-center gap-1 font-mono text-[10.5px] text-amber-600 dark:text-amber-400 cursor-pointer hover:underline"
-                      @click="openUnifiedModal()"
-                      title="Click to configure Arrival Capacity">
-                    <span class="w-3.5 border-b-2 border-dashed border-amber-500 inline-block"></span>
-                    <span>ARR Cap: <strong x-text="arrivalCapacity"></strong> A/C</span>
+                {{-- 1. Arrival Bars --}}
+                <span class="inline-flex items-center gap-1.5" title="Arrival (Tumbuh ke atas / Positif)">
+                    <span class="w-2.5 h-2.5 rounded-xs bg-amber-500 inline-block shadow-2xs"></span>
+                    <strong class="text-slate-700 dark:text-slate-200">Arrival</strong>
+                    <span class="text-amber-500 font-bold font-mono text-[10px]">ARR &uarr;</span>
                 </span>
 
-                {{-- Departure Capacity Reference Line Trigger --}}
-                <span class="inline-flex items-center gap-1 font-mono text-[10.5px] text-blue-600 dark:text-blue-400 cursor-pointer hover:underline"
-                      @click="openUnifiedModal()"
-                      title="Click to configure Departure Capacity">
-                    <span class="w-3.5 border-b-2 border-dashed border-blue-500 inline-block"></span>
-                    <span>DEP Cap: <strong x-text="departureCapacity"></strong> A/C</span>
+                {{-- 2. Departure Bars --}}
+                <span class="inline-flex items-center gap-1.5" title="Departure (Tumbuh ke bawah / Visual negatif)">
+                    <span class="w-2.5 h-2.5 rounded-xs bg-blue-600 inline-block shadow-2xs"></span>
+                    <strong class="text-slate-700 dark:text-slate-200">Departure</strong>
+                    <span class="text-blue-500 font-bold font-mono text-[10px]">DEP &darr;</span>
                 </span>
 
-                {{-- Operating Hours Modal Trigger --}}
-                <span class="inline-flex items-center gap-1 font-mono text-[10.5px] text-emerald-600 dark:text-emerald-400 cursor-pointer hover:underline"
-                      @click="openUnifiedModal()"
-                      title="Click to configure Operational Hours">
-                    <span class="w-2.5 h-2.5 border border-dashed border-emerald-500 inline-block"></span>
-                    <span>OPS: <span x-text="opsStartTime"></span>&rarr;<span x-text="opsEndTime"></span></span>
-                </span>
-
-                <button type="button" @click="openUnifiedModal()"
-                        class="text-[10px] font-bold text-aviation-600 dark:text-aviation-400 bg-aviation-50 dark:bg-navy-800 px-1.5 py-0.5 rounded border border-aviation-200 dark:border-aviation-700 hover:bg-aviation-100 transition cursor-pointer">
-                    Edit ⚙
-                </button>
-            </div>
-
-            {{-- Directional Bar Identifiers --}}
-            <div class="flex items-center gap-2.5 text-[10px] text-slate-400 font-mono">
-                <span class="inline-flex items-center gap-1" title="Arrival: Bars grow upward above center time axis">
-                    <span class="w-2 h-2 rounded-xs bg-orange-500 inline-block"></span>
-                    <strong class="text-orange-500 font-bold">ARR &uarr;</strong>
-                </span>
-                <span class="inline-flex items-center gap-1" title="Departure: Bars grow downward below center time axis">
-                    <span class="w-2 h-2 rounded-xs bg-blue-600 inline-block"></span>
-                    <strong class="text-blue-500 font-bold">DEP &darr;</strong>
-                </span>
                 @if($mode === 'schedule')
-                    <span class="inline-flex items-center gap-1" title="OPC: Pesawat RON yang masih menempati parking stand untuk keberangkatan pada hari berikutnya">
-                        <span class="w-2 h-2 rounded-xs bg-purple-600 inline-block"></span>
-                        <strong class="text-purple-500 font-bold">OPC (RON)</strong>
+                    {{-- 3. OPC (RON) --}}
+                    <span class="inline-flex items-center gap-1.5" title="OPC: Pesawat RON yang masih menempati parking stand untuk keberangkatan pada hari berikutnya">
+                        <span class="w-2.5 h-2.5 rounded-xs bg-purple-600 inline-block shadow-2xs"></span>
+                        <strong class="text-slate-700 dark:text-slate-200">OPC (RON)</strong>
                     </span>
                 @endif
+
+                {{-- 4. Operating Hours Boundary --}}
+                <span class="inline-flex items-center gap-1.5" title="Operating Hours: Batas jam operasional horizontal aktif bandara">
+                    <span class="w-3 h-3 border-2 border-dashed border-emerald-500 bg-emerald-500/10 inline-block rounded-2xs"></span>
+                    <strong class="text-emerald-700 dark:text-emerald-400">Operating Hours</strong>
+                </span>
+
+                {{-- 5. Arrival Capacity Boundary --}}
+                <span class="inline-flex items-center gap-1.5 font-mono cursor-pointer hover:underline"
+                      @click="openUnifiedModal()"
+                      title="Click to configure Arrival Capacity">
+                    <span class="w-4 border-b-2 border-dashed border-amber-500 inline-block"></span>
+                    <strong class="text-amber-600 dark:text-amber-400">Arrival Capacity</strong>
+                    <span class="text-[10px] text-slate-400">(+<span x-text="arrivalCapacity"></span>)</span>
+                </span>
+
+                {{-- 6. Departure Capacity Boundary --}}
+                <span class="inline-flex items-center gap-1.5 font-mono cursor-pointer hover:underline"
+                      @click="openUnifiedModal()"
+                      title="Click to configure Departure Capacity">
+                    <span class="w-4 border-b-2 border-dashed border-blue-500 inline-block"></span>
+                    <strong class="text-blue-600 dark:text-blue-400">Departure Capacity</strong>
+                    <span class="text-[10px] text-slate-400">(-<span x-text="departureCapacity"></span>)</span>
+                </span>
+            </div>
+
+            {{-- Status Indicators Summary --}}
+            <div class="flex flex-wrap items-center gap-2.5 text-[10px]">
+                <span class="inline-flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                    <span class="text-slate-600 dark:text-slate-400">Available</span>
+                </span>
+                <span class="inline-flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>
+                    <span class="text-slate-600 dark:text-slate-400">Full / Max</span>
+                </span>
+                <span class="inline-flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-purple-600 inline-block"></span>
+                    <span class="text-slate-600 dark:text-slate-400">Over Capacity</span>
+                </span>
+                <span class="inline-flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-slate-400 inline-block"></span>
+                    <span class="text-slate-500">Off Hours</span>
+                </span>
             </div>
         </div>
 

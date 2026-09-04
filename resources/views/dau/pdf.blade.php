@@ -483,7 +483,7 @@
                 <div style="display: table-cell; text-align: right; font-size: 5.5pt; color: #475569;">
                     <span style="display: inline-block; width: 7px; height: 7px; background: #f59e0b; vertical-align: middle;"></span> ARR &uarr; &nbsp;
                     <span style="display: inline-block; width: 7px; height: 7px; background: #0284c7; vertical-align: middle;"></span> DEP &darr; &nbsp;
-                    <span style="display: inline-block; width: 7px; height: 7px; background: #9333ea; opacity: 0.5; vertical-align: middle;"></span> OPC (N/A) &nbsp;
+                    <span style="display: inline-block; width: 8px; height: 8px; border: 1.5px dashed #059669; vertical-align: middle;"></span> Ops Hours &nbsp;
                     <span style="display: inline-block; width: 14px; border-top: 1.5px dashed #d97706; vertical-align: middle;"></span> +ARR Cap ({{ $arrNacVal }}) &nbsp;
                     <span style="display: inline-block; width: 14px; border-top: 1.5px dashed #0284c7; vertical-align: middle;"></span> -DEP Cap ({{ $depNacVal }})
                 </div>
@@ -523,7 +523,7 @@
                                 $statusCol = '#059669';
                             }
                         @endphp
-                        <td style="width: {{ 100 / max(1, count($hourlyData)) }}%; vertical-align: bottom; text-align: center; padding: 1px 1px 0 1px;">
+                        <td style="width: {{ 100 / max(1, count($hourlyData)) }}%; vertical-align: bottom; text-align: center; padding: 1px 1px 0 1px; background-color: {{ $isOffHour ? '#f8fafc' : '#ffffff' }};">
                             <div style="font-size: 4.5pt; font-weight: bold; color: {{ $statusCol }}; margin-bottom: 1px;">
                                 {{ $statusText }}
                             </div>
@@ -540,9 +540,20 @@
                 </tr>
 
                 {{-- CENTER TIME AXIS (Y=0 Separator) --}}
-                <tr style="background-color: #f1f5f9; border-top: 1px solid #94a3b8; border-bottom: 1px solid #94a3b8;">
+                <tr>
                     @foreach ($hourlyData as $hd)
-                        <td style="text-align: center; font-size: 5pt; font-weight: bold; font-family: monospace; color: #1e293b; padding: 2px 0;">
+                        @php
+                            $isOffH = false;
+                            if ($opsStartStr !== '00:00' || ($opsEndStr !== '24:00' && $opsEndStr !== '23:59')) {
+                                $hNum = (int)explode(':', explode(' - ', $hd['hour'])[0] ?? $hd['hour'])[0];
+                                $sNum = (int)explode(':', $opsStartStr)[0];
+                                $eNum = (int)explode(':', $opsEndStr)[0];
+                                if ($hNum < $sNum || $hNum >= $eNum) {
+                                    $isOffH = true;
+                                }
+                            }
+                        @endphp
+                        <td style="text-align: center; font-size: 5pt; font-weight: bold; font-family: monospace; padding: 2px 0; background-color: {{ $isOffH ? '#e2e8f0' : '#dcfce7' }}; border-top: 1px solid {{ $isOffH ? '#94a3b8' : '#10b981' }}; border-bottom: 1px solid {{ $isOffH ? '#94a3b8' : '#10b981' }}; color: {{ $isOffH ? '#64748b' : '#065f46' }};">
                             {{ explode(' - ', $hd['hour'])[0] ?? $hd['hour'] }}
                         </td>
                     @endforeach

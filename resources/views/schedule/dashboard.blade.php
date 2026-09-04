@@ -1881,50 +1881,59 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {{-- Arrival Capacity --}}
-                        <div class="p-3 rounded-xl bg-amber-50/50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/50 space-y-1">
-                            <label class="block font-bold text-amber-900 dark:text-amber-200 text-xs">ARRIVAL CAPACITY</label>
-                            <div class="flex items-center gap-2">
-                                <input type="number" min="1" max="150" x-model.number="modalArrCap" class="filter-select w-full font-mono text-base font-bold text-amber-700 dark:text-amber-300">
-                                <span class="text-xs font-bold text-slate-500 font-mono">A/C</span>
+                        {{-- Arrival Capacity (Orange Accent) --}}
+                        <div class="p-3.5 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border-2 border-amber-300 dark:border-amber-700/60 space-y-1.5 shadow-2xs">
+                            <div class="flex items-center justify-between">
+                                <label class="block font-black text-amber-900 dark:text-amber-200 text-xs">ARRIVAL CAPACITY</label>
+                                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
                             </div>
-                            <p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight pt-1">
-                                Maximum aircraft demand allowed for ARRIVAL.
+                            <div class="flex items-center gap-2">
+                                <input type="number" min="1" max="150" x-model.number="modalArrCap" class="filter-select w-full font-mono text-base font-bold text-amber-700 dark:text-amber-300 bg-white dark:bg-navy-950">
+                                <span class="text-xs font-bold text-amber-700 dark:text-amber-300 font-mono">A/C</span>
+                            </div>
+                            <p class="text-[10px] text-amber-800/80 dark:text-amber-300/70 leading-tight pt-0.5">
+                                Maximum configured Arrival demand.
                             </p>
                         </div>
 
-                        {{-- Departure Capacity --}}
-                        <div class="p-3 rounded-xl bg-blue-50/50 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/50 space-y-1">
-                            <label class="block font-bold text-blue-900 dark:text-blue-200 text-xs">DEPARTURE CAPACITY</label>
-                            <div class="flex items-center gap-2">
-                                <input type="number" min="1" max="150" x-model.number="modalDepCap" class="filter-select w-full font-mono text-base font-bold text-blue-700 dark:text-blue-300">
-                                <span class="text-xs font-bold text-slate-500 font-mono">A/C</span>
+                        {{-- Departure Capacity (Blue Accent) --}}
+                        <div class="p-3.5 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border-2 border-blue-300 dark:border-blue-700/60 space-y-1.5 shadow-2xs">
+                            <div class="flex items-center justify-between">
+                                <label class="block font-black text-blue-900 dark:text-blue-200 text-xs">DEPARTURE CAPACITY</label>
+                                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
                             </div>
-                            <p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight pt-1">
-                                Maximum aircraft demand allowed for DEPARTURE.
+                            <div class="flex items-center gap-2">
+                                <input type="number" min="1" max="150" x-model.number="modalDepCap" class="filter-select w-full font-mono text-base font-bold text-blue-700 dark:text-blue-300 bg-white dark:bg-navy-950">
+                                <span class="text-xs font-bold text-blue-700 dark:text-blue-300 font-mono">A/C</span>
+                            </div>
+                            <p class="text-[10px] text-blue-800/80 dark:text-blue-300/70 leading-tight pt-0.5">
+                                Maximum configured Departure demand.
                             </p>
                         </div>
                     </div>
                 </div>
 
-                {{-- OPERATING HOURS SECTION --}}
+                {{-- OPERATING HOURS SECTION (Green Accent) --}}
                 <div class="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-3">
-                    <div class="text-[10.5px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                        OPERATING HOURS
+                    <div class="text-[10.5px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center justify-between">
+                        <span>OPERATING HOURS</span>
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">START TIME</label>
-                            <input type="text" x-model="modalOpsStart" placeholder="06:00" class="filter-select w-full font-mono text-center font-bold">
+                    <div class="p-3.5 rounded-xl bg-emerald-50/40 dark:bg-emerald-950/20 border-2 border-emerald-300 dark:border-emerald-700/60 space-y-2 shadow-2xs">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block font-black text-emerald-900 dark:text-emerald-200 text-xs mb-1">START TIME</label>
+                                <input type="text" x-model="modalOpsStart" placeholder="06:00" class="filter-select w-full font-mono text-center font-bold bg-white dark:bg-navy-950 text-slate-900 dark:text-white">
+                            </div>
+                            <div>
+                                <label class="block font-black text-emerald-900 dark:text-emerald-200 text-xs mb-1">END TIME</label>
+                                <input type="text" x-model="modalOpsEnd" placeholder="21:00" class="filter-select w-full font-mono text-center font-bold bg-white dark:bg-navy-950 text-slate-900 dark:text-white">
+                            </div>
                         </div>
-                        <div>
-                            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">END TIME</label>
-                            <input type="text" x-model="modalOpsEnd" placeholder="20:00" class="filter-select w-full font-mono text-center font-bold">
-                        </div>
-                    </div>
-                    <div class="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
-                        Example: 06:00 &rarr; 20:00
+                        <p class="text-[10px] text-emerald-800/80 dark:text-emerald-300/70 leading-tight">
+                            Defines the active horizontal chart window. (Example: 06:00 &rarr; 21:00)
+                        </p>
                     </div>
                 </div>
 

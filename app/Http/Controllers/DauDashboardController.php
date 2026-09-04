@@ -270,8 +270,17 @@ class DauDashboardController extends Controller
 
         $nac = max($arrNac, $depNac);
 
-        $opsStart = $airport?->ops_start_time ?? '06:00';
-        $opsEnd   = $airport?->ops_end_time ?? '20:00';
+        $reqOpsStart = $request->query('ops_start');
+        $reqOpsEnd   = $request->query('ops_end');
+
+        $opsStart = ($reqOpsStart !== null && trim($reqOpsStart) !== '')
+            ? trim($reqOpsStart)
+            : ($airport?->ops_start_time ?? '06:00');
+
+        $opsEnd   = ($reqOpsEnd !== null && trim($reqOpsEnd) !== '')
+            ? trim($reqOpsEnd)
+            : ($airport?->ops_end_time ?? '20:00');
+
         $is24h    = ($opsStart === '00:00' && ($opsEnd === '24:00' || $opsEnd === '23:59'));
         $startNum = (int) explode(':', $opsStart)[0];
         $endNum   = (int) explode(':', $opsEnd)[0];
