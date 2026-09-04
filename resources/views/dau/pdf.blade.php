@@ -187,6 +187,39 @@
         .text-left { text-align: left; }
         .font-bold { font-weight: bold; }
 
+        .badge-available {
+            background-color: #d1fae5;
+            color: #065f46;
+            padding: 1px 4px;
+            border-radius: 2px;
+            font-weight: bold;
+            font-size: 5.5pt;
+        }
+        .badge-full {
+            background-color: #fef3c7;
+            color: #92400e;
+            padding: 1px 4px;
+            border-radius: 2px;
+            font-weight: bold;
+            font-size: 5.5pt;
+        }
+        .badge-over {
+            background-color: #f3e8ff;
+            color: #6b21a8;
+            padding: 1px 4px;
+            border-radius: 2px;
+            font-weight: bold;
+            font-size: 5.5pt;
+        }
+        .badge-off {
+            background-color: #f1f5f9;
+            color: #475569;
+            padding: 1px 4px;
+            border-radius: 2px;
+            font-weight: bold;
+            font-size: 5.5pt;
+        }
+
         .page-break {
             page-break-after: always;
         }
@@ -238,6 +271,13 @@
                 <td style="width: 25%;"><strong>TERMINAL:</strong> {{ $meta['terminal_scope'] ?? 'ALL' }}</td>
                 <td style="width: 25%; text-align: right;"><strong>PRINTED:</strong> {{ date('d/m/Y H:i:s') }}</td>
             </tr>
+            @if (($filters['hour'] ?? 'ALL') !== 'ALL')
+                <tr>
+                    <td colspan="4" style="color: #0284c7; font-weight: bold; border-top: 1px dashed #cbd5e1;">
+                        FILTER AKTIF PERIODE JAM: {{ $filters['hour'] }}
+                    </td>
+                </tr>
+            @endif
         </table>
     </div>
 
@@ -339,6 +379,44 @@
         </table>
     </div>
 
+    @if ($reportType === 'DAU10A' && !empty($capacitySummary))
+        {{-- ══ DAU-10A CAPACITY SUMMARY ════════════════════════════════════════ --}}
+        <table class="kpi-table" style="margin-bottom: 6px; border: 1.5px solid #0284c7; background: #f0f9ff;">
+            <tr>
+                <td class="kpi-cell" style="width: 16.6%; background: #ffffff;">
+                    <div class="kpi-label">Aircraft Capacity</div>
+                    <div class="kpi-value" style="color: #0f172a;">{{ $capacitySummary['nac'] ?? 6 }} A/C</div>
+                    <div class="kpi-sub">Batas Maksimum NAC</div>
+                </td>
+                <td class="kpi-cell" style="width: 16.6%; background: #ffffff;">
+                    <div class="kpi-label">Peak Aircraft</div>
+                    <div class="kpi-value" style="color: #d97706;">{{ number_format($capacitySummary['peak_aircraft'] ?? 0) }} A/C</div>
+                    <div class="kpi-sub">{{ $capacitySummary['peak_hour'] ?? '—' }}</div>
+                </td>
+                <td class="kpi-cell" style="width: 16.6%; background: #ffffff;">
+                    <div class="kpi-label">Peak Hour</div>
+                    <div class="kpi-value" style="color: #2563eb; font-size: 8pt;">{{ $capacitySummary['peak_hour'] ?? '—' }}</div>
+                    <div class="kpi-sub">Demand Tertinggi</div>
+                </td>
+                <td class="kpi-cell" style="width: 16.6%; background: #ffffff;">
+                    <div class="kpi-label">Available Hours</div>
+                    <div class="kpi-value" style="color: #059669;">{{ $capacitySummary['available_hours'] ?? 0 }} Jam</div>
+                    <div class="kpi-sub">Demand &lt; NAC</div>
+                </td>
+                <td class="kpi-cell" style="width: 16.6%; background: #ffffff;">
+                    <div class="kpi-label">Full / Max Hours</div>
+                    <div class="kpi-value" style="color: #d97706;">{{ $capacitySummary['full_hours'] ?? 0 }} Jam</div>
+                    <div class="kpi-sub">Demand == NAC</div>
+                </td>
+                <td class="kpi-cell" style="width: 16.6%; background: #ffffff;">
+                    <div class="kpi-label">Over Capacity</div>
+                    <div class="kpi-value" style="color: #7c3aed;">{{ $capacitySummary['over_capacity_hours'] ?? 0 }} Jam</div>
+                    <div class="kpi-sub">Demand &gt; NAC</div>
+                </td>
+            </tr>
+        </table>
+    @endif
+
     {{-- ══ ANALYTICAL CHARTS / DIAGRAMS SECTION ══════════════════════════════ --}}
     @if ($reportType === 'DAU10')
         {{-- DAU-10 Hourly Movements Vector Bar Chart --}}
@@ -377,10 +455,115 @@
         </div>
 
     @elseif ($reportType === 'DAU10A')
+        {{-- DAU-10A DISTRIBUSI PER JAM & HOURLY CAPACITY STATUS --}}
+        @php
+            $maxDemandPdf = max((int)($capacitySummary['nac'] ?? 6), 1);
+            foreach ($hourlyData as $hd) {
+                $dem = ($hd['aircraft_arrival'] ?? 0) + ($hd['aircraft_departure'] ?? 0);
+                if ($dem > $maxDemandPdf) $maxDemandPdf = $dem;
+            }
+        @endphp
+
+        <div class="chart-box">
+            <div class="chart-header" style="display: table; width: 100%;">
+                <div style="display: table-cell; text-align: left;">
+                    DISTRIBUSI PER JAM — Aircraft Movement & Operational Capacity Analysis (Batas NAC: {{ $capacitySummary['nac'] ?? 6 }} A/C)
+                </div>
+                <div style="display: table-cell; text-align: right; font-size: 5.5pt; color: #475569;">
+                    <span style="display: inline-block; width: 7px; height: 7px; background: #f59e0b; vertical-align: middle;"></span> Arrival &nbsp;
+                    <span style="display: inline-block; width: 7px; height: 7px; background: #0284c7; vertical-align: middle;"></span> Departure &nbsp;
+                    <span style="display: inline-block; width: 7px; height: 7px; background: #9333ea; opacity: 0.5; vertical-align: middle;"></span> OPC (N/A) &nbsp;
+                    <span style="display: inline-block; width: 12px; border-top: 1.5px dashed #475569; vertical-align: middle;"></span> NAC ({{ $capacitySummary['nac'] ?? 6 }} A/C)
+                </div>
+            </div>
+
+            <table class="chart-table">
+                <tr>
+                    @foreach ($hourlyData as $hd)
+                        @php
+                            $arrVal = (int)($hd['aircraft_arrival'] ?? 0);
+                            $depVal = (int)($hd['aircraft_departure'] ?? 0);
+                            $demVal = $arrVal + $depVal;
+                            $arrH = max(2, round(($arrVal / max(1, $maxDemandPdf)) * 44));
+                            $depH = max(2, round(($depVal / max(1, $maxDemandPdf)) * 44));
+                            $nacVal = (int)($capacitySummary['nac'] ?? 6);
+                            $statusText = $demVal > $nacVal ? 'OVER' : ($demVal === $nacVal ? 'FULL' : 'AVAIL');
+                            $statusCol  = $demVal > $nacVal ? '#7c3aed' : ($demVal === $nacVal ? '#d97706' : '#059669');
+                        @endphp
+                        <td style="width: {{ 100 / max(1, count($hourlyData)) }}%;">
+                            <div style="font-size: 4.5pt; font-weight: bold; margin-bottom: 1px; color: {{ $statusCol }};">
+                                {{ $statusText }}
+                            </div>
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <tr>
+                                    <td style="width: 50%; padding: 0;">
+                                        <div class="bar-wrap" style="background: transparent;">
+                                            <div class="bar-inner" style="height: {{ $arrH }}px; background-color: #f59e0b;"></div>
+                                        </div>
+                                    </td>
+                                    <td style="width: 50%; padding: 0;">
+                                        <div class="bar-wrap" style="background: transparent;">
+                                            <div class="bar-inner" style="height: {{ $depH }}px; background-color: #0284c7;"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+                            <div style="font-size: 4.5pt; color: #64748b; margin-top: 2px;">
+                                {{ explode(' - ', $hd['hour'])[0] ?? $hd['hour'] }}
+                            </div>
+                        </td>
+                    @endforeach
+                </tr>
+            </table>
+        </div>
+
+        {{-- Hourly Capacity Status Table --}}
+        <div class="chart-box" style="margin-top: 5px;">
+            <div class="chart-header">
+                HOURLY CAPACITY STATUS (Evaluasi Demand vs NAC: {{ $capacitySummary['nac'] ?? 6 }} A/C)
+            </div>
+            <table class="data-table" style="margin-top: 1px;">
+                <thead>
+                    <tr>
+                        <th style="width: 14%; text-align: left;">Hour</th>
+                        <th class="text-right" style="width: 12%;">ARR</th>
+                        <th class="text-right" style="width: 12%;">DEP</th>
+                        <th class="text-center" style="width: 10%;">OPC</th>
+                        <th class="text-right" style="width: 16%;">Aircraft Demand</th>
+                        <th class="text-center" style="width: 10%;">NAC</th>
+                        <th class="text-right" style="width: 12%;">Utilization</th>
+                        <th class="text-center" style="width: 14%;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($hourlyCapacityStatus as $hcs)
+                        <tr>
+                            <td class="font-bold text-left">{{ $hcs['hour'] }}</td>
+                            <td class="text-right" style="color: #d97706; font-weight: bold;">{{ number_format($hcs['arr']) }}</td>
+                            <td class="text-right" style="color: #0284c7; font-weight: bold;">{{ number_format($hcs['dep']) }}</td>
+                            <td class="text-center" style="color: #64748b;">{{ $hcs['opc'] }}</td>
+                            <td class="text-right font-bold">{{ number_format($hcs['demand']) }}</td>
+                            <td class="text-center">{{ $hcs['nac'] }}</td>
+                            <td class="text-right font-bold" style="color: {{ $hcs['utilization'] > 100 ? '#7c3aed' : ($hcs['utilization'] == 100 ? '#d97706' : '#059669') }};">
+                                {{ $hcs['utilization'] }}%
+                            </td>
+                            <td class="text-center">
+                                <span class="{{ $hcs['status'] === 'AVAILABLE' ? 'badge-available' : ($hcs['status'] === 'FULL / MAX' ? 'badge-full' : 'badge-over') }}">
+                                    {{ $hcs['status'] }}
+                                </span>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+
+        <div class="page-break"></div>
+
         {{-- DAU-10A Time x Terminal Heatmap Matrix --}}
         <div class="chart-box">
             <div class="chart-header">
-                Time × Terminal Operational Heatmap Matrix (Nilai: {{ ucfirst($metric ?? 'aircraft') }})
+                TIME × TERMINAL HEATMAP MATRIX (Nilai: {{ ucfirst($metric ?? 'aircraft') }})
             </div>
             @php
                 $pdfTerms = ['1', '2F', '3U', '1B', '2D', '2E', '1C'];

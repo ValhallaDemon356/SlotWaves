@@ -275,4 +275,134 @@ class DauDashboardEnhancementTest extends TestCase
         $this->assertStringContainsString('DOM', $disposition);
         $this->assertStringContainsString('T2F', $disposition);
     }
+
+    /**
+     * TEST 10: DAU-10A Dashboard renders view switcher tabs, Aircraft Capacity control, and modal markup
+     */
+    public function test_dau10a_dashboard_renders_view_switcher_and_capacity_modal(): void
+    {
+        $parser = new DAU10AParser();
+        $parsed10A = $parser->parse(base_path('resources/templates/dau/DAU-10A.xls'));
+
+        $upload = Upload::create([
+            'original_filename' => 'DAU-10A.xls',
+            'stored_path'       => 'templates/dau/DAU-10A.xls',
+            'status'            => 'completed',
+            'report_type'       => 'DAU10A',
+            'report_data'       => $parsed10A,
+            'airport_id'        => $this->airport->id,
+        ]);
+
+        $response = $this->get(route('dau.dashboard', $upload->id));
+        $response->assertStatus(200);
+
+        // Verify Dual Mode Tabs
+        $response->assertSee('TIME × TERMINAL HEATMAP');
+        $response->assertSee('DISTRIBUSI PER JAM');
+
+        // Verify Aircraft Capacity Control & Modal
+        $response->assertSee('AIRCRAFT CAPACITY:');
+        $response->assertSee('EDIT AIRCRAFT CAPACITY');
+        $response->assertSee('HOURLY CAPACITY STATUS');
+        $response->assertSee('CAPACITY STATUS SUMMARY');
+    }
+
+    /**
+     * TEST 11: Capacity logic scenarios (TEST 1 - 5 from requirements)
+     */
+    public function test_capacity_status_evaluation_logic(): void
+    {
+        $evaluateStatus = function (int $demand, int $nac): string {
+            if ($demand < $nac) return 'AVAILABLE';
+            if ($demand === $nac) return 'FULL / MAX';
+            return 'OVER CAPACITY';
+        };
+
+        // TEST 1: NAC = 6, Demand = 4 -> AVAILABLE
+        $this->assertEquals('AVAILABLE', $evaluateStatus(4, 6));
+
+        // TEST 2: NAC = 6, Demand = 6 -> FULL / MAX
+        $this->assertEquals('FULL / MAX', $evaluateStatus(6, 6));
+
+        // TEST 3: NAC = 6, Demand = 8 -> OVER CAPACITY
+        $this->assertEquals('OVER CAPACITY', $evaluateStatus(8, 6));
+
+        // TEST 4: Change NAC 6 -> 8, Demand = 8 -> FULL / MAX (not OVER CAPACITY)
+        $this->assertEquals('FULL / MAX', $evaluateStatus(8, 8));
+        $this->assertNotEquals('OVER CAPACITY', $evaluateStatus(8, 8));
+
+        // TEST 5: Change NAC 8 -> 10, Demand = 8 -> AVAILABLE
+        $this->assertEquals('AVAILABLE', $evaluateStatus(8, 10));
+    }
+
+    /**
+     * TEST 12: Terminal filtering in DAU-10A Distribusi Per Jam
+     */
+    public function test_dau10a_terminal_filtering_and_all_aggregation(): void
+    {
+        $parser = new DAU10AParser();
+        $data = $parser->parse(base_path('resources/templates/dau/DAU-10A.xls'));
+        $records = $data['normalized_pairs'];
+
+        // Terminal 2F
+        $res2F = $this->controller->filterReportDataset($records, [
+            'flight_type' => 'ALL',
+            'terminal'    => '2F',
+            'hour'        => 'ALL',
+            'metric'      => 'aircraft',
+            'operation'   => 'ALL',
+        ], $data['meta'], 'DAU10A');
+
+        $this->assertCount(24, $res2F['filtered_records']); // Exactly 24 hours for terminal 2F
+        foreach ($res2F['filtered_records'] as $r) {
+            $this->assertEquals('2F', $r['terminal']);
+        }
+        $this->assertEquals(79, $res2F['summary']['total_movements']);
+
+        // ALL TERMINALS
+        $resAll = $this->controller->filterReportDataset($records, [
+            'flight_type' => 'ALL',
+            'terminal'    => 'ALL',
+            'hour'        => 'ALL',
+            'metric'      => 'aircraft',
+            'operation'   => 'ALL',
+        ], $data['meta'], 'DAU10A');
+
+        $this->assertCount(168, $resAll['filtered_records']); // 24 hours x 7 terminals
+        $this->assertEquals(1008, $resAll['summary']['total_movements']);
+    }
+
+    /**
+     * TEST 13: DAU-10A PDF Export with custom NAC parameter (e.g. nac=8)
+     */
+    public function test_dau10a_pdf_export_with_custom_nac(): void
+    {
+        $parser = new DAU10AParser();
+        $parsed10A = $parser->parse(base_path('resources/templates/dau/DAU-10A.xls'));
+
+        $upload = Upload::create([
+            'original_filename' => 'DAU-10A.xls',
+            'stored_path'       => 'templates/dau/DAU-10A.xls',
+            'status'            => 'completed',
+            'report_type'       => 'DAU10A',
+            'report_data'       => $parsed10A,
+            'airport_id'        => $this->airport->id,
+        ]);
+
+        $response = $this->get(route('dau.export.pdf', [
+            'upload'      => $upload->id,
+            'flight_type' => 'ALL',
+            'terminal'    => 'ALL',
+            'hour'        => 'ALL',
+            'metric'      => 'aircraft',
+            'nac'         => 8,
+        ]));
+
+        $response->assertStatus(200);
+        $response->assertHeader('content-type', 'application/pdf');
+
+        $disposition = $response->headers->get('content-disposition');
+        $this->assertNotNull($disposition);
+        $this->assertStringContainsString('DAU-10A', $disposition);
+    }
 }

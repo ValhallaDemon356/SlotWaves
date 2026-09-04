@@ -93,6 +93,21 @@ class DauDashboardController extends Controller
         $columns = $data['columns'] ?? [];
         $matrixRecords = $data['records'] ?? [];
 
+        // Airport capacity, operational hours and timezone configuration
+        $initialNac = (int) config('slotwaves.nac', 6);
+        $airport = null;
+        try {
+            $airport = $upload->airport ?: \App\Models\Airport::where('iata_code', $meta['airport_code'] ?? 'CGK')->first();
+            if ($airport) {
+                $initialNac = (int) $airport->getEffectiveCapacity();
+            }
+        } catch (\Throwable $e) {}
+
+        $opsStartTime = $airport?->ops_start_time ?? '00:00';
+        $opsEndTime   = $airport?->ops_end_time ?? '24:00';
+        $tzAbbr       = $airport ? $airport->getTimezoneAbbreviation() : 'WIB';
+        $tzOffset     = $airport ? (int) round($airport->getTimezoneOffsetMinutes() / 60) : 7;
+
         return view('dau.dashboard', compact(
             'upload',
             'reportType',
@@ -107,7 +122,12 @@ class DauDashboardController extends Controller
             'peaks',
             'hourlyDistribution',
             'terminalComparison',
-            'matrixRecords'
+            'matrixRecords',
+            'initialNac',
+            'opsStartTime',
+            'opsEndTime',
+            'tzAbbr',
+            'tzOffset'
         ));
     }
 
@@ -225,20 +245,80 @@ class DauDashboardController extends Controller
 
         $filename .= '.pdf';
 
+        // Resolve Aircraft Capacity (NAC) for report
+        $reqNac = $request->query('nac');
+        if ($reqNac !== null && is_numeric($reqNac) && (int)$reqNac > 0) {
+            $nac = (int) $reqNac;
+        } else {
+            $nac = (int) config('slotwaves.nac', 6);
+            try {
+                $airport = $upload->airport ?: \App\Models\Airport::where('iata_code', $meta['airport_code'] ?? 'CGK')->first();
+                if ($airport) {
+                    $nac = (int) $airport->getEffectiveCapacity();
+                }
+            } catch (\Throwable $e) {}
+        }
+
+        // Compute DAU-10A Capacity Status & Summary
+        $capacitySummary = [
+            'nac'                  => $nac,
+            'peak_aircraft'       => $peaks['peak_aircraft'],
+            'peak_hour'           => $peaks['peak_aircraft_hour'],
+            'available_hours'     => 0,
+            'full_hours'          => 0,
+            'over_capacity_hours' => 0,
+        ];
+
+        $hourlyCapacityStatus = [];
+        if ($reportType === 'DAU10A') {
+            foreach ($hourlyData as $hd) {
+                $arr = (int)($hd['aircraft_arrival'] ?? 0);
+                $dep = (int)($hd['aircraft_departure'] ?? 0);
+                $demand = $arr + $dep;
+                $util = $nac > 0 ? round(($demand / $nac) * 100) : 0;
+
+                $status = 'AVAILABLE';
+                if ($demand > $nac) {
+                    $status = 'OVER CAPACITY';
+                    $capacitySummary['over_capacity_hours']++;
+                } elseif ($demand === $nac) {
+                    $status = 'FULL / MAX';
+                    $capacitySummary['full_hours']++;
+                } else {
+                    $status = 'AVAILABLE';
+                    $capacitySummary['available_hours']++;
+                }
+
+                $hourlyCapacityStatus[] = [
+                    'hour'        => $hd['hour'],
+                    'arr'         => $arr,
+                    'dep'         => $dep,
+                    'opc'         => 'N/A',
+                    'demand'      => $demand,
+                    'nac'         => $nac,
+                    'utilization' => $util,
+                    'status'      => $status,
+                ];
+            }
+        }
+
         $pdf = Pdf::loadView('dau.pdf', [
-            'upload'          => $upload,
-            'reportType'      => $reportType,
-            'conf'            => $conf,
-            'data'            => $data,
-            'meta'            => $meta,
-            'summary'         => $summary,
-            'records'         => $filteredRecords,
-            'peaks'           => $peaks,
-            'hourlyData'      => $hourlyData,
-            'terminalData'    => $terminalData,
-            'heatmapMatrix'   => $heatmapMatrix,
-            'filters'         => $filters,
-            'metric'          => $filters['metric'],
+            'upload'               => $upload,
+            'reportType'           => $reportType,
+            'conf'                 => $conf,
+            'data'                 => $data,
+            'meta'                 => $meta,
+            'summary'              => $summary,
+            'records'              => $filteredRecords,
+            'peaks'                => $peaks,
+            'hourlyData'           => $hourlyData,
+            'terminalData'         => $terminalData,
+            'heatmapMatrix'        => $heatmapMatrix,
+            'filters'              => $filters,
+            'metric'               => $filters['metric'],
+            'nac'                  => $nac,
+            'capacitySummary'      => $capacitySummary,
+            'hourlyCapacityStatus' => $hourlyCapacityStatus,
         ])
         ->setPaper('a4', 'landscape')
         ->setOptions([
