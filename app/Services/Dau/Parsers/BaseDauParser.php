@@ -126,7 +126,8 @@ abstract class BaseDauParser
     protected function extractMetadata(string $filePath, array $rawRows): array
     {
         $content = file_get_contents($filePath);
-        $fullText = strip_tags($content);
+        $normalizedContent = preg_replace('/<br\s*\/?>/i', "\n", $content);
+        $fullText = strip_tags($normalizedContent);
 
         // Default meta
         $meta = [
@@ -165,7 +166,16 @@ abstract class BaseDauParser
 
         // 3. Flight scope
         if (preg_match('/PENERBANGAN\s+([A-Z\s&]+)/i', $fullText, $m)) {
-            $meta['flight_scope'] = trim(explode("\n", $m[1])[0]);
+            $extractedScope = trim(explode("\n", $m[1])[0]);
+            if (stripos($extractedScope, 'DOMESTIK & INTERNASIONAL') !== false) {
+                $meta['flight_scope'] = 'DOMESTIK & INTERNASIONAL';
+            } elseif (stripos($extractedScope, 'INTERNASIONAL') !== false) {
+                $meta['flight_scope'] = 'INTERNASIONAL';
+            } elseif (stripos($extractedScope, 'DOMESTIK') !== false) {
+                $meta['flight_scope'] = 'DOMESTIK';
+            } else {
+                $meta['flight_scope'] = $extractedScope;
+            }
         }
 
         // 4. Terminal scope

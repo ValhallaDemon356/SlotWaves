@@ -6,78 +6,177 @@
     <style>
         @page {
             size: A4 landscape;
-            margin: 10mm 10mm 12mm 10mm;
+            margin: 8mm 10mm 12mm 10mm;
         }
         body {
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            font-size: 8pt;
+            font-family: 'DejaVu Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 7.5pt;
             color: #1e293b;
             line-height: 1.25;
         }
         .header-box {
-            border-bottom: 2px solid #0284c7;
-            padding-bottom: 8px;
-            margin-bottom: 10px;
+            border-bottom: 2.5px solid #0284c7;
+            padding-bottom: 6px;
+            margin-bottom: 8px;
         }
         .title {
-            font-size: 14pt;
+            font-size: 13pt;
             font-weight: bold;
             color: #0f172a;
             text-transform: uppercase;
-            margin: 0 0 4px 0;
+            margin: 0 0 2px 0;
+            letter-spacing: 0.5px;
         }
         .subtitle {
-            font-size: 9pt;
+            font-size: 8.5pt;
             color: #475569;
             font-weight: bold;
         }
         .meta-table {
             width: 100%;
-            margin-top: 6px;
-            font-size: 7.5pt;
+            margin-top: 5px;
+            font-size: 7pt;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
         }
         .meta-table td {
-            padding: 2px 4px;
+            padding: 3px 6px;
         }
         .kpi-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
         .kpi-cell {
             border: 1px solid #cbd5e1;
             background: #f8fafc;
-            padding: 6px;
+            padding: 5px 4px;
             text-align: center;
         }
         .kpi-label {
-            font-size: 6.5pt;
+            font-size: 6pt;
             color: #64748b;
             text-transform: uppercase;
             font-weight: bold;
         }
         .kpi-value {
-            font-size: 12pt;
+            font-size: 11pt;
             font-weight: bold;
             color: #0284c7;
-            margin-top: 2px;
+            margin-top: 1px;
         }
+        .kpi-sub {
+            font-size: 5.5pt;
+            color: #64748b;
+            margin-top: 1px;
+        }
+
+        /* Peak Analysis Box */
+        .peak-analysis-box {
+            border: 1px solid #93c5fd;
+            background: #eff6ff;
+            padding: 5px 8px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+        }
+        .peak-title {
+            font-size: 7.5pt;
+            font-weight: bold;
+            color: #1e3a8a;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+        .peak-desc {
+            font-size: 6.5pt;
+            color: #1e40af;
+            line-height: 1.3;
+        }
+
+        /* Chart Diagrams (CSS/HTML Vector Bars) */
+        .chart-box {
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            padding: 6px 8px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+        }
+        .chart-header {
+            font-size: 7.5pt;
+            font-weight: bold;
+            color: #0f172a;
+            text-transform: uppercase;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 3px;
+            margin-bottom: 5px;
+        }
+        .chart-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: center;
+            font-size: 5.5pt;
+        }
+        .chart-table td {
+            vertical-align: bottom;
+            padding: 1px;
+        }
+        .bar-wrap {
+            height: 48px;
+            position: relative;
+            background: #f1f5f9;
+            border-radius: 2px;
+        }
+        .bar-inner {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            border-radius: 2px 2px 0 0;
+        }
+
+        /* Heatmap Grid */
+        .heatmap-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 6pt;
+            text-align: center;
+        }
+        .heatmap-table th {
+            background: #0f172a;
+            color: #ffffff;
+            font-size: 5.5pt;
+            padding: 3px 2px;
+            border: 1px solid #334155;
+        }
+        .heatmap-table td {
+            border: 1px solid #cbd5e1;
+            padding: 3px 2px;
+            font-weight: bold;
+        }
+
+        /* Main Data Table */
         .data-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 7pt;
+            font-size: 6.5pt;
+            margin-top: 4px;
+        }
+        .data-table thead {
+            display: table-header-group;
+        }
+        .data-table tr {
+            page-break-inside: avoid;
         }
         .data-table th {
             background-color: #0f172a;
             color: #ffffff;
             font-weight: bold;
             text-transform: uppercase;
-            padding: 4px 5px;
+            padding: 4px 4px;
             border: 1px solid #334155;
-            font-size: 6.5pt;
+            font-size: 6pt;
         }
         .data-table td {
-            padding: 3px 5px;
+            padding: 3px 4px;
             border: 1px solid #cbd5e1;
         }
         .data-table tr:nth-child(even) {
@@ -85,31 +184,49 @@
         }
         .text-right { text-align: right; }
         .text-center { text-align: center; }
-        .footer {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            font-size: 7pt;
-            color: #94a3b8;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 4px;
-            text-align: right;
+        .text-left { text-align: left; }
+        .font-bold { font-weight: bold; }
+
+        .page-break {
+            page-break-after: always;
         }
     </style>
 </head>
 <body>
 
+    {{-- Script for dynamic page numbering --}}
+    <script type="text/php">
+        if (isset($pdf)) {
+            $text = "SlotWaves • Data Angkutan Udara • {{ $conf['code'] ?? $reportType }} • Generated: {{ date('d/m/Y H:i:s') }} • Halaman {PAGE_NUM} dari {PAGE_COUNT}";
+            $size = 6.5;
+            $font = $fontMetrics->getFont("DejaVu Sans", "normal");
+            $width = $fontMetrics->getTextWidth($text, $font, $size);
+            $pdf->page_text(842 - $width - 28, 595 - 20, $text, $font, $size, [0.4, 0.4, 0.4]);
+        }
+    </script>
+
+    {{-- ══ HEADER SECTION ════════════════════════════════════════════════════ --}}
     <div class="header-box">
         <table style="width: 100%;">
             <tr>
-                <td>
-                    <div class="title">{{ $conf['title'] ?? 'DATA ANGKUTAN UDARA' }}</div>
+                <td style="width: 75%;">
+                    <div class="title">
+                        DATA ANGKUTAN UDARA
+                        @if ($reportType === 'DAU10')
+                            JAM PUNCAK PESAWAT/PENUMPANG (DAU-10)
+                        @elseif ($reportType === 'DAU10A')
+                            JAM PUNCAK MENURUT TERMINAL (DAU-10A)
+                        @elseif ($reportType === 'DAU10B')
+                            JAM PUNCAK PESAWAT/PENUMPANG (BLOCK ON/OFF) (DAU-10B)
+                        @else
+                            {{ $conf['title'] ?? 'LAPORAN DAU' }}
+                        @endif
+                    </div>
                     <div class="subtitle">{{ $meta['airport_name'] ?? 'Tangerang Banten - Soekarno Hatta' }} ({{ $meta['airport_code'] ?? 'CGK' }})</div>
                 </td>
-                <td style="text-align: right;">
-                    <div style="font-size: 12pt; font-weight: bold; color: #0284c7;">{{ $conf['code'] ?? $reportType }}</div>
-                    <div style="font-size: 7pt; color: #64748b;">Source: OASYS</div>
+                <td style="width: 25%; text-align: right; vertical-align: top;">
+                    <div style="font-size: 13pt; font-weight: bold; color: #0284c7;">{{ $conf['code'] ?? $reportType }}</div>
+                    <div style="font-size: 7pt; color: #64748b;">Source: OASYS Verified</div>
                 </td>
             </tr>
         </table>
@@ -124,221 +241,314 @@
         </table>
     </div>
 
-    {{-- KPI Summary --}}
+    {{-- ══ EXECUTIVE SUMMARY / KPI CARDS ════════════════════════════════════ --}}
     <table class="kpi-table">
         <tr>
-            <td class="kpi-cell" style="width: 16.6%;">
+            @if ($reportType === 'DAU10B')
+                <td class="kpi-cell" style="width: 12.5%;">
+                    <div class="kpi-label">Peak Block On</div>
+                    <div class="kpi-value" style="color: #7c3aed;">{{ number_format($peaks['peak_block_on'] ?? 0) }}</div>
+                    <div class="kpi-sub">{{ $peaks['peak_block_on_hour'] ?? '—' }}</div>
+                </td>
+                <td class="kpi-cell" style="width: 12.5%;">
+                    <div class="kpi-label">Peak Block Off</div>
+                    <div class="kpi-value" style="color: #d97706;">{{ number_format($peaks['peak_block_off'] ?? 0) }}</div>
+                    <div class="kpi-sub">{{ $peaks['peak_block_off_hour'] ?? '—' }}</div>
+                </td>
+            @else
+                <td class="kpi-cell" style="width: 12.5%;">
+                    <div class="kpi-label">Peak Aircraft</div>
+                    <div class="kpi-value">{{ number_format($peaks['peak_aircraft'] ?? 0) }}</div>
+                    <div class="kpi-sub">{{ $peaks['peak_aircraft_hour'] ?? '—' }}</div>
+                </td>
+                <td class="kpi-cell" style="width: 12.5%;">
+                    <div class="kpi-label">Peak Passenger</div>
+                    <div class="kpi-value" style="color: #059669;">{{ number_format($peaks['peak_passenger'] ?? 0) }}</div>
+                    <div class="kpi-sub">{{ $peaks['peak_passenger_hour'] ?? '—' }}</div>
+                </td>
+            @endif
+
+            <td class="kpi-cell" style="width: 12.5%;">
+                <div class="kpi-label">Peak Hour</div>
+                <div class="kpi-value" style="color: #2563eb; font-size: 8.5pt;">{{ $peaks['peak_hour'] ?? '—' }}</div>
+                <div class="kpi-sub">Highest Density</div>
+            </td>
+
+            @if ($reportType === 'DAU10A' || $reportType === 'DAU10B')
+                <td class="kpi-cell" style="width: 12.5%;">
+                    <div class="kpi-label">Peak Terminal</div>
+                    <div class="kpi-value" style="color: #9333ea;">T{{ $peaks['peak_terminal'] ?? '—' }}</div>
+                    <div class="kpi-sub">{{ number_format($peaks['peak_terminal_val'] ?? 0) }} mov</div>
+                </td>
+            @endif
+
+            <td class="kpi-cell" style="width: 12.5%;">
                 <div class="kpi-label">Total Movements</div>
                 <div class="kpi-value">{{ number_format($summary['total_movements'] ?? 0) }}</div>
+                <div class="kpi-sub">Arr: {{ number_format($summary['aircraft_arrival'] ?? 0) }} | Dep: {{ number_format($summary['aircraft_departure'] ?? 0) }}</div>
             </td>
-            <td class="kpi-cell" style="width: 16.6%;">
+
+            <td class="kpi-cell" style="width: 12.5%;">
                 <div class="kpi-label">Total Passengers</div>
                 <div class="kpi-value" style="color: #059669;">{{ number_format($summary['passenger_total'] ?? 0) }}</div>
+                <div class="kpi-sub">Arr: {{ number_format($summary['passenger_arrival'] ?? 0) }} | Dep: {{ number_format($summary['passenger_departure'] ?? 0) }}</div>
             </td>
-            <td class="kpi-cell" style="width: 16.6%;">
-                <div class="kpi-label">Transit &amp; Transfer</div>
-                <div class="kpi-value" style="color: #2563eb;">{{ number_format(($summary['passenger_transit'] ?? 0) + ($summary['passenger_transfer'] ?? 0)) }}</div>
+
+            <td class="kpi-cell" style="width: 12.5%;">
+                <div class="kpi-label">Total Crew</div>
+                <div class="kpi-value" style="color: #475569;">{{ number_format($summary['crew_total'] ?? 0) }}</div>
+                <div class="kpi-sub">Flight Crew</div>
             </td>
-            <td class="kpi-cell" style="width: 16.6%;">
-                <div class="kpi-label">Baggage (Kg)</div>
-                <div class="kpi-value" style="color: #d97706;">{{ number_format($summary['baggage_total'] ?? 0) }}</div>
-            </td>
-            <td class="kpi-cell" style="width: 16.6%;">
-                <div class="kpi-label">Cargo (Kg)</div>
-                <div class="kpi-value" style="color: #4f46e5;">{{ number_format($summary['cargo_total'] ?? 0) }}</div>
-            </td>
-            <td class="kpi-cell" style="width: 16.6%;">
-                <div class="kpi-label">POS / Mail (Kg)</div>
-                <div class="kpi-value" style="color: #7c3aed;">{{ number_format($summary['pos_total'] ?? 0) }}</div>
-            </td>
+
+            @if ($reportType !== 'DAU10A')
+                <td class="kpi-cell" style="width: 12.5%;">
+                    <div class="kpi-label">Baggage (Kg)</div>
+                    <div class="kpi-value" style="color: #d97706;">{{ number_format($summary['baggage_total'] ?? 0) }}</div>
+                    <div class="kpi-sub">Luggage</div>
+                </td>
+
+                <td class="kpi-cell" style="width: 12.5%;">
+                    <div class="kpi-label">Cargo (Kg)</div>
+                    <div class="kpi-value" style="color: #4f46e5;">{{ number_format($summary['cargo_total'] ?? 0) }}</div>
+                    <div class="kpi-sub">Freight</div>
+                </td>
+            @endif
         </tr>
     </table>
 
-    {{-- Main Data Table --}}
+    {{-- ══ PEAK HOUR ANALYSIS CALLOUT ═════════════════════════════════════════ --}}
+    <div class="peak-analysis-box">
+        <table style="width: 100%;">
+            <tr>
+                <td style="width: 60%; vertical-align: top;">
+                    <div class="peak-title">Peak Hour Analysis Summary</div>
+                    <div class="peak-desc">
+                        Jam puncak operasional teridentifikasi pada periode <strong>{{ $peaks['peak_hour'] ?? '—' }}</strong> 
+                        dengan total <strong>{{ number_format($peaks['peak_aircraft'] ?? 0) }}</strong> pergerakan pesawat 
+                        dan <strong>{{ number_format($peaks['peak_passenger'] ?? 0) }}</strong> penumpang. 
+                        @if (!empty($peaks['peak_terminal']) && $peaks['peak_terminal'] !== '—')
+                            Konsentrasi aktivitas tertinggi tercatat pada <strong>Terminal {{ $peaks['peak_terminal'] }}</strong>.
+                        @endif
+                    </div>
+                </td>
+                <td style="width: 40%; text-align: right; vertical-align: top; font-size: 6.5pt;">
+                    <div><strong>Filter Aktif:</strong> {{ $meta['flight_scope'] ?? 'DOM & INT' }} • {{ $meta['terminal_scope'] ?? 'ALL' }}</div>
+                    <div style="color: #64748b; margin-top: 2px;">Jumlah Rekod Terpilih: <strong>{{ count($records) }}</strong> data rows</div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    {{-- ══ ANALYTICAL CHARTS / DIAGRAMS SECTION ══════════════════════════════ --}}
+    @if ($reportType === 'DAU10')
+        {{-- DAU-10 Hourly Movements Vector Bar Chart --}}
+        @php
+            $maxHourlyAc = 1;
+            foreach ($hourlyData as $hd) {
+                if ($hd['aircraft_total'] > $maxHourlyAc) $maxHourlyAc = $hd['aircraft_total'];
+            }
+        @endphp
+        <div class="chart-box">
+            <div class="chart-header">
+                Hourly Aircraft Movement Distribution (00:00 - 24:00) — Total Pergerakan per Jam
+            </div>
+            <table class="chart-table">
+                <tr>
+                    @foreach ($hourlyData as $hd)
+                        @php
+                            $hRatio = min(1, $hd['aircraft_total'] / max(1, $maxHourlyAc));
+                            $barHeight = max(3, round($hRatio * 44));
+                            $isPeak = ($hd['hour'] === ($peaks['peak_aircraft_hour'] ?? ''));
+                        @endphp
+                        <td style="width: {{ 100 / max(1, count($hourlyData)) }}%;">
+                            <div style="font-size: 5.5pt; font-weight: bold; margin-bottom: 1px; color: {{ $isPeak ? '#b45309' : '#1e293b' }};">
+                                {{ $hd['aircraft_total'] }}
+                            </div>
+                            <div class="bar-wrap">
+                                <div class="bar-inner" style="height: {{ $barHeight }}px; background-color: {{ $isPeak ? '#f59e0b' : '#0284c7' }};"></div>
+                            </div>
+                            <div style="font-size: 5pt; color: #64748b; margin-top: 2px;">
+                                {{ explode(' - ', $hd['hour'])[0] ?? $hd['hour'] }}
+                            </div>
+                        </td>
+                    @endforeach
+                </tr>
+            </table>
+        </div>
+
+    @elseif ($reportType === 'DAU10A')
+        {{-- DAU-10A Time x Terminal Heatmap Matrix --}}
+        <div class="chart-box">
+            <div class="chart-header">
+                Time × Terminal Operational Heatmap Matrix (Nilai: {{ ucfirst($metric ?? 'aircraft') }})
+            </div>
+            @php
+                $pdfTerms = ['1', '2F', '3U', '1B', '2D', '2E', '1C'];
+                $allHours = [];
+                foreach ($hourlyData as $hd) $allHours[] = $hd['hour'];
+                $maxVal = ($metric === 'passenger') ? 3500 : 30;
+            @endphp
+            <table class="heatmap-table">
+                <thead>
+                    <tr>
+                        <th style="width: 10%; text-align: left;">Terminal</th>
+                        @foreach ($allHours as $h)
+                            <th style="width: {{ 90 / max(1, count($allHours)) }}%;">{{ explode(' - ', $h)[0] ?? $h }}</th>
+                        @endforeach
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($pdfTerms as $term)
+                        <tr>
+                            <td class="text-left" style="background: #f8fafc; font-weight: bold;">T{{ $term }}</td>
+                            @foreach ($allHours as $h)
+                                @php
+                                    $cellVal = $heatmapMatrix[$term][$h] ?? 0;
+                                    $ratio = min(1, $cellVal / max(1, $maxVal));
+                                    $bg = '#ffffff';
+                                    if ($cellVal > 0) {
+                                        if ($ratio < 0.20) $bg = '#dbeafe';
+                                        elseif ($ratio < 0.45) $bg = '#93c5fd';
+                                        elseif ($ratio < 0.70) $bg = '#3b82f6';
+                                        else $bg = '#1d4ed8';
+                                    }
+                                    $textCol = ($ratio >= 0.45) ? '#ffffff' : '#0f172a';
+                                @endphp
+                                <td style="background-color: {{ $bg }}; color: {{ $textCol }}; font-size: 5.5pt;">
+                                    {{ $cellVal > 0 ? $cellVal : '-' }}
+                                </td>
+                            @endforeach
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+
+    @elseif ($reportType === 'DAU10B')
+        {{-- DAU-10B Block On vs Block Off Comparative Distribution --}}
+        @php
+            $maxBlock = 1;
+            foreach ($hourlyData as $hd) {
+                $maxBlock = max($maxBlock, $hd['aircraft_arrival'], $hd['aircraft_departure']);
+            }
+        @endphp
+        <div class="chart-box">
+            <div class="chart-header">
+                Block On (Inbound Gates / DTG) vs Block Off (Outbound Gates / BRK) Hourly Distribution
+            </div>
+            <table class="chart-table">
+                <tr>
+                    @foreach ($hourlyData as $hd)
+                        @php
+                            $onH = max(2, round(($hd['aircraft_arrival'] / max(1, $maxBlock)) * 44));
+                            $offH = max(2, round(($hd['aircraft_departure'] / max(1, $maxBlock)) * 44));
+                        @endphp
+                        <td style="width: {{ 100 / max(1, count($hourlyData)) }}%;">
+                            <div style="font-size: 5pt; font-weight: bold; margin-bottom: 1px;">
+                                <span style="color: #7c3aed;">{{ $hd['aircraft_arrival'] }}</span>/<span style="color: #d97706;">{{ $hd['aircraft_departure'] }}</span>
+                            </div>
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <tr>
+                                    <td style="width: 50%; padding: 0;">
+                                        <div class="bar-wrap" style="background: transparent;">
+                                            <div class="bar-inner" style="height: {{ $onH }}px; background-color: #7c3aed;"></div>
+                                        </div>
+                                    </td>
+                                    <td style="width: 50%; padding: 0;">
+                                        <div class="bar-wrap" style="background: transparent;">
+                                            <div class="bar-inner" style="height: {{ $offH }}px; background-color: #f59e0b;"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+                            <div style="font-size: 5pt; color: #64748b; margin-top: 2px;">
+                                {{ explode(' - ', $hd['hour'])[0] ?? $hd['hour'] }}
+                            </div>
+                        </td>
+                    @endforeach
+                </tr>
+            </table>
+            <div style="font-size: 5.5pt; color: #64748b; margin-top: 3px; text-align: right;">
+                <span style="display: inline-block; width: 8px; height: 8px; background: #7c3aed; vertical-align: middle;"></span> Block On (DTG) &nbsp;&nbsp;
+                <span style="display: inline-block; width: 8px; height: 8px; background: #f59e0b; vertical-align: middle;"></span> Block Off (BRK)
+            </div>
+        </div>
+    @endif
+
+    {{-- ══ MAIN DATA TABLE ════════════════════════════════════════════════════ --}}
     <table class="data-table">
         <thead>
             <tr>
-                <th style="width: 4%;">#</th>
-                @if ($reportType === 'DAU1')
-                    <th style="width: 18%;">Route / Airport</th>
-                    <th style="width: 10%;">Flight No</th>
-                    <th style="width: 12%;">Tipe Pesawat</th>
-                    <th class="text-right">Kapasitas</th>
-                    <th class="text-right">Acft DTG</th>
-                    <th class="text-right">Acft BRK</th>
-                    <th class="text-right">Total Acft</th>
-                    <th class="text-right">Pass DTG</th>
-                    <th class="text-right">Pass BRK</th>
-                    <th class="text-right">Total Pass</th>
-                    <th class="text-right">Bagasi</th>
-                    <th class="text-right">Kargo</th>
-                @elseif ($reportType === 'DAU2' || $reportType === 'DAU3')
-                    <th>Kategori</th>
-                    <th class="text-right">Pesawat DTG</th>
-                    <th class="text-right">Pesawat BRK</th>
-                    <th class="text-right">Total Pesawat</th>
-                    <th class="text-right">Pax DTG</th>
-                    <th class="text-right">Pax BRK</th>
-                    <th class="text-right">Total Pax</th>
-                    <th class="text-right">Awak</th>
-                    <th class="text-right">Bagasi</th>
-                    <th class="text-right">Kargo</th>
-                @elseif ($reportType === 'DAU4' || $reportType === 'DAU4A')
-                    <th>Airport</th>
-                    <th>IATA</th>
-                    <th>City</th>
-                    @if ($reportType === 'DAU4A')
-                        <th>Operator</th>
+                <th style="width: 3%; text-align: center;">#</th>
+                @if ($reportType === 'DAU10' || $reportType === 'DAU10A' || $reportType === 'DAU10B')
+                    <th style="width: 11%;">Jam / Periode</th>
+                    <th style="width: 8%;">Terminal</th>
+                    <th class="text-right" style="width: 7%;">
+                        @if ($reportType === 'DAU10B') Acft On (DTG) @else Acft ARR @endif
+                    </th>
+                    <th class="text-right" style="width: 7%;">
+                        @if ($reportType === 'DAU10B') Acft Off (BRK) @else Acft DEP @endif
+                    </th>
+                    <th class="text-right" style="width: 7%;">Total Acft</th>
+                    <th class="text-right" style="width: 8%;">
+                        @if ($reportType === 'DAU10B') Pax On (DTG) @else Pax ARR @endif
+                    </th>
+                    <th class="text-right" style="width: 8%;">
+                        @if ($reportType === 'DAU10B') Pax Off (BRK) @else Pax DEP @endif
+                    </th>
+                    <th class="text-right" style="width: 8%;">Total Pax</th>
+                    <th class="text-right" style="width: 6%;">Transit</th>
+                    <th class="text-right" style="width: 6%;">Transfer</th>
+                    <th class="text-right" style="width: 6%;">Awak (Crew)</th>
+                    <th class="text-right" style="width: 6%;">Ex Crew</th>
+                    @if ($reportType !== 'DAU10A')
+                        <th class="text-right" style="width: 8%;">Bagasi (Kg)</th>
+                        <th class="text-right" style="width: 8%;">Kargo (Kg)</th>
                     @endif
-                    <th class="text-right">Acft Arr</th>
-                    <th class="text-right">Acft Dep</th>
-                    <th class="text-right">Total Acft</th>
-                    <th class="text-right">Pass Arr</th>
-                    <th class="text-right">Pass Dep</th>
-                    <th class="text-right">Total Pass</th>
-                @elseif (in_array($reportType, ['DAU5', 'DAU5A', 'DAU5B', 'DAU5C']))
-                    @if ($reportType === 'DAU5B')
-                        <th>Terminal</th>
-                    @endif
-                    <th>Airline / Operator</th>
-                    <th class="text-right">Acft Arr</th>
-                    <th class="text-right">Acft Dep</th>
-                    <th class="text-right">Total Acft</th>
-                    <th class="text-right">Pass Arr</th>
-                    <th class="text-right">Pass Dep</th>
-                    <th class="text-right">Total Pass</th>
-                    <th class="text-right">Awak</th>
-                    <th class="text-right">Kargo</th>
-                @elseif ($reportType === 'DAU6')
-                    <th>Tipe Pesawat</th>
-                    <th class="text-right">Acft Arr</th>
-                    <th class="text-right">Acft Dep</th>
-                    <th class="text-right">Total Acft</th>
-                    <th class="text-right">Pass Arr</th>
-                    <th class="text-right">Pass Dep</th>
-                    <th class="text-right">Total Pass</th>
-                    <th class="text-right">Awak</th>
-                    <th class="text-right">Kargo</th>
-                @elseif (in_array($reportType, ['DAU10', 'DAU10B']))
-                    <th>Jam</th>
-                    <th>Terminal</th>
-                    <th class="text-right">Acft Arr</th>
-                    <th class="text-right">Acft Dep</th>
-                    <th class="text-right">Total Acft</th>
-                    <th class="text-right">Pass Arr</th>
-                    <th class="text-right">Pass Dep</th>
-                    <th class="text-right">Total Pass</th>
-                @elseif ($reportType === 'DAU10A')
-                    <th>Periode Jam</th>
-                    <th class="text-right">Total Pesawat</th>
-                    <th class="text-right">Total Penumpang</th>
-                    <th>Active Terminals</th>
-                @elseif (in_array($reportType, ['DAU11', 'DAU12']))
-                    <th>Tanggal</th>
-                    <th class="text-right">Total Pesawat</th>
-                    <th class="text-right">Total Penumpang</th>
-                    <th class="text-right">Arrival Pax</th>
-                    <th class="text-right">Departure Pax</th>
                 @else
-                    <th>Item</th>
-                    <th class="text-right">Total Flights</th>
-                    <th class="text-right">Total Pass</th>
+                    {{-- Generic fallback for other DAU reports --}}
+                    <th>Category / Route</th>
+                    <th class="text-right">Total Aircraft</th>
+                    <th class="text-right">Total Passenger</th>
                 @endif
             </tr>
         </thead>
         <tbody>
-            @foreach (array_slice($records, 0, 150) as $idx => $r)
+            @forelse ($records as $idx => $r)
                 <tr>
-                    <td class="text-center">{{ $r['no'] ?? ($idx + 1) }}</td>
-                    @if ($reportType === 'DAU1')
-                        <td>{{ $r['airport_route'] ?? '' }}</td>
-                        <td><strong>{{ $r['flight_number'] ?? '' }}</strong></td>
-                        <td>{{ $r['aircraft_type'] ?? '' }}</td>
-                        <td class="text-right">{{ number_format($r['seat_capacity'] ?? 0) }}</td>
+                    <td class="text-center">{{ $idx + 1 }}</td>
+                    @if ($reportType === 'DAU10' || $reportType === 'DAU10A' || $reportType === 'DAU10B')
+                        <td class="font-bold">{{ $r['hour'] ?? $r['period'] ?? '—' }}</td>
+                        <td>{{ $r['terminal'] ?? '—' }}</td>
                         <td class="text-right">{{ number_format($r['aircraft_arrival'] ?? 0) }}</td>
                         <td class="text-right">{{ number_format($r['aircraft_departure'] ?? 0) }}</td>
-                        <td class="text-right"><strong>{{ number_format($r['aircraft_total'] ?? 0) }}</strong></td>
+                        <td class="text-right font-bold">{{ number_format($r['aircraft_total'] ?? 0) }}</td>
                         <td class="text-right">{{ number_format($r['passenger_arrival'] ?? 0) }}</td>
                         <td class="text-right">{{ number_format($r['passenger_departure'] ?? 0) }}</td>
-                        <td class="text-right"><strong>{{ number_format($r['passenger_total'] ?? 0) }}</strong></td>
-                        <td class="text-right">{{ number_format($r['baggage'] ?? 0) }}</td>
-                        <td class="text-right">{{ number_format($r['cargo'] ?? 0) }}</td>
-                    @elseif ($reportType === 'DAU2' || $reportType === 'DAU3')
-                        <td><strong>{{ $r['category'] ?? '' }}</strong></td>
-                        <td class="text-right">{{ number_format($r['aircraft_arrival'] ?? 0) }}</td>
-                        <td class="text-right">{{ number_format($r['aircraft_departure'] ?? 0) }}</td>
-                        <td class="text-right"><strong>{{ number_format($r['aircraft_total'] ?? 0) }}</strong></td>
-                        <td class="text-right">{{ number_format($r['passenger_arrival'] ?? 0) }}</td>
-                        <td class="text-right">{{ number_format($r['passenger_departure'] ?? 0) }}</td>
-                        <td class="text-right"><strong>{{ number_format($r['passenger_total'] ?? 0) }}</strong></td>
-                        <td class="text-right">{{ number_format($r['crew_total'] ?? 0) }}</td>
-                        <td class="text-right">{{ number_format($r['baggage'] ?? 0) }}</td>
-                        <td class="text-right">{{ number_format($r['cargo'] ?? 0) }}</td>
-                    @elseif ($reportType === 'DAU4' || $reportType === 'DAU4A')
-                        <td><strong>{{ $r['airport'] ?? '' }}</strong></td>
-                        <td>{{ $r['city_code'] ?? '' }}</td>
-                        <td>{{ $r['city'] ?? '' }}</td>
-                        @if ($reportType === 'DAU4A')
-                            <td>{{ $r['operator_name'] ?? '' }}</td>
+                        <td class="text-right font-bold" style="color: #059669;">{{ number_format($r['passenger_total'] ?? 0) }}</td>
+                        <td class="text-right">{{ number_format($r['passenger_transit'] ?? 0) }}</td>
+                        <td class="text-right">{{ number_format($r['passenger_transfer'] ?? 0) }}</td>
+                        <td class="text-right">{{ number_format($r['crew'] ?? 0) }}</td>
+                        <td class="text-right">{{ number_format($r['extra_crew'] ?? 0) }}</td>
+                        @if ($reportType !== 'DAU10A')
+                            <td class="text-right">{{ number_format($r['baggage'] ?? 0) }}</td>
+                            <td class="text-right">{{ number_format($r['cargo'] ?? 0) }}</td>
                         @endif
-                        <td class="text-right">{{ number_format($r['aircraft_arrival'] ?? 0) }}</td>
-                        <td class="text-right">{{ number_format($r['aircraft_departure'] ?? 0) }}</td>
-                        <td class="text-right"><strong>{{ number_format($r['aircraft_total'] ?? 0) }}</strong></td>
-                        <td class="text-right">{{ number_format($r['passenger_arrival'] ?? 0) }}</td>
-                        <td class="text-right">{{ number_format($r['passenger_departure'] ?? 0) }}</td>
-                        <td class="text-right"><strong>{{ number_format($r['passenger_total'] ?? 0) }}</strong></td>
-                    @elseif (in_array($reportType, ['DAU5', 'DAU5A', 'DAU5B', 'DAU5C']))
-                        @if ($reportType === 'DAU5B')
-                            <td>{{ $r['terminal'] ?? '' }}</td>
-                        @endif
-                        <td><strong>{{ $r['airline'] ?? '' }}</strong></td>
-                        <td class="text-right">{{ number_format($r['aircraft_arrival'] ?? 0) }}</td>
-                        <td class="text-right">{{ number_format($r['aircraft_departure'] ?? 0) }}</td>
-                        <td class="text-right"><strong>{{ number_format($r['aircraft_total'] ?? 0) }}</strong></td>
-                        <td class="text-right">{{ number_format($r['passenger_arrival'] ?? 0) }}</td>
-                        <td class="text-right">{{ number_format($r['passenger_departure'] ?? 0) }}</td>
-                        <td class="text-right"><strong>{{ number_format($r['passenger_total'] ?? 0) }}</strong></td>
-                        <td class="text-right">{{ number_format($r['crew_total'] ?? $r['crew'] ?? 0) }}</td>
-                        <td class="text-right">{{ number_format($r['cargo'] ?? 0) }}</td>
-                    @elseif ($reportType === 'DAU6')
-                        <td><strong>{{ $r['aircraft_type'] ?? '' }}</strong></td>
-                        <td class="text-right">{{ number_format($r['aircraft_arrival'] ?? 0) }}</td>
-                        <td class="text-right">{{ number_format($r['aircraft_departure'] ?? 0) }}</td>
-                        <td class="text-right"><strong>{{ number_format($r['aircraft_total'] ?? 0) }}</strong></td>
-                        <td class="text-right">{{ number_format($r['passenger_arrival'] ?? 0) }}</td>
-                        <td class="text-right">{{ number_format($r['passenger_departure'] ?? 0) }}</td>
-                        <td class="text-right"><strong>{{ number_format($r['passenger_total'] ?? 0) }}</strong></td>
-                        <td class="text-right">{{ number_format($r['crew_total'] ?? 0) }}</td>
-                        <td class="text-right">{{ number_format($r['cargo'] ?? 0) }}</td>
-                    @elseif (in_array($reportType, ['DAU10', 'DAU10B']))
-                        <td><strong>{{ $r['hour'] ?? '' }}</strong></td>
-                        <td>{{ $r['terminal'] ?? '' }}</td>
-                        <td class="text-right">{{ number_format($r['aircraft_arrival'] ?? 0) }}</td>
-                        <td class="text-right">{{ number_format($r['aircraft_departure'] ?? 0) }}</td>
-                        <td class="text-right"><strong>{{ number_format($r['aircraft_total'] ?? 0) }}</strong></td>
-                        <td class="text-right">{{ number_format($r['passenger_arrival'] ?? 0) }}</td>
-                        <td class="text-right">{{ number_format($r['passenger_departure'] ?? 0) }}</td>
-                        <td class="text-right"><strong>{{ number_format($r['passenger_total'] ?? 0) }}</strong></td>
-                    @elseif ($reportType === 'DAU10A')
-                        <td><strong>{{ $r['period'] ?? '' }}</strong></td>
-                        <td class="text-right"><strong>{{ number_format($r['total_flights'] ?? 0) }}</strong></td>
-                        <td class="text-right"><strong>{{ number_format($r['total_passengers'] ?? 0) }}</strong></td>
-                        <td>{{ implode(', ', array_keys($r['terminals'] ?? [])) }}</td>
-                    @elseif (in_array($reportType, ['DAU11', 'DAU12']))
-                        <td><strong>{{ $r['date'] ?? '' }}</strong></td>
-                        <td class="text-right"><strong>{{ number_format($r['aircraft_total'] ?? 0) }}</strong></td>
-                        <td class="text-right"><strong>{{ number_format($r['passenger_total'] ?? 0) }}</strong></td>
-                        <td class="text-right">{{ number_format($r['passenger_arrival_tot'] ?? $r['passenger_int_arrival'] ?? 0) }}</td>
-                        <td class="text-right">{{ number_format($r['passenger_departure_tot'] ?? $r['passenger_int_departure'] ?? 0) }}</td>
+                    @else
+                        <td>{{ $r['category'] ?? $r['airport'] ?? 'Row ' . ($idx+1) }}</td>
+                        <td class="text-right">{{ number_format($r['aircraft_total'] ?? 0) }}</td>
+                        <td class="text-right">{{ number_format($r['passenger_total'] ?? 0) }}</td>
                     @endif
                 </tr>
-            @endforeach
+            @empty
+                <tr>
+                    <td colspan="15" class="text-center" style="padding: 12px; color: #64748b;">
+                        NO DATA FOR SELECTED FILTER — Tidak ada rekod data yang sesuai dengan filter yang dipilih.
+                    </td>
+                </tr>
+            @endforelse
         </tbody>
     </table>
-
-    <div class="footer">
-        SlotWaves Report System • Page 1 • Official OASYS Flight Data Verification
-    </div>
 
 </body>
 </html>

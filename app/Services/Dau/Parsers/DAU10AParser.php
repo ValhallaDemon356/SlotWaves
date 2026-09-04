@@ -71,6 +71,8 @@ class DAU10AParser extends BaseDauParser
                 $totPx = $this->toInt($row[$c+9] ?? ($pArr + $pDep + $pTrn + $pTrf));
 
                 $tData = [
+                    'hour'                => $period,
+                    'period'              => $period,
                     'terminal'            => $t['name'],
                     'aircraft_arrival'    => $flArr,
                     'aircraft_departure'  => $flDep,
@@ -82,14 +84,14 @@ class DAU10AParser extends BaseDauParser
                     'passenger_total'     => $totPx,
                     'crew'                => $crew,
                     'extra_crew'          => $exCrw,
+                    'crew_total'          => ($crew + $exCrw),
+                    'baggage'             => 0,
+                    'cargo'               => 0,
+                    'pos'                 => 0,
                 ];
                 $termBreakdown[$t['name']] = $tData;
 
-                if ($totFl > 0 || $totPx > 0 || $crew > 0) {
-                    $normalizedPairs[] = array_merge([
-                        'period' => $period,
-                    ], $tData);
-                }
+                $normalizedPairs[] = $tData;
 
                 $rowTotFlights += $totFl;
                 $rowTotPax     += $totPx;
