@@ -784,22 +784,15 @@
                         </div>
                     </template>
 
-                    {{-- Distribusi Per Jam Hourly Chart --}}
+                    {{-- Distribusi Per Jam Hourly Chart (Two-Direction Aircraft Capacity Envelope) --}}
                     <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
                         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
                             <div>
                                 <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">DISTRIBUSI PER JAM</h2>
-                                <p class="text-xs text-slate-500">Aircraft movement and operational capacity analysis.</p>
+                                <p class="text-xs text-slate-500">Two-Direction Operational Aircraft Capacity Envelope & Demand Analysis.</p>
                             </div>
 
                             <div class="flex flex-wrap items-center gap-3 text-xs font-mono">
-                                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-amber-500"></span> Arrival</span>
-                                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-blue-600"></span> Departure</span>
-                                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-purple-600 opacity-60"></span> OPC (N/A)</span>
-                                <span class="flex items-center gap-1.5">
-                                    <span class="w-4 h-0.5 border-t-2 border-dashed border-slate-500"></span>
-                                    <span>Capacity (<span x-text="aircraftCapacity"></span> A/C)</span>
-                                </span>
                                 <template x-if="filterHour !== 'ALL'">
                                     <button type="button" @click="setHourFilter('ALL')"
                                             class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-aviation-100 text-aviation-800 dark:bg-aviation-950 dark:text-aviation-300 border border-aviation-300 hover:bg-aviation-200 transition cursor-pointer">
@@ -809,112 +802,7 @@
                             </div>
                         </div>
 
-                        {{-- Grouped Bar Chart Canvas with Dynamic Capacity Reference Line --}}
-                        <div class="relative h-72 sm:h-80 w-full pt-8 pb-2 px-1 border-b border-slate-200 dark:border-slate-800">
-
-                            {{-- Dynamic Subtle Dashed Capacity Reference Line --}}
-                            <template x-if="selectedMetric === 'aircraft'">
-                                <div class="absolute left-0 right-0 z-10 pointer-events-none transition-all duration-300 flex items-center"
-                                     :style="'bottom: ' + capacityLineBottomPercent + '%;'">
-                                    <div class="w-full border-t-2 border-dashed border-slate-400 dark:border-slate-500/70"></div>
-                                    <div class="pointer-events-auto shrink-0 -mt-2.5 ml-2 px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 shadow-sm cursor-help"
-                                         :title="'Batas Aircraft Capacity - NAC: ' + aircraftCapacity + ' A/C'">
-                                        NAC: <span x-text="aircraftCapacity"></span> A/C
-                                    </div>
-                                </div>
-                            </template>
-
-                            {{-- Hourly Columns --}}
-                            <div class="h-full w-full flex items-end gap-1.5 sm:gap-2 overflow-x-auto">
-                                <template x-for="(row, idx) in hourlyCapacityAnalysis.list" :key="row.hour">
-                                    <div @click="setHourFilter(row.hour)"
-                                         class="flex-1 min-w-[34px] sm:min-w-[42px] flex flex-col items-center h-full justify-end group relative cursor-pointer"
-                                         :class="filterHour === row.hour ? 'bg-aviation-50/80 dark:bg-aviation-950/60 rounded-lg ring-2 ring-aviation-500' : (row.hour === peaks.peak_aircraft_hour ? 'bg-amber-50/40 dark:bg-amber-950/20 rounded-lg' : '')">
-                                        
-                                        {{-- Hourly Tooltip --}}
-                                        <div class="opacity-0 group-hover:opacity-100 transition pointer-events-none absolute bottom-full mb-3 z-40 bg-slate-900 text-white dark:bg-slate-950 text-[10px] font-mono rounded-xl p-3 shadow-2xl border border-slate-700 whitespace-nowrap min-w-[170px]">
-                                            <div class="flex items-center justify-between border-b border-slate-700 pb-1.5 mb-1.5">
-                                                <span class="font-bold text-xs" x-text="formatHourDisplay(row.hour)"></span>
-                                                <span class="text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase"
-                                                      :class="{
-                                                          'bg-emerald-900/80 text-emerald-300': row.status === 'AVAILABLE',
-                                                          'bg-amber-900/80 text-amber-300': row.status === 'FULL / MAX',
-                                                          'bg-purple-900/80 text-purple-300': row.status === 'OVER CAPACITY',
-                                                          'bg-slate-800 text-slate-300': row.status === 'OFF HOURS'
-                                                      }"
-                                                      x-text="row.status"></span>
-                                            </div>
-                                            <div class="space-y-0.5 text-[10px]">
-                                                <div class="flex items-center justify-between">
-                                                    <span>🟠 Arrivals:</span>
-                                                    <span class="font-bold" x-text="formatNumber(row.arr)"></span>
-                                                </div>
-                                                <div class="flex items-center justify-between">
-                                                    <span>🔵 Departures:</span>
-                                                    <span class="font-bold" x-text="formatNumber(row.dep)"></span>
-                                                </div>
-                                                <div class="flex items-center justify-between text-slate-400">
-                                                    <span>🟣 OPC:</span>
-                                                    <span>N/A</span>
-                                                </div>
-                                                <div class="text-[8.5px] text-slate-400 italic pt-0.5">OPC not provided by DAU-10A source</div>
-                                            </div>
-                                            <div class="border-t border-slate-700 pt-1.5 mt-1.5 space-y-0.5">
-                                                <div class="flex items-center justify-between">
-                                                    <span>Aircraft Demand:</span>
-                                                    <span class="font-bold text-white" x-text="formatNumber(row.demand) + ' / ' + row.nac + ' A/C'"></span>
-                                                </div>
-                                                <div class="flex items-center justify-between">
-                                                    <span>Utilization:</span>
-                                                    <span class="font-bold"
-                                                          :class="row.utilization > 100 ? 'text-purple-400' : (row.utilization === 100 ? 'text-amber-400' : 'text-emerald-400')"
-                                                          x-text="row.utilization + '%'"></span>
-                                                </div>
-                                                <div class="flex items-center justify-between font-bold pt-0.5">
-                                                    <span>Status:</span>
-                                                    <span :class="{
-                                                        'text-emerald-400': row.status === 'AVAILABLE',
-                                                        'text-amber-400': row.status === 'FULL / MAX',
-                                                        'text-purple-400': row.status === 'OVER CAPACITY',
-                                                        'text-slate-400': row.status === 'OFF HOURS'
-                                                    }" x-text="row.status"></span>
-                                                </div>
-                                            </div>
-                                            <div class="text-[8px] text-slate-400 text-center pt-1.5 border-t border-slate-800">
-                                                Click to filter detail table
-                                            </div>
-                                        </div>
-
-                                        {{-- Hourly Status Badge Above Bars --}}
-                                        <div class="mb-1">
-                                            <span class="text-[8px] font-black uppercase px-1 py-0.2 rounded"
-                                                  :class="{
-                                                      'text-emerald-700 dark:text-emerald-400': row.status === 'AVAILABLE',
-                                                      'text-amber-700 dark:text-amber-400 bg-amber-100/70 dark:bg-amber-950/60': row.status === 'FULL / MAX',
-                                                      'text-purple-700 dark:text-purple-300 bg-purple-100/80 dark:bg-purple-950/80 font-extrabold ring-1 ring-purple-400': row.status === 'OVER CAPACITY',
-                                                      'text-slate-400': row.status === 'OFF HOURS'
-                                                  }"
-                                                  x-text="row.status === 'OVER CAPACITY' ? 'OVER' : (row.status === 'FULL / MAX' ? 'FULL' : '•')">
-                                            </span>
-                                        </div>
-
-                                        {{-- Bars Group (Arrival Orange + Departure Blue) --}}
-                                        <div class="w-full flex items-end justify-center gap-0.5 sm:gap-1 px-0.5" style="height: 100%;">
-                                            {{-- Arr Bar (Orange) --}}
-                                            <div class="w-1/2 bg-amber-500 hover:bg-amber-400 transition-all rounded-t-sm"
-                                                 :style="'height: ' + calculateDemandBarHeight(row.arr) + '%'"></div>
-                                            {{-- Dep Bar (Blue) --}}
-                                            <div class="w-1/2 bg-blue-600 hover:bg-blue-500 transition-all rounded-t-sm"
-                                                 :style="'height: ' + calculateDemandBarHeight(row.dep) + '%'"></div>
-                                        </div>
-
-                                        {{-- Hour Label --}}
-                                        <div class="text-[9px] font-mono text-slate-500 mt-2 truncate w-full text-center"
-                                             x-text="formatHourDisplay(row.hour).split(' - ')[0]"></div>
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
+                        <x-hourly-capacity-envelope-chart mode="dau" />
                     </div>
 
                     {{-- HOURLY CAPACITY STATUS TABLE --}}
@@ -1336,6 +1224,9 @@ function dauEnhancedDashboard() {
         aircraftCapacity: Number(@json($initialNac ?? 6)),
         capacityInput: Number(@json($initialNac ?? 6)),
         isCapacityModalOpen: false,
+        hoveredHour: null,
+        hoveredBoundary: null,
+        openNacModal() { this.openCapacityModal(); },
         timezoneMode: 'LOCAL', // 'LOCAL' | 'UTC'
         tzAbbr: @json($tzAbbr ?? 'WIB'),
         tzOffset: Number(@json($tzOffset ?? 7)),
@@ -1715,6 +1606,46 @@ function dauEnhancedDashboard() {
             return Math.min(95, Math.max(5, Math.round((nac / max) * 90)));
         },
 
+        get chartMaxScale() {
+            const list = this.hourlyCapacityAnalysis.list;
+            const maxArr = Math.max(...list.map(d => d.arr || 0), 0);
+            const maxDep = Math.max(...list.map(d => d.dep || 0), 0);
+            const nac = Number(this.aircraftCapacity) || 6;
+            const maxVal = Math.max(nac, maxArr, maxDep, 1);
+            return Math.max(maxVal + 2, 8);
+        },
+
+        get gridNacOffsetPx() {
+            const nac = Number(this.aircraftCapacity) || 6;
+            const ratio = Math.min(1, Math.max(0, nac / this.chartMaxScale));
+            return Math.round(ratio * 115);
+        },
+
+        get gridHalfNacOffsetPx() {
+            const nac = Number(this.aircraftCapacity) || 6;
+            const ratio = Math.min(1, Math.max(0, (nac * 0.5) / this.chartMaxScale));
+            return Math.round(ratio * 115);
+        },
+
+        get envelopeCoords() {
+            const list = this.hourlyCapacityAnalysis.list;
+            const totalCols = list.length;
+            if (totalCols === 0) return { left: 0, width: 100, top: 20, bottom: 20, isVisible: false };
+            let startIndex = list.findIndex(d => d.isOps);
+            let endIndex = -1;
+            for (let i = list.length - 1; i >= 0; i--) {
+                if (list[i].isOps) { endIndex = i; break; }
+            }
+            if (startIndex === -1 || endIndex === -1) return { left: 0, width: 100, top: 20, bottom: 20, isVisible: false };
+            const leftPct = (startIndex / totalCols) * 100;
+            const widthPct = ((endIndex - startIndex + 1) / totalCols) * 100;
+            const nac = Number(this.aircraftCapacity) || 6;
+            const ratio = Math.min(1, Math.max(0, nac / this.chartMaxScale));
+            const topPx = Math.max(4, Math.round(140 - (ratio * 115)));
+            const bottomPx = Math.max(4, Math.round(140 - (ratio * 115)));
+            return { left: leftPct, width: widthPct, top: topPx, bottom: bottomPx, isVisible: true };
+        },
+
         calculateDemandBarHeight(val) {
             if (!val || val <= 0) return 2;
             const max = this.maxDemandPerHour;
@@ -1763,6 +1694,9 @@ function dauEnhancedDashboard() {
 
                 return {
                     hour: item.hour,
+                    shortLabel: String(item.hour).split(/[.:\s-–]/)[0].padStart(2, '0'),
+                    label: this.formatHourDisplay(item.hour),
+                    isOps: !isOffHour,
                     arr: arr,
                     dep: dep,
                     opc: 'N/A',

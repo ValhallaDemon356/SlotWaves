@@ -38,6 +38,7 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
         modalNac: initialNac || 6,
         cargoSeparateParking: true,
         capacityHovered: false,
+        hoveredBoundary: null,
         saveSettingsUrl: '{{ route('schedule.operational-settings.save', $upload->id) }}',
 
         // Dynamic OPS Hours State
@@ -377,8 +378,56 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
         },
 
         get chartMaxScale() {
-            const maxVal = Math.max(...this.activeHourlyDistribution.map(d => d.total + (d.opcCount || 0)), 0);
-            return Math.max(this.nacLimit + 2, maxVal + 2, 8);
+            const maxArr = Math.max(...this.activeHourlyDistribution.map(d => (d.arrCount || 0) + (d.opcCount || 0)), 0);
+            const maxDep = Math.max(...this.activeHourlyDistribution.map(d => (d.depCount || 0)), 0);
+            const maxMovement = Math.max(maxArr, maxDep, this.nacLimit);
+            return Math.max(maxMovement + 2, 8);
+        },
+
+        get gridNacOffsetPx() {
+            const ratio = Math.min(1, Math.max(0, this.nacLimit / this.chartMaxScale));
+            return Math.round(ratio * 115);
+        },
+
+        get gridHalfNacOffsetPx() {
+            const ratio = Math.min(1, Math.max(0, (this.nacLimit * 0.5) / this.chartMaxScale));
+            return Math.round(ratio * 115);
+        },
+
+        get envelopeCoords() {
+            const list = this.activeHourlyDistribution;
+            const totalCols = list.length;
+            if (totalCols === 0) {
+                return { left: 0, width: 100, top: 20, bottom: 20, isVisible: false };
+            }
+            
+            let startIndex = list.findIndex(d => d.isOps);
+            let endIndex = -1;
+            for (let i = list.length - 1; i >= 0; i--) {
+                if (list[i].isOps) {
+                    endIndex = i;
+                    break;
+                }
+            }
+            
+            if (startIndex === -1 || endIndex === -1) {
+                return { left: 0, width: 100, top: 20, bottom: 20, isVisible: false };
+            }
+            
+            const leftPct = (startIndex / totalCols) * 100;
+            const widthPct = ((endIndex - startIndex + 1) / totalCols) * 100;
+            
+            const ratio = Math.min(1, Math.max(0, this.nacLimit / this.chartMaxScale));
+            const topPx = Math.max(4, Math.round(140 - (ratio * 115)));
+            const bottomPx = Math.max(4, Math.round(140 - (ratio * 115)));
+            
+            return {
+                left: leftPct,
+                width: widthPct,
+                top: topPx,
+                bottom: bottomPx,
+                isVisible: true
+            };
         },
 
         get nacLineBottomPx() {
@@ -555,8 +604,25 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
             }
         },
 
+        selectHourWithDirection(hour, dir) {
+            if (this.selectedHour === hour && this.movementFilter === dir) {
+                this.selectedHour = null;
+                this.movementFilter = 'all';
+            } else {
+                this.selectedHour = hour;
+                if (dir) {
+                    this.movementFilter = dir;
+                }
+                const el = document.getElementById('flight-list-section');
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+        },
+
         clearHourFilter() {
             this.selectedHour = null;
+            this.movementFilter = 'all';
         },
 
         // Computed filtered flight movements
@@ -1069,260 +1135,9 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                 {{-- Column 2: 24-Hour Movement Chart & Schedule (Center: 6 cols) --}}
                 <div class="lg:col-span-6 xl:col-span-6 bg-white dark:bg-navy-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-2xs flex flex-col justify-between">
                     
-                    {{-- MODE 1: DISTRIBUSI PER JAM (24-Hour Bar Chart) --}}
+                    {{-- MODE 1: DISTRIBUSI PER JAM (Two-Direction Aircraft Capacity Envelope Chart) --}}
                     <div x-show="activeChartMode === 'distribution'" class="space-y-3 flex flex-col justify-between h-full">
-                        {{-- Chart Header Badges & Segmented Window Toggle --}}
-                        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800/80 pb-2">
-                            <div class="flex flex-wrap items-center gap-2">
-                                <button type="button" @click="openOpsModal()"
-                                        class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition cursor-pointer">
-                                    <span class="radar-dot w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                    <span>OPS HOURS <span x-text="opsStartTime"></span> &rarr; <span x-text="opsEndTime"></span> (<span x-text="activeHoursCount"></span>h)</span>
-                                    <span class="text-[9px] underline ml-0.5 font-bold">Edit ⚙</span>
-                                </button>
-                                
-                                {{-- Segmented Time Filter: OPS Window vs All 24 Hours --}}
-                                <div class="inline-flex p-0.5 bg-slate-100 dark:bg-navy-950 rounded-md border border-slate-200 dark:border-slate-800 text-[10px] font-semibold">
-                                    <button type="button" 
-                                            @click="scheduleTimeFilter = 'ops'"
-                                            :class="scheduleTimeFilter === 'ops' ? 'bg-white dark:bg-navy-800 text-aviation-600 dark:text-aviation-400 shadow-2xs font-bold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'"
-                                            class="px-2 py-0.5 rounded transition flex items-center gap-1 cursor-pointer">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                        <span>OPS Window (<span x-text="activeHoursCount"></span>h)</span>
-                                    </button>
-                                    <button type="button" 
-                                            @click="scheduleTimeFilter = 'all'"
-                                            :class="scheduleTimeFilter === 'all' ? 'bg-white dark:bg-navy-800 text-aviation-600 dark:text-aviation-400 shadow-2xs font-bold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'"
-                                            class="px-2 py-0.5 rounded transition flex items-center gap-1 cursor-pointer">
-                                        <span>24 Hours</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            {{-- Active Hour Filter Status --}}
-                            <template x-if="selectedHour !== null">
-                                <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-aviation-50 dark:bg-aviation-950 text-aviation-700 dark:text-aviation-300 border border-aviation-300 dark:border-aviation-800 text-[10.5px] font-mono font-bold">
-                                    <span>Filter: <span x-text="String(selectedHour).padStart(2, '0') + ':00'"></span></span>
-                                    <button type="button" @click="clearHourFilter()" class="hover:text-red-500 font-bold ml-1 cursor-pointer">&times;</button>
-                                </div>
-                            </template>
-                        </div>
-
-                        {{-- Chart Visual Canvas --}}
-                        <div class="relative pt-6 pb-1 overflow-visible">
-                            {{-- Y-Axis Grid Reference Lines --}}
-                            <div class="absolute inset-x-0 top-6 bottom-7 pointer-events-none flex flex-col justify-between opacity-20">
-                                <div class="border-b border-dashed border-slate-300 dark:border-slate-700 w-full"></div>
-                                <div class="border-b border-dashed border-slate-300 dark:border-slate-700 w-full"></div>
-                                <div class="border-b border-dashed border-slate-300 dark:border-slate-700 w-full"></div>
-                            </div>
-
-                            {{-- Subtle Max Capacity Dashed Reference Line with Tooltip on Hover --}}
-                            <div class="absolute inset-x-0 z-0 transition-all duration-200 pointer-events-auto"
-                                 :style="'bottom: ' + nacLineBottomPx + 'px'">
-                                <div class="relative w-full group/cap cursor-pointer py-1.5"
-                                     @mouseenter="capacityHovered = true"
-                                     @mouseleave="capacityHovered = false"
-                                     tabindex="0"
-                                     @focus="capacityHovered = true"
-                                     @blur="capacityHovered = false"
-                                     aria-label="Batas Aircraft Capacity">
-                                    {{-- Subtle dashed line --}}
-                                    <div class="w-full border-b-2 border-dashed transition-all duration-150"
-                                         :class="capacityHovered ? 'border-aviation-500 dark:border-aviation-300 opacity-100' : 'border-aviation-500/40 dark:border-aviation-400/40 opacity-70'"></div>
-
-                                    {{-- Tooltip on Hover ONLY (Batas Aircraft Capacity) --}}
-                                    <div x-show="capacityHovered"
-                                         x-transition:enter="transition ease-out duration-150"
-                                         x-transition:enter-start="opacity-0 scale-95"
-                                         x-transition:enter-end="opacity-100 scale-100"
-                                         x-transition:leave="transition ease-in duration-100"
-                                         x-transition:leave-start="opacity-100 scale-100"
-                                         x-transition:leave-end="opacity-0 scale-95"
-                                         class="absolute left-1/2 -translate-x-1/2 -top-11 z-30 px-3 py-1.5 bg-slate-900/95 dark:bg-navy-900/95 text-white backdrop-blur-md rounded-lg shadow-xl border border-slate-700 text-xs font-mono pointer-events-none text-center whitespace-nowrap"
-                                         style="display: none;">
-                                        <div class="font-bold text-aviation-300 text-[10px] uppercase tracking-wider">Batas Aircraft Capacity</div>
-                                        <div class="font-black text-white text-xs" x-text="nacLimit + ' Aircraft'"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {{-- Dynamic Column Bars Grid --}}
-                            <div class="relative z-10 items-end h-36 px-0.5"
-                                 :style="'display: grid; grid-template-columns: repeat(' + activeHourlyDistribution.length + ', minmax(0, 1fr)); gap: ' + (activeHourlyDistribution.length > 16 ? '2px' : '4px') + '; min-height: 144px;'">
-                                <template x-for="item in activeHourlyDistribution" :key="item.hour">
-                                    <div @click="selectHour(item.hour)"
-                                         @mouseenter="hoveredHour = item.hour"
-                                         @mouseleave="hoveredHour = null"
-                                         :class="selectedHour === item.hour ? 'chart-bar-highlight bg-aviation-50/80 dark:bg-aviation-950/60 rounded-lg ring-2 ring-aviation-500' : ''"
-                                         class="flex flex-col items-center justify-end h-full group relative cursor-pointer p-0.5 rounded-md transition-all duration-150 hover:bg-slate-100 dark:hover:bg-navy-800">
-                                        
-                                        {{-- Top Status Badge --}}
-                                        <template x-if="item.isOps && item.status === 'OVER CAPACITY'">
-                                            <div class="absolute -top-3 px-1 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider bg-purple-600 text-white shadow-2xs z-20 font-mono">
-                                                OVER
-                                            </div>
-                                        </template>
-                                        <template x-if="item.isOps && item.status === 'FULL / MAX'">
-                                            <div class="absolute -top-3 px-1 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider bg-amber-500 text-white shadow-2xs z-20 font-mono">
-                                                MAX
-                                            </div>
-                                        </template>
-
-                                        {{-- Stacked Activity Bar Container --}}
-                                        <div class="w-full flex flex-col justify-end gap-0.5 rounded-md overflow-hidden p-0.5 relative transition-all duration-200"
-                                             :class="[
-                                                 !item.isOps ? 'bg-slate-100/70 dark:bg-navy-950/70 border border-dashed border-slate-300/60 dark:border-slate-800 opacity-60' : (
-                                                     item.status === 'OVER CAPACITY' ? 'bg-purple-500/15 border-2 border-purple-500 shadow-2xs' : (
-                                                         item.status === 'FULL / MAX' ? 'bg-amber-500/15 border-2 border-amber-500' : 'bg-emerald-500/10 dark:bg-emerald-950/30 border border-emerald-500/30'
-                                                     )
-                                                 ),
-                                                 item.isPeak ? 'peak-bar-glow' : ''
-                                             ]"
-                                             style="height: 98px">
-                                            
-                                            {{-- OPC Block (Purple) --}}
-                                            <template x-if="item.opcCount > 0">
-                                                <div class="w-full bg-purple-600 rounded-xs transition-all duration-300 group-hover:brightness-110" 
-                                                     :style="'height: ' + Math.max(4, Math.round((item.opcCount / chartMaxScale) * 92)) + 'px'"></div>
-                                            </template>
-
-                                            {{-- Arrivals Block (Orange) --}}
-                                            <template x-if="item.arrCount > 0">
-                                                <div class="w-full bg-orange-500 rounded-xs transition-all duration-300 group-hover:brightness-110" 
-                                                     :style="'height: ' + Math.max(4, Math.round((item.arrCount / chartMaxScale) * 92)) + 'px'"></div>
-                                            </template>
-
-                                            {{-- Departures Block (Blue) --}}
-                                            <template x-if="item.depCount > 0">
-                                                <div class="w-full bg-blue-600 rounded-xs transition-all duration-300 group-hover:brightness-110" 
-                                                     :style="'height: ' + Math.max(4, Math.round((item.depCount / chartMaxScale) * 92)) + 'px'"></div>
-                                            </template>
-
-                                            {{-- Baseline tick for 0 movements and 0 OPC --}}
-                                            <template x-if="item.total === 0 && (!item.opcCount || item.opcCount === 0)">
-                                                <div class="w-full h-1 bg-slate-200 dark:bg-navy-800 rounded-xs"></div>
-                                            </template>
-                                        </div>
-
-                                        {{-- Movement count number --}}
-                                        <span class="text-[9px] sm:text-[10px] font-mono font-bold mt-1"
-                                              :class="!item.isOps ? 'text-slate-400 dark:text-slate-500' : (item.status === 'OVER CAPACITY' ? 'text-purple-600 dark:text-purple-400 font-black' : (item.status === 'FULL / MAX' ? 'text-amber-600 dark:text-amber-400 font-black' : (item.total > 0 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-300 dark:text-slate-600')))"
-                                              x-text="item.total > 0 ? item.total : '0'">
-                                        </span>
-
-                                        {{-- Hour X-Axis Label (Strict alignment) --}}
-                                        <span class="text-[10px] sm:text-[11px] font-mono"
-                                              :class="item.isOps ? 'text-slate-700 dark:text-slate-200 font-bold' : 'text-slate-400 dark:text-slate-500'"
-                                              x-text="item.shortLabel">
-                                        </span>
-
-                                        {{-- Rich Tooltip on Hover --}}
-                                        <div x-show="hoveredHour === item.hour"
-                                             x-transition:enter="transition ease-out duration-100"
-                                             x-transition:enter-start="opacity-0 scale-95"
-                                             x-transition:enter-end="opacity-100 scale-100"
-                                             class="absolute bottom-full mb-3 flex flex-col z-50 w-64 p-3 bg-slate-900/95 dark:bg-navy-900/95 text-white backdrop-blur-md rounded-xl shadow-xl border border-slate-700 text-xs pointer-events-none transition-all duration-150"
-                                             :class="item.hour <= 4 ? 'left-0' : (item.hour >= 19 ? 'right-0' : 'left-1/2 -translate-x-1/2')"
-                                             style="display: none;">
-                                            
-                                            {{-- Tooltip Header --}}
-                                            <div class="flex items-center justify-between border-b border-slate-700/80 pb-1 mb-1.5">
-                                                <span class="font-mono font-bold text-slate-100 text-xs" x-text="item.label + ' (' + displayTimezoneLabel + ')'"></span>
-                                                <span class="text-[9px] font-bold px-1.5 py-0.2 rounded uppercase font-mono"
-                                                      :class="!item.isOps ? 'bg-slate-800 text-slate-400 border border-slate-700' : (item.status === 'OVER CAPACITY' ? 'bg-purple-950 text-purple-300 border border-purple-600' : (item.status === 'FULL / MAX' ? 'bg-amber-950 text-amber-300 border border-amber-600' : 'bg-emerald-950 text-emerald-300 border border-emerald-600'))"
-                                                      x-text="item.status">
-                                                </span>
-                                            </div>
-
-                                            {{-- Tooltip Breakdown --}}
-                                            <div class="space-y-1.5 font-mono text-[11px]">
-                                                <div class="flex items-center justify-between text-orange-400">
-                                                    <span class="flex items-center gap-1.5">
-                                                        <span class="w-2 h-2 rounded-full bg-orange-500 inline-block"></span>
-                                                        Arrivals:
-                                                    </span>
-                                                    <span class="font-bold" x-text="item.arrCount"></span>
-                                                </div>
-                                                <div class="flex items-center justify-between text-blue-300">
-                                                    <span class="flex items-center gap-1.5">
-                                                        <span class="w-2 h-2 rounded-full bg-blue-600 inline-block"></span>
-                                                        Departures:
-                                                    </span>
-                                                    <span class="font-bold" x-text="item.depCount"></span>
-                                                </div>
-
-                                                {{-- OPC (RON Parking) --}}
-                                                <div class="flex items-center justify-between text-purple-300">
-                                                    <span class="flex items-center gap-1.5">
-                                                        <span class="w-2 h-2 rounded-full bg-purple-500 inline-block"></span>
-                                                        OPC (RON Parking):
-                                                    </span>
-                                                    <span class="font-bold" x-text="item.opcCount || 0"></span>
-                                                </div>
-
-                                                <template x-if="item.cargoCount > 0">
-                                                    <div class="flex items-center justify-between text-amber-300 text-[10px] bg-amber-950/40 px-2 py-0.5 rounded border border-amber-800/40">
-                                                        <span>Cargo (Separate Stand):</span>
-                                                        <span class="font-bold" x-text="item.cargoCount + ' Movements'"></span>
-                                                    </div>
-                                                </template>
-
-                                                <div class="flex items-center justify-between font-bold text-white pt-1.5 border-t border-slate-800">
-                                                    <span>Aircraft Demand:</span>
-                                                    <span class="text-xs font-black" :class="item.status === 'OVER CAPACITY' ? 'text-purple-400' : (item.status === 'FULL / MAX' ? 'text-amber-400' : 'text-emerald-400')" x-text="item.aircraftDemand + ' / ' + nacLimit + ' A/C'"></span>
-                                                </div>
-                                                <div class="flex items-center justify-between font-bold text-slate-300">
-                                                    <span>Utilization:</span>
-                                                    <span class="text-xs font-black" :class="item.utilization > 100 ? 'text-purple-400' : (item.utilization === 100 ? 'text-amber-400' : 'text-emerald-400')" x-text="item.utilization + '%'"></span>
-                                                </div>
-                                            </div>
-
-                                            <div class="text-[9px] text-slate-400 mt-1.5 pt-1 border-t border-slate-800 text-center italic">
-                                                Klik kolom untuk memfilter flight list
-                                            </div>
-                                        </div>
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
-
-                        {{-- Legend Strip --}}
-                        <div class="flex flex-col gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[11px] text-slate-500">
-                            <div class="flex flex-wrap items-center justify-between gap-2">
-                                <div class="flex flex-wrap items-center gap-3">
-                                    <span class="inline-flex items-center gap-1.5">
-                                        <span class="w-2.5 h-2.5 rounded-full bg-[#16A34A] inline-block"></span>
-                                        <strong class="text-slate-700 dark:text-slate-300">Available</strong>
-                                    </span>
-                                    <span class="inline-flex items-center gap-1.5">
-                                        <span class="w-2.5 h-2.5 rounded-full bg-[#D97706] inline-block"></span>
-                                        <strong class="text-slate-700 dark:text-slate-300">Full / Max</strong>
-                                    </span>
-                                    <span class="inline-flex items-center gap-1.5">
-                                        <span class="w-2.5 h-2.5 rounded-full bg-[#9333EA] inline-block"></span>
-                                        <strong class="text-slate-700 dark:text-slate-300">Over Capacity</strong>
-                                    </span>
-                                    <span class="inline-flex items-center gap-1.5">
-                                        <span class="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-600 inline-block"></span>
-                                        <span class="text-slate-500 dark:text-slate-400">Off Hours</span>
-                                    </span>
-                                    <span class="inline-flex items-center gap-1 font-mono text-[10.5px] text-aviation-600 dark:text-aviation-400 cursor-pointer"
-                                          @click="openCapacityModal()" title="Click to configure Aircraft Capacity">
-                                        <span class="w-3.5 border-b-2 border-dashed border-aviation-500 inline-block"></span>
-                                        <span>Aircraft Capacity (<span x-text="nacLimit"></span> A/C) ⚙</span>
-                                    </span>
-                                </div>
-                                <div class="flex items-center gap-2.5 text-[10px] text-slate-400">
-                                    <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-xs bg-orange-500 inline-block"></span> ARR</span>
-                                    <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-xs bg-blue-600 inline-block"></span> DEP</span>
-                                    <span class="inline-flex items-center gap-1" title="OPC: Pesawat RON yang masih menempati parking stand untuk keberangkatan pada hari berikutnya"><span class="w-2 h-2 rounded-xs bg-purple-600 inline-block"></span> OPC (RON)</span>
-                                </div>
-                            </div>
-                            <div class="text-[10px] text-slate-400 dark:text-slate-500 italic">
-                                <strong class="text-purple-600 dark:text-purple-400 not-italic font-semibold">OPC:</strong> Pesawat RON yang masih menempati parking stand untuk keberangkatan pada hari berikutnya.
-                            </div>
-                        </div>
+                        <x-hourly-capacity-envelope-chart mode="schedule" />
                     </div>
 
                     {{-- MODE 2: OPERATIONAL CAPACITY (Schedule Overview / Agenda Board) --}}

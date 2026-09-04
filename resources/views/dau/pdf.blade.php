@@ -457,60 +457,82 @@
     @elseif ($reportType === 'DAU10A')
         {{-- DAU-10A DISTRIBUSI PER JAM & HOURLY CAPACITY STATUS --}}
         @php
-            $maxDemandPdf = max((int)($capacitySummary['nac'] ?? 6), 1);
+            $nacVal = (int)($capacitySummary['nac'] ?? 6);
+            $maxAmpPdf = max($nacVal, 1);
             foreach ($hourlyData as $hd) {
-                $dem = ($hd['aircraft_arrival'] ?? 0) + ($hd['aircraft_departure'] ?? 0);
-                if ($dem > $maxDemandPdf) $maxDemandPdf = $dem;
+                $a = (int)($hd['aircraft_arrival'] ?? 0);
+                $d = (int)($hd['aircraft_departure'] ?? 0);
+                if ($a > $maxAmpPdf) $maxAmpPdf = $a;
+                if ($d > $maxAmpPdf) $maxAmpPdf = $d;
             }
         @endphp
 
         <div class="chart-box">
             <div class="chart-header" style="display: table; width: 100%;">
                 <div style="display: table-cell; text-align: left;">
-                    DISTRIBUSI PER JAM — Aircraft Movement & Operational Capacity Analysis (Batas NAC: {{ $capacitySummary['nac'] ?? 6 }} A/C)
+                    DISTRIBUSI PER JAM — Two-Direction Aircraft Capacity Envelope (Batas &plusmn;NAC: {{ $nacVal }} A/C)
                 </div>
                 <div style="display: table-cell; text-align: right; font-size: 5.5pt; color: #475569;">
-                    <span style="display: inline-block; width: 7px; height: 7px; background: #f59e0b; vertical-align: middle;"></span> Arrival &nbsp;
-                    <span style="display: inline-block; width: 7px; height: 7px; background: #0284c7; vertical-align: middle;"></span> Departure &nbsp;
+                    <span style="display: inline-block; width: 7px; height: 7px; background: #f59e0b; vertical-align: middle;"></span> ARR &uarr; &nbsp;
+                    <span style="display: inline-block; width: 7px; height: 7px; background: #0284c7; vertical-align: middle;"></span> DEP &darr; &nbsp;
                     <span style="display: inline-block; width: 7px; height: 7px; background: #9333ea; opacity: 0.5; vertical-align: middle;"></span> OPC (N/A) &nbsp;
-                    <span style="display: inline-block; width: 12px; border-top: 1.5px dashed #475569; vertical-align: middle;"></span> NAC ({{ $capacitySummary['nac'] ?? 6 }} A/C)
+                    <span style="display: inline-block; width: 14px; border-top: 1.5px dashed #64748b; vertical-align: middle;"></span> Envelope (&plusmn;{{ $nacVal }} A/C)
                 </div>
             </div>
 
-            <table class="chart-table">
+            <table class="chart-table" style="border-collapse: collapse; width: 100%;">
+                {{-- UPPER SECTION: ARRIVALS (+Y, Grows UPWARD) --}}
                 <tr>
                     @foreach ($hourlyData as $hd)
                         @php
                             $arrVal = (int)($hd['aircraft_arrival'] ?? 0);
                             $depVal = (int)($hd['aircraft_departure'] ?? 0);
                             $demVal = $arrVal + $depVal;
-                            $arrH = max(2, round(($arrVal / max(1, $maxDemandPdf)) * 44));
-                            $depH = max(2, round(($depVal / max(1, $maxDemandPdf)) * 44));
-                            $nacVal = (int)($capacitySummary['nac'] ?? 6);
+                            $arrH = $arrVal > 0 ? max(3, round(($arrVal / $maxAmpPdf) * 32)) : 0;
                             $statusText = $demVal > $nacVal ? 'OVER' : ($demVal === $nacVal ? 'FULL' : 'AVAIL');
                             $statusCol  = $demVal > $nacVal ? '#7c3aed' : ($demVal === $nacVal ? '#d97706' : '#059669');
                         @endphp
-                        <td style="width: {{ 100 / max(1, count($hourlyData)) }}%;">
-                            <div style="font-size: 4.5pt; font-weight: bold; margin-bottom: 1px; color: {{ $statusCol }};">
+                        <td style="width: {{ 100 / max(1, count($hourlyData)) }}%; vertical-align: bottom; text-align: center; padding: 1px 1px 0 1px;">
+                            <div style="font-size: 4.5pt; font-weight: bold; color: {{ $statusCol }}; margin-bottom: 1px;">
                                 {{ $statusText }}
                             </div>
-                            <table style="width: 100%; border-collapse: collapse;">
-                                <tr>
-                                    <td style="width: 50%; padding: 0;">
-                                        <div class="bar-wrap" style="background: transparent;">
-                                            <div class="bar-inner" style="height: {{ $arrH }}px; background-color: #f59e0b;"></div>
-                                        </div>
-                                    </td>
-                                    <td style="width: 50%; padding: 0;">
-                                        <div class="bar-wrap" style="background: transparent;">
-                                            <div class="bar-inner" style="height: {{ $depH }}px; background-color: #0284c7;"></div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </table>
-                            <div style="font-size: 4.5pt; color: #64748b; margin-top: 2px;">
-                                {{ explode(' - ', $hd['hour'])[0] ?? $hd['hour'] }}
-                            </div>
+                            @if($arrVal > 0)
+                                <div style="font-size: 4.5pt; font-weight: bold; color: #d97706; margin-bottom: 1px;">
+                                    {{ $arrVal }}
+                                </div>
+                                <div style="height: {{ $arrH }}px; background-color: #f59e0b; width: 70%; margin: 0 auto; border-radius: 1px 1px 0 0;"></div>
+                            @else
+                                <div style="height: 1px; background-color: #cbd5e1; width: 50%; margin: 0 auto;"></div>
+                            @endif
+                        </td>
+                    @endforeach
+                </tr>
+
+                {{-- CENTER TIME AXIS (Y=0 Separator) --}}
+                <tr style="background-color: #f1f5f9; border-top: 1px solid #94a3b8; border-bottom: 1px solid #94a3b8;">
+                    @foreach ($hourlyData as $hd)
+                        <td style="text-align: center; font-size: 5pt; font-weight: bold; font-family: monospace; color: #1e293b; padding: 2px 0;">
+                            {{ explode(' - ', $hd['hour'])[0] ?? $hd['hour'] }}
+                        </td>
+                    @endforeach
+                </tr>
+
+                {{-- LOWER SECTION: DEPARTURES (-Y, Grows DOWNWARD) --}}
+                <tr>
+                    @foreach ($hourlyData as $hd)
+                        @php
+                            $depVal = (int)($hd['aircraft_departure'] ?? 0);
+                            $depH = $depVal > 0 ? max(3, round(($depVal / $maxAmpPdf) * 32)) : 0;
+                        @endphp
+                        <td style="width: {{ 100 / max(1, count($hourlyData)) }}%; vertical-align: top; text-align: center; padding: 0 1px 1px 1px;">
+                            @if($depVal > 0)
+                                <div style="height: {{ $depH }}px; background-color: #0284c7; width: 70%; margin: 0 auto; border-radius: 0 0 1px 1px;"></div>
+                                <div style="font-size: 4.5pt; font-weight: bold; color: #0284c7; margin-top: 1px;">
+                                    {{ $depVal }}
+                                </div>
+                            @else
+                                <div style="height: 1px; background-color: #cbd5e1; width: 50%; margin: 0 auto;"></div>
+                            @endif
                         </td>
                     @endforeach
                 </tr>
