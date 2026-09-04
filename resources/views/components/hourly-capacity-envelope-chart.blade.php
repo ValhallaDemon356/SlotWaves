@@ -61,13 +61,21 @@
              const isDep = type === 'departure';
              const isOpc = type === 'opc';
 
-             const tz = @if($mode === 'schedule') (this.displayTimezoneLabel || 'WIB') @else (this.tzAbbr || 'WIB') @endif;
+             @if($mode === 'schedule')
+                 const tz = this.displayTimezoneLabel || 'WIB';
+                 let scope = 'AIRPORT WIDE';
+             @else
+                 const tz = 'WIB';
+                 let scope = (this.filterTerminal && this.filterTerminal !== 'ALL') ? ('TERMINAL ' + String(this.filterTerminal).replace(/^Terminal\s*/i, '').toUpperCase()) : 'ALL TERMINALS';
+             @endif
              const hourLabel = (item.label || item.hour) + ' (' + tz + ')';
-             
-             let scope = @if($mode === 'schedule') 'AIRPORT WIDE' @else (this.filterTerminal && this.filterTerminal !== 'ALL' ? 'Terminal ' + String(this.filterTerminal).replace(/^Terminal\s*/i, '') : 'ALL TERMINALS') @endif;
 
              if (isArr) {
-                 const actual = Number(@if($mode === 'schedule') (item.arrCount || 0) @else (item.arr || 0) @endif);
+                 @if($mode === 'schedule')
+                     const actual = Number(item.arrCount || 0);
+                 @else
+                     const actual = Number(item.arr || 0);
+                 @endif
                  const cap = Number(this.arrivalCapacity || 6);
                  let status = 'AVAILABLE';
                  let statusClass = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50';
@@ -89,7 +97,7 @@
                      y: 0,
                      hourLabel: hourLabel,
                      type: 'arrival',
-                     typeLabel: 'Arrival',
+                     typeLabel: 'ARRIVAL',
                      typeColor: 'text-amber-400',
                      icon: '🟠',
                      actual: actual,
@@ -100,7 +108,11 @@
                      extra: null
                  };
              } else if (isDep) {
-                 const actual = Number(@if($mode === 'schedule') (item.depCount || 0) @else (item.dep || 0) @endif);
+                 @if($mode === 'schedule')
+                     const actual = Number(item.depCount || 0);
+                 @else
+                     const actual = Number(item.dep || 0);
+                 @endif
                  const cap = Number(this.departureCapacity || 6);
                  let status = 'AVAILABLE';
                  let statusClass = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50';
@@ -122,7 +134,7 @@
                      y: 0,
                      hourLabel: hourLabel,
                      type: 'departure',
-                     typeLabel: 'Departure',
+                     typeLabel: 'DEPARTURE',
                      typeColor: 'text-blue-400',
                      icon: '🔵',
                      actual: actual,
@@ -270,7 +282,7 @@
 
             {{-- ── LAYER 1: ONE SINGLE DASHED OPERATIONAL CAPACITY ENVELOPE ── --}}
             {{-- Connected dashed rectangle bounded by: Top=ARR Cap, Bottom=DEP Cap, Left=Ops Start, Right=Ops End --}}
-            <template x-if="@if($mode === 'schedule') envelopeCoords.isVisible @else (selectedMetric === 'aircraft' && envelopeCoords.isVisible) @endif">
+            <template x-if="{{ $mode === 'schedule' ? 'envelopeCoords.isVisible' : '(selectedMetric === \'aircraft\' && envelopeCoords.isVisible)' }}">
                 <div class="absolute z-1 transition-all duration-200 pointer-events-none rounded-xs border-t-2 border-b-2 border-l-2 border-r-2 border-dashed border-t-amber-500 border-b-blue-500 border-l-emerald-500 border-r-emerald-500 bg-emerald-500/[0.02] dark:bg-emerald-500/[0.03]"
                      :style="{
                          left: envelopeCoords.left + '%',
@@ -316,7 +328,7 @@
                 <template x-for="item in @if($mode === 'schedule') activeHourlyDistribution @else hourlyCapacityAnalysis.list @endif" :key="item.hour">
                     <div class="flex flex-col items-center h-full group relative select-none transition-all duration-150 rounded-md"
                          :class="[
-                             @if($mode === 'schedule') (selectedHour === item.hour) @else (filterHour === item.hour) @endif ? 'bg-aviation-50/80 dark:bg-aviation-950/60 ring-2 ring-aviation-500 shadow-sm' : 'hover:bg-slate-100/60 dark:hover:bg-navy-800/40',
+                             {{ $mode === 'schedule' ? '(selectedHour === item.hour)' : '(filterHour === item.hour)' }} ? 'bg-aviation-50/80 dark:bg-aviation-950/60 ring-2 ring-aviation-500 shadow-sm' : 'hover:bg-slate-100/60 dark:hover:bg-navy-800/40',
                              item.isPeak ? 'peak-bar-glow' : ''
                          ]">
                         
@@ -341,7 +353,7 @@
                             </template>
 
                             {{-- Numerical Arrival Count (Readable above bar) --}}
-                            <template x-if="@if($mode === 'schedule') (item.arrCount > 0 || item.opcCount > 0) @else (item.arr > 0) @endif">
+                            <template x-if="{{ $mode === 'schedule' ? '(item.arrCount > 0 || item.opcCount > 0)' : '(item.arr > 0)' }}">
                                 <span class="text-[8.5px] sm:text-[9.5px] font-mono font-bold text-amber-600 dark:text-amber-400 mb-0.5 pointer-events-none">
                                     <span x-text="@if($mode === 'schedule') item.arrCount @else item.arr @endif"></span>
                                     @if($mode === 'schedule')
@@ -367,7 +379,7 @@
                                 @endif
 
                                 {{-- Arrival Bar (Orange, Grows Upward from Center) --}}
-                                <template x-if="@if($mode === 'schedule') item.arrCount > 0 @else item.arr > 0 @endif">
+                                <template x-if="{{ $mode === 'schedule' ? 'item.arrCount > 0' : 'item.arr > 0' }}">
                                     <div class="w-full bg-amber-500 dark:bg-amber-500 hover:bg-amber-400 transition-all duration-300 shadow-2xs"
                                          @if($mode === 'schedule')
                                              :class="item.opcCount > 0 ? 'rounded-none' : 'rounded-t-xs'"
@@ -378,7 +390,7 @@
                                 </template>
 
                                 {{-- Baseline tick if 0 arrivals --}}
-                                <template x-if="@if($mode === 'schedule') (item.arrCount === 0 && (!item.opcCount || item.opcCount === 0)) @else (item.arr === 0) @endif">
+                                <template x-if="{{ $mode === 'schedule' ? '(item.arrCount === 0 && (!item.opcCount || item.opcCount === 0))' : '(item.arr === 0)' }}">
                                     <div class="w-full max-w-[14px] mx-auto h-0.5 bg-slate-200 dark:bg-navy-800 rounded-xs"></div>
                                 </template>
                             </div>
@@ -388,14 +400,14 @@
                         <div class="w-full h-8 flex items-center justify-center border-y border-slate-200/90 dark:border-slate-800 bg-slate-100/90 dark:bg-navy-950/90 relative z-20 transition-colors cursor-pointer"
                              :class="[
                                  item.isOps ? 'bg-slate-100/90 dark:bg-navy-950/90' : 'bg-slate-200/40 dark:bg-navy-950/40 opacity-75',
-                                 @if($mode === 'schedule') (selectedHour === item.hour) @else (filterHour === item.hour) @endif ? 'border-aviation-500 dark:border-aviation-400 bg-aviation-100/60 dark:bg-aviation-950/80' : ''
+                                 {{ $mode === 'schedule' ? '(selectedHour === item.hour)' : '(filterHour === item.hour)' }} ? 'border-aviation-500 dark:border-aviation-400 bg-aviation-100/60 dark:bg-aviation-950/80' : ''
                              ]"
                              @mouseenter="hideTooltip()"
                              @click.stop="@if($mode === 'schedule') selectHour(item.hour) @else setHourFilter(item.hour) @endif"
                              title="Click to filter this hour">
                             <span class="text-[9.5px] sm:text-[10.5px] font-mono transition-colors"
                                   :class="[
-                                      @if($mode === 'schedule') (selectedHour === item.hour) @else (filterHour === item.hour) @endif ? 'font-black text-aviation-700 dark:text-aviation-300' : (
+                                      {{ $mode === 'schedule' ? '(selectedHour === item.hour)' : '(filterHour === item.hour)' }} ? 'font-black text-aviation-700 dark:text-aviation-300' : (
                                           item.isOps ? 'font-bold text-slate-800 dark:text-slate-200 group-hover:text-aviation-600' : 'text-slate-400 dark:text-slate-500 font-normal'
                                       )
                                   ]"
@@ -413,19 +425,19 @@
                             
                             {{-- Departure Bar (Blue, Grows Downward from Center) --}}
                             <div class="w-full max-w-[24px] sm:max-w-[28px] flex flex-col justify-start rounded-b-sm transition-all duration-200">
-                                <template x-if="@if($mode === 'schedule') item.depCount > 0 @else item.dep > 0 @endif">
+                                <template x-if="{{ $mode === 'schedule' ? 'item.depCount > 0' : 'item.dep > 0' }}">
                                     <div class="w-full bg-blue-600 dark:bg-blue-500 hover:bg-blue-400 rounded-b-xs transition-all duration-300 shadow-2xs"
                                          :style="'height: ' + Math.max(3, Math.round(((@if($mode === 'schedule') item.depCount @else item.dep @endif) / chartMaxScale) * 115)) + 'px'"></div>
                                 </template>
 
                                 {{-- Baseline tick if 0 departures --}}
-                                <template x-if="@if($mode === 'schedule') item.depCount === 0 @else item.dep === 0 @endif">
+                                <template x-if="{{ $mode === 'schedule' ? 'item.depCount === 0' : 'item.dep === 0' }}">
                                     <div class="w-full max-w-[14px] mx-auto h-0.5 bg-slate-200 dark:bg-navy-800 rounded-xs"></div>
                                 </template>
                             </div>
 
                             {{-- Numerical Departure Count (Readable below bar) --}}
-                            <template x-if="@if($mode === 'schedule') item.depCount > 0 @else item.dep > 0 @endif">
+                            <template x-if="{{ $mode === 'schedule' ? 'item.depCount > 0' : 'item.dep > 0' }}">
                                 <span class="text-[8.5px] sm:text-[9.5px] font-mono font-bold text-blue-600 dark:text-blue-400 mt-0.5 pointer-events-none"
                                       x-text="@if($mode === 'schedule') item.depCount @else item.dep @endif">
                                 </span>

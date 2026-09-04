@@ -44,8 +44,8 @@ class DauDashboardController extends Controller
             'source'         => 'OASYS',
         ];
 
-        // For DAU10A, prefer normalized_pairs so each row has hour, terminal, and all movement columns
-        if ($reportType === 'DAU10A' && !empty($data['normalized_pairs'])) {
+        // For DAU10A and DAU4B, prefer normalized_pairs so each row has all standard movement columns
+        if (in_array($reportType, ['DAU10A', 'DAU4B']) && !empty($data['normalized_pairs'])) {
             $records = $data['normalized_pairs'];
         } else {
             $records = $data['records'] ?? [];
@@ -77,6 +77,46 @@ class DauDashboardController extends Controller
         }
         $hours = array_keys($hourSet);
 
+        // Extract airlines list
+        $airlineSet = [];
+        foreach ($records as $r) {
+            $al = $r['airline'] ?? $r['operator_name'] ?? null;
+            if (!empty($al)) {
+                $airlineSet[(string)$al] = true;
+            }
+        }
+        $airlines = array_keys($airlineSet);
+
+        // Extract airports / routes list
+        $airportSet = [];
+        foreach ($records as $r) {
+            $ap = $r['airport_route'] ?? $r['airport'] ?? $r['city'] ?? null;
+            if (!empty($ap)) {
+                $airportSet[(string)$ap] = true;
+            }
+        }
+        $airports = array_keys($airportSet);
+
+        // Extract aircraft types
+        $actSet = [];
+        foreach ($records as $r) {
+            $act = $r['aircraft_type'] ?? null;
+            if (!empty($act)) {
+                $actSet[(string)$act] = true;
+            }
+        }
+        $aircraftTypes = array_keys($actSet);
+
+        // Extract categories
+        $catSet = [];
+        foreach ($records as $r) {
+            $cat = $r['category'] ?? null;
+            if (!empty($cat)) {
+                $catSet[(string)$cat] = true;
+            }
+        }
+        $categories = array_keys($catSet);
+
         // Precompute initial full analytics
         $analytics = $this->filterReportDataset($records, [
             'flight_type' => 'ALL',
@@ -84,6 +124,16 @@ class DauDashboardController extends Controller
             'hour'        => 'ALL',
             'metric'      => 'aircraft',
             'operation'   => 'ALL',
+            'direction'   => 'ALL',
+            'airline'     => 'ALL',
+            'airport'     => 'ALL',
+            'schedule_type' => 'ALL',
+            'status'      => 'ALL',
+            'aircraft_type' => 'ALL',
+            'category'    => 'ALL',
+            'search'      => '',
+            'top_n'       => 'ALL',
+            'threshold'   => 0,
         ], $meta, $reportType);
 
         $summary = $analytics['summary'];
@@ -123,10 +173,15 @@ class DauDashboardController extends Controller
             'columns',
             'terminals',
             'hours',
+            'airlines',
+            'airports',
+            'aircraftTypes',
+            'categories',
             'peaks',
             'hourlyDistribution',
             'terminalComparison',
             'matrixRecords',
+            'analytics',
             'initialNac',
             'initialArrivalCapacity',
             'initialDepartureCapacity',
@@ -171,7 +226,7 @@ class DauDashboardController extends Controller
         $data = $upload->report_data;
         $meta = $data['meta'] ?? [];
 
-        if ($reportType === 'DAU10A' && !empty($data['normalized_pairs'])) {
+        if (in_array($reportType, ['DAU10A', 'DAU4B']) && !empty($data['normalized_pairs'])) {
             $baseRecords = $data['normalized_pairs'];
         } else {
             $baseRecords = $data['records'] ?? [];
@@ -179,13 +234,23 @@ class DauDashboardController extends Controller
 
         // Read active filters from request
         $filters = [
-            'flight_type' => strtoupper(trim($request->query('flight_type', 'ALL'))),
-            'terminal'    => trim($request->query('terminal', 'ALL')),
-            'hour'        => trim($request->query('hour', 'ALL')),
-            'metric'      => strtolower(trim($request->query('metric', 'aircraft'))),
-            'operation'   => strtoupper(trim($request->query('operation', 'ALL'))),
-            'start_date'  => trim($request->query('start_date', '')),
-            'end_date'    => trim($request->query('end_date', '')),
+            'flight_type'   => strtoupper(trim($request->query('flight_type', 'ALL'))),
+            'terminal'      => trim($request->query('terminal', 'ALL')),
+            'hour'          => trim($request->query('hour', 'ALL')),
+            'metric'        => strtolower(trim($request->query('metric', 'aircraft'))),
+            'operation'     => strtoupper(trim($request->query('operation', 'ALL'))),
+            'direction'     => strtoupper(trim($request->query('direction', 'ALL'))),
+            'airline'       => trim($request->query('airline', 'ALL')),
+            'airport'       => trim($request->query('airport', 'ALL')),
+            'schedule_type' => strtoupper(trim($request->query('schedule_type', 'ALL'))),
+            'status'        => strtoupper(trim($request->query('status', 'ALL'))),
+            'aircraft_type' => trim($request->query('aircraft_type', 'ALL')),
+            'category'      => trim($request->query('category', 'ALL')),
+            'search'        => trim($request->query('search', '')),
+            'top_n'         => trim($request->query('top_n', 'ALL')),
+            'threshold'     => (int) $request->query('threshold', 0),
+            'start_date'    => trim($request->query('start_date', '')),
+            'end_date'      => trim($request->query('end_date', '')),
         ];
 
         // Apply filtering and analytics
@@ -216,11 +281,10 @@ class DauDashboardController extends Controller
             $meta['date_range'] = "{$filters['start_date']} s/d {$filters['end_date']}";
         }
 
-        // Generate dynamic PDF filename: e.g. DAU-10_CGK_2026-08-01.pdf or DAU-10A_CGK_2026-08-01_DOM_T2F.pdf
+        // Generate dynamic PDF filename: e.g. DAU-01_CGK_YYYY-MM-DD.pdf or DAU-10A_CGK_YYYY-MM-DD_DOM_T2F.pdf
         $code = str_replace('-', '', $conf['code'] ?? $reportType);
-        // Standardize code presentation: DAU-10, DAU-10A, DAU-10B
         if (preg_match('/DAU([0-9]+)([A-Z]?)/i', $code, $cm)) {
-            $codeFormat = 'DAU-' . $cm[1] . ($cm[2] ?? '');
+            $codeFormat = 'DAU-' . str_pad($cm[1], 2, '0', STR_PAD_LEFT) . ($cm[2] ?? '');
         } else {
             $codeFormat = $conf['code'] ?? $reportType;
         }
@@ -342,6 +406,11 @@ class DauDashboardController extends Controller
             }
         }
 
+        $maxPdfRows = 150;
+        $totalFilteredCount = count($filteredRecords);
+        $isTruncatedForPdf = $totalFilteredCount > $maxPdfRows;
+        $pdfRecords = $isTruncatedForPdf ? array_slice($filteredRecords, 0, $maxPdfRows) : $filteredRecords;
+
         $pdf = Pdf::loadView('dau.pdf', [
             'upload'               => $upload,
             'reportType'           => $reportType,
@@ -349,11 +418,14 @@ class DauDashboardController extends Controller
             'data'                 => $data,
             'meta'                 => $meta,
             'summary'              => $summary,
-            'records'              => $filteredRecords,
+            'records'              => $pdfRecords,
+            'totalFilteredCount'   => $totalFilteredCount,
+            'isTruncatedForPdf'    => $isTruncatedForPdf,
             'peaks'                => $peaks,
             'hourlyData'           => $hourlyData,
             'terminalData'         => $terminalData,
             'heatmapMatrix'        => $heatmapMatrix,
+            'analytics'            => $analytics,
             'filters'              => $filters,
             'metric'               => $filters['metric'],
             'nac'                  => $nac,
@@ -389,18 +461,26 @@ class DauDashboardController extends Controller
         $data = $upload->report_data;
         $meta = $data['meta'] ?? [];
 
-        if ($reportType === 'DAU10A' && !empty($data['normalized_pairs'])) {
+        if (in_array($reportType, ['DAU10A', 'DAU4B']) && !empty($data['normalized_pairs'])) {
             $baseRecords = $data['normalized_pairs'];
         } else {
             $baseRecords = $data['records'] ?? [];
         }
 
         $filters = [
-            'flight_type' => strtoupper(trim($request->query('flight_type', 'ALL'))),
-            'terminal'    => trim($request->query('terminal', 'ALL')),
-            'hour'        => trim($request->query('hour', 'ALL')),
-            'metric'      => strtolower(trim($request->query('metric', 'aircraft'))),
-            'operation'   => strtoupper(trim($request->query('operation', 'ALL'))),
+            'flight_type'   => strtoupper(trim($request->query('flight_type', 'ALL'))),
+            'terminal'      => trim($request->query('terminal', 'ALL')),
+            'hour'          => trim($request->query('hour', 'ALL')),
+            'metric'        => strtolower(trim($request->query('metric', 'aircraft'))),
+            'operation'     => strtoupper(trim($request->query('operation', 'ALL'))),
+            'direction'     => strtoupper(trim($request->query('direction', 'ALL'))),
+            'airline'       => trim($request->query('airline', 'ALL')),
+            'airport'       => trim($request->query('airport', 'ALL')),
+            'schedule_type' => strtoupper(trim($request->query('schedule_type', 'ALL'))),
+            'status'        => strtoupper(trim($request->query('status', 'ALL'))),
+            'aircraft_type' => trim($request->query('aircraft_type', 'ALL')),
+            'category'      => trim($request->query('category', 'ALL')),
+            'search'        => trim($request->query('search', '')),
         ];
 
         $analytics = $this->filterReportDataset($baseRecords, $filters, $meta, $reportType);
@@ -428,41 +508,150 @@ class DauDashboardController extends Controller
             fputcsv($handle, ['Sumber:', 'OASYS']);
             fputcsv($handle, []);
 
-            // Specific columns for DAU10 / DAU10A / DAU10B
-            if ($reportType === 'DAU10B') {
-                $cols = [
-                    'Hour', 'Terminal', 'Block On Acft (DTG)', 'Block Off Acft (BRK)', 'Total Acft',
-                    'Block On Pax (DTG)', 'Block Off Pax (BRK)', 'Transit Pax', 'Transfer Pax', 'Total Pax',
-                    'Crew', 'Extra Crew', 'Total Crew', 'Baggage (Kg)', 'Cargo (Kg)', 'POS (Kg)'
-                ];
+            // Dynamically select columns based on report type
+            if ($reportType === 'DAU1') {
+                $cols = ['No', 'Bandara Asal/Tujuan', 'Flight No', 'Status', 'Tipe Pesawat', 'Kapasitas Kursi', 'Pesawat ARR', 'Pesawat DEP', 'Pesawat Total', 'Penumpang ARR', 'Penumpang DEP', 'Penumpang Transit', 'Penumpang Transfer', 'Penumpang Total', 'Bagasi (Kg)', 'Kargo (Kg)', 'POS (Kg)'];
+                fputcsv($handle, $cols);
+                foreach ($records as $r) {
+                    fputcsv($handle, [
+                        $r['no'] ?? '', $r['airport_route'] ?? $r['origin'] ?? '', $r['flight_number'] ?? '', $r['schedule_type'] ?? '', $r['aircraft_type'] ?? '', $r['seat_capacity'] ?? 0,
+                        $r['aircraft_arrival'] ?? 0, $r['aircraft_departure'] ?? 0, $r['aircraft_total'] ?? 0,
+                        $r['passenger_arrival'] ?? 0, $r['passenger_departure'] ?? 0, $r['passenger_transit'] ?? 0, $r['passenger_transfer'] ?? 0, $r['passenger_total'] ?? 0,
+                        $r['baggage'] ?? 0, $r['cargo'] ?? 0, $r['pos'] ?? 0
+                    ]);
+                }
+            } elseif ($reportType === 'DAU2') {
+                $cols = ['Jenis Penerbangan', 'Pesawat ARR', 'Pesawat DEP', 'Pesawat Total', 'Penumpang ARR', 'Penumpang DEP', 'Penumpang Transit', 'Penumpang Transfer', 'Penumpang Total', 'Awak', 'Bagasi (Kg)', 'Kargo (Kg)', 'POS (Kg)'];
+                fputcsv($handle, $cols);
+                foreach ($records as $r) {
+                    fputcsv($handle, [
+                        $r['category'] ?? '', $r['aircraft_arrival'] ?? 0, $r['aircraft_departure'] ?? 0, $r['aircraft_total'] ?? 0,
+                        $r['passenger_arrival'] ?? 0, $r['passenger_departure'] ?? 0, $r['passenger_transit'] ?? 0, $r['passenger_transfer'] ?? 0, $r['passenger_total'] ?? 0,
+                        $r['crew_total'] ?? 0, $r['baggage'] ?? 0, $r['cargo'] ?? 0, $r['pos'] ?? 0
+                    ]);
+                }
+            } elseif ($reportType === 'DAU3') {
+                $cols = ['Status', 'Jenis Penerbangan', 'Pesawat ARR', 'Pesawat DEP', 'Pesawat Total', 'Penumpang ARR', 'Penumpang DEP', 'Transit', 'Transfer', 'Penumpang Total', 'Awak', 'Bagasi (Kg)', 'Kargo (Kg)', 'POS (Kg)'];
+                fputcsv($handle, $cols);
+                foreach ($records as $r) {
+                    fputcsv($handle, [
+                        $r['section'] ?? '', $r['category'] ?? '', $r['aircraft_arrival'] ?? 0, $r['aircraft_departure'] ?? 0, $r['aircraft_total'] ?? 0,
+                        $r['passenger_arrival'] ?? 0, $r['passenger_departure'] ?? 0, $r['passenger_transit'] ?? 0, $r['passenger_transfer'] ?? 0, $r['passenger_total'] ?? 0,
+                        $r['crew_total'] ?? 0, $r['baggage'] ?? 0, $r['cargo'] ?? 0, $r['pos'] ?? 0
+                    ]);
+                }
+            } elseif ($reportType === 'DAU4') {
+                $cols = ['No', 'Airport', 'Kode IATA', 'Kota', 'Pesawat ARR', 'Pesawat DEP', 'Pesawat Total', 'Penumpang ARR', 'Penumpang DEP', 'Transit', 'Transfer', 'Penumpang Total', 'Awak', 'Bagasi (Kg)', 'Kargo (Kg)', 'POS (Kg)'];
+                fputcsv($handle, $cols);
+                foreach ($records as $r) {
+                    fputcsv($handle, [
+                        $r['no'] ?? '', $r['airport'] ?? '', $r['city_code'] ?? '', $r['city'] ?? '',
+                        $r['aircraft_arrival'] ?? 0, $r['aircraft_departure'] ?? 0, $r['aircraft_total'] ?? 0,
+                        $r['passenger_arrival'] ?? 0, $r['passenger_departure'] ?? 0, $r['passenger_transit'] ?? 0, $r['passenger_transfer'] ?? 0, $r['passenger_total'] ?? 0,
+                        $r['crew_total'] ?? 0, $r['baggage'] ?? 0, $r['cargo'] ?? 0, $r['pos'] ?? 0
+                    ]);
+                }
+            } elseif ($reportType === 'DAU4A') {
+                $cols = ['No', 'Operator', 'Kode', 'Airport', 'Kode IATA', 'Kota', 'Pesawat ARR', 'Pesawat DEP', 'Pesawat Total', 'Penumpang ARR', 'Penumpang DEP', 'Transit', 'Transfer', 'Penumpang Total', 'Awak', 'Bagasi (Kg)', 'Kargo (Kg)', 'POS (Kg)'];
+                fputcsv($handle, $cols);
+                foreach ($records as $r) {
+                    fputcsv($handle, [
+                        $r['no'] ?? '', $r['operator_name'] ?? $r['airline'] ?? '', $r['operator_code'] ?? $r['airline_code'] ?? '', $r['airport'] ?? '', $r['city_code'] ?? '', $r['city'] ?? '',
+                        $r['aircraft_arrival'] ?? 0, $r['aircraft_departure'] ?? 0, $r['aircraft_total'] ?? 0,
+                        $r['passenger_arrival'] ?? 0, $r['passenger_departure'] ?? 0, $r['passenger_transit'] ?? 0, $r['passenger_transfer'] ?? 0, $r['passenger_total'] ?? 0,
+                        $r['crew_total'] ?? 0, $r['baggage'] ?? 0, $r['cargo'] ?? 0, $r['pos'] ?? 0
+                    ]);
+                }
+            } elseif ($reportType === 'DAU4B') {
+                $cols = ['No', 'Kota', 'Kode IATA', 'Total Pesawat', 'Total Penumpang'];
+                fputcsv($handle, $cols);
+                foreach ($records as $r) {
+                    fputcsv($handle, [
+                        $r['no'] ?? '', $r['city'] ?? '', $r['city_code'] ?? '', $r['aircraft_total'] ?? $r['total_flights'] ?? 0, $r['passenger_total'] ?? $r['total_passengers'] ?? 0
+                    ]);
+                }
+            } elseif (in_array($reportType, ['DAU5', 'DAU5C'])) {
+                $cols = ['No', 'Airline / Operator', 'Pesawat ARR', 'Pesawat DEP', 'Pesawat Total', 'Penumpang ARR', 'Penumpang DEP', 'Transit', 'Transfer', 'Penumpang Total', 'Awak', 'Bagasi (Kg)', 'Kargo (Kg)', 'POS (Kg)'];
+                fputcsv($handle, $cols);
+                foreach ($records as $r) {
+                    fputcsv($handle, [
+                        $r['no'] ?? '', $r['airline'] ?? '', $r['aircraft_arrival'] ?? 0, $r['aircraft_departure'] ?? 0, $r['aircraft_total'] ?? 0,
+                        $r['passenger_arrival'] ?? 0, $r['passenger_departure'] ?? 0, $r['passenger_transit'] ?? 0, $r['passenger_transfer'] ?? 0, $r['passenger_total'] ?? 0,
+                        $r['crew_total'] ?? 0, $r['baggage'] ?? 0, $r['cargo'] ?? 0, $r['pos'] ?? 0
+                    ]);
+                }
+            } elseif ($reportType === 'DAU5A') {
+                $cols = ['No', 'Airline / Operator', 'Pesawat ARR', 'Pesawat DEP', 'Pesawat Total', 'Penumpang ARR', 'Penumpang DEP', 'Total Penumpang', 'Operating Crew', 'ARR Extra Crew', 'DEP Extra Crew', 'Total Extra Crew', 'Total Awak', 'Bagasi (Kg)', 'Kargo (Kg)', 'POS (Kg)'];
+                fputcsv($handle, $cols);
+                foreach ($records as $r) {
+                    fputcsv($handle, [
+                        $r['no'] ?? '', $r['airline'] ?? '', $r['aircraft_arrival'] ?? 0, $r['aircraft_departure'] ?? 0, $r['aircraft_total'] ?? 0,
+                        $r['passenger_arrival'] ?? 0, $r['passenger_departure'] ?? 0, $r['passenger_total'] ?? 0,
+                        $r['crew'] ?? 0, $r['arr_extra_crew'] ?? 0, $r['dep_extra_crew'] ?? 0, $r['extra_crew'] ?? 0, $r['crew_total'] ?? 0,
+                        $r['baggage'] ?? 0, $r['cargo'] ?? 0, $r['pos'] ?? 0
+                    ]);
+                }
+            } elseif ($reportType === 'DAU5B') {
+                $cols = ['No', 'Terminal', 'Airline', 'Pesawat ARR', 'Pesawat DEP', 'Pesawat Total', 'Penumpang ARR', 'Penumpang DEP', 'Total Penumpang', 'Awak', 'Bagasi (Kg)', 'Kargo (Kg)', 'POS (Kg)'];
+                fputcsv($handle, $cols);
+                foreach ($records as $r) {
+                    fputcsv($handle, [
+                        $r['no'] ?? '', $r['terminal'] ?? '', $r['airline'] ?? '', $r['aircraft_arrival'] ?? 0, $r['aircraft_departure'] ?? 0, $r['aircraft_total'] ?? 0,
+                        $r['passenger_arrival'] ?? 0, $r['passenger_departure'] ?? 0, $r['passenger_total'] ?? 0,
+                        $r['crew_total'] ?? 0, $r['baggage'] ?? 0, $r['cargo'] ?? 0, $r['pos'] ?? 0
+                    ]);
+                }
+            } elseif ($reportType === 'DAU6') {
+                $cols = ['No', 'Tipe Pesawat', 'Kategori', 'WTC', 'Pesawat ARR', 'Pesawat DEP', 'Pesawat Total', 'Penumpang ARR', 'Penumpang DEP', 'Total Penumpang', 'Awak', 'Bagasi (Kg)', 'Kargo (Kg)', 'POS (Kg)'];
+                fputcsv($handle, $cols);
+                foreach ($records as $r) {
+                    fputcsv($handle, [
+                        $r['no'] ?? '', $r['aircraft_type'] ?? '', $r['category'] ?? 'Narrow Body', $r['wtc'] ?? 'Medium',
+                        $r['aircraft_arrival'] ?? 0, $r['aircraft_departure'] ?? 0, $r['aircraft_total'] ?? 0,
+                        $r['passenger_arrival'] ?? 0, $r['passenger_departure'] ?? 0, $r['passenger_total'] ?? 0,
+                        $r['crew_total'] ?? 0, $r['baggage'] ?? 0, $r['cargo'] ?? 0, $r['pos'] ?? 0
+                    ]);
+                }
+            } elseif ($reportType === 'DAU10B') {
+                $cols = ['Hour', 'Terminal', 'Block On Acft (DTG)', 'Block Off Acft (BRK)', 'Total Acft', 'Block On Pax (DTG)', 'Block Off Pax (BRK)', 'Transit Pax', 'Transfer Pax', 'Total Pax', 'Crew', 'Extra Crew', 'Total Crew', 'Baggage (Kg)', 'Cargo (Kg)', 'POS (Kg)'];
+                fputcsv($handle, $cols);
+                foreach ($records as $r) {
+                    fputcsv($handle, [
+                        $r['hour'] ?? $r['period'] ?? '', $r['terminal'] ?? '', $r['aircraft_arrival'] ?? 0, $r['aircraft_departure'] ?? 0, $r['aircraft_total'] ?? 0,
+                        $r['passenger_arrival'] ?? 0, $r['passenger_departure'] ?? 0, $r['passenger_transit'] ?? 0, $r['passenger_transfer'] ?? 0, $r['passenger_total'] ?? 0,
+                        $r['crew'] ?? 0, $r['extra_crew'] ?? 0, $r['crew_total'] ?? 0, $r['baggage'] ?? 0, $r['cargo'] ?? 0, $r['pos'] ?? 0,
+                    ]);
+                }
+            } elseif ($reportType === 'DAU11') {
+                $cols = ['Tanggal', 'Pesawat INT ARR', 'Pesawat INT DEP', 'Pesawat DOM ARR', 'Pesawat DOM DEP', 'Total Pesawat', 'Penumpang INT ARR', 'Penumpang INT DEP', 'Penumpang DOM ARR', 'Penumpang DOM DEP', 'Total Penumpang'];
+                fputcsv($handle, $cols);
+                foreach ($records as $r) {
+                    fputcsv($handle, [
+                        $r['date'] ?? '', $r['aircraft_int_arrival'] ?? 0, $r['aircraft_int_departure'] ?? 0, $r['aircraft_dom_arrival'] ?? 0, $r['aircraft_dom_departure'] ?? 0, $r['aircraft_total'] ?? 0,
+                        $r['passenger_int_arrival'] ?? 0, $r['passenger_int_departure'] ?? 0, $r['passenger_dom_arrival'] ?? 0, $r['passenger_dom_departure'] ?? 0, $r['passenger_total'] ?? 0
+                    ]);
+                }
+            } elseif ($reportType === 'DAU12') {
+                $cols = ['Tanggal', 'Pesawat ARR DOM', 'Pesawat ARR INT', 'Pesawat ARR Total', 'Pesawat DEP DOM', 'Pesawat DEP INT', 'Pesawat DEP Total', 'Total Pesawat', 'Penumpang ARR DOM', 'Penumpang ARR INT', 'Penumpang ARR Total', 'Penumpang DEP DOM', 'Penumpang DEP INT', 'Penumpang DEP Total', 'Total Penumpang'];
+                fputcsv($handle, $cols);
+                foreach ($records as $r) {
+                    fputcsv($handle, [
+                        $r['date'] ?? '', $r['aircraft_arr_domestic'] ?? 0, $r['aircraft_arr_int'] ?? 0, $r['aircraft_arrival_tot'] ?? 0,
+                        $r['aircraft_dep_domestic'] ?? 0, $r['aircraft_dep_int'] ?? 0, $r['aircraft_departure_tot'] ?? 0, $r['aircraft_total'] ?? 0,
+                        $r['passenger_arr_domestic'] ?? 0, $r['passenger_arr_int'] ?? 0, $r['passenger_arrival_tot'] ?? 0,
+                        $r['passenger_dep_domestic'] ?? 0, $r['passenger_dep_int'] ?? 0, $r['passenger_departure_tot'] ?? 0, $r['passenger_total'] ?? 0
+                    ]);
+                }
             } else {
-                $cols = [
-                    'Hour', 'Terminal', 'Aircraft ARR', 'Aircraft DEP', 'Aircraft Total',
-                    'Passenger ARR', 'Passenger DEP', 'Transit', 'Transfer', 'Passenger Total',
-                    'Crew', 'Extra Crew', 'Total Crew', 'Baggage (Kg)', 'Cargo (Kg)', 'POS (Kg)'
-                ];
-            }
-            fputcsv($handle, $cols);
-
-            foreach ($records as $r) {
-                fputcsv($handle, [
-                    $r['hour'] ?? $r['period'] ?? '',
-                    $r['terminal'] ?? '',
-                    $r['aircraft_arrival'] ?? 0,
-                    $r['aircraft_departure'] ?? 0,
-                    $r['aircraft_total'] ?? 0,
-                    $r['passenger_arrival'] ?? 0,
-                    $r['passenger_departure'] ?? 0,
-                    $r['passenger_transit'] ?? 0,
-                    $r['passenger_transfer'] ?? 0,
-                    $r['passenger_total'] ?? 0,
-                    $r['crew'] ?? 0,
-                    $r['extra_crew'] ?? 0,
-                    $r['crew_total'] ?? 0,
-                    $r['baggage'] ?? 0,
-                    $r['cargo'] ?? 0,
-                    $r['pos'] ?? 0,
-                ]);
+                $cols = ['Hour', 'Terminal', 'Aircraft ARR', 'Aircraft DEP', 'Aircraft Total', 'Passenger ARR', 'Passenger DEP', 'Transit', 'Transfer', 'Passenger Total', 'Crew', 'Extra Crew', 'Total Crew', 'Baggage (Kg)', 'Cargo (Kg)', 'POS (Kg)'];
+                fputcsv($handle, $cols);
+                foreach ($records as $r) {
+                    fputcsv($handle, [
+                        $r['hour'] ?? $r['period'] ?? '', $r['terminal'] ?? '', $r['aircraft_arrival'] ?? 0, $r['aircraft_departure'] ?? 0, $r['aircraft_total'] ?? 0,
+                        $r['passenger_arrival'] ?? 0, $r['passenger_departure'] ?? 0, $r['passenger_transit'] ?? 0, $r['passenger_transfer'] ?? 0, $r['passenger_total'] ?? 0,
+                        $r['crew'] ?? 0, $r['extra_crew'] ?? 0, $r['crew_total'] ?? 0, $r['baggage'] ?? 0, $r['cargo'] ?? 0, $r['pos'] ?? 0,
+                    ]);
+                }
             }
 
             fclose($handle);
@@ -527,7 +716,7 @@ class DauDashboardController extends Controller
     }
 
     /**
-     * Unified filtering & analytics engine for DAU-10, DAU-10A, and DAU-10B.
+     * Unified filtering & analytics engine for all DAU report types (DAU-1 through DAU-12).
      * Ensures KPI, Charts, Detail Table, and PDF Export receive identical, mathematically consistent data.
      */
     public function filterReportDataset(array $records, array $filters, array $meta, string $reportType): array
@@ -536,61 +725,153 @@ class DauDashboardController extends Controller
         $terminalFilter = $filters['terminal'] ?? 'ALL';
         $hourFilter = $filters['hour'] ?? 'ALL';
         $operationFilter = $filters['operation'] ?? 'ALL';
+        $directionFilter = $filters['direction'] ?? 'ALL';
+        $airlineFilter = $filters['airline'] ?? 'ALL';
+        $airportFilter = $filters['airport'] ?? 'ALL';
+        $scheduleTypeFilter = $filters['schedule_type'] ?? 'ALL';
+        $statusFilter = $filters['status'] ?? 'ALL';
+        $actFilter = $filters['aircraft_type'] ?? 'ALL';
+        $categoryFilter = $filters['category'] ?? 'ALL';
+        $searchQuery = strtolower(trim($filters['search'] ?? ''));
+        $topN = $filters['top_n'] ?? 'ALL';
+        $threshold = (int) ($filters['threshold'] ?? 0);
         $metric = strtolower($filters['metric'] ?? 'aircraft');
 
-        // Clean hour filter for loose matching
         $cleanHourFilter = $hourFilter !== 'ALL' ? preg_replace('/[^0-9]/', '', $hourFilter) : null;
 
         $filtered = [];
 
         foreach ($records as $r) {
-            $recHour = $r['hour'] ?? $r['period'] ?? '';
-            $recTerminal = (string)($r['terminal'] ?? '');
-
-            // 1. Terminal Filter
-            if ($terminalFilter !== 'ALL' && strcasecmp($recTerminal, $terminalFilter) !== 0) {
-                continue;
+            // 1. Terminal filter
+            if ($terminalFilter !== 'ALL') {
+                $recTerminal = (string)($r['terminal'] ?? '');
+                if ($recTerminal !== '' && strcasecmp($recTerminal, $terminalFilter) !== 0) {
+                    continue;
+                }
             }
 
-            // 2. Hour Filter
+            // 2. Hour filter
             if ($hourFilter !== 'ALL') {
-                $cleanRecHour = preg_replace('/[^0-9]/', '', $recHour);
-                if ($cleanHourFilter && $cleanRecHour !== $cleanHourFilter && strcasecmp($recHour, $hourFilter) !== 0) {
-                    continue;
+                $recHour = $r['hour'] ?? $r['period'] ?? '';
+                if ($recHour !== '') {
+                    $cleanRecHour = preg_replace('/[^0-9]/', '', $recHour);
+                    if ($cleanHourFilter && $cleanRecHour !== $cleanHourFilter && strcasecmp($recHour, $hourFilter) !== 0) {
+                        continue;
+                    }
                 }
             }
 
             // 3. Flight Type Filter (DOM / INT / ALL)
-            // In CGK: Terminals 1, 1B, 1C, 2D are domestic. Terminals 2E, 2F, 3U support domestic & international.
             if ($flightType === 'DOM' || $flightType === 'DOMESTIC') {
-                if (stripos($meta['flight_scope'] ?? '', 'INTERNASIONAL') !== false && stripos($meta['flight_scope'] ?? '', 'DOMESTIK') === false) {
-                    // Uploaded file is strictly international, no domestic records exist
+                if (!empty($r['category']) && stripos($r['category'], 'INT') !== false) {
                     continue;
                 }
-                // All terminals in CGK accommodate domestic flights
+                if (in_array($reportType, ['DAU10', 'DAU10A', 'DAU10B'])) {
+                    if (stripos($meta['flight_scope'] ?? '', 'INTERNASIONAL') !== false && stripos($meta['flight_scope'] ?? '', 'DOMESTIK') === false) {
+                        continue;
+                    }
+                }
             } elseif ($flightType === 'INT' || $flightType === 'INTERNATIONAL') {
-                if (stripos($meta['flight_scope'] ?? '', 'DOMESTIK') !== false && stripos($meta['flight_scope'] ?? '', 'INTERNASIONAL') === false) {
-                    // Uploaded file is strictly domestic, no international records exist
+                if (!empty($r['category']) && stripos($r['category'], 'DOM') !== false) {
                     continue;
                 }
-                // In CGK, only 2E, 2F, and 3U accommodate international traffic
-                if (!in_array(strtoupper($recTerminal), ['2E', '2F', '3U', 'T2E', 'T2F', 'T3U', '3'])) {
+                if (in_array($reportType, ['DAU10', 'DAU10A', 'DAU10B'])) {
+                    if (stripos($meta['flight_scope'] ?? '', 'DOMESTIK') !== false && stripos($meta['flight_scope'] ?? '', 'INTERNASIONAL') === false) {
+                        continue;
+                    }
+                    $recTerminal = (string)($r['terminal'] ?? '');
+                    if ($recTerminal !== '' && !in_array(strtoupper($recTerminal), ['2E', '2F', '3U', 'T2E', 'T2F', 'T3U', '3'])) {
+                        continue;
+                    }
+                }
+            }
+
+            // 4. Direction filter
+            if ($directionFilter !== 'ALL') {
+                if ($directionFilter === 'ARRIVAL') {
+                    if (($r['aircraft_arrival'] ?? 0) === 0 && ($r['passenger_arrival'] ?? 0) === 0) {
+                        continue;
+                    }
+                } elseif ($directionFilter === 'DEPARTURE') {
+                    if (($r['aircraft_departure'] ?? 0) === 0 && ($r['passenger_departure'] ?? 0) === 0) {
+                        continue;
+                    }
+                }
+            }
+
+            // 5. Airline filter
+            if ($airlineFilter !== 'ALL') {
+                $rAirline = $r['airline'] ?? $r['operator_name'] ?? $r['airline_code'] ?? '';
+                if ($rAirline !== '' && strcasecmp($rAirline, $airlineFilter) !== 0 && stripos($rAirline, $airlineFilter) === false) {
                     continue;
                 }
             }
 
-            // 4. Operation Filter for DAU10B (BLOCK ON vs BLOCK OFF)
+            // 6. Airport / Route filter
+            if ($airportFilter !== 'ALL') {
+                $rAirport = $r['airport_route'] ?? $r['airport'] ?? $r['city'] ?? $r['city_code'] ?? '';
+                if ($rAirport !== '' && strcasecmp($rAirport, $airportFilter) !== 0 && stripos($rAirport, $airportFilter) === false) {
+                    continue;
+                }
+            }
+
+            // 7. Schedule Type (Berjadwal / Tdk Berjadwal)
+            if ($scheduleTypeFilter !== 'ALL' && !empty($r['schedule_type'])) {
+                if (stripos($r['schedule_type'], $scheduleTypeFilter) === false) {
+                    continue;
+                }
+            }
+
+            // 8. Status (Niaga / Bukan Niaga)
+            if ($statusFilter !== 'ALL') {
+                $rStatus = $r['section'] ?? $r['status'] ?? '';
+                if ($rStatus !== '' && stripos($rStatus, $statusFilter) === false) {
+                    continue;
+                }
+            }
+
+            // 9. Aircraft Type
+            if ($actFilter !== 'ALL' && !empty($r['aircraft_type'])) {
+                if (strcasecmp($r['aircraft_type'], $actFilter) !== 0) {
+                    continue;
+                }
+            }
+
+            // 10. Category (Narrow Body / Wide Body / Regional)
+            if ($categoryFilter !== 'ALL' && !empty($r['category'])) {
+                if (stripos($r['category'], $categoryFilter) === false) {
+                    continue;
+                }
+            }
+
+            // 11. Operation Filter for DAU10B (BLOCK ON vs BLOCK OFF)
             if ($reportType === 'DAU10B' && $operationFilter !== 'ALL') {
                 if ($operationFilter === 'BLOCK_ON') {
                     if (($r['aircraft_arrival'] ?? 0) === 0 && ($r['passenger_arrival'] ?? 0) === 0) {
-                        // Skip records that have no block on traffic when strictly filtering by block on
                         continue;
                     }
                 } elseif ($operationFilter === 'BLOCK_OFF') {
                     if (($r['aircraft_departure'] ?? 0) === 0 && ($r['passenger_departure'] ?? 0) === 0) {
-                        // Skip records that have no block off traffic when strictly filtering by block off
                         continue;
                     }
+                }
+            }
+
+            // 12. Minimum Flight Threshold (for DAU4B)
+            if ($threshold > 0) {
+                $acCount = $r['aircraft_total'] ?? $r['total_flights'] ?? 0;
+                if ($acCount < $threshold) {
+                    continue;
+                }
+            }
+
+            // 13. Search query
+            if ($searchQuery !== '') {
+                $haystack = strtolower(implode(' ', array_map(function ($v) {
+                    return is_scalar($v) ? (string)$v : '';
+                }, $r)));
+                if (stripos($haystack, $searchQuery) === false) {
+                    continue;
                 }
             }
 
@@ -600,6 +881,7 @@ class DauDashboardController extends Controller
         // Compute summary totals from filtered dataset
         $summary = [
             'total_movements'    => 0,
+            'aircraft_total'     => 0,
             'aircraft_arrival'   => 0,
             'aircraft_departure' => 0,
             'passenger_arrival'  => 0,
@@ -608,6 +890,7 @@ class DauDashboardController extends Controller
             'passenger_transfer' => 0,
             'passenger_total'    => 0,
             'crew_total'         => 0,
+            'extra_crew_total'   => 0,
             'baggage_total'      => 0,
             'cargo_total'        => 0,
             'pos_total'          => 0,
@@ -615,20 +898,24 @@ class DauDashboardController extends Controller
 
         $hourlyBuckets = [];
         $terminalBuckets = [];
+        $airlineBuckets = [];
+        $airportBuckets = [];
 
         foreach ($filtered as $r) {
-            $h = $r['hour'] ?? $r['period'] ?? 'N/A';
-            $t = $r['terminal'] ?? 'ALL';
+            $h = $r['hour'] ?? $r['period'] ?? null;
+            $t = $r['terminal'] ?? null;
+            $al = $r['airline'] ?? $r['operator_name'] ?? null;
+            $ap = $r['airport_route'] ?? $r['airport'] ?? $r['city'] ?? null;
 
-            $acArr = (int)($r['aircraft_arrival'] ?? 0);
-            $acDep = (int)($r['aircraft_departure'] ?? 0);
-            $acTot = (int)($r['aircraft_total'] ?? ($acArr + $acDep));
+            $acArr = (int)($r['aircraft_arrival'] ?? ($r['aircraft_arr_domestic'] ?? 0) + ($r['aircraft_arr_int'] ?? 0));
+            $acDep = (int)($r['aircraft_departure'] ?? ($r['aircraft_dep_domestic'] ?? 0) + ($r['aircraft_dep_int'] ?? 0));
+            $acTot = (int)($r['aircraft_total'] ?? ($r['total_flights'] ?? ($acArr + $acDep)));
 
-            $pxArr = (int)($r['passenger_arrival'] ?? 0);
-            $pxDep = (int)($r['passenger_departure'] ?? 0);
+            $pxArr = (int)($r['passenger_arrival'] ?? ($r['passenger_arr_domestic'] ?? 0) + ($r['passenger_arr_int'] ?? 0));
+            $pxDep = (int)($r['passenger_departure'] ?? ($r['passenger_dep_domestic'] ?? 0) + ($r['passenger_dep_int'] ?? 0));
             $pxTrn = (int)($r['passenger_transit'] ?? 0);
             $pxTrf = (int)($r['passenger_transfer'] ?? 0);
-            $pxTot = (int)($r['passenger_total'] ?? ($pxArr + $pxDep + $pxTrn + $pxTrf));
+            $pxTot = (int)($r['passenger_total'] ?? ($r['total_passengers'] ?? ($pxArr + $pxDep + $pxTrn + $pxTrf)));
 
             $crew  = (int)($r['crew_total'] ?? (($r['crew'] ?? 0) + ($r['extra_crew'] ?? 0)));
             $bag   = (int)($r['baggage'] ?? 0);
@@ -636,6 +923,7 @@ class DauDashboardController extends Controller
             $pos   = (int)($r['pos'] ?? 0);
 
             $summary['total_movements']    += $acTot;
+            $summary['aircraft_total']     += $acTot;
             $summary['aircraft_arrival']   += $acArr;
             $summary['aircraft_departure'] += $acDep;
             $summary['passenger_arrival']  += $pxArr;
@@ -644,63 +932,128 @@ class DauDashboardController extends Controller
             $summary['passenger_transfer'] += $pxTrf;
             $summary['passenger_total']    += $pxTot;
             $summary['crew_total']         += $crew;
+            $summary['extra_crew_total']   += (int)($r['extra_crew'] ?? 0);
             $summary['baggage_total']      += $bag;
             $summary['cargo_total']        += $cgo;
             $summary['pos_total']          += $pos;
 
             // Hourly grouping
-            if (!isset($hourlyBuckets[$h])) {
-                $hourlyBuckets[$h] = [
-                    'hour'                => $h,
-                    'aircraft_arrival'    => 0,
-                    'aircraft_departure'  => 0,
-                    'aircraft_total'      => 0,
-                    'passenger_arrival'   => 0,
-                    'passenger_departure' => 0,
-                    'passenger_total'     => 0,
-                    'crew_total'          => 0,
-                    'baggage'             => 0,
-                    'cargo'               => 0,
-                    'pos'                 => 0,
-                ];
+            if ($h !== null) {
+                if (!isset($hourlyBuckets[$h])) {
+                    $hourlyBuckets[$h] = [
+                        'hour'                => $h,
+                        'aircraft_arrival'    => 0,
+                        'aircraft_departure'  => 0,
+                        'aircraft_total'      => 0,
+                        'passenger_arrival'   => 0,
+                        'passenger_departure' => 0,
+                        'passenger_total'     => 0,
+                        'crew_total'          => 0,
+                        'baggage'             => 0,
+                        'cargo'               => 0,
+                        'pos'                 => 0,
+                    ];
+                }
+                $hourlyBuckets[$h]['aircraft_arrival']    += $acArr;
+                $hourlyBuckets[$h]['aircraft_departure']  += $acDep;
+                $hourlyBuckets[$h]['aircraft_total']      += $acTot;
+                $hourlyBuckets[$h]['passenger_arrival']   += $pxArr;
+                $hourlyBuckets[$h]['passenger_departure'] += $pxDep;
+                $hourlyBuckets[$h]['passenger_total']     += $pxTot;
+                $hourlyBuckets[$h]['crew_total']          += $crew;
+                $hourlyBuckets[$h]['baggage']             += $bag;
+                $hourlyBuckets[$h]['cargo']               += $cgo;
+                $hourlyBuckets[$h]['pos']                 += $pos;
             }
-            $hourlyBuckets[$h]['aircraft_arrival']    += $acArr;
-            $hourlyBuckets[$h]['aircraft_departure']  += $acDep;
-            $hourlyBuckets[$h]['aircraft_total']      += $acTot;
-            $hourlyBuckets[$h]['passenger_arrival']   += $pxArr;
-            $hourlyBuckets[$h]['passenger_departure'] += $pxDep;
-            $hourlyBuckets[$h]['passenger_total']     += $pxTot;
-            $hourlyBuckets[$h]['crew_total']          += $crew;
-            $hourlyBuckets[$h]['baggage']             += $bag;
-            $hourlyBuckets[$h]['cargo']               += $cgo;
-            $hourlyBuckets[$h]['pos']                 += $pos;
 
             // Terminal grouping
-            if (!isset($terminalBuckets[$t])) {
-                $terminalBuckets[$t] = [
-                    'terminal'            => $t,
-                    'aircraft_arrival'    => 0,
-                    'aircraft_departure'  => 0,
-                    'aircraft_total'      => 0,
-                    'passenger_arrival'   => 0,
-                    'passenger_departure' => 0,
-                    'passenger_total'     => 0,
-                    'crew_total'          => 0,
-                    'baggage'             => 0,
-                    'cargo'               => 0,
-                    'pos'                 => 0,
-                ];
+            if ($t !== null) {
+                if (!isset($terminalBuckets[$t])) {
+                    $terminalBuckets[$t] = [
+                        'terminal'            => $t,
+                        'aircraft_arrival'    => 0,
+                        'aircraft_departure'  => 0,
+                        'aircraft_total'      => 0,
+                        'passenger_arrival'   => 0,
+                        'passenger_departure' => 0,
+                        'passenger_total'     => 0,
+                        'crew_total'          => 0,
+                        'baggage'             => 0,
+                        'cargo'               => 0,
+                        'pos'                 => 0,
+                    ];
+                }
+                $terminalBuckets[$t]['aircraft_arrival']    += $acArr;
+                $terminalBuckets[$t]['aircraft_departure']  += $acDep;
+                $terminalBuckets[$t]['aircraft_total']      += $acTot;
+                $terminalBuckets[$t]['passenger_arrival']   += $pxArr;
+                $terminalBuckets[$t]['passenger_departure'] += $pxDep;
+                $terminalBuckets[$t]['passenger_total']     += $pxTot;
+                $terminalBuckets[$t]['crew_total']          += $crew;
+                $terminalBuckets[$t]['baggage']             += $bag;
+                $terminalBuckets[$t]['cargo']               += $cgo;
+                $terminalBuckets[$t]['pos']                 += $pos;
             }
-            $terminalBuckets[$t]['aircraft_arrival']    += $acArr;
-            $terminalBuckets[$t]['aircraft_departure']  += $acDep;
-            $terminalBuckets[$t]['aircraft_total']      += $acTot;
-            $terminalBuckets[$t]['passenger_arrival']   += $pxArr;
-            $terminalBuckets[$t]['passenger_departure'] += $pxDep;
-            $terminalBuckets[$t]['passenger_total']     += $pxTot;
-            $terminalBuckets[$t]['crew_total']          += $crew;
-            $terminalBuckets[$t]['baggage']             += $bag;
-            $terminalBuckets[$t]['cargo']               += $cgo;
-            $terminalBuckets[$t]['pos']                 += $pos;
+
+            // Airline grouping
+            if ($al !== null) {
+                if (!isset($airlineBuckets[$al])) {
+                    $airlineBuckets[$al] = [
+                        'airline'             => $al,
+                        'aircraft_arrival'    => 0,
+                        'aircraft_departure'  => 0,
+                        'aircraft_total'      => 0,
+                        'passenger_arrival'   => 0,
+                        'passenger_departure' => 0,
+                        'passenger_total'     => 0,
+                        'crew_total'          => 0,
+                        'operating_crew'      => 0,
+                        'arr_extra_crew'      => 0,
+                        'dep_extra_crew'      => 0,
+                        'extra_crew'          => 0,
+                        'baggage'             => 0,
+                        'cargo'               => 0,
+                        'pos'                 => 0,
+                    ];
+                }
+                $airlineBuckets[$al]['aircraft_arrival']    += $acArr;
+                $airlineBuckets[$al]['aircraft_departure']  += $acDep;
+                $airlineBuckets[$al]['aircraft_total']      += $acTot;
+                $airlineBuckets[$al]['passenger_arrival']   += $pxArr;
+                $airlineBuckets[$al]['passenger_departure'] += $pxDep;
+                $airlineBuckets[$al]['passenger_total']     += $pxTot;
+                $airlineBuckets[$al]['crew_total']          += $crew;
+                $airlineBuckets[$al]['operating_crew']      += (int)($r['crew'] ?? 0);
+                $airlineBuckets[$al]['arr_extra_crew']      += (int)($r['arr_extra_crew'] ?? 0);
+                $airlineBuckets[$al]['dep_extra_crew']      += (int)($r['dep_extra_crew'] ?? 0);
+                $airlineBuckets[$al]['extra_crew']          += (int)($r['extra_crew'] ?? 0);
+                $airlineBuckets[$al]['baggage']             += $bag;
+                $airlineBuckets[$al]['cargo']               += $cgo;
+                $airlineBuckets[$al]['pos']                 += $pos;
+            }
+
+            // Airport / Route grouping
+            if ($ap !== null) {
+                if (!isset($airportBuckets[$ap])) {
+                    $airportBuckets[$ap] = [
+                        'airport'             => $ap,
+                        'city_code'           => $r['city_code'] ?? '',
+                        'city'                => $r['city'] ?? $ap,
+                        'aircraft_arrival'    => 0,
+                        'aircraft_departure'  => 0,
+                        'aircraft_total'      => 0,
+                        'passenger_arrival'   => 0,
+                        'passenger_departure' => 0,
+                        'passenger_total'     => 0,
+                    ];
+                }
+                $airportBuckets[$ap]['aircraft_arrival']    += $acArr;
+                $airportBuckets[$ap]['aircraft_departure']  += $acDep;
+                $airportBuckets[$ap]['aircraft_total']      += $acTot;
+                $airportBuckets[$ap]['passenger_arrival']   += $pxArr;
+                $airportBuckets[$ap]['passenger_departure'] += $pxDep;
+                $airportBuckets[$ap]['passenger_total']     += $pxTot;
+            }
         }
 
         // Peak calculations
@@ -756,13 +1109,184 @@ class DauDashboardController extends Controller
             'peak_block_off'     => $peakBlockOffVal,
         ];
 
-        // Format ordered hourly distribution array
         $hourlyDistribution = array_values($hourlyBuckets);
-
-        // Terminal comparison array
         $terminalComparison = array_values($terminalBuckets);
 
-        // For DAU10A: build heatmap matrix grid
+        // DAU1 Combo Chart: Top 10 Routes (Grouped ARR/DEP bars + Line Total Pax)
+        uasort($airportBuckets, function ($a, $b) use ($metric) {
+            $valA = $metric === 'passenger' ? $a['passenger_total'] : $a['aircraft_total'];
+            $valB = $metric === 'passenger' ? $b['passenger_total'] : $b['aircraft_total'];
+            return $valB <=> $valA;
+        });
+        $topRoutes = array_slice(array_values($airportBuckets), 0, 10);
+
+        // DAU2: Dom vs Int Stacked Data
+        $dau2Distribution = [
+            'domestic' => [
+                'aircraft'  => 0,
+                'passenger' => 0,
+                'baggage'   => 0,
+                'cargo'     => 0,
+            ],
+            'international' => [
+                'aircraft'  => 0,
+                'passenger' => 0,
+                'baggage'   => 0,
+                'cargo'     => 0,
+            ],
+        ];
+        foreach ($filtered as $r) {
+            $isDom = stripos($r['category'] ?? '', 'DOM') !== false;
+            $k = $isDom ? 'domestic' : 'international';
+            $dau2Distribution[$k]['aircraft']  += (int)($r['aircraft_total'] ?? 0);
+            $dau2Distribution[$k]['passenger'] += (int)($r['passenger_total'] ?? 0);
+            $dau2Distribution[$k]['baggage']   += (int)($r['baggage'] ?? 0);
+            $dau2Distribution[$k]['cargo']     += (int)($r['cargo'] ?? 0);
+        }
+
+        // DAU3: Niaga vs Bukan Niaga Breakdown
+        $dau3Status = [
+            'niaga' => ['aircraft' => 0, 'passenger' => 0],
+            'bukan_niaga' => ['aircraft' => 0, 'passenger' => 0],
+            'domestik' => ['aircraft' => 0, 'passenger' => 0],
+            'internasional' => ['aircraft' => 0, 'passenger' => 0],
+        ];
+        foreach ($filtered as $r) {
+            $sec = strtoupper($r['section'] ?? '');
+            if (stripos($sec, 'BUKAN') !== false) {
+                $dau3Status['bukan_niaga']['aircraft']  += (int)($r['aircraft_total'] ?? 0);
+                $dau3Status['bukan_niaga']['passenger'] += (int)($r['passenger_total'] ?? 0);
+            } else {
+                $dau3Status['niaga']['aircraft']  += (int)($r['aircraft_total'] ?? 0);
+                $dau3Status['niaga']['passenger'] += (int)($r['passenger_total'] ?? 0);
+            }
+            if (stripos($r['category'] ?? '', 'DOM') !== false) {
+                $dau3Status['domestik']['aircraft']  += (int)($r['aircraft_total'] ?? 0);
+                $dau3Status['domestik']['passenger'] += (int)($r['passenger_total'] ?? 0);
+            } else {
+                $dau3Status['internasional']['aircraft']  += (int)($r['aircraft_total'] ?? 0);
+                $dau3Status['internasional']['passenger'] += (int)($r['passenger_total'] ?? 0);
+            }
+        }
+
+        // DAU4: Diverging Origin (ARR) vs Destination (DEP)
+        $limitN = is_numeric($topN) ? (int)$topN : 10;
+        $arrSorted = $airportBuckets;
+        uasort($arrSorted, function ($a, $b) use ($metric) {
+            $valA = $metric === 'passenger' ? $a['passenger_arrival'] : $a['aircraft_arrival'];
+            $valB = $metric === 'passenger' ? $b['passenger_arrival'] : $b['aircraft_arrival'];
+            return $valB <=> $valA;
+        });
+        $depSorted = $airportBuckets;
+        uasort($depSorted, function ($a, $b) use ($metric) {
+            $valA = $metric === 'passenger' ? $a['passenger_departure'] : $a['aircraft_departure'];
+            $valB = $metric === 'passenger' ? $b['passenger_departure'] : $b['aircraft_departure'];
+            return $valB <=> $valA;
+        });
+        $dau4Diverging = [
+            'top_arrival'   => array_slice(array_values($arrSorted), 0, $limitN),
+            'top_departure' => array_slice(array_values($depSorted), 0, $limitN),
+        ];
+
+        // DAU5: Pareto Airlines
+        $airlinesRanked = array_values($airlineBuckets);
+        uasort($airlinesRanked, function ($a, $b) use ($metric) {
+            $key = match ($metric) {
+                'passenger' => 'passenger_total',
+                'baggage'   => 'baggage',
+                'cargo'     => 'cargo',
+                'pos'       => 'pos',
+                default     => 'aircraft_total',
+            };
+            return ($b[$key] ?? 0) <=> ($a[$key] ?? 0);
+        });
+        $airlinesRanked = array_values($airlinesRanked);
+
+        $totRankVal = 0;
+        $rankKey = match ($metric) {
+            'passenger' => 'passenger_total',
+            'baggage'   => 'baggage',
+            'cargo'     => 'cargo',
+            'pos'       => 'pos',
+            default     => 'aircraft_total',
+        };
+        foreach ($airlinesRanked as $alItem) {
+            $totRankVal += ($alItem[$rankKey] ?? 0);
+        }
+
+        $cum = 0;
+        $dau5Pareto = [];
+        foreach ($airlinesRanked as $alItem) {
+            $val = $alItem[$rankKey] ?? 0;
+            $cum += $val;
+            $cumPct = $totRankVal > 0 ? round(($cum / $totRankVal) * 100, 1) : 0;
+            $dau5Pareto[] = array_merge($alItem, [
+                'metric_value'   => $val,
+                'cumulative_pct' => $cumPct,
+            ]);
+        }
+
+        // DAU5A: Operating Crew vs Extra Crew
+        $dau5aCrew = [];
+        foreach ($airlineBuckets as $alName => $alData) {
+            $dau5aCrew[] = [
+                'airline'        => $alName,
+                'operating_crew' => $alData['operating_crew'] ?? 0,
+                'arr_extra_crew' => $alData['arr_extra_crew'] ?? 0,
+                'dep_extra_crew' => $alData['dep_extra_crew'] ?? 0,
+                'extra_crew'     => $alData['extra_crew'] ?? 0,
+                'crew_total'     => $alData['crew_total'] ?? 0,
+            ];
+        }
+        uasort($dau5aCrew, fn($a, $b) => $b['crew_total'] <=> $a['crew_total']);
+        $dau5aCrew = array_slice(array_values($dau5aCrew), 0, 15);
+
+        // DAU5B: Terminal x Airline matrix
+        $dau5bTerminals = [];
+        foreach ($filtered as $r) {
+            $term = $r['terminal'] ?? 'Unknown';
+            $al   = $r['airline'] ?? 'Unknown';
+            if (!isset($dau5bTerminals[$term])) $dau5bTerminals[$term] = [];
+            if (!isset($dau5bTerminals[$term][$al])) $dau5bTerminals[$term][$al] = 0;
+            $dau5bTerminals[$term][$al] += ($metric === 'passenger' ? ($r['passenger_total'] ?? 0) : ($r['aircraft_total'] ?? 0));
+        }
+
+        // DAU6: Fleet Mix ranking & Category share
+        $fleetBuckets = [];
+        $categoryShare = [];
+        $wtcShare = [];
+        foreach ($filtered as $r) {
+            $type = $r['aircraft_type'] ?? 'Unknown';
+            $cat  = $r['category'] ?? 'Narrow Body';
+            $wtc  = $r['wtc'] ?? 'Medium';
+            $val  = $metric === 'passenger' ? ($r['passenger_total'] ?? 0) : ($r['aircraft_total'] ?? 0);
+
+            if (!isset($fleetBuckets[$type])) {
+                $fleetBuckets[$type] = [
+                    'aircraft_type'   => $type,
+                    'category'        => $cat,
+                    'wtc'             => $wtc,
+                    'aircraft_total'  => 0,
+                    'passenger_total' => 0,
+                ];
+            }
+            $fleetBuckets[$type]['aircraft_total']  += (int)($r['aircraft_total'] ?? 0);
+            $fleetBuckets[$type]['passenger_total'] += (int)($r['passenger_total'] ?? 0);
+
+            $categoryShare[$cat] = ($categoryShare[$cat] ?? 0) + $val;
+            $wtcShare[$wtc]      = ($wtcShare[$wtc] ?? 0) + $val;
+        }
+        uasort($fleetBuckets, function ($a, $b) use ($metric) {
+            $key = $metric === 'passenger' ? 'passenger_total' : 'aircraft_total';
+            return $b[$key] <=> $a[$key];
+        });
+        $dau6Fleet = [
+            'types'          => array_slice(array_values($fleetBuckets), 0, 15),
+            'category_share' => $categoryShare,
+            'wtc_share'      => $wtcShare,
+        ];
+
+        // DAU10A Heatmap Matrix
         $heatmapMatrix = [];
         if ($reportType === 'DAU10A') {
             $allTerminals = ['1', '2F', '3U', '1B', '2D', '2E', '1C'];
@@ -773,7 +1297,6 @@ class DauDashboardController extends Controller
                 $heatmapMatrix[$term] = [];
                 foreach ($hourlyDistribution as $hItem) {
                     $hKey = $hItem['hour'];
-                    // Find record matching term and hour
                     $val = 0;
                     foreach ($filtered as $r) {
                         if (($r['terminal'] ?? '') === $term && (($r['hour'] ?? $r['period'] ?? '') === $hKey)) {
@@ -792,6 +1315,72 @@ class DauDashboardController extends Controller
             }
         }
 
+        // DAU4B Heatmap Matrix
+        $dau4bMatrix = [];
+        if ($reportType === 'DAU4B') {
+            $topCities = array_slice(array_keys($airportBuckets), 0, 20);
+            $topAirlines = array_slice(array_keys($airlineBuckets), 0, 15);
+            $matrixGrid = [];
+            foreach ($topCities as $cKey) {
+                $matrixGrid[$cKey] = [];
+                foreach ($topAirlines as $aKey) {
+                    $mVal = 0;
+                    foreach ($filtered as $r) {
+                        $matchCity = (($r['city'] ?? $r['airport_route'] ?? '') === $cKey);
+                        $matchAir  = (($r['airline'] ?? $r['operator_name'] ?? $r['airline_code'] ?? '') === $aKey);
+                        if ($matchCity && $matchAir) {
+                            $mVal += ($metric === 'passenger' ? ($r['passenger_total'] ?? 0) : ($r['aircraft_total'] ?? 0));
+                        }
+                    }
+                    $matrixGrid[$cKey][$aKey] = $mVal;
+                }
+            }
+            $dau4bMatrix = [
+                'cities'   => $topCities,
+                'airlines' => $topAirlines,
+                'grid'     => $matrixGrid,
+            ];
+        }
+
+        // DAU11: Traffic flow breakdown
+        $dau11Flow = [
+            'dom_arr' => 0, 'dom_dep' => 0, 'dom_transit' => 0, 'dom_transfer' => 0,
+            'int_arr' => 0, 'int_dep' => 0, 'int_transit' => 0, 'int_transfer' => 0,
+        ];
+        foreach ($filtered as $r) {
+            $dau11Flow['dom_arr']     += (int)($r['passenger_dom_arrival'] ?? 0);
+            $dau11Flow['dom_dep']     += (int)($r['passenger_dom_departure'] ?? 0);
+            $dau11Flow['dom_transit'] += (int)($r['passenger_dom_transit'] ?? 0);
+            $dau11Flow['dom_transfer']+= (int)($r['passenger_dom_transfer'] ?? 0);
+            $dau11Flow['int_arr']     += (int)($r['passenger_int_arrival'] ?? 0);
+            $dau11Flow['int_dep']     += (int)($r['passenger_int_departure'] ?? 0);
+            $dau11Flow['int_transit'] += (int)($r['passenger_int_transit'] ?? 0);
+            $dau11Flow['int_transfer']+= (int)($r['passenger_int_transfer'] ?? 0);
+        }
+
+        // DAU12: Grouped columns (Arrival Dom/Int vs Departure Dom/Int)
+        $dau12Matrix = [
+            'aircraft' => [
+                'arr_dom' => 0, 'arr_int' => 0,
+                'dep_dom' => 0, 'dep_int' => 0,
+            ],
+            'passenger' => [
+                'arr_dom' => 0, 'arr_int' => 0,
+                'dep_dom' => 0, 'dep_int' => 0,
+            ],
+        ];
+        foreach ($filtered as $r) {
+            $dau12Matrix['aircraft']['arr_dom'] += (int)($r['aircraft_arr_domestic'] ?? 0);
+            $dau12Matrix['aircraft']['arr_int'] += (int)($r['aircraft_arr_int'] ?? 0);
+            $dau12Matrix['aircraft']['dep_dom'] += (int)($r['aircraft_dep_domestic'] ?? 0);
+            $dau12Matrix['aircraft']['dep_int'] += (int)($r['aircraft_dep_int'] ?? 0);
+
+            $dau12Matrix['passenger']['arr_dom'] += (int)($r['passenger_arr_domestic'] ?? 0);
+            $dau12Matrix['passenger']['arr_int'] += (int)($r['passenger_arr_int'] ?? 0);
+            $dau12Matrix['passenger']['dep_dom'] += (int)($r['passenger_dep_domestic'] ?? 0);
+            $dau12Matrix['passenger']['dep_int'] += (int)($r['passenger_dep_int'] ?? 0);
+        }
+
         return [
             'filtered_records'    => $filtered,
             'summary'             => $summary,
@@ -799,6 +1388,17 @@ class DauDashboardController extends Controller
             'hourly_distribution' => $hourlyDistribution,
             'terminal_comparison' => $terminalComparison,
             'heatmap_matrix'      => $heatmapMatrix,
+            'dau1_routes'         => $topRoutes,
+            'dau2_distribution'   => $dau2Distribution,
+            'dau3_status'         => $dau3Status,
+            'dau4_diverging'      => $dau4Diverging,
+            'dau4b_matrix'        => $dau4bMatrix,
+            'dau5_pareto'         => $dau5Pareto,
+            'dau5a_crew'          => $dau5aCrew,
+            'dau5b_terminals'     => $dau5bTerminals,
+            'dau6_fleet'          => $dau6Fleet,
+            'dau11_flow'          => $dau11Flow,
+            'dau12_matrix'        => $dau12Matrix,
         ];
     }
 }

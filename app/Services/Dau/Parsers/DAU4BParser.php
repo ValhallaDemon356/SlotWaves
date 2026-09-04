@@ -120,6 +120,8 @@ class DAU4BParser extends BaseDauParser
                 'no'               => $this->toInt($first),
                 'city'             => $city,
                 'city_code'        => $iata,
+                'aircraft_total'   => $rowTotFlights,
+                'passenger_total'  => $rowTotPax,
                 'total_flights'    => $rowTotFlights,
                 'total_passengers' => $rowTotPax,
                 'airlines'         => $airlineBreakdown,

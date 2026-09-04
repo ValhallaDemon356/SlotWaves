@@ -27,7 +27,7 @@ class DAU6Parser extends BaseDauParser
 
         $dataStartIndex = 3;
         foreach ($rawRows as $idx => $row) {
-            if (isset($row[0]) && is_numeric($row[0]) && (int)$row[0] === 1 && !empty($row[1])) {
+            if (isset($row[0]) && is_numeric($row[0]) && (int)$row[0] === 1 && !empty($row[1]) && !is_numeric($row[1])) {
                 $dataStartIndex = $idx;
                 break;
             }
@@ -43,7 +43,7 @@ class DAU6Parser extends BaseDauParser
                 continue;
             }
 
-            if (!is_numeric($first)) continue;
+            if (!is_numeric($first) || is_numeric($second)) continue;
 
             $arrAc  = $this->toInt($row[2] ?? 0);
             $depAc  = $this->toInt($row[3] ?? 0);
@@ -60,9 +60,27 @@ class DAU6Parser extends BaseDauParser
             $cargo    = $this->toInt($row[18] ?? 0);
             $pos      = $this->toInt($row[21] ?? 0);
 
+            // Deterministic classification based on ICAO aircraft standards
+            $upperType = strtoupper($second);
+            $category = 'Narrow Body';
+            $wtc = 'Medium';
+
+            if (preg_match('/(330|340|350|380|747|767|777|787)/', $upperType)) {
+                $category = 'Wide Body';
+                $wtc = 'Heavy';
+            } elseif (preg_match('/(ATR|CRJ|ERJ|EMB|FOKKER|DASH|DHC|Q400|PROP)/', $upperType)) {
+                $category = 'Regional / Turboprop';
+                $wtc = 'Medium';
+            } elseif (preg_match('/(C208|CESSNA|OTTER|CARAVAN|PILATUS|BEECH)/', $upperType)) {
+                $category = 'Light Aircraft';
+                $wtc = 'Light';
+            }
+
             $rec = [
                 'no'                  => $this->toInt($first),
                 'aircraft_type'       => $second,
+                'category'            => $category,
+                'wtc'                 => $wtc,
                 'aircraft_arrival'    => $arrAc,
                 'aircraft_departure'  => $depAc,
                 'aircraft_total'      => $totAc,

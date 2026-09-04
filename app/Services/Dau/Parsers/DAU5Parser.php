@@ -27,7 +27,7 @@ class DAU5Parser extends BaseDauParser
 
         $dataStartIndex = 3;
         foreach ($rawRows as $idx => $row) {
-            if (isset($row[0]) && is_numeric($row[0]) && (int)$row[0] === 1 && !empty($row[1])) {
+            if (isset($row[0]) && is_numeric($row[0]) && (int)$row[0] === 1 && !empty($row[1]) && !is_numeric($row[1])) {
                 $dataStartIndex = $idx;
                 break;
             }
@@ -43,7 +43,7 @@ class DAU5Parser extends BaseDauParser
                 continue;
             }
 
-            if (!is_numeric($first)) continue;
+            if (!is_numeric($first) || is_numeric($second)) continue;
 
             $arrAc  = $this->toInt($row[2] ?? 0);
             $depAc  = $this->toInt($row[3] ?? 0);
