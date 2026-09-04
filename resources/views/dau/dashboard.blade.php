@@ -2314,6 +2314,71 @@ function dauEnhancedDashboard() {
             };
         },
 
+        get chartMaxScale() {
+            const list = (this.hourlyCapacityAnalysis && this.hourlyCapacityAnalysis.list) ? this.hourlyCapacityAnalysis.list : [];
+            const maxArr = Math.max(...list.map(d => Number(d.arr || 0)), 0);
+            const maxDep = Math.max(...list.map(d => Number(d.dep || 0)), 0);
+            const maxCap = Math.max(Number(this.arrivalCapacity || 6), Number(this.departureCapacity || 6));
+            const maxMovement = Math.max(maxArr, maxDep, maxCap);
+            return Math.max(Math.ceil(maxMovement * 1.15), maxMovement + 2, 8);
+        },
+
+        get gridArrNacOffsetPx() {
+            const ratio = Math.min(1, Math.max(0, (Number(this.arrivalCapacity) || 6) / this.chartMaxScale));
+            return Math.round(ratio * 115);
+        },
+
+        get gridDepNacOffsetPx() {
+            const ratio = Math.min(1, Math.max(0, (Number(this.departureCapacity) || 6) / this.chartMaxScale));
+            return Math.round(ratio * 115);
+        },
+
+        get gridNacOffsetPx() {
+            return this.gridArrNacOffsetPx;
+        },
+
+        get gridHalfNacOffsetPx() {
+            const ratio = Math.min(1, Math.max(0, ((Number(this.arrivalCapacity) || 6) * 0.5) / this.chartMaxScale));
+            return Math.round(ratio * 115);
+        },
+
+        get envelopeCoords() {
+            const list = (this.hourlyCapacityAnalysis && this.hourlyCapacityAnalysis.list) ? this.hourlyCapacityAnalysis.list : [];
+            const totalCols = list.length;
+            if (totalCols === 0) {
+                return { left: 0, width: 100, top: 20, bottom: 20, isVisible: false };
+            }
+            
+            let startIndex = list.findIndex(d => d.isOps);
+            let endIndex = -1;
+            for (let i = list.length - 1; i >= 0; i--) {
+                if (list[i].isOps) {
+                    endIndex = i;
+                    break;
+                }
+            }
+            
+            if (startIndex === -1 || endIndex === -1) {
+                return { left: 0, width: 100, top: 20, bottom: 20, isVisible: false };
+            }
+            
+            const leftPct = (startIndex / totalCols) * 100;
+            const widthPct = ((endIndex - startIndex + 1) / totalCols) * 100;
+            
+            const arrRatio = Math.min(1, Math.max(0, (Number(this.arrivalCapacity) || 6) / this.chartMaxScale));
+            const depRatio = Math.min(1, Math.max(0, (Number(this.departureCapacity) || 6) / this.chartMaxScale));
+            const topPx = Math.max(4, Math.round(140 - (arrRatio * 115)));
+            const bottomPx = Math.max(4, Math.round(140 - (depRatio * 115)));
+            
+            return {
+                left: leftPct,
+                width: widthPct,
+                top: topPx,
+                bottom: bottomPx,
+                isVisible: true
+            };
+        },
+
         // Chart.js Manager
         initCharts() {
             if (!window.Chart) return;

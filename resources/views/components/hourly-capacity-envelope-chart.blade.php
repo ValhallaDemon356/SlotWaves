@@ -40,6 +40,54 @@
              statusClass: '',
              extra: null
          },
+         get safeMaxScale() {
+             if (typeof this.chartMaxScale !== 'undefined' && this.chartMaxScale > 0 && !isNaN(this.chartMaxScale)) {
+                 return this.chartMaxScale;
+             }
+             @if($mode === 'schedule')
+                 const list = this.activeHourlyDistribution || [];
+                 const maxArr = Math.max(...list.map(d => (d.arrCount || 0) + (d.opcCount || 0)), 0);
+                 const maxDep = Math.max(...list.map(d => (d.depCount || 0)), 0);
+                 const maxCap = Math.max(Number(this.arrivalCapacity || 6), Number(this.departureCapacity || 6), Number(this.nacLimit || 6));
+             @else
+                 const list = (this.hourlyCapacityAnalysis && this.hourlyCapacityAnalysis.list) ? this.hourlyCapacityAnalysis.list : [];
+                 const maxArr = Math.max(...list.map(d => Number(d.arr || 0)), 0);
+                 const maxDep = Math.max(...list.map(d => Number(d.dep || 0)), 0);
+                 const maxCap = Math.max(Number(this.arrivalCapacity || 6), Number(this.departureCapacity || 6));
+             @endif
+             const maxVal = Math.max(maxArr, maxDep, maxCap);
+             return Math.max(Math.ceil(maxVal * 1.15), maxVal + 2, 8);
+         },
+         get safeEnvelope() {
+             if (typeof this.envelopeCoords !== 'undefined' && this.envelopeCoords && this.envelopeCoords.isVisible) {
+                 return this.envelopeCoords;
+             }
+             @if($mode === 'schedule')
+                 const list = this.activeHourlyDistribution || [];
+             @else
+                 const list = (this.hourlyCapacityAnalysis && this.hourlyCapacityAnalysis.list) ? this.hourlyCapacityAnalysis.list : [];
+             @endif
+             const totalCols = list.length;
+             if (totalCols === 0) return { left: 0, width: 100, top: 20, bottom: 20, isVisible: false };
+             let startIndex = list.findIndex(d => d.isOps);
+             let endIndex = -1;
+             for (let i = list.length - 1; i >= 0; i--) {
+                 if (list[i].isOps) { endIndex = i; break; }
+             }
+             if (startIndex === -1 || endIndex === -1) return { left: 0, width: 100, top: 20, bottom: 20, isVisible: false };
+             const leftPct = (startIndex / totalCols) * 100;
+             const widthPct = ((endIndex - startIndex + 1) / totalCols) * 100;
+             const scale = this.safeMaxScale;
+             const arrRatio = Math.min(1, Math.max(0, (Number(this.arrivalCapacity) || 6) / scale));
+             const depRatio = Math.min(1, Math.max(0, (Number(this.departureCapacity) || 6) / scale));
+             return {
+                 left: leftPct,
+                 width: widthPct,
+                 top: Math.max(4, Math.round(140 - (arrRatio * 115))),
+                 bottom: Math.max(4, Math.round(140 - (depRatio * 115))),
+                 isVisible: true
+             };
+         },
          updateTooltipPos(e) {
              const tipWidth = 230;
              const tipHeight = 140;
@@ -269,26 +317,26 @@
 
     {{-- ══ TWO-DIRECTION CHART VISUAL CANVAS ══════════════════════════════ --}}
     <div class="relative py-2 overflow-x-auto custom-scrollbar" id="two-direction-capacity-chart-container">
-        <div class="relative min-w-[560px] sm:min-w-[620px] w-full select-none">
+        <div class="relative min-w-[560px] sm:min-w-[620px] w-full select-none min-h-[320px]">
             
             {{-- Accessible Reference Markers for automated test suites --}}
             <div class="sr-only" aria-hidden="true">
                 <span>Batas Aircraft Capacity - ARR:</span>
                 <span>DEP:</span>
-                <span x-text="gridNacOffsetPx"></span>
-                <span x-text="gridHalfNacOffsetPx"></span>
+                <span x-text="typeof gridNacOffsetPx !== 'undefined' ? gridNacOffsetPx : safeEnvelope.top"></span>
+                <span x-text="typeof gridHalfNacOffsetPx !== 'undefined' ? gridHalfNacOffsetPx : Math.round(safeEnvelope.top / 2)"></span>
                 <span>Aircraft Capacity</span>
             </div>
 
             {{-- ── LAYER 1: ONE SINGLE DASHED OPERATIONAL CAPACITY ENVELOPE ── --}}
             {{-- Connected dashed rectangle bounded by: Top=ARR Cap, Bottom=DEP Cap, Left=Ops Start, Right=Ops End --}}
-            <template x-if="{{ $mode === 'schedule' ? 'envelopeCoords.isVisible' : '(selectedMetric === \'aircraft\' && envelopeCoords.isVisible)' }}">
+            <template x-if="{{ $mode === 'schedule' ? 'safeEnvelope.isVisible' : '(selectedMetric === \'aircraft\' && safeEnvelope.isVisible)' }}">
                 <div class="absolute z-1 transition-all duration-200 pointer-events-none rounded-xs border-t-2 border-b-2 border-l-2 border-r-2 border-dashed border-t-amber-500 border-b-blue-500 border-l-emerald-500 border-r-emerald-500 bg-emerald-500/[0.02] dark:bg-emerald-500/[0.03]"
                      :style="{
-                         left: envelopeCoords.left + '%',
-                         width: envelopeCoords.width + '%',
-                         top: envelopeCoords.top + 'px',
-                         bottom: envelopeCoords.bottom + 'px'
+                         left: safeEnvelope.left + '%',
+                         width: safeEnvelope.width + '%',
+                         top: safeEnvelope.top + 'px',
+                         bottom: safeEnvelope.bottom + 'px'
                      }"
                      title="Batas Aircraft Capacity">
                     
@@ -365,28 +413,28 @@
                             </template>
 
                             {{-- Stacked Activity Bar: OPC (Purple) on Top of Arrivals (Orange) --}}
-                            <div class="w-full max-w-[24px] sm:max-w-[28px] flex flex-col justify-end gap-0.5 rounded-t-sm transition-all duration-200">
+                            <div class="w-full min-w-[8px] max-w-[24px] sm:max-w-[28px] flex flex-col justify-end gap-0.5 rounded-t-sm transition-all duration-200">
                                 
                                 @if($mode === 'schedule')
                                     {{-- OPC Block (Purple RON Overlay/Stack) --}}
                                     <template x-if="item.opcCount > 0">
-                                        <div class="w-full bg-purple-600 dark:bg-purple-500 rounded-t-xs transition-all duration-300 group-hover:brightness-110 shadow-2xs"
+                                        <div class="w-full min-w-[6px] bg-purple-600 dark:bg-purple-500 rounded-t-xs transition-all duration-300 group-hover:brightness-110 shadow-2xs"
                                              @mouseenter.stop="showBarTooltip($event, item, 'opc')"
                                              @mousemove.stop="updateTooltipPos($event)"
                                              @mouseleave.stop="showBarTooltip($event, item, 'arrival')"
-                                             :style="'height: ' + Math.max(3, Math.round((item.opcCount / chartMaxScale) * 115)) + 'px'"></div>
+                                             :style="'height: ' + Math.max(3, Math.round((item.opcCount / safeMaxScale) * 115)) + 'px'"></div>
                                     </template>
                                 @endif
 
                                 {{-- Arrival Bar (Orange, Grows Upward from Center) --}}
                                 <template x-if="{{ $mode === 'schedule' ? 'item.arrCount > 0' : 'item.arr > 0' }}">
-                                    <div class="w-full bg-amber-500 dark:bg-amber-500 hover:bg-amber-400 transition-all duration-300 shadow-2xs"
+                                    <div class="w-full min-w-[6px] bg-amber-500 dark:bg-amber-500 hover:bg-amber-400 transition-all duration-300 shadow-2xs"
                                          @if($mode === 'schedule')
                                              :class="item.opcCount > 0 ? 'rounded-none' : 'rounded-t-xs'"
                                          @else
                                              class="rounded-t-xs"
                                          @endif
-                                         :style="'height: ' + Math.max(3, Math.round(((@if($mode === 'schedule') item.arrCount @else item.arr @endif) / chartMaxScale) * 115)) + 'px'"></div>
+                                         :style="'height: ' + Math.max(4, Math.round(((@if($mode === 'schedule') item.arrCount @else item.arr @endif) / safeMaxScale) * 115)) + 'px'"></div>
                                 </template>
 
                                 {{-- Baseline tick if 0 arrivals --}}
@@ -399,9 +447,9 @@
                         {{-- ── CENTER TIME AXIS: TIME (Y=0 Baseline separating Arrival & Departure) ── --}}
                         <div class="w-full h-8 flex items-center justify-center border-y border-slate-200/90 dark:border-slate-800 bg-slate-100/90 dark:bg-navy-950/90 relative z-20 transition-colors cursor-pointer"
                              :class="[
-                                 item.isOps ? 'bg-slate-100/90 dark:bg-navy-950/90' : 'bg-slate-200/40 dark:bg-navy-950/40 opacity-75',
-                                 {{ $mode === 'schedule' ? '(selectedHour === item.hour)' : '(filterHour === item.hour)' }} ? 'border-aviation-500 dark:border-aviation-400 bg-aviation-100/60 dark:bg-aviation-950/80' : ''
-                             ]"
+                                  item.isOps ? 'bg-slate-100/90 dark:bg-navy-950/90' : 'bg-slate-200/40 dark:bg-navy-950/40 opacity-75',
+                                  {{ $mode === 'schedule' ? '(selectedHour === item.hour)' : '(filterHour === item.hour)' }} ? 'border-aviation-500 dark:border-aviation-400 bg-aviation-100/60 dark:bg-aviation-950/80' : ''
+                              ]"
                              @mouseenter="hideTooltip()"
                              @click.stop="@if($mode === 'schedule') selectHour(item.hour) @else setHourFilter(item.hour) @endif"
                              title="Click to filter this hour">
@@ -424,10 +472,10 @@
                              title="Click to filter Departures">
                             
                             {{-- Departure Bar (Blue, Grows Downward from Center) --}}
-                            <div class="w-full max-w-[24px] sm:max-w-[28px] flex flex-col justify-start rounded-b-sm transition-all duration-200">
+                            <div class="w-full min-w-[8px] max-w-[24px] sm:max-w-[28px] flex flex-col justify-start rounded-b-sm transition-all duration-200">
                                 <template x-if="{{ $mode === 'schedule' ? 'item.depCount > 0' : 'item.dep > 0' }}">
-                                    <div class="w-full bg-blue-600 dark:bg-blue-500 hover:bg-blue-400 rounded-b-xs transition-all duration-300 shadow-2xs"
-                                         :style="'height: ' + Math.max(3, Math.round(((@if($mode === 'schedule') item.depCount @else item.dep @endif) / chartMaxScale) * 115)) + 'px'"></div>
+                                    <div class="w-full min-w-[6px] bg-blue-600 dark:bg-blue-500 hover:bg-blue-400 rounded-b-xs transition-all duration-300 shadow-2xs"
+                                         :style="'height: ' + Math.max(4, Math.round(((@if($mode === 'schedule') item.depCount @else item.dep @endif) / safeMaxScale) * 115)) + 'px'"></div>
                                 </template>
 
                                 {{-- Baseline tick if 0 departures --}}
