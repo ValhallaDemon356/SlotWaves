@@ -22,7 +22,8 @@
     'height' => 140, // half-height in px for arrival / departure area
 ])
 
-<div class="space-y-3 flex flex-col justify-between h-full select-none"
+<div class="chart-shell space-y-3 flex flex-col justify-between h-full select-none"
+     @click.outside="hideTooltip()"
      x-data="{
          tooltip: {
              visible: false,
@@ -37,9 +38,10 @@
              capacity: 0,
              scope: '',
              status: '',
-             statusClass: '',
+             statusBadgeClass: '',
              extra: null
          },
+         posTicking: false,
          get safeMaxScale() {
              if (typeof this.chartMaxScale !== 'undefined' && this.chartMaxScale > 0 && !isNaN(this.chartMaxScale)) {
                  return this.chartMaxScale;
@@ -89,20 +91,51 @@
              };
          },
          updateTooltipPos(e) {
-             const tipWidth = 230;
-             const tipHeight = 140;
-             const offset = 14;
-             let x = e.clientX + offset;
-             let y = e.clientY + offset;
+             if (!this.tooltip.visible) return;
+             const clientX = e.clientX;
+             const clientY = e.clientY;
+             if (!this.posTicking) {
+                 this.posTicking = true;
+                 requestAnimationFrame(() => {
+                     this.calcTooltipPos(clientX, clientY);
+                     this.posTicking = false;
+                 });
+             }
+         },
+         calcTooltipPos(clientX, clientY) {
+             const tipWidth = 250;
+             const tipHeight = 230;
+             const offset = 16;
+             const vpW = window.innerWidth || document.documentElement.clientWidth;
+             const vpH = window.innerHeight || document.documentElement.clientHeight;
 
-             if (x + tipWidth > window.innerWidth - 8) {
-                 x = e.clientX - tipWidth - offset;
+             let x = clientX + offset;
+             let y = clientY + offset;
+
+             // Collision detection: Near right edge -> place to LEFT of cursor
+             if (clientX + offset + tipWidth > vpW - 14) {
+                 x = clientX - tipWidth - offset;
              }
-             if (y + tipHeight > window.innerHeight - 8) {
-                 y = e.clientY - tipHeight - offset;
+             // If placed left and goes off left edge -> clamp
+             if (x < 14) {
+                 x = Math.max(14, clientX + offset);
              }
-             this.tooltip.x = Math.max(8, x);
-             this.tooltip.y = Math.max(8, y);
+
+             // Collision detection: Near bottom edge -> place ABOVE cursor
+             if (clientY + offset + tipHeight > vpH - 14) {
+                 y = clientY - tipHeight - offset;
+             }
+             // If placed above and goes off top edge -> clamp
+             if (y < 14) {
+                 y = Math.max(14, clientY + offset);
+             }
+
+             // Strict clamp inside viewport
+             x = Math.max(12, Math.min(x, vpW - tipWidth - 12));
+             y = Math.max(12, Math.min(y, vpH - tipHeight - 12));
+
+             this.tooltip.x = Math.round(x);
+             this.tooltip.y = Math.round(y);
          },
          showBarTooltip(e, item, type) {
              const isArr = type === 'arrival';
@@ -111,7 +144,7 @@
 
              @if($mode === 'schedule')
                  const tz = this.displayTimezoneLabel || 'WIB';
-                 let scope = 'AIRPORT WIDE';
+                 let scope = 'ALL TERMINALS';
              @else
                  const tz = 'WIB';
                  let scope = (this.filterTerminal && this.filterTerminal !== 'ALL') ? ('TERMINAL ' + String(this.filterTerminal).replace(/^Terminal\s*/i, '').toUpperCase()) : 'ALL TERMINALS';
@@ -126,17 +159,17 @@
                  @endif
                  const cap = Number(this.arrivalCapacity || 6);
                  let status = 'AVAILABLE';
-                 let statusClass = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50';
+                 let statusBadgeClass = 'bg-emerald-600 text-white border-emerald-400 font-black shadow-xs';
 
                  if (!item.isOps) {
                      status = 'OFF HOURS';
-                     statusClass = 'bg-slate-800 text-slate-400 border-slate-700';
+                     statusBadgeClass = 'bg-slate-700 text-slate-200 border-slate-500 font-bold';
                  } else if (actual > cap) {
                      status = 'OVER CAPACITY';
-                     statusClass = 'bg-purple-500/20 text-purple-300 border-purple-500/50';
+                     statusBadgeClass = 'bg-purple-600 text-white border-purple-400 font-black shadow-xs';
                  } else if (actual === cap && cap > 0) {
                      status = 'FULL / MAX';
-                     statusClass = 'bg-amber-500/20 text-amber-300 border-amber-500/50';
+                     statusBadgeClass = 'bg-amber-500 text-slate-950 border-amber-300 font-black shadow-xs';
                  }
 
                  this.tooltip = {
@@ -152,7 +185,7 @@
                      capacity: cap,
                      scope: scope,
                      status: status,
-                     statusClass: statusClass,
+                     statusBadgeClass: statusBadgeClass,
                      extra: null
                  };
              } else if (isDep) {
@@ -163,17 +196,17 @@
                  @endif
                  const cap = Number(this.departureCapacity || 6);
                  let status = 'AVAILABLE';
-                 let statusClass = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50';
+                 let statusBadgeClass = 'bg-emerald-600 text-white border-emerald-400 font-black shadow-xs';
 
                  if (!item.isOps) {
                      status = 'OFF HOURS';
-                     statusClass = 'bg-slate-800 text-slate-400 border-slate-700';
+                     statusBadgeClass = 'bg-slate-700 text-slate-200 border-slate-500 font-bold';
                  } else if (actual > cap) {
                      status = 'OVER CAPACITY';
-                     statusClass = 'bg-purple-500/20 text-purple-300 border-purple-500/50';
+                     statusBadgeClass = 'bg-purple-600 text-white border-purple-400 font-black shadow-xs';
                  } else if (actual === cap && cap > 0) {
                      status = 'FULL / MAX';
-                     statusClass = 'bg-blue-500/20 text-blue-300 border-blue-500/50';
+                     statusBadgeClass = 'bg-blue-600 text-white border-blue-400 font-black shadow-xs';
                  }
 
                  this.tooltip = {
@@ -189,7 +222,7 @@
                      capacity: cap,
                      scope: scope,
                      status: status,
-                     statusClass: statusClass,
+                     statusBadgeClass: statusBadgeClass,
                      extra: null
                  };
              } else if (isOpc) {
@@ -207,11 +240,13 @@
                      capacity: null,
                      scope: scope,
                      status: 'RON STAND OCCUPIED',
-                     statusClass: 'bg-purple-500/20 text-purple-300 border-purple-500/50',
+                     statusBadgeClass: 'bg-purple-600 text-white border-purple-400 font-black shadow-xs',
                      extra: 'RON Parking Stand Occupied'
                  };
              }
-             this.updateTooltipPos(e);
+             if (e && e.clientX) {
+                 this.calcTooltipPos(e.clientX, e.clientY);
+             }
          },
          hideTooltip() {
              this.tooltip.visible = false;
@@ -328,43 +363,83 @@
                 <span>Aircraft Capacity</span>
             </div>
 
-            {{-- ── LAYER 1: ONE SINGLE DASHED OPERATIONAL CAPACITY ENVELOPE ── --}}
+            {{-- ── LAYER 5: ONE CONNECTED OPERATIONAL CAPACITY ENVELOPE (SVG Vector Rendering) ── --}}
             {{-- Connected dashed rectangle bounded by: Top=ARR Cap, Bottom=DEP Cap, Left=Ops Start, Right=Ops End --}}
             <template x-if="{{ $mode === 'schedule' ? 'safeEnvelope.isVisible' : '(selectedMetric === \'aircraft\' && safeEnvelope.isVisible)' }}">
-                <div class="absolute z-1 transition-all duration-200 pointer-events-none rounded-xs border-t-2 border-b-2 border-l-2 border-r-2 border-dashed border-t-amber-500 border-b-blue-500 border-l-emerald-500 border-r-emerald-500 bg-emerald-500/[0.02] dark:bg-emerald-500/[0.03]"
+                <div class="absolute z-5 transition-all duration-200 pointer-events-none"
                      :style="{
                          left: safeEnvelope.left + '%',
                          width: safeEnvelope.width + '%',
                          top: safeEnvelope.top + 'px',
                          bottom: safeEnvelope.bottom + 'px'
                      }"
-                     title="Batas Aircraft Capacity">
+                     title="Batas Aircraft Capacity Envelope">
                     
-                    {{-- PINNED CORNER LABELS (Positioned outside plot area so they never overlap bars) --}}
-                    {{-- 1. Top-left corner: ARR CAP +[X] A/C --}}
-                    <div class="absolute -top-5 left-0 flex items-center gap-1 font-mono text-[8.5px] font-black text-amber-600 dark:text-amber-400 bg-white/95 dark:bg-navy-900/95 px-1.5 py-0.5 rounded shadow-2xs border border-amber-400/80 dark:border-amber-600/80 whitespace-nowrap z-20 pointer-events-none"
+                    {{-- Connected Dashed Envelope SVG (Precise stroke-dasharray & strong high-contrast colors) --}}
+                    <svg class="absolute inset-0 w-full h-full overflow-visible" preserveAspectRatio="none">
+                        {{-- Subtle interior fill connecting all 4 boundaries into one unified operational zone --}}
+                        <rect x="0" y="0" width="100%" height="100%" 
+                              fill="#059669" fill-opacity="0.03"
+                              class="dark:fill-emerald-400 dark:fill-opacity-5" />
+                        
+                        {{-- TOP: Arrival Capacity Line (Strong Orange, stroke-dasharray: 4 4, 2.5px) --}}
+                        <line x1="0" y1="0" x2="100%" y2="0"
+                              stroke="#F59E0B"
+                              stroke-width="2.5"
+                              stroke-dasharray="4 4"
+                              stroke-linecap="round"
+                              class="dark:stroke-amber-400" />
+                              
+                        {{-- BOTTOM: Departure Capacity Line (Strong Blue, stroke-dasharray: 4 4, 2.5px) --}}
+                        <line x1="0" y1="100%" x2="100%" y2="100%"
+                              stroke="#2563EB"
+                              stroke-width="2.5"
+                              stroke-dasharray="4 4"
+                              stroke-linecap="round"
+                              class="dark:stroke-blue-400" />
+                              
+                        {{-- LEFT: Operating Hours Start Boundary (Strong Green, stroke-dasharray: 6 4, 2.5px) --}}
+                        <line x1="0" y1="0" x2="0" y2="100%"
+                              stroke="#059669"
+                              stroke-width="2.5"
+                              stroke-dasharray="6 4"
+                              stroke-linecap="round"
+                              class="dark:stroke-emerald-400" />
+                              
+                        {{-- RIGHT: Operating Hours End Boundary (Strong Green, stroke-dasharray: 6 4, 2.5px) --}}
+                        <line x1="100%" y1="0" x2="100%" y2="100%"
+                              stroke="#059669"
+                              stroke-width="2.5"
+                              stroke-dasharray="6 4"
+                              stroke-linecap="round"
+                              class="dark:stroke-emerald-400" />
+                    </svg>
+
+                    {{-- PINNED LABELS: Non-overlapping, high-contrast dark text on light background in Light Mode --}}
+                    {{-- 1. Top Label: ARR CAP +[X] A/C (Positioned above top boundary line) --}}
+                    <div class="absolute -top-6 left-2 flex items-center gap-1 font-mono text-[9px] font-black bg-white dark:bg-navy-900 text-slate-900 dark:text-white px-2 py-0.5 rounded shadow-xs border border-amber-500 whitespace-nowrap z-20 pointer-events-none"
                          title="Batas Aircraft Capacity - ARR:">
-                        ARR CAP +<span x-text="arrivalCapacity"></span> A/C
+                        ARR CAP +<span class="text-amber-600 dark:text-amber-400 font-extrabold" x-text="arrivalCapacity"></span> A/C
                     </div>
 
-                    {{-- 2. Bottom-left corner: DEP CAP -[Y] A/C --}}
-                    <div class="absolute -bottom-5 left-0 flex items-center gap-1 font-mono text-[8.5px] font-black text-blue-600 dark:text-blue-400 bg-white/95 dark:bg-navy-900/95 px-1.5 py-0.5 rounded shadow-2xs border border-blue-400/80 dark:border-blue-600/80 whitespace-nowrap z-20 pointer-events-none"
+                    {{-- 2. Bottom Label: DEP CAP -[Y] A/C (Positioned below bottom boundary line) --}}
+                    <div class="absolute -bottom-6 left-2 flex items-center gap-1 font-mono text-[9px] font-black bg-white dark:bg-navy-900 text-slate-900 dark:text-white px-2 py-0.5 rounded shadow-xs border border-blue-500 whitespace-nowrap z-20 pointer-events-none"
                          title="DEP:">
-                        DEP CAP -<span x-text="departureCapacity"></span> A/C
+                        DEP CAP -<span class="text-blue-600 dark:text-blue-400 font-extrabold" x-text="departureCapacity"></span> A/C
                     </div>
 
-                    {{-- 3. Far-left: OPS [Start] (Positioned on the green dashed vertical line, outside top) --}}
-                    <div class="absolute -top-5.5 -left-3.5 flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-white/95 dark:bg-navy-900/95 border border-emerald-500 text-emerald-700 dark:text-emerald-400 font-mono text-[8px] leading-tight shadow-xs whitespace-nowrap z-20 pointer-events-none"
+                    {{-- 3. Left Boundary Label: OPS [Start] (Positioned on the green dashed vertical line at Time Axis) --}}
+                    <div class="absolute top-1/2 -translate-y-1/2 -left-2.5 -translate-x-full flex items-center gap-1 px-1.5 py-0.5 rounded bg-white dark:bg-navy-900 border border-emerald-600 dark:border-emerald-500 text-slate-900 dark:text-white font-mono text-[8.5px] shadow-xs whitespace-nowrap z-20 pointer-events-none"
                          title="Operating Hours Start">
-                        <span class="font-black text-[7px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400">OPS</span>
-                        <span class="font-black text-slate-900 dark:text-white" x-text="opsStartTime"></span>
+                        <span class="font-black text-[7.5px] uppercase tracking-wider text-emerald-700 dark:text-emerald-400">OPS</span>
+                        <span class="font-bold text-slate-900 dark:text-white" x-text="opsStartTime"></span>
                     </div>
 
-                    {{-- 4. Far-right: OPS [End] (Positioned on the green dashed vertical line, outside top) --}}
-                    <div class="absolute -top-5.5 -right-3.5 flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-white/95 dark:bg-navy-900/95 border border-emerald-500 text-emerald-700 dark:text-emerald-400 font-mono text-[8px] leading-tight shadow-xs whitespace-nowrap z-20 pointer-events-none"
+                    {{-- 4. Right Boundary Label: OPS [End] (Positioned on the green dashed vertical line at Time Axis) --}}
+                    <div class="absolute top-1/2 -translate-y-1/2 -right-2.5 translate-x-full flex items-center gap-1 px-1.5 py-0.5 rounded bg-white dark:bg-navy-900 border border-emerald-600 dark:border-emerald-500 text-slate-900 dark:text-white font-mono text-[8.5px] shadow-xs whitespace-nowrap z-20 pointer-events-none"
                          title="Operating Hours End">
-                        <span class="font-black text-[7px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400">OPS</span>
-                        <span class="font-black text-slate-900 dark:text-white" x-text="opsEndTime"></span>
+                        <span class="font-black text-[7.5px] uppercase tracking-wider text-emerald-700 dark:text-emerald-400">OPS</span>
+                        <span class="font-bold text-slate-900 dark:text-white" x-text="opsEndTime"></span>
                     </div>
                 </div>
             </template>
@@ -385,6 +460,7 @@
                              @mouseenter="showBarTooltip($event, item, 'arrival')"
                              @mousemove="updateTooltipPos($event)"
                              @mouseleave="hideTooltip()"
+                             @touchstart.passive="showBarTooltip($event, item, 'arrival')"
                              @click.stop="@if($mode === 'schedule') selectHourWithDirection(item.hour, 'arrivals') @else setHourFilter(item.hour) @endif"
                              title="Click to filter Arrivals">
                             
@@ -468,6 +544,7 @@
                              @mouseenter="showBarTooltip($event, item, 'departure')"
                              @mousemove="updateTooltipPos($event)"
                              @mouseleave="hideTooltip()"
+                             @touchstart.passive="showBarTooltip($event, item, 'departure')"
                              @click.stop="@if($mode === 'schedule') selectHourWithDirection(item.hour, 'departures') @else setHourFilter(item.hour) @endif"
                              title="Click to filter Departures">
                             
@@ -589,49 +666,56 @@
         @endif
     </div>
 
-    {{-- ══ CURSOR-FOLLOWING INTERACTIVE TOOLTIP (Only shown when hovering bars) ════ --}}
-    <div x-show="tooltip.visible"
-         x-cloak
-         class="fixed z-100 pointer-events-none w-[230px] p-2.5 bg-slate-900/95 dark:bg-navy-950/95 text-white backdrop-blur-md rounded-xl shadow-2xl border border-slate-700/80 text-xs select-none transition-opacity duration-100"
-         :style="'left: ' + tooltip.x + 'px; top: ' + tooltip.y + 'px;'"
-         style="display: none;">
-        
-        {{-- Tooltip Header: Hour & Status Pill --}}
-        <div class="flex items-center justify-between border-b border-slate-700/60 pb-1 mb-1.5">
-            <span class="font-mono font-bold text-[11px] text-slate-100" x-text="tooltip.hourLabel"></span>
-            <span class="text-[8px] font-black uppercase font-mono px-1.5 py-0.5 rounded border"
-                  :class="tooltip.statusClass"
-                  x-text="tooltip.status"></span>
-        </div>
-
-        {{-- Type with colored icon (🟠 Arrival or 🔵 Departure or 🟣 OPC) --}}
-        <div class="flex items-center gap-1.5 mb-1.5 text-[11px] font-bold" :class="tooltip.typeColor">
-            <span x-text="tooltip.icon"></span>
-            <span x-text="tooltip.typeLabel"></span>
-        </div>
-
-        {{-- Main Data Stat: Aircraft Count / Capacity --}}
-        <div class="bg-slate-800/80 dark:bg-navy-900/80 rounded-lg p-2 border border-slate-700/50 mb-1.5">
-            <div class="text-[8.5px] font-mono text-slate-400 uppercase tracking-wider">Aircraft</div>
-            <div class="flex items-baseline gap-1 font-mono">
-                <span class="text-base font-black text-white" x-text="tooltip.actual"></span>
-                <template x-if="tooltip.capacity !== null">
-                    <span class="text-xs font-bold text-slate-400">/ <span x-text="tooltip.capacity"></span> A/C</span>
-                </template>
-                <template x-if="tooltip.capacity === null">
-                    <span class="text-xs font-bold text-slate-400">A/C</span>
-                </template>
+    {{-- ══ TOOLTIP OVERLAY LAYER (#chart-tooltip-overlay) ════════════════ --}}
+    <div id="chart-tooltip-overlay" class="tooltip-overlay pointer-events-none">
+        <div x-show="tooltip.visible"
+             x-cloak
+             class="fixed z-[9999] pointer-events-none w-[245px] min-w-[220px] max-w-[280px] p-3 bg-slate-900/95 dark:bg-navy-950/95 text-white backdrop-blur-md rounded-xl shadow-2xl border border-slate-700/80 text-xs select-none transition-opacity duration-150 ease-out"
+             :style="'left: ' + tooltip.x + 'px; top: ' + tooltip.y + 'px; z-index: 9999;'"
+             style="display: none;">
+            
+            {{-- Tooltip Header: Hour in Monospace --}}
+            <div class="font-mono font-bold text-[11px] text-slate-300 tracking-wide pb-1.5 border-b border-slate-800 flex items-center justify-between">
+                <span x-text="tooltip.hourLabel"></span>
             </div>
-        </div>
 
-        {{-- Scope --}}
-        <div class="flex items-center justify-between text-[10px] font-mono text-slate-400">
-            <span>Scope:</span>
-            <span class="font-bold text-slate-200" x-text="tooltip.scope"></span>
-        </div>
+            {{-- Direction: Bold with colored icon (🟠 ARRIVAL or 🔵 DEPARTURE or 🟣 OPC) --}}
+            <div class="flex items-center gap-1.5 mt-2 mb-2 text-xs font-black tracking-wide" :class="tooltip.typeColor">
+                <span class="text-sm" x-text="tooltip.icon"></span>
+                <span x-text="tooltip.typeLabel"></span>
+            </div>
 
-        <template x-if="tooltip.extra">
-            <div class="text-[9px] font-mono text-purple-300/80 mt-1 pt-1 border-t border-slate-700/60" x-text="tooltip.extra"></div>
-        </template>
+            {{-- Main Data Stat: Aircraft Count / Capacity --}}
+            <div class="bg-slate-800/90 dark:bg-navy-900/90 rounded-lg p-2.5 border border-slate-700/60 mb-2">
+                <div class="text-[9px] font-mono font-bold uppercase tracking-wider text-slate-400">Aircraft</div>
+                <div class="flex items-baseline gap-1.5 font-mono mt-0.5">
+                    <span class="text-xl font-black text-white" x-text="tooltip.actual"></span>
+                    <template x-if="tooltip.capacity !== null">
+                        <span class="text-xs font-bold text-slate-300">/ <span x-text="tooltip.capacity"></span> A/C</span>
+                    </template>
+                    <template x-if="tooltip.capacity === null">
+                        <span class="text-xs font-bold text-slate-300">A/C</span>
+                    </template>
+                </div>
+            </div>
+
+            {{-- Scope (TWO SEPARATE LINES for maximum readability) --}}
+            <div class="bg-slate-800/50 dark:bg-navy-900/50 rounded-lg p-2 border border-slate-700/40 mb-2">
+                <div class="text-[9px] font-mono font-bold uppercase tracking-wider text-slate-400">Scope</div>
+                <div class="text-xs font-mono font-black text-slate-100 mt-0.5 tracking-wide" x-text="tooltip.scope"></div>
+            </div>
+
+            {{-- High-Contrast Status Badge --}}
+            <div class="mt-2.5 flex items-center justify-center">
+                <span class="w-full text-center px-2 py-1 rounded-md text-[10px] font-mono font-black uppercase tracking-wider shadow-xs border"
+                      :class="tooltip.statusBadgeClass"
+                      x-text="tooltip.status"></span>
+            </div>
+
+            {{-- Extra context (e.g. RON Stand Occupied for OPC) --}}
+            <template x-if="tooltip.extra">
+                <div class="text-[9.5px] font-mono text-purple-300 mt-1.5 pt-1.5 border-t border-slate-800 text-center" x-text="tooltip.extra"></div>
+            </template>
+        </div>
     </div>
 </div>
