@@ -137,6 +137,70 @@
              this.tooltip.x = Math.round(x);
              this.tooltip.y = Math.round(y);
          },
+         getDirectionalStatus(value, capacity, isOps) {
+             if (isOps === false) {
+                 return {
+                     key: 'off_hours',
+                     label: 'OFF HOURS',
+                     badgeLabel: '',
+                     showBadge: false,
+                     badgeClass: '',
+                     statusBadgeClass: 'bg-slate-700 text-slate-200 border-slate-500 font-bold'
+                 };
+             }
+
+             const v = Number(value ?? 0);
+             const c = Number(capacity ?? 0);
+
+             if (c <= 0 || v < c) {
+                 return {
+                     key: 'available',
+                     label: 'AVAILABLE',
+                     badgeLabel: '',
+                     showBadge: false,
+                     badgeClass: '',
+                     statusBadgeClass: 'bg-emerald-600 text-white border-emerald-400 font-black shadow-xs'
+                 };
+             }
+
+             if (v === c) {
+                 return {
+                     key: 'max',
+                     label: 'FULL / MAX',
+                     badgeLabel: 'MAX',
+                     showBadge: true,
+                     badgeClass: 'bg-amber-500 text-white shadow-2xs',
+                     statusBadgeClass: 'bg-amber-500 text-slate-950 border-amber-300 font-black shadow-xs'
+                 };
+             }
+
+             return {
+                 key: 'over',
+                 label: 'OVER CAPACITY',
+                 badgeLabel: 'OVER',
+                 showBadge: true,
+                 badgeClass: 'bg-purple-600 text-white shadow-2xs',
+                 statusBadgeClass: 'bg-purple-600 text-white border-purple-400 font-black shadow-xs'
+             };
+         },
+         getArrivalStatus(item) {
+             @if($mode === 'schedule')
+                 const val = Number(item.arrCount ?? 0);
+             @else
+                 const val = Number(item.arr ?? 0);
+             @endif
+             const cap = Number(this.arrivalCapacity ?? 0);
+             return this.getDirectionalStatus(val, cap, item.isOps);
+         },
+         getDepartureStatus(item) {
+             @if($mode === 'schedule')
+                 const val = Number(item.depCount ?? 0);
+             @else
+                 const val = Number(item.dep ?? 0);
+             @endif
+             const cap = Number(this.departureCapacity ?? 0);
+             return this.getDirectionalStatus(val, cap, item.isOps);
+         },
          showBarTooltip(e, item, type) {
              const isArr = type === 'arrival';
              const isDep = type === 'departure';
@@ -153,24 +217,12 @@
 
              if (isArr) {
                  @if($mode === 'schedule')
-                     const actual = Number(item.arrCount || 0);
+                     const actual = Number(item.arrCount ?? 0);
                  @else
-                     const actual = Number(item.arr || 0);
+                     const actual = Number(item.arr ?? 0);
                  @endif
-                 const cap = Number(this.arrivalCapacity || 6);
-                 let status = 'AVAILABLE';
-                 let statusBadgeClass = 'bg-emerald-600 text-white border-emerald-400 font-black shadow-xs';
-
-                 if (!item.isOps) {
-                     status = 'OFF HOURS';
-                     statusBadgeClass = 'bg-slate-700 text-slate-200 border-slate-500 font-bold';
-                 } else if (actual > cap) {
-                     status = 'OVER CAPACITY';
-                     statusBadgeClass = 'bg-purple-600 text-white border-purple-400 font-black shadow-xs';
-                 } else if (actual === cap && cap > 0) {
-                     status = 'FULL / MAX';
-                     statusBadgeClass = 'bg-amber-500 text-slate-950 border-amber-300 font-black shadow-xs';
-                 }
+                 const cap = Number(this.arrivalCapacity ?? 0);
+                 const dirStatus = this.getArrivalStatus(item);
 
                  this.tooltip = {
                      visible: true,
@@ -184,30 +236,18 @@
                      actual: actual,
                      capacity: cap,
                      scope: scope,
-                     status: status,
-                     statusBadgeClass: statusBadgeClass,
+                     status: dirStatus.label,
+                     statusBadgeClass: dirStatus.statusBadgeClass,
                      extra: null
                  };
              } else if (isDep) {
                  @if($mode === 'schedule')
-                     const actual = Number(item.depCount || 0);
+                     const actual = Number(item.depCount ?? 0);
                  @else
-                     const actual = Number(item.dep || 0);
+                     const actual = Number(item.dep ?? 0);
                  @endif
-                 const cap = Number(this.departureCapacity || 6);
-                 let status = 'AVAILABLE';
-                 let statusBadgeClass = 'bg-emerald-600 text-white border-emerald-400 font-black shadow-xs';
-
-                 if (!item.isOps) {
-                     status = 'OFF HOURS';
-                     statusBadgeClass = 'bg-slate-700 text-slate-200 border-slate-500 font-bold';
-                 } else if (actual > cap) {
-                     status = 'OVER CAPACITY';
-                     statusBadgeClass = 'bg-purple-600 text-white border-purple-400 font-black shadow-xs';
-                 } else if (actual === cap && cap > 0) {
-                     status = 'FULL / MAX';
-                     statusBadgeClass = 'bg-blue-600 text-white border-blue-400 font-black shadow-xs';
-                 }
+                 const cap = Number(this.departureCapacity ?? 0);
+                 const dirStatus = this.getDepartureStatus(item);
 
                  this.tooltip = {
                      visible: true,
@@ -221,12 +261,12 @@
                      actual: actual,
                      capacity: cap,
                      scope: scope,
-                     status: status,
-                     statusBadgeClass: statusBadgeClass,
+                     status: dirStatus.label,
+                     statusBadgeClass: dirStatus.statusBadgeClass,
                      extra: null
                  };
              } else if (isOpc) {
-                 const opcVal = Number(item.opcCount || 0);
+                 const opcVal = Number(item.opcCount ?? 0);
                  this.tooltip = {
                      visible: true,
                      x: 0,
@@ -464,15 +504,11 @@
                              @click.stop="@if($mode === 'schedule') selectHourWithDirection(item.hour, 'arrivals') @else setHourFilter(item.hour) @endif"
                              title="Click to filter Arrivals">
                             
-                            {{-- Top Status Pill (OVER / MAX) --}}
-                            <template x-if="item.isOps && item.status === 'OVER CAPACITY'">
-                                <div class="absolute top-1 px-1 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider bg-purple-600 text-white shadow-2xs z-20 font-mono pointer-events-none">
-                                    OVER
-                                </div>
-                            </template>
-                            <template x-if="item.isOps && item.status === 'FULL / MAX'">
-                                <div class="absolute top-1 px-1 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider bg-amber-500 text-white shadow-2xs z-20 font-mono pointer-events-none">
-                                    MAX
+                            {{-- Directional Arrival Status Pill (OVER / MAX) - Evaluated ONLY on ARR vs ARR CAP --}}
+                            <template x-if="getArrivalStatus(item).showBadge">
+                                <div class="absolute top-1 px-1 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider z-20 font-mono pointer-events-none"
+                                     :class="getArrivalStatus(item).badgeClass"
+                                     x-text="getArrivalStatus(item).badgeLabel">
                                 </div>
                             </template>
 
@@ -568,15 +604,11 @@
                                 </span>
                             </template>
 
-                            {{-- Bottom Status Pill (OVER / MAX for DEP) --}}
-                            <template x-if="item.isOps && ((@if($mode === 'schedule') item.depCount @else item.dep @endif) > departureCapacity)">
-                                <div class="absolute bottom-1 px-1 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider bg-purple-600 text-white shadow-2xs z-20 font-mono pointer-events-none">
-                                    OVER
-                                </div>
-                            </template>
-                            <template x-if="item.isOps && ((@if($mode === 'schedule') item.depCount @else item.dep @endif) === departureCapacity && departureCapacity > 0)">
-                                <div class="absolute bottom-1 px-1 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider bg-blue-500 text-white shadow-2xs z-20 font-mono pointer-events-none">
-                                    MAX
+                            {{-- Directional Departure Status Pill (OVER / MAX) - Evaluated ONLY on DEP vs DEP CAP --}}
+                            <template x-if="getDepartureStatus(item).showBadge">
+                                <div class="absolute bottom-1 px-1 py-0.2 rounded text-[7.5px] font-black uppercase tracking-wider z-20 font-mono pointer-events-none"
+                                     :class="getDepartureStatus(item).badgeClass"
+                                     x-text="getDepartureStatus(item).badgeLabel">
                                 </div>
                             </template>
                         </div>

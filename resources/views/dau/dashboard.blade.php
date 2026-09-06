@@ -2278,6 +2278,24 @@ function dauEnhancedDashboard() {
                     if (hNum < sNum || hNum >= eNum) isOff = true;
                 }
 
+                let arrSt = 'AVAILABLE';
+                if (isOff) {
+                    arrSt = 'OFF HOURS';
+                } else if (arr > arrCap) {
+                    arrSt = 'OVER CAPACITY';
+                } else if (arr === arrCap && arrCap > 0) {
+                    arrSt = 'FULL / MAX';
+                }
+
+                let depSt = 'AVAILABLE';
+                if (isOff) {
+                    depSt = 'OFF HOURS';
+                } else if (dep > depCap) {
+                    depSt = 'OVER CAPACITY';
+                } else if (dep === depCap && depCap > 0) {
+                    depSt = 'FULL / MAX';
+                }
+
                 let st = 'AVAILABLE';
                 if (isOff) {
                     st = 'OFF HOURS';
@@ -2302,6 +2320,8 @@ function dauEnhancedDashboard() {
                     dep: dep,
                     arrCap: arrCap,
                     depCap: depCap,
+                    arrStatus: arrSt,
+                    depStatus: depSt,
                     opc: 'N/A',
                     demand: demand,
                     status: st

@@ -365,6 +365,8 @@ function dashboardState(initialDos, initialMovements, initialOpsStart, initialOp
                     occupied: aircraftDemand,
                     demand: aircraftDemand,
                     isPeak: false,
+                    arrStatus: arrStatus,
+                    depStatus: depStatus,
                     status: status,
                     statusLabel: statusLabel,
                     statusKey: statusKey,
