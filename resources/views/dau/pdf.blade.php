@@ -923,12 +923,12 @@
                                 @if ($activeM === $k)
                                     <span style="color: #0284c7;">&bull;</span>
                                 @endif
-                                {{ $cRow['metric'] }} <span style="font-size: 5.5pt; color: #64748b;">({{ $cRow['unit'] }})</span>
+                                {{ $cRow['metric'] ?? $cRow['label'] ?? ucfirst($k) }} <span style="font-size: 5.5pt; color: #64748b;">({{ $cRow['unit'] ?? '' }})</span>
                             </td>
-                            <td class="text-right" style="color: #2563eb;">{{ number_format($cRow['domestic']) }} <span style="font-size: 5pt; color: #64748b;">({{ $cRow['domestic_pct'] }}%)</span></td>
-                            <td class="text-right" style="color: #7c3aed;">{{ number_format($cRow['international']) }} <span style="font-size: 5pt; color: #64748b;">({{ $cRow['international_pct'] }}%)</span></td>
-                            <td class="text-right font-bold">{{ number_format($cRow['total']) }}</td>
-                            <td class="text-right font-bold" style="color: #059669;">{{ $cRow['domestic_pct'] }}% / {{ $cRow['international_pct'] }}%</td>
+                            <td class="text-right" style="color: #2563eb;">{{ number_format($cRow['domestic'] ?? 0) }} <span style="font-size: 5pt; color: #64748b;">({{ $cRow['domestic_pct'] ?? 0 }}%)</span></td>
+                            <td class="text-right" style="color: #7c3aed;">{{ number_format($cRow['international'] ?? 0) }} <span style="font-size: 5pt; color: #64748b;">({{ $cRow['international_pct'] ?? 0 }}%)</span></td>
+                            <td class="text-right font-bold">{{ number_format($cRow['total'] ?? 0) }}</td>
+                            <td class="text-right font-bold" style="color: #059669;">{{ $cRow['domestic_pct'] ?? 0 }}% / {{ $cRow['international_pct'] ?? 0 }}%</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -940,7 +940,7 @@
             <table style="width: 100%; border-collapse: collapse; font-size: 6pt;">
                 @foreach ($compRows as $k => $cRow)
                     <tr>
-                        <td style="width: 25%; font-weight: bold; padding: 2px 0;">{{ strtoupper($cRow['metric']) }}</td>
+                        <td style="width: 25%; font-weight: bold; padding: 2px 0;">{{ strtoupper($cRow['metric'] ?? $cRow['label'] ?? $k) }}</td>
                         <td style="width: 55%; padding: 2px 4px;">
                             <table style="width: 100%; border-collapse: collapse;">
                                 <tr>

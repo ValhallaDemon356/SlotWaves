@@ -180,7 +180,7 @@
 
                 @if ($reportType === 'DAU1')
                     <div x-show="selectedMetric === 'passenger'" x-transition>
-                        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Passenger Type</label>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">PASSENGER TYPE</label>
                         <select x-model="filterPassengerType" @change="applyFilters()"
                                 :class="filterPassengerType !== 'ALL' ? 'ring-2 ring-aviation-500 border-aviation-500 bg-aviation-50/50 dark:bg-aviation-950/30' : 'border-slate-200 dark:border-slate-700'"
                                 class="w-full px-2.5 py-1.5 rounded-lg border bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
@@ -706,7 +706,7 @@
             <div class="glass-card p-5 sm:p-6 shadow-md space-y-4 border-t-2 border-t-aviation-600">
                 <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
                     <div>
-                        <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Pemisahan Komparatif Domestik vs Internasional</div>
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Perbandingan Komparatif Domestik vs Internasional</div>
                         <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">COMPARATIVE BREAKDOWN</h2>
                     </div>
                     <div class="flex items-center gap-2">

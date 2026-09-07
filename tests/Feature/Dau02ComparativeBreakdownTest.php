@@ -14,6 +14,7 @@ class Dau02ComparativeBreakdownTest extends TestCase
 
     private Airport $airport;
     private Upload $dau2Upload;
+    private static ?array $cachedParsed = null;
 
     protected function setUp(): void
     {
@@ -28,10 +29,13 @@ class Dau02ComparativeBreakdownTest extends TestCase
             ]
         );
 
-        // Parse authentic DAU-2.xls
-        $parser = new DAU2Parser();
-        $samplePath = base_path('resources/templates/dau/DAU-2.xls');
-        $parsed = $parser->parse($samplePath);
+        // Parse authentic DAU-2.xls once and reuse
+        if (self::$cachedParsed === null) {
+            $parser = new DAU2Parser();
+            $samplePath = base_path('resources/templates/dau/DAU-2.xls');
+            self::$cachedParsed = $parser->parse($samplePath);
+        }
+        $parsed = self::$cachedParsed;
 
         $this->dau2Upload = Upload::create([
             'original_filename' => 'DAU-2.xls',

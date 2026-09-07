@@ -1280,6 +1280,7 @@ class DauDashboardController extends Controller
 
         $dau2Comparative = [
             'aircraft' => [
+                'metric'            => 'Pesawat (Aircraft Movements)',
                 'label'             => 'Pesawat (Aircraft Movements)',
                 'unit'              => 'A/C',
                 'domestic'          => $dau2Distribution['domestic']['aircraft'],
@@ -1289,6 +1290,7 @@ class DauDashboardController extends Controller
                 'international_pct' => ($dau2Distribution['domestic']['aircraft'] + $dau2Distribution['international']['aircraft']) > 0 ? round(($dau2Distribution['international']['aircraft'] / ($dau2Distribution['domestic']['aircraft'] + $dau2Distribution['international']['aircraft'])) * 100, 1) : 0,
             ],
             'passenger' => [
+                'metric'            => 'Penumpang (Passengers)',
                 'label'             => 'Penumpang (Passengers)',
                 'unit'              => 'Pax',
                 'domestic'          => $dau2Distribution['domestic']['passenger'],
@@ -1298,6 +1300,7 @@ class DauDashboardController extends Controller
                 'international_pct' => ($dau2Distribution['domestic']['passenger'] + $dau2Distribution['international']['passenger']) > 0 ? round(($dau2Distribution['international']['passenger'] / ($dau2Distribution['domestic']['passenger'] + $dau2Distribution['international']['passenger'])) * 100, 1) : 0,
             ],
             'baggage' => [
+                'metric'            => 'Bagasi (Baggage)',
                 'label'             => 'Bagasi (Baggage)',
                 'unit'              => 'Kg',
                 'domestic'          => $dau2Distribution['domestic']['baggage'],
@@ -1307,6 +1310,7 @@ class DauDashboardController extends Controller
                 'international_pct' => ($dau2Distribution['domestic']['baggage'] + $dau2Distribution['international']['baggage']) > 0 ? round(($dau2Distribution['international']['baggage'] / ($dau2Distribution['domestic']['baggage'] + $dau2Distribution['international']['baggage'])) * 100, 1) : 0,
             ],
             'cargo' => [
+                'metric'            => 'Kargo (Freight Cargo)',
                 'label'             => 'Kargo (Freight Cargo)',
                 'unit'              => 'Kg',
                 'domestic'          => $dau2Distribution['domestic']['cargo'],
@@ -1316,6 +1320,7 @@ class DauDashboardController extends Controller
                 'international_pct' => ($dau2Distribution['domestic']['cargo'] + $dau2Distribution['international']['cargo']) > 0 ? round(($dau2Distribution['international']['cargo'] / ($dau2Distribution['domestic']['cargo'] + $dau2Distribution['international']['cargo'])) * 100, 1) : 0,
             ],
             'pos' => [
+                'metric'            => 'POS (Mail / Post)',
                 'label'             => 'POS (Mail / Post)',
                 'unit'              => 'Kg',
                 'domestic'          => $dau2Distribution['domestic']['pos'],
@@ -1582,6 +1587,7 @@ class DauDashboardController extends Controller
             'dau6_fleet'          => $dau6Fleet,
             'dau11_flow'          => $dau11Flow,
             'dau12_matrix'        => $dau12Matrix,
+            'filters'             => $filters,
         ];
     }
 }
