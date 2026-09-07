@@ -146,19 +146,60 @@
                 @if (in_array($reportType, ['DAU1', 'DAU2', 'DAU4', 'DAU4A', 'DAU4B', 'DAU5', 'DAU5C', 'DAU6', 'DAU10', 'DAU10A', 'DAU10B', 'DAU12']))
                     <div>
                         <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Metric</label>
-                        <select x-model="selectedMetric" @change="applyFilters()"
-                                :class="selectedMetric !== 'aircraft' ? 'ring-2 ring-aviation-500 border-aviation-500 bg-aviation-50/50 dark:bg-aviation-950/30' : 'border-slate-200 dark:border-slate-700'"
+                        @if ($reportType === 'DAU1')
+                            <div class="inline-flex w-full p-0.5 rounded-lg bg-slate-100 dark:bg-navy-900 border border-slate-200 dark:border-slate-700">
+                                <button type="button" @click="selectedMetric = 'aircraft'; applyFilters();"
+                                        :class="selectedMetric === 'aircraft' ? 'bg-aviation-600 text-white shadow-xs font-black' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 font-bold'"
+                                        class="flex-1 py-1 px-1 rounded-md text-[11px] transition cursor-pointer text-center">
+                                    PESAWAT
+                                </button>
+                                <button type="button" @click="selectedMetric = 'passenger'; applyFilters();"
+                                        :class="selectedMetric === 'passenger' ? 'bg-emerald-600 text-white shadow-xs font-black' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 font-bold'"
+                                        class="flex-1 py-1 px-1 rounded-md text-[11px] transition cursor-pointer text-center">
+                                    PENUMPANG
+                                </button>
+                            </div>
+                        @else
+                            <select x-model="selectedMetric" @change="applyFilters()"
+                                    :class="selectedMetric !== 'aircraft' ? 'ring-2 ring-aviation-500 border-aviation-500 bg-aviation-50/50 dark:bg-aviation-950/30' : 'border-slate-200 dark:border-slate-700'"
+                                    class="w-full px-2.5 py-1.5 rounded-lg border bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
+                                <option value="aircraft">Pesawat (Aircraft)</option>
+                                <option value="passenger">Penumpang (Passenger)</option>
+                                @if (in_array($reportType, ['DAU2', 'DAU5', 'DAU5C']))
+                                    <option value="baggage">Bagasi (Baggage)</option>
+                                    <option value="cargo">Kargo (Cargo)</option>
+                                    <option value="pos">POS / Surat (Mail)</option>
+                                @endif
+                                @if (in_array($reportType, ['DAU10A']))
+                                    <option value="crew">Awak Pesawat (Crew)</option>
+                                @endif
+                            </select>
+                        @endif
+                    </div>
+                @endif
+
+                @if ($reportType === 'DAU1')
+                    <div x-show="selectedMetric === 'passenger'" x-transition>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Passenger Type</label>
+                        <select x-model="filterPassengerType" @change="applyFilters()"
+                                :class="filterPassengerType !== 'ALL' ? 'ring-2 ring-aviation-500 border-aviation-500 bg-aviation-50/50 dark:bg-aviation-950/30' : 'border-slate-200 dark:border-slate-700'"
                                 class="w-full px-2.5 py-1.5 rounded-lg border bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
-                            <option value="aircraft">Pesawat (Aircraft)</option>
-                            <option value="passenger">Penumpang (Passenger)</option>
-                            @if (in_array($reportType, ['DAU2', 'DAU5', 'DAU5C']))
-                                <option value="baggage">Bagasi (Baggage)</option>
-                                <option value="cargo">Kargo (Cargo)</option>
-                                <option value="pos">POS / Surat (Mail)</option>
-                            @endif
-                            @if (in_array($reportType, ['DAU10A']))
-                                <option value="crew">Awak Pesawat (Crew)</option>
-                            @endif
+                            <option value="ALL">ALL (Dewasa, Anak, Bayi)</option>
+                            <option value="ADULT">Dewasa (Adult)</option>
+                            <option value="CHILD">Anak (Child)</option>
+                            <option value="INFANT">Bayi (Infant)</option>
+                        </select>
+                    </div>
+                @endif
+
+                @if ($reportType === 'DAU2')
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Display Mode</label>
+                        <select x-model="displayMode" @change="applyFilters()"
+                                :class="displayMode !== 'absolute' ? 'ring-2 ring-aviation-500 border-aviation-500 bg-aviation-50/50 dark:bg-aviation-950/30' : 'border-slate-200 dark:border-slate-700'"
+                                class="w-full px-2.5 py-1.5 rounded-lg border bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
+                            <option value="absolute">Nilai Riil (Absolute)</option>
+                            <option value="percentage">Persentase (Percentage %)</option>
                         </select>
                     </div>
                 @endif
@@ -456,6 +497,20 @@
                     </span>
                 </template>
 
+                <template x-if="reportType === 'DAU1' && filterPassengerType !== 'ALL'">
+                    <span class="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 font-bold flex items-center gap-1">
+                        Pax Type: <span x-text="filterPassengerType"></span>
+                        <button type="button" @click="filterPassengerType = 'ALL'; applyFilters();" class="hover:text-red-500">&times;</button>
+                    </span>
+                </template>
+
+                <template x-if="reportType === 'DAU2' && displayMode === 'percentage'">
+                    <span class="px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 font-bold flex items-center gap-1">
+                        Mode: <span>Percentage (%)</span>
+                        <button type="button" @click="displayMode = 'absolute'; applyFilters();" class="hover:text-red-500">&times;</button>
+                    </span>
+                </template>
+
                 <template x-if="searchQuery !== ''">
                     <span class="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300 border border-slate-200 font-bold flex items-center gap-1">
                         Search: "<span x-text="searchQuery"></span>"
@@ -472,7 +527,79 @@
         </div>
 
         {{-- ══ 3. KPI SUMMARY SECTION ═════════════════════════════════════════ --}}
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+        @if ($reportType === 'DAU1')
+            {{-- DAU-01 PASSENGER MODE KPI CARDS (6 CARDS) --}}
+            <div x-show="selectedMetric === 'passenger'" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+                {{-- 1. TOTAL PASSENGERS --}}
+                <div class="glass-card p-4 shadow-sm border-t-2 border-t-emerald-600">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Passengers</div>
+                    <div class="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1" x-text="formatNumber(activeSummary.passenger_total)">
+                        {{ number_format($summary['passenger_total'] ?? 0) }}
+                    </div>
+                    <div class="text-[10px] text-slate-500 mt-1 font-mono">
+                        Arr: <span x-text="formatNumber(activeSummary.passenger_arrival)"></span> | Dep: <span x-text="formatNumber(activeSummary.passenger_departure)"></span>
+                    </div>
+                </div>
+
+                {{-- 2. ADULT --}}
+                <div class="glass-card p-4 shadow-sm border-t-2 border-t-blue-600">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Dewasa (Adult)</div>
+                    <div class="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400 mt-1" x-text="formatNumber(activeSummary.passenger_adult)">
+                        {{ number_format($summary['passenger_adult'] ?? 0) }}
+                    </div>
+                    <div class="text-[10px] text-slate-500 mt-1 font-mono">
+                        Arr: <span x-text="formatNumber(activeSummary.arr_adult)"></span> | Dep: <span x-text="formatNumber(activeSummary.dep_adult)"></span>
+                    </div>
+                </div>
+
+                {{-- 3. CHILD --}}
+                <div class="glass-card p-4 shadow-sm border-t-2 border-t-teal-600">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Anak (Child)</div>
+                    <div class="text-xl sm:text-2xl font-black text-teal-600 dark:text-teal-400 mt-1" x-text="formatNumber(activeSummary.passenger_child)">
+                        {{ number_format($summary['passenger_child'] ?? 0) }}
+                    </div>
+                    <div class="text-[10px] text-slate-500 mt-1 font-mono">
+                        Arr: <span x-text="formatNumber(activeSummary.arr_child)"></span> | Dep: <span x-text="formatNumber(activeSummary.dep_child)"></span>
+                    </div>
+                </div>
+
+                {{-- 4. INFANT --}}
+                <div class="glass-card p-4 shadow-sm border-t-2 border-t-amber-500">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Bayi (Infant)</div>
+                    <div class="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 mt-1" x-text="formatNumber(activeSummary.passenger_infant)">
+                        {{ number_format($summary['passenger_infant'] ?? 0) }}
+                    </div>
+                    <div class="text-[10px] text-slate-500 mt-1 font-mono">
+                        Arr: <span x-text="formatNumber(activeSummary.arr_infant)"></span> | Dep: <span x-text="formatNumber(activeSummary.dep_infant)"></span>
+                    </div>
+                </div>
+
+                {{-- 5. ARRIVAL PASSENGERS --}}
+                <div class="glass-card p-4 shadow-sm border-t-2 border-t-indigo-600">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Arrival Passengers</div>
+                    <div class="text-xl sm:text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1" x-text="formatNumber(activeSummary.passenger_arrival)">
+                        {{ number_format($summary['passenger_arrival'] ?? 0) }}
+                    </div>
+                    <div class="text-[10px] text-slate-500 mt-1 font-mono">
+                        Transit: <span x-text="formatNumber(activeSummary.passenger_transit)"></span>
+                    </div>
+                </div>
+
+                {{-- 6. DEPARTURE PASSENGERS --}}
+                <div class="glass-card p-4 shadow-sm border-t-2 border-t-purple-600">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Departure Passengers</div>
+                    <div class="text-xl sm:text-2xl font-black text-purple-600 dark:text-purple-400 mt-1" x-text="formatNumber(activeSummary.passenger_departure)">
+                        {{ number_format($summary['passenger_departure'] ?? 0) }}
+                    </div>
+                    <div class="text-[10px] text-slate-500 mt-1 font-mono">
+                        Transfer: <span x-text="formatNumber(activeSummary.passenger_transfer)"></span>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        {{-- STANDARD / AIRCRAFT KPI GRID (SHOWN FOR AIRCRAFT MODE OR OTHER DAUS) --}}
+        <div @if ($reportType === 'DAU1') x-show="selectedMetric !== 'passenger'" @endif class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
             <div class="glass-card p-4 shadow-sm border-t-2 border-t-aviation-600">
                 <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Movements</div>
                 <div class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-1" x-text="formatNumber(activeSummary.total_movements)">
@@ -515,14 +642,14 @@
                 </div>
             @elseif ($reportType === 'DAU2')
                 <div class="glass-card p-4 shadow-sm border-t-2 border-t-blue-600">
-                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Domestic Traffic</div>
-                    <div class="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400 mt-1" x-text="formatNumber(dau2Metrics.domAircraft) + ' A/C'">—</div>
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400" x-text="'Domestic ' + (dau2ActiveMetricLabel || 'Traffic')">Domestic Traffic</div>
+                    <div class="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400 mt-1" x-text="formatNumber(dau2Metrics.domValue) + ' ' + (dau2Metrics.unit || 'A/C')">—</div>
                     <div class="text-[10px] text-slate-500 mt-1 font-mono" x-text="dau2Metrics.domSharePct + '% of total'">—</div>
                 </div>
 
                 <div class="glass-card p-4 shadow-sm border-t-2 border-t-indigo-600">
-                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">International Traffic</div>
-                    <div class="text-xl sm:text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1" x-text="formatNumber(dau2Metrics.intAircraft) + ' A/C'">—</div>
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400" x-text="'Int\'l ' + (dau2ActiveMetricLabel || 'Traffic')">International Traffic</div>
+                    <div class="text-xl sm:text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1" x-text="formatNumber(dau2Metrics.intValue) + ' ' + (dau2Metrics.unit || 'A/C')">—</div>
                     <div class="text-[10px] text-slate-500 mt-1 font-mono" x-text="dau2Metrics.intSharePct + '% of total'">—</div>
                 </div>
             @elseif ($reportType === 'DAU5A')
@@ -574,6 +701,78 @@
             </div>
         </div>
 
+        {{-- ══ 3B. DAU-02 COMPARATIVE BREAKDOWN TABLE MATRIX ════════════════════ --}}
+        @if ($reportType === 'DAU2')
+            <div class="glass-card p-5 sm:p-6 shadow-md space-y-4 border-t-2 border-t-aviation-600">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <div>
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Pemisahan Komparatif Domestik vs Internasional</div>
+                        <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">COMPARATIVE BREAKDOWN</h2>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-slate-500">Tampilan Nilai:</span>
+                        <div class="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 p-0.5 bg-slate-100 dark:bg-navy-800">
+                            <button type="button" @click="displayMode = 'absolute'; updateCharts();"
+                                    :class="displayMode === 'absolute' ? 'bg-white dark:bg-navy-900 text-aviation-600 dark:text-aviation-400 shadow-2xs font-black' : 'text-slate-500 hover:text-slate-700'"
+                                    class="px-2.5 py-1 text-xs rounded-md font-bold transition cursor-pointer">ABSOLUTE</button>
+                            <button type="button" @click="displayMode = 'percentage'; updateCharts();"
+                                    :class="displayMode === 'percentage' ? 'bg-white dark:bg-navy-900 text-aviation-600 dark:text-aviation-400 shadow-2xs font-black' : 'text-slate-500 hover:text-slate-700'"
+                                    class="px-2.5 py-1 text-xs rounded-md font-bold transition cursor-pointer">PERCENTAGE (%)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl">
+                    <table class="w-full text-xs font-sans border-collapse">
+                        <thead class="bg-slate-50 dark:bg-navy-900 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                            <tr>
+                                <th class="px-4 py-3 text-left">Metrik Operasional</th>
+                                <th class="px-4 py-3 text-right text-blue-600 font-bold">DOMESTIK</th>
+                                <th class="px-4 py-3 text-right text-indigo-600 font-bold">INTERNASIONAL</th>
+                                <th class="px-4 py-3 text-right font-black text-slate-900 dark:text-white">TOTAL</th>
+                                <th class="px-4 py-3 text-right text-slate-500 font-bold">Proporsi Dom / Int</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800/80 font-mono text-xs">
+                            <template x-for="item in dau2ComparativeList" :key="item.key">
+                                <tr :class="selectedMetric === item.key ? 'bg-aviation-50/60 dark:bg-aviation-950/40 font-bold' : 'hover:bg-slate-50/50 dark:hover:bg-navy-800/40'" class="transition cursor-pointer" @click="selectedMetric = item.key; applyFilters();">
+                                    <td class="px-4 py-2.5 font-sans flex items-center gap-2">
+                                        <span class="w-2 h-2 rounded-full" :class="selectedMetric === item.key ? 'bg-aviation-600' : 'bg-slate-300 dark:bg-slate-600'"></span>
+                                        <span class="font-bold text-slate-800 dark:text-slate-200" x-text="item.label"></span>
+                                        <span class="text-[10px] text-slate-400 font-mono" x-text="'(' + item.unit + ')'"></span>
+                                        <template x-if="selectedMetric === item.key">
+                                            <span class="text-[9px] uppercase px-1.5 py-0.5 rounded bg-aviation-600 text-white font-sans font-black">ACTIVE</span>
+                                        </template>
+                                    </td>
+                                    <td class="px-4 py-2.5 text-right text-blue-600 font-bold">
+                                        <span x-text="displayMode === 'percentage' ? (item.dom_share_str) : formatNumber(item.domestic)"></span>
+                                        <template x-if="displayMode === 'absolute'">
+                                            <span class="text-[10px] text-slate-400 font-normal ml-1" x-text="'(' + item.dom_share_str + ')'"></span>
+                                        </template>
+                                    </td>
+                                    <td class="px-4 py-2.5 text-right text-indigo-600 font-bold">
+                                        <span x-text="displayMode === 'percentage' ? (item.int_share_str) : formatNumber(item.international)"></span>
+                                        <template x-if="displayMode === 'absolute'">
+                                            <span class="text-[10px] text-slate-400 font-normal ml-1" x-text="'(' + item.int_share_str + ')'"></span>
+                                        </template>
+                                    </td>
+                                    <td class="px-4 py-2.5 text-right font-black text-slate-900 dark:text-white">
+                                        <span x-text="displayMode === 'percentage' ? '100.0%' : formatNumber(item.total)"></span>
+                                    </td>
+                                    <td class="px-4 py-2.5 text-right">
+                                        <div class="w-32 ml-auto flex h-2 rounded-full overflow-hidden bg-slate-200 dark:bg-navy-700">
+                                            <div :style="'width: ' + item.dom_pct + '%'" class="bg-blue-600"></div>
+                                            <div :style="'width: ' + item.int_pct + '%'" class="bg-indigo-600"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
+
         {{-- ══ 4. REPORT-SPECIFIC ANALYTICAL CHARTS & DIAGRAMS ═════════════════ --}}
 
         {{-- DAU-1: ARUS LALU LINTAS --}}
@@ -582,41 +781,78 @@
                 <div class="lg:col-span-2 glass-card p-5 sm:p-6 shadow-md space-y-4">
                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
                         <div>
-                            <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Top Routes Analysis</div>
-                            <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">TOP 10 ORIGIN / DESTINATION ROUTES</h2>
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400"
+                                 x-text="selectedMetric === 'passenger' ? 'Passenger Breakdown by Route' : 'Top Routes Analysis'">Top Routes Analysis</div>
+                            <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white"
+                                x-text="selectedMetric === 'passenger' ? 'TOP ROUTES PASSENGER BREAKDOWN (ADULT • CHILD • INFANT)' : 'TOP 10 ORIGIN / DESTINATION ROUTES'">
+                                TOP 10 ORIGIN / DESTINATION ROUTES
+                            </h2>
                         </div>
-                        <div class="flex items-center gap-3 text-xs font-mono">
-                            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-amber-500"></span> ARR A/C</span>
-                            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-blue-600"></span> DEP A/C</span>
-                            <span class="flex items-center gap-1"><span class="w-3 h-1 rounded bg-emerald-500"></span> Pax Total</span>
-                        </div>
+                        <template x-if="selectedMetric === 'passenger'">
+                            <div class="flex items-center gap-3 text-xs font-mono">
+                                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-blue-600"></span> Dewasa</span>
+                                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-emerald-500"></span> Anak</span>
+                                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-amber-500"></span> Bayi</span>
+                            </div>
+                        </template>
+                        <template x-if="selectedMetric !== 'passenger'">
+                            <div class="flex items-center gap-3 text-xs font-mono">
+                                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-amber-500"></span> ARR A/C</span>
+                                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-blue-600"></span> DEP A/C</span>
+                                <span class="flex items-center gap-1"><span class="w-3 h-1 rounded bg-emerald-500"></span> Pax Total</span>
+                            </div>
+                        </template>
                     </div>
                     <div class="relative h-72 sm:h-80 w-full">
                         <canvas id="dau1ComboChart"></canvas>
                     </div>
-                    <div class="text-[11px] text-slate-400 text-center font-mono">
+                    <div class="text-[11px] text-slate-400 text-center font-mono"
+                         x-text="selectedMetric === 'passenger' ? 'Stacked bars: Dewasa (Adult), Anak (Child), Bayi (Infant) per Route • Derived from authentic OASYS records' : 'Grouped bars: Aircraft ARR vs DEP (Left Axis) • Connected line: Total Passenger (Right Axis)'">
                         Grouped bars: Aircraft ARR vs DEP (Left Axis) • Connected line: Total Passenger (Right Axis)
                     </div>
                 </div>
 
                 <div class="glass-card p-5 sm:p-6 shadow-md space-y-4 flex flex-col justify-between">
                     <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
-                        <div class="text-[10px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400">Payload Distribution</div>
-                        <h2 class="text-base font-black tracking-tight text-slate-900 dark:text-white">CARGO &amp; BAGGAGE COMPOSITION</h2>
+                        <div class="text-[10px] font-bold uppercase tracking-wider"
+                             :class="selectedMetric === 'passenger' ? 'text-emerald-600 dark:text-emerald-400' : 'text-teal-600 dark:text-teal-400'"
+                             x-text="selectedMetric === 'passenger' ? 'Passenger Composition' : 'Payload Distribution'">Payload Distribution</div>
+                        <h2 class="text-base font-black tracking-tight text-slate-900 dark:text-white"
+                            x-text="selectedMetric === 'passenger' ? 'DEWASA • ANAK • BAYI SHARE' : 'CARGO & BAGGAGE COMPOSITION'">
+                            CARGO &amp; BAGGAGE COMPOSITION
+                        </h2>
                     </div>
                     <div class="relative h-56 w-full flex items-center justify-center">
                         <canvas id="dau1PayloadChart"></canvas>
                     </div>
-                    <div class="grid grid-cols-2 gap-2 text-center text-xs font-mono pt-2 border-t border-slate-100 dark:border-slate-800">
-                        <div class="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800">
-                            <div class="text-[10px] text-rose-600 font-bold uppercase">Baggage</div>
-                            <div class="font-black text-rose-700 dark:text-rose-300" x-text="formatNumber(activeSummary.baggage_total) + ' Kg'"></div>
+                    <template x-if="selectedMetric === 'passenger'">
+                        <div class="grid grid-cols-3 gap-1.5 text-center text-xs font-mono pt-2 border-t border-slate-100 dark:border-slate-800">
+                            <div class="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
+                                <div class="text-[9px] text-blue-600 font-bold uppercase">Dewasa</div>
+                                <div class="font-black text-blue-700 dark:text-blue-300" x-text="formatNumber(activeSummary.passenger_adult)"></div>
+                            </div>
+                            <div class="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
+                                <div class="text-[9px] text-emerald-600 font-bold uppercase">Anak</div>
+                                <div class="font-black text-emerald-700 dark:text-emerald-300" x-text="formatNumber(activeSummary.passenger_child)"></div>
+                            </div>
+                            <div class="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
+                                <div class="text-[9px] text-amber-600 font-bold uppercase">Bayi</div>
+                                <div class="font-black text-amber-700 dark:text-amber-300" x-text="formatNumber(activeSummary.passenger_infant)"></div>
+                            </div>
                         </div>
-                        <div class="p-2 rounded-lg bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800">
-                            <div class="text-[10px] text-teal-600 font-bold uppercase">Cargo</div>
-                            <div class="font-black text-teal-700 dark:text-teal-300" x-text="formatNumber(activeSummary.cargo_total) + ' Kg'"></div>
+                    </template>
+                    <template x-if="selectedMetric !== 'passenger'">
+                        <div class="grid grid-cols-2 gap-2 text-center text-xs font-mono pt-2 border-t border-slate-100 dark:border-slate-800">
+                            <div class="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800">
+                                <div class="text-[10px] text-rose-600 font-bold uppercase">Baggage</div>
+                                <div class="font-black text-rose-700 dark:text-rose-300" x-text="formatNumber(activeSummary.baggage_total) + ' Kg'"></div>
+                            </div>
+                            <div class="p-2 rounded-lg bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800">
+                                <div class="text-[10px] text-teal-600 font-bold uppercase">Cargo</div>
+                                <div class="font-black text-teal-700 dark:text-teal-300" x-text="formatNumber(activeSummary.cargo_total) + ' Kg'"></div>
+                            </div>
                         </div>
-                    </div>
+                    </template>
                 </div>
             </div>
         @endif
@@ -627,7 +863,7 @@
                 <div class="lg:col-span-2 glass-card p-5 sm:p-6 shadow-md space-y-4">
                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
                         <div>
-                            <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Comparative Breakdown</div>
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">100% Stacked Comparison</div>
                             <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">DOMESTIC VS INTERNATIONAL BY METRIC</h2>
                         </div>
                         <div class="flex items-center gap-3 text-xs font-mono">
@@ -642,16 +878,17 @@
 
                 <div class="glass-card p-5 sm:p-6 shadow-md space-y-4 flex flex-col justify-between">
                     <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
-                        <div class="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Market Share</div>
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400" x-text="'Market Share (' + (dau2ActiveMetricLabel || 'Selected') + ')'">Market Share</div>
                         <h2 class="text-base font-black tracking-tight text-slate-900 dark:text-white">DOMESTIC VS INT SHARE</h2>
                     </div>
                     <div class="relative h-56 w-full flex items-center justify-center">
                         <canvas id="dau2ShareDonut"></canvas>
                     </div>
                     <div class="p-3 rounded-xl bg-slate-50 dark:bg-navy-900 border border-slate-200 dark:border-slate-800 text-center font-mono">
-                        <div class="text-[10px] uppercase font-bold text-slate-400">Dominant Scope</div>
+                        <div class="text-[10px] uppercase font-bold text-slate-400">Dominant Scope (<span x-text="dau2ActiveMetricLabel"></span>)</div>
                         <div class="text-base font-black text-slate-900 dark:text-white mt-0.5">
-                            DOMESTIC (<span x-text="dau2Metrics.domSharePct + '%'"></span>)
+                            <span x-text="dau2Metrics.domSharePct >= dau2Metrics.intSharePct ? 'DOMESTIC' : 'INTERNASIONAL'"></span>
+                            (<span x-text="(dau2Metrics.domSharePct >= dau2Metrics.intSharePct ? dau2Metrics.domSharePct : dau2Metrics.intSharePct) + '%'"></span>)
                         </div>
                         <p class="text-[10px] text-slate-500 mt-1">Calculated deterministically from authentic OASYS records.</p>
                     </div>
@@ -1491,29 +1728,108 @@
                             <tr>
                                 <th class="px-3 py-2.5">#</th>
                                 @if ($reportType === 'DAU1')
-                                    <th @click="sortBy('airport_route')" class="px-3 py-2.5 cursor-pointer">Bandara Asal / Tujuan</th>
-                                    <th @click="sortBy('flight_number')" class="px-2.5 py-2.5 cursor-pointer">Flight No</th>
-                                    <th class="px-2.5 py-2.5">Status</th>
-                                    <th class="px-2.5 py-2.5">Tipe Pesawat</th>
-                                    <th class="px-2.5 py-2.5 text-right">Seat Cap</th>
-                                    <th class="px-2.5 py-2.5 text-right">ARR Acft</th>
-                                    <th class="px-2.5 py-2.5 text-right">DEP Acft</th>
-                                    <th class="px-2.5 py-2.5 text-right font-bold">Total Acft</th>
-                                    <th class="px-2.5 py-2.5 text-right text-emerald-600 font-bold">Total Pax</th>
-                                    <th class="px-2.5 py-2.5 text-right">Bagasi (Kg)</th>
-                                    <th class="px-2.5 py-2.5 text-right">Kargo (Kg)</th>
-                                    <th class="px-2.5 py-2.5 text-right">POS (Kg)</th>
+                                    {{-- AIRCRAFT HEADERS --}}
+                                    <template x-if="selectedMetric !== 'passenger'">
+                                        <th @click="sortBy('airport_route')" class="px-3 py-2.5 cursor-pointer">Bandara Asal / Tujuan</th>
+                                    </template>
+                                    <template x-if="selectedMetric !== 'passenger'">
+                                        <th @click="sortBy('flight_number')" class="px-2.5 py-2.5 cursor-pointer">Flight No</th>
+                                    </template>
+                                    <template x-if="selectedMetric !== 'passenger'">
+                                        <th class="px-2.5 py-2.5">Status</th>
+                                    </template>
+                                    <template x-if="selectedMetric !== 'passenger'">
+                                        <th class="px-2.5 py-2.5">Tipe Pesawat</th>
+                                    </template>
+                                    <template x-if="selectedMetric !== 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right">Seat Cap</th>
+                                    </template>
+                                    <template x-if="selectedMetric !== 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right">ARR Acft</th>
+                                    </template>
+                                    <template x-if="selectedMetric !== 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right">DEP Acft</th>
+                                    </template>
+                                    <template x-if="selectedMetric !== 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right font-bold">Total Acft</th>
+                                    </template>
+                                    <template x-if="selectedMetric !== 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right text-emerald-600 font-bold">Total Pax</th>
+                                    </template>
+                                    <template x-if="selectedMetric !== 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right">Bagasi (Kg)</th>
+                                    </template>
+                                    <template x-if="selectedMetric !== 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right">Kargo (Kg)</th>
+                                    </template>
+                                    <template x-if="selectedMetric !== 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right">POS (Kg)</th>
+                                    </template>
+
+                                    {{-- PASSENGER HEADERS --}}
+                                    <template x-if="selectedMetric === 'passenger'">
+                                        <th @click="sortBy('flight_number')" class="px-2.5 py-2.5 cursor-pointer">Flight No</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'passenger'">
+                                        <th @click="sortBy('airline')" class="px-3 py-2.5 cursor-pointer">Airline</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'passenger'">
+                                        <th @click="sortBy('airport_route')" class="px-3 py-2.5 cursor-pointer">Bandara / Rute</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right text-blue-600 font-bold">Dewasa (Adult)</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right text-emerald-600 font-bold">Anak (Child)</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right text-amber-600 font-bold">Bayi (Infant)</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right font-black text-slate-900 dark:text-white">Total Pax</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right text-slate-500">ARR Pax</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right text-slate-500">DEP Pax</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right text-slate-400">Transit</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right text-slate-400">Transfer</th>
+                                    </template>
                                 @elseif ($reportType === 'DAU2')
                                     <th @click="sortBy('category')" class="px-3 py-2.5 cursor-pointer">Jenis Penerbangan</th>
-                                    <th class="px-2.5 py-2.5 text-right">ARR Acft</th>
-                                    <th class="px-2.5 py-2.5 text-right">DEP Acft</th>
-                                    <th class="px-2.5 py-2.5 text-right font-bold">Total Acft</th>
-                                    <th class="px-2.5 py-2.5 text-right">ARR Pax</th>
-                                    <th class="px-2.5 py-2.5 text-right">DEP Pax</th>
-                                    <th class="px-2.5 py-2.5 text-right font-bold text-emerald-600">Total Pax</th>
-                                    <th class="px-2.5 py-2.5 text-right">Awak</th>
-                                    <th class="px-2.5 py-2.5 text-right">Bagasi</th>
-                                    <th class="px-2.5 py-2.5 text-right">Kargo</th>
+                                    <template x-if="selectedMetric === 'aircraft'">
+                                        <th class="px-2.5 py-2.5 text-right">ARR Acft</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'aircraft'">
+                                        <th class="px-2.5 py-2.5 text-right">DEP Acft</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'aircraft'">
+                                        <th class="px-2.5 py-2.5 text-right font-bold text-slate-900 dark:text-white">Total Acft</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right text-emerald-600">ARR Pax</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right text-blue-600">DEP Pax</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right font-bold text-emerald-600">Total Pax</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'baggage'">
+                                        <th class="px-2.5 py-2.5 text-right font-bold text-rose-600">Bagasi (Kg)</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'cargo'">
+                                        <th class="px-2.5 py-2.5 text-right font-bold text-teal-600">Kargo (Kg)</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'pos'">
+                                        <th class="px-2.5 py-2.5 text-right font-bold text-slate-600">POS (Kg)</th>
+                                    </template>
+                                    <th class="px-2.5 py-2.5 text-right text-slate-400">Awak</th>
                                 @elseif ($reportType === 'DAU3')
                                     <th class="px-3 py-2.5">Status Usaha</th>
                                     <th class="px-3 py-2.5">Jenis Penerbangan</th>
@@ -1669,29 +1985,108 @@
                                 <tr class="hover:bg-slate-50/70 dark:hover:bg-navy-800/50 transition">
                                     <td class="px-3 py-2 font-bold text-slate-400" x-text="startIndex + idx + 1"></td>
                                     @if ($reportType === 'DAU1')
-                                        <td class="px-3 py-2 font-sans font-bold text-slate-800 dark:text-slate-200" x-text="row.airport_route || row.origin || '—'"></td>
-                                        <td class="px-2.5 py-2 font-bold text-aviation-600" x-text="row.flight_number || '—'"></td>
-                                        <td class="px-2.5 py-2 text-[10px]" x-text="row.schedule_type || '—'"></td>
-                                        <td class="px-2.5 py-2" x-text="row.aircraft_type || '—'"></td>
-                                        <td class="px-2.5 py-2 text-right text-slate-400" x-text="formatNumber(row.seat_capacity)"></td>
-                                        <td class="px-2.5 py-2 text-right" x-text="formatNumber(row.aircraft_arrival)"></td>
-                                        <td class="px-2.5 py-2 text-right" x-text="formatNumber(row.aircraft_departure)"></td>
-                                        <td class="px-2.5 py-2 text-right font-bold text-slate-900 dark:text-white" x-text="formatNumber(row.aircraft_total)"></td>
-                                        <td class="px-2.5 py-2 text-right font-bold text-emerald-600" x-text="formatNumber(row.passenger_total)"></td>
-                                        <td class="px-2.5 py-2 text-right text-slate-500" x-text="formatNumber(row.baggage)"></td>
-                                        <td class="px-2.5 py-2 text-right text-slate-500" x-text="formatNumber(row.cargo)"></td>
-                                        <td class="px-2.5 py-2 text-right text-slate-500" x-text="formatNumber(row.pos)"></td>
+                                        {{-- AIRCRAFT ROWS --}}
+                                        <template x-if="selectedMetric !== 'passenger'">
+                                            <td class="px-3 py-2 font-sans font-bold text-slate-800 dark:text-slate-200" x-text="row.airport_route || row.origin || '—'"></td>
+                                        </template>
+                                        <template x-if="selectedMetric !== 'passenger'">
+                                            <td class="px-2.5 py-2 font-bold text-aviation-600" x-text="row.flight_number || '—'"></td>
+                                        </template>
+                                        <template x-if="selectedMetric !== 'passenger'">
+                                            <td class="px-2.5 py-2 text-[10px]" x-text="row.schedule_type || '—'"></td>
+                                        </template>
+                                        <template x-if="selectedMetric !== 'passenger'">
+                                            <td class="px-2.5 py-2" x-text="row.aircraft_type || '—'"></td>
+                                        </template>
+                                        <template x-if="selectedMetric !== 'passenger'">
+                                            <td class="px-2.5 py-2 text-right text-slate-400" x-text="formatNumber(row.seat_capacity)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric !== 'passenger'">
+                                            <td class="px-2.5 py-2 text-right" x-text="formatNumber(row.aircraft_arrival)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric !== 'passenger'">
+                                            <td class="px-2.5 py-2 text-right" x-text="formatNumber(row.aircraft_departure)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric !== 'passenger'">
+                                            <td class="px-2.5 py-2 text-right font-bold text-slate-900 dark:text-white" x-text="formatNumber(row.aircraft_total)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric !== 'passenger'">
+                                            <td class="px-2.5 py-2 text-right font-bold text-emerald-600" x-text="formatNumber(row.passenger_total)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric !== 'passenger'">
+                                            <td class="px-2.5 py-2 text-right text-slate-500" x-text="formatNumber(row.baggage)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric !== 'passenger'">
+                                            <td class="px-2.5 py-2 text-right text-slate-500" x-text="formatNumber(row.cargo)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric !== 'passenger'">
+                                            <td class="px-2.5 py-2 text-right text-slate-500" x-text="formatNumber(row.pos)"></td>
+                                        </template>
+
+                                        {{-- PASSENGER ROWS --}}
+                                        <template x-if="selectedMetric === 'passenger'">
+                                            <td class="px-2.5 py-2 font-bold text-aviation-600" x-text="row.flight_number || '—'"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'passenger'">
+                                            <td class="px-3 py-2 font-sans text-slate-800 dark:text-slate-200" x-text="row.airline || '—'"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'passenger'">
+                                            <td class="px-3 py-2 font-sans font-bold text-slate-800 dark:text-slate-200" x-text="row.airport_route || row.origin || '—'"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'passenger'">
+                                            <td class="px-2.5 py-2 text-right font-bold text-blue-600" x-text="formatNumber(row.passenger_adult ?? (row.adult ?? ((row.arr_adult || 0) + (row.dep_adult || 0))))"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'passenger'">
+                                            <td class="px-2.5 py-2 text-right font-bold text-emerald-600" x-text="formatNumber(row.passenger_child ?? (row.child ?? ((row.arr_child || 0) + (row.dep_child || 0))))"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'passenger'">
+                                            <td class="px-2.5 py-2 text-right font-bold text-amber-600" x-text="formatNumber(row.passenger_infant ?? (row.infant ?? ((row.arr_infant || 0) + (row.dep_infant || 0))))"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'passenger'">
+                                            <td class="px-2.5 py-2 text-right font-black text-slate-900 dark:text-white" x-text="formatNumber(row.passenger_total)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'passenger'">
+                                            <td class="px-2.5 py-2 text-right text-slate-500" x-text="formatNumber(row.passenger_arrival)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'passenger'">
+                                            <td class="px-2.5 py-2 text-right text-slate-500" x-text="formatNumber(row.passenger_departure)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'passenger'">
+                                            <td class="px-2.5 py-2 text-right text-slate-400" x-text="formatNumber(row.passenger_transit)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'passenger'">
+                                            <td class="px-2.5 py-2 text-right text-slate-400" x-text="formatNumber(row.passenger_transfer)"></td>
+                                        </template>
                                     @elseif ($reportType === 'DAU2')
                                         <td class="px-3 py-2 font-sans font-bold text-slate-800 dark:text-slate-200" x-text="row.category || '—'"></td>
-                                        <td class="px-2.5 py-2 text-right" x-text="formatNumber(row.aircraft_arrival)"></td>
-                                        <td class="px-2.5 py-2 text-right" x-text="formatNumber(row.aircraft_departure)"></td>
-                                        <td class="px-2.5 py-2 text-right font-bold text-slate-900 dark:text-white" x-text="formatNumber(row.aircraft_total)"></td>
-                                        <td class="px-2.5 py-2 text-right" x-text="formatNumber(row.passenger_arrival)"></td>
-                                        <td class="px-2.5 py-2 text-right" x-text="formatNumber(row.passenger_departure)"></td>
-                                        <td class="px-2.5 py-2 text-right font-bold text-emerald-600" x-text="formatNumber(row.passenger_total)"></td>
+                                        <template x-if="selectedMetric === 'aircraft'">
+                                            <td class="px-2.5 py-2 text-right" x-text="formatNumber(row.aircraft_arrival)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'aircraft'">
+                                            <td class="px-2.5 py-2 text-right" x-text="formatNumber(row.aircraft_departure)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'aircraft'">
+                                            <td class="px-2.5 py-2 text-right font-bold text-slate-900 dark:text-white" x-text="formatNumber(row.aircraft_total)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'passenger'">
+                                            <td class="px-2.5 py-2 text-right text-emerald-600" x-text="formatNumber(row.passenger_arrival)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'passenger'">
+                                            <td class="px-2.5 py-2 text-right text-blue-600" x-text="formatNumber(row.passenger_departure)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'passenger'">
+                                            <td class="px-2.5 py-2 text-right font-bold text-emerald-600" x-text="formatNumber(row.passenger_total)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'baggage'">
+                                            <td class="px-2.5 py-2 text-right font-bold text-rose-600" x-text="formatNumber(row.baggage)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'cargo'">
+                                            <td class="px-2.5 py-2 text-right font-bold text-teal-600" x-text="formatNumber(row.cargo)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'pos'">
+                                            <td class="px-2.5 py-2 text-right font-bold text-slate-600" x-text="formatNumber(row.pos)"></td>
+                                        </template>
                                         <td class="px-2.5 py-2 text-right text-slate-500" x-text="formatNumber(row.crew_total)"></td>
-                                        <td class="px-2.5 py-2 text-right text-slate-500" x-text="formatNumber(row.baggage)"></td>
-                                        <td class="px-2.5 py-2 text-right text-slate-500" x-text="formatNumber(row.cargo)"></td>
                                     @elseif ($reportType === 'DAU3')
                                         <td class="px-3 py-2 font-sans font-bold text-aviation-600" x-text="row.section || '—'"></td>
                                         <td class="px-3 py-2 font-sans" x-text="row.category || '—'"></td>
@@ -1967,23 +2362,24 @@ function dauEnhancedDashboard() {
         // Canonical Filter State
         filterStartDate: @json($meta['start_date'] ?? date('Y-m-d')),
         filterEndDate: @json($meta['end_date'] ?? date('Y-m-d')),
-        filterFlightType: 'ALL',
-        filterTerminal: 'ALL',
-        filterHour: 'ALL',
-        filterDirection: 'ALL',
-        filterAirline: 'ALL',
-        filterAirport: 'ALL',
-        filterAircraftType: 'ALL',
-        filterOperation: 'ALL',
-        filterScheduleType: 'ALL',
-        filterStatus: 'ALL',
-        filterCategory: 'ALL',
+        filterFlightType: @json($filters['flight_type'] ?? 'ALL'),
+        filterTerminal: @json($filters['terminal'] ?? 'ALL'),
+        filterHour: @json($filters['hour'] ?? 'ALL'),
+        filterDirection: @json($filters['direction'] ?? 'ALL'),
+        filterAirline: @json($filters['airline'] ?? 'ALL'),
+        filterAirport: @json($filters['airport'] ?? 'ALL'),
+        filterAircraftType: @json($filters['aircraft_type'] ?? 'ALL'),
+        filterOperation: @json($filters['operation'] ?? 'ALL'),
+        filterScheduleType: @json($filters['schedule_type'] ?? 'ALL'),
+        filterStatus: @json($filters['status'] ?? 'ALL'),
+        filterCategory: @json($filters['category'] ?? 'ALL'),
         filterWtc: 'ALL',
-        filterTopN: '10',
-        filterThreshold: 0,
-        selectedMetric: 'aircraft',
-        displayMode: 'absolute',
-        searchQuery: '',
+        filterTopN: @json($filters['top_n'] ?? '10'),
+        filterThreshold: Number(@json($filters['threshold'] ?? 0)),
+        filterPassengerType: @json($filters['passenger_type'] ?? 'ALL'),
+        selectedMetric: @json($filters['metric'] ?? 'aircraft'),
+        displayMode: @json($filters['display_mode'] ?? 'absolute'),
+        searchQuery: @json($filters['search'] ?? ''),
 
         // DAU-10A Capacity State
         dauViewMode: 'distribution',
@@ -2020,11 +2416,24 @@ function dauEnhancedDashboard() {
         activeHourlyDistribution: [],
         activeTerminalComparison: [],
         dau2Metrics: { domAircraft: 0, intAircraft: 0, domSharePct: 100, intSharePct: 0 },
+        dau2Comparative: @json($dau2Comparative ?? []),
+        dau2ComparativeList: [],
         dau3Metrics: { niagaAcft: 0, bukanNiagaAcft: 0, domAcft: 0, intAcft: 0 },
         dau4Diverging: { top_arrival: [], top_departure: [] },
         dau4aOperators: [],
         dau4bMatrixData: { cities: [], airlines: [], grid: {} },
         dau5aMetrics: { operatingCrew: 0, extraCrew: 0, arrExtraCrew: 0, depExtraCrew: 0 },
+
+        get dau2ActiveMetricLabel() {
+            const map = {
+                aircraft: 'AIRCRAFT MOVEMENTS',
+                passenger: 'PASSENGERS (PAX)',
+                baggage: 'BAGGAGE (KG)',
+                cargo: 'CARGO (KG)',
+                pos: 'POS / MAIL (KG)'
+            };
+            return map[this.selectedMetric] || String(this.selectedMetric).toUpperCase();
+        },
 
         // Chart.js registry
         chartInstances: {},
@@ -2059,6 +2468,10 @@ function dauEnhancedDashboard() {
                    this.filterStatus !== 'ALL' ||
                    this.filterCategory !== 'ALL' ||
                    this.filterWtc !== 'ALL' ||
+                   this.filterPassengerType !== 'ALL' ||
+                   this.displayMode !== 'absolute' ||
+                   (this.reportType === 'DAU1' && this.selectedMetric !== 'aircraft') ||
+                   (this.reportType === 'DAU2' && this.selectedMetric !== 'aircraft') ||
                    this.searchQuery !== '';
         },
 
@@ -2154,6 +2567,11 @@ function dauEnhancedDashboard() {
             this.filterAirline = 'ALL';
             this.filterAirport = 'ALL';
             this.filterAircraftType = 'ALL';
+            this.filterPassengerType = 'ALL';
+            this.displayMode = 'absolute';
+            if (this.reportType === 'DAU1' || this.reportType === 'DAU2') {
+                this.selectedMetric = 'aircraft';
+            }
             this.filterOperation = 'ALL';
             this.filterScheduleType = 'ALL';
             this.filterStatus = 'ALL';
@@ -2175,6 +2593,7 @@ function dauEnhancedDashboard() {
             const alFilter = this.filterAirline;
             const apFilter = this.filterAirport;
             const actFilter = this.filterAircraftType;
+            const paxType = this.filterPassengerType;
             const op = this.filterOperation;
             const sched = this.filterScheduleType;
             const st = this.filterStatus;
@@ -2236,6 +2655,16 @@ function dauEnhancedDashboard() {
                     }
                 }
 
+                // Passenger Type (DAU1)
+                if (this.reportType === 'DAU1' && paxType !== 'ALL') {
+                    const ad = Number(r.passenger_adult ?? r.adult ?? (Number(r.arr_adult || 0) + Number(r.dep_adult || 0)));
+                    const ch = Number(r.passenger_child ?? r.child ?? (Number(r.arr_child || 0) + Number(r.dep_child || 0)));
+                    const inf = Number(r.passenger_infant ?? r.infant ?? (Number(r.arr_infant || 0) + Number(r.dep_infant || 0)));
+                    if (paxType === 'ADULT' && ad <= 0) return false;
+                    if (paxType === 'CHILD' && ch <= 0) return false;
+                    if (paxType === 'INFANT' && inf <= 0) return false;
+                }
+
                 // DAU10B Operation
                 if (this.reportType === 'DAU10B' && op !== 'ALL') {
                     if (op === 'BLOCK_ON' && Number(r.aircraft_arrival || 0) === 0 && Number(r.passenger_arrival || 0) === 0) return false;
@@ -2292,6 +2721,15 @@ function dauEnhancedDashboard() {
                 passenger_transit: 0,
                 passenger_transfer: 0,
                 passenger_total: 0,
+                passenger_adult: 0,
+                passenger_child: 0,
+                passenger_infant: 0,
+                arr_adult: 0,
+                arr_child: 0,
+                arr_infant: 0,
+                dep_adult: 0,
+                dep_child: 0,
+                dep_infant: 0,
                 crew_total: 0,
                 baggage_total: 0,
                 cargo_total: 0,
@@ -2303,6 +2741,10 @@ function dauEnhancedDashboard() {
             const airportMap = {};
             const airlineMap = {};
             let domAcft = 0, intAcft = 0;
+            let domPax = 0, intPax = 0;
+            let domBag = 0, intBag = 0;
+            let domCgo = 0, intCgo = 0;
+            let domPos = 0, intPos = 0;
             let niagaAcft = 0, bukanNiagaAcft = 0;
             let opCrew = 0, exCrew = 0, arrExCrew = 0, depExCrew = 0;
 
@@ -2334,6 +2776,16 @@ function dauEnhancedDashboard() {
                 const pxTrf = Number(r.passenger_transfer || 0);
                 const pxTot = Number(r.passenger_total || (pxArr + pxDep + pxTrn + pxTrf));
 
+                const adArr = Number(r.arr_adult || 0);
+                const chArr = Number(r.arr_child || 0);
+                const infArr = Number(r.arr_infant || 0);
+                const adDep = Number(r.dep_adult || 0);
+                const chDep = Number(r.dep_child || 0);
+                const infDep = Number(r.dep_infant || 0);
+                const adTot = Number(r.passenger_adult ?? r.adult ?? (adArr + adDep));
+                const chTot = Number(r.passenger_child ?? r.child ?? (chArr + chDep));
+                const infTot = Number(r.passenger_infant ?? r.infant ?? (infArr + infDep));
+
                 const crw = Number(r.crew || 0);
                 const exCrw = Number(r.extra_crew || (Number(r.arr_extra_crew || 0) + Number(r.dep_extra_crew || 0)));
                 const crwTot = Number(r.crew_total || (crw + exCrw));
@@ -2351,6 +2803,15 @@ function dauEnhancedDashboard() {
                 sum.passenger_transit += pxTrn;
                 sum.passenger_transfer += pxTrf;
                 sum.passenger_total += pxTot;
+                sum.passenger_adult += adTot;
+                sum.passenger_child += chTot;
+                sum.passenger_infant += infTot;
+                sum.arr_adult += adArr;
+                sum.arr_child += chArr;
+                sum.arr_infant += infArr;
+                sum.dep_adult += adDep;
+                sum.dep_child += chDep;
+                sum.dep_infant += infDep;
                 sum.crew_total += crew;
                 sum.baggage_total += bag;
                 sum.cargo_total += cgo;
@@ -2359,8 +2820,16 @@ function dauEnhancedDashboard() {
                 // DAU2 & 3 Classification
                 if (String(r.category || '').toUpperCase().includes('DOM')) {
                     domAcft += acTot;
+                    domPax += pxTot;
+                    domBag += bag;
+                    domCgo += cgo;
+                    domPos += pos;
                 } else {
                     intAcft += acTot;
+                    intPax += pxTot;
+                    intBag += bag;
+                    intCgo += cgo;
+                    intPos += pos;
                 }
 
                 if (String(r.section || '').toUpperCase().includes('BUKAN')) {
@@ -2402,13 +2871,29 @@ function dauEnhancedDashboard() {
 
                 const ap = r.airport || r.city || r.airport_route;
                 if (ap) {
-                    if (!airportMap[ap]) airportMap[ap] = { airport: ap, city: r.city || ap, city_code: r.city_code || '', aircraft_arrival: 0, aircraft_departure: 0, aircraft_total: 0, passenger_arrival: 0, passenger_departure: 0, passenger_total: 0 };
+                    if (!airportMap[ap]) airportMap[ap] = {
+                        airport: ap,
+                        city: r.city || ap,
+                        city_code: r.city_code || '',
+                        aircraft_arrival: 0,
+                        aircraft_departure: 0,
+                        aircraft_total: 0,
+                        passenger_arrival: 0,
+                        passenger_departure: 0,
+                        passenger_total: 0,
+                        passenger_adult: 0,
+                        passenger_child: 0,
+                        passenger_infant: 0
+                    };
                     airportMap[ap].aircraft_arrival += acArr;
                     airportMap[ap].aircraft_departure += acDep;
                     airportMap[ap].aircraft_total += acTot;
                     airportMap[ap].passenger_arrival += pxArr;
                     airportMap[ap].passenger_departure += pxDep;
                     airportMap[ap].passenger_total += pxTot;
+                    airportMap[ap].passenger_adult += adTot;
+                    airportMap[ap].passenger_child += chTot;
+                    airportMap[ap].passenger_infant += infTot;
                 }
 
                 const al = r.airline || r.operator_name;
@@ -2456,13 +2941,44 @@ function dauEnhancedDashboard() {
                 peak_terminal_val: peakTV
             };
 
-            // Secondary metrics
-            const totAcDau2 = domAcft + intAcft;
+            // Secondary metrics & DAU-02 Comparative Matrix
+            const buildComp = (key, label, dom, int, unit) => {
+                const tot = dom + int;
+                const domPct = tot > 0 ? Math.round((dom / tot) * 1000) / 10 : 0;
+                const intPct = tot > 0 ? Math.round((int / tot) * 1000) / 10 : 0;
+                return {
+                    key: key,
+                    label: label,
+                    unit: unit,
+                    domestic: dom,
+                    international: int,
+                    total: tot,
+                    dom_pct: domPct,
+                    int_pct: intPct,
+                    dom_share_str: domPct.toFixed(1) + '%',
+                    int_share_str: intPct.toFixed(1) + '%'
+                };
+            };
+
+            this.dau2Comparative = {
+                aircraft: buildComp('aircraft', 'Aircraft Movements', domAcft, intAcft, 'A/C'),
+                passenger: buildComp('passenger', 'Passengers', domPax, intPax, 'PAX'),
+                baggage: buildComp('baggage', 'Baggage', domBag, intBag, 'KG'),
+                cargo: buildComp('cargo', 'Cargo', domCgo, intCgo, 'KG'),
+                pos: buildComp('pos', 'POS / Mail', domPos, intPos, 'KG'),
+            };
+            this.dau2ComparativeList = Object.values(this.dau2Comparative);
+
+            const activeComp = this.dau2Comparative[this.selectedMetric] || this.dau2Comparative.aircraft;
             this.dau2Metrics = {
                 domAircraft: domAcft,
                 intAircraft: intAcft,
-                domSharePct: totAcDau2 > 0 ? Math.round((domAcft / totAcDau2) * 100) : 0,
-                intSharePct: totAcDau2 > 0 ? Math.round((intAcft / totAcDau2) * 100) : 0
+                domValue: activeComp.domestic,
+                intValue: activeComp.international,
+                totValue: activeComp.total,
+                domSharePct: activeComp.dom_pct,
+                intSharePct: activeComp.int_pct,
+                unit: activeComp.unit
             };
 
             this.dau3Metrics = {
@@ -2479,11 +2995,30 @@ function dauEnhancedDashboard() {
                 depExtraCrew: depExCrew
             };
 
-            // DAU4 Diverging
+            // DAU4 Diverging / DAU1 Route Ranking
             const topN = this.filterTopN === 'ALL' ? 50 : Number(this.filterTopN);
             const allAp = Object.values(airportMap);
-            const arrSorted = [...allAp].sort((a, b) => (this.selectedMetric === 'passenger' ? b.passenger_arrival - a.passenger_arrival : b.aircraft_arrival - a.aircraft_arrival));
-            const depSorted = [...allAp].sort((a, b) => (this.selectedMetric === 'passenger' ? b.passenger_departure - a.passenger_departure : b.aircraft_departure - a.aircraft_departure));
+            const isPax = this.selectedMetric === 'passenger';
+            const paxType = this.filterPassengerType;
+
+            const arrSorted = [...allAp].sort((a, b) => {
+                if (isPax) {
+                    if (paxType === 'ADULT') return b.passenger_adult - a.passenger_adult;
+                    if (paxType === 'CHILD') return b.passenger_child - a.passenger_child;
+                    if (paxType === 'INFANT') return b.passenger_infant - a.passenger_infant;
+                    return b.passenger_total - a.passenger_total;
+                }
+                return b.aircraft_arrival - a.aircraft_arrival;
+            });
+            const depSorted = [...allAp].sort((a, b) => {
+                if (isPax) {
+                    if (paxType === 'ADULT') return b.passenger_adult - a.passenger_adult;
+                    if (paxType === 'CHILD') return b.passenger_child - a.passenger_child;
+                    if (paxType === 'INFANT') return b.passenger_infant - a.passenger_infant;
+                    return b.passenger_total - a.passenger_total;
+                }
+                return b.aircraft_departure - a.aircraft_departure;
+            });
             this.dau4Diverging = {
                 top_arrival: arrSorted.slice(0, topN),
                 top_departure: depSorted.slice(0, topN)
@@ -2638,6 +3173,8 @@ function dauEnhancedDashboard() {
             p.set('hour', this.filterHour);
             p.set('direction', this.filterDirection);
             p.set('metric', this.selectedMetric);
+            p.set('passenger_type', this.filterPassengerType);
+            p.set('display_mode', this.displayMode);
             p.set('airline', this.filterAirline);
             p.set('airport', this.filterAirport);
             p.set('aircraft_type', this.filterAircraftType);
@@ -2887,19 +3424,78 @@ function dauEnhancedDashboard() {
             };
         },
 
-        // Chart.js Manager
-        initCharts() {
+        renderDau1Charts() {
             if (!window.Chart) return;
+            const ctxCombo = document.getElementById('dau1ComboChart')?.getContext('2d');
+            if (ctxCombo) {
+                if (this.chartInstances.dau1Combo) {
+                    this.chartInstances.dau1Combo.destroy();
+                }
+                const routes = (this.dau4Diverging.top_arrival || []).slice(0, 10);
+                const labels = routes.map(r => r.city || r.airport || 'Route');
 
-            // DAU-1: Combo Chart & Payload Donut
-            if (this.reportType === 'DAU1') {
-                const ctxCombo = document.getElementById('dau1ComboChart')?.getContext('2d');
-                if (ctxCombo) {
-                    const routes = (this.dau4Diverging.top_arrival || []).slice(0, 10);
+                if (this.selectedMetric === 'passenger') {
+                    let datasets = [];
+                    const pType = this.filterPassengerType;
+                    if (pType === 'ADULT') {
+                        datasets = [
+                            { label: 'Dewasa (Adult)', data: routes.map(r => r.passenger_adult || 0), backgroundColor: '#2563eb' }
+                        ];
+                    } else if (pType === 'CHILD') {
+                        datasets = [
+                            { label: 'Anak (Child)', data: routes.map(r => r.passenger_child || 0), backgroundColor: '#0284c7' }
+                        ];
+                    } else if (pType === 'INFANT') {
+                        datasets = [
+                            { label: 'Bayi (Infant)', data: routes.map(r => r.passenger_infant || 0), backgroundColor: '#a855f7' }
+                        ];
+                    } else {
+                        datasets = [
+                            { label: 'Dewasa (Adult)', data: routes.map(r => r.passenger_adult || 0), backgroundColor: '#2563eb', stack: 'pax' },
+                            { label: 'Anak (Child)', data: routes.map(r => r.passenger_child || 0), backgroundColor: '#0284c7', stack: 'pax' },
+                            { label: 'Bayi (Infant)', data: routes.map(r => r.passenger_infant || 0), backgroundColor: '#a855f7', stack: 'pax' }
+                        ];
+                    }
+                    this.chartInstances.dau1Combo = new Chart(ctxCombo, {
+                        type: 'bar',
+                        data: { labels: labels, datasets: datasets },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        afterBody: (items) => {
+                                            const idx = items[0]?.dataIndex;
+                                            if (idx !== undefined && routes[idx]) {
+                                                const r = routes[idx];
+                                                return [
+                                                    `Total Pax: ${(r.passenger_total || 0).toLocaleString('id-ID')}`,
+                                                    `Dewasa: ${(r.passenger_adult || 0).toLocaleString('id-ID')}`,
+                                                    `Anak: ${(r.passenger_child || 0).toLocaleString('id-ID')}`,
+                                                    `Bayi: ${(r.passenger_infant || 0).toLocaleString('id-ID')}`
+                                                ];
+                                            }
+                                            return [];
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: { stacked: true },
+                                y: {
+                                    stacked: true,
+                                    beginAtZero: true,
+                                    title: { display: true, text: 'Passengers (Pax)' }
+                                }
+                            }
+                        }
+                    });
+                } else {
                     this.chartInstances.dau1Combo = new Chart(ctxCombo, {
                         type: 'bar',
                         data: {
-                            labels: routes.map(r => r.city || r.airport),
+                            labels: labels,
                             datasets: [
                                 { label: 'Arrival A/C', data: routes.map(r => r.aircraft_arrival), backgroundColor: '#f59e0b', yAxisID: 'y' },
                                 { label: 'Departure A/C', data: routes.map(r => r.aircraft_departure), backgroundColor: '#2563eb', yAxisID: 'y' },
@@ -2916,9 +3512,29 @@ function dauEnhancedDashboard() {
                         }
                     });
                 }
+            }
 
-                const ctxPayload = document.getElementById('dau1PayloadChart')?.getContext('2d');
-                if (ctxPayload) {
+            const ctxPayload = document.getElementById('dau1PayloadChart')?.getContext('2d');
+            if (ctxPayload) {
+                if (this.chartInstances.dau1Payload) {
+                    this.chartInstances.dau1Payload.destroy();
+                }
+                if (this.selectedMetric === 'passenger') {
+                    const ad = this.activeSummary.passenger_adult || 0;
+                    const ch = this.activeSummary.passenger_child || 0;
+                    const inf = this.activeSummary.passenger_infant || 0;
+                    this.chartInstances.dau1Payload = new Chart(ctxPayload, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Dewasa (Adult)', 'Anak (Child)', 'Bayi (Infant)'],
+                            datasets: [{
+                                data: [ad || 1, ch || 0, inf || 0],
+                                backgroundColor: ['#2563eb', '#0284c7', '#a855f7']
+                            }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false }
+                    });
+                } else {
                     this.chartInstances.dau1Payload = new Chart(ctxPayload, {
                         type: 'doughnut',
                         data: {
@@ -2932,53 +3548,95 @@ function dauEnhancedDashboard() {
                     });
                 }
             }
+        },
+
+        renderDau2Charts() {
+            if (!window.Chart) return;
+            const ctxSt = document.getElementById('dau2StackedChart')?.getContext('2d');
+            if (ctxSt) {
+                if (this.chartInstances.dau2Stacked) {
+                    this.chartInstances.dau2Stacked.destroy();
+                }
+                const comp = this.dau2Comparative || {};
+                const isPct = this.displayMode === 'percentage';
+                const metricsList = [
+                    { label: 'Aircraft Movements', key: 'aircraft' },
+                    { label: 'Passengers', key: 'passenger' },
+                    { label: 'Baggage (Kg)', key: 'baggage' },
+                    { label: 'Cargo (Kg)', key: 'cargo' },
+                    { label: 'POS / Mail (Kg)', key: 'pos' },
+                ];
+                const labels = metricsList.map(m => m.label);
+                const domData = metricsList.map(m => {
+                    const item = comp[m.key] || {};
+                    return isPct ? (item.dom_pct || 0) : (item.domestic || 0);
+                });
+                const intData = metricsList.map(m => {
+                    const item = comp[m.key] || {};
+                    return isPct ? (item.int_pct || 0) : (item.international || 0);
+                });
+
+                this.chartInstances.dau2Stacked = new Chart(ctxSt, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { label: isPct ? 'Domestic (%)' : 'Domestic', data: domData, backgroundColor: '#2563eb' },
+                            { label: isPct ? 'International (%)' : 'International', data: intData, backgroundColor: '#4f46e5' }
+                        ]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                stacked: true,
+                                max: isPct ? 100 : undefined,
+                                ticks: {
+                                    callback: (val) => isPct ? `${val}%` : Number(val).toLocaleString('id-ID')
+                                }
+                            },
+                            y: { stacked: true }
+                        }
+                    }
+                });
+            }
+
+            const ctxSh = document.getElementById('dau2ShareDonut')?.getContext('2d');
+            if (ctxSh) {
+                if (this.chartInstances.dau2Share) {
+                    this.chartInstances.dau2Share.destroy();
+                }
+                const activeComp = (this.dau2Comparative && this.dau2Comparative[this.selectedMetric]) ? this.dau2Comparative[this.selectedMetric] : (this.dau2Comparative?.aircraft || {});
+                const domVal = activeComp.domestic || 0;
+                const intVal = activeComp.international || 0;
+                this.chartInstances.dau2Share = new Chart(ctxSh, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Domestic', 'International'],
+                        datasets: [{
+                            data: [domVal || 1, intVal || 0],
+                            backgroundColor: ['#2563eb', '#4f46e5']
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+        },
+
+        // Chart.js Manager
+        initCharts() {
+            if (!window.Chart) return;
+
+            // DAU-1: Combo Chart & Payload Donut
+            if (this.reportType === 'DAU1') {
+                this.renderDau1Charts();
+            }
 
             // DAU-2: Stacked & Donut
             if (this.reportType === 'DAU2') {
-                const ctxSt = document.getElementById('dau2StackedChart')?.getContext('2d');
-                if (ctxSt) {
-                    let domAc = 0, intAc = 0, domPx = 0, intPx = 0, domBg = 0, intBg = 0, domCg = 0, intCg = 0;
-                    this.filteredRecords.forEach(r => {
-                        const isDom = String(r.category || '').toUpperCase().includes('DOM');
-                        const ac = Number(r.aircraft_total || (Number(r.aircraft_arrival || 0) + Number(r.aircraft_departure || 0)));
-                        const px = Number(r.passenger_total || (Number(r.passenger_arrival || 0) + Number(r.passenger_departure || 0)));
-                        const bg = Number(r.baggage || 0);
-                        const cg = Number(r.cargo || 0);
-                        if (isDom) { domAc += ac; domPx += px; domBg += bg; domCg += cg; }
-                        else { intAc += ac; intPax += px; intBg += bg; intCg += cg; }
-                    });
-                    this.chartInstances.dau2Stacked = new Chart(ctxSt, {
-                        type: 'bar',
-                        data: {
-                            labels: ['Aircraft Movements', 'Passengers', 'Baggage (Kg)', 'Cargo (Kg)'],
-                            datasets: [
-                                { label: 'Domestic', data: [domAc, domPx, domBg, domCg], backgroundColor: '#2563eb' },
-                                { label: 'International', data: [intAc, intPax, intBg, intCg], backgroundColor: '#4f46e5' }
-                            ]
-                        },
-                        options: {
-                            indexAxis: 'y',
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: { x: { stacked: true }, y: { stacked: true } }
-                        }
-                    });
-                }
-
-                const ctxSh = document.getElementById('dau2ShareDonut')?.getContext('2d');
-                if (ctxSh) {
-                    this.chartInstances.dau2Share = new Chart(ctxSh, {
-                        type: 'doughnut',
-                        data: {
-                            labels: ['Domestic', 'International'],
-                            datasets: [{
-                                data: [this.dau2Metrics.domAircraft, this.dau2Metrics.intAircraft],
-                                backgroundColor: ['#2563eb', '#4f46e5']
-                            }]
-                        },
-                        options: { responsive: true, maintainAspectRatio: false }
-                    });
-                }
+                this.renderDau2Charts();
             }
 
             // DAU-3: Donuts
@@ -3269,36 +3927,11 @@ function dauEnhancedDashboard() {
         },
 
         updateCharts() {
-            if (this.chartInstances.dau1Combo) {
-                const routes = (this.dau4Diverging.top_arrival || []).slice(0, 10);
-                this.chartInstances.dau1Combo.data.labels = routes.map(r => r.city || r.airport);
-                this.chartInstances.dau1Combo.data.datasets[0].data = routes.map(r => r.aircraft_arrival);
-                this.chartInstances.dau1Combo.data.datasets[1].data = routes.map(r => r.aircraft_departure);
-                this.chartInstances.dau1Combo.data.datasets[2].data = routes.map(r => r.passenger_total);
-                this.chartInstances.dau1Combo.update();
+            if (this.reportType === 'DAU1') {
+                this.renderDau1Charts();
             }
-            if (this.chartInstances.dau1Payload) {
-                this.chartInstances.dau1Payload.data.datasets[0].data = [this.activeSummary.baggage_total || 0, this.activeSummary.cargo_total || 0];
-                this.chartInstances.dau1Payload.update();
-            }
-            if (this.chartInstances.dau2Stacked) {
-                let domAc = 0, intAc = 0, domPx = 0, intPx = 0, domBg = 0, intBg = 0, domCg = 0, intCg = 0;
-                this.filteredRecords.forEach(r => {
-                    const isDom = String(r.category || '').toUpperCase().includes('DOM');
-                    const ac = Number(r.aircraft_total || (Number(r.aircraft_arrival || 0) + Number(r.aircraft_departure || 0)));
-                    const px = Number(r.passenger_total || (Number(r.passenger_arrival || 0) + Number(r.passenger_departure || 0)));
-                    const bg = Number(r.baggage || 0);
-                    const cg = Number(r.cargo || 0);
-                    if (isDom) { domAc += ac; domPx += px; domBg += bg; domCg += cg; }
-                    else { intAc += ac; intPax += px; intBg += bg; intCg += cg; }
-                });
-                this.chartInstances.dau2Stacked.data.datasets[0].data = [domAc, domPx, domBg, domCg];
-                this.chartInstances.dau2Stacked.data.datasets[1].data = [intAc, intPx, intBg, intCg];
-                this.chartInstances.dau2Stacked.update();
-            }
-            if (this.chartInstances.dau2Share) {
-                this.chartInstances.dau2Share.data.datasets[0].data = [this.dau2Metrics.domAircraft, this.dau2Metrics.intAircraft];
-                this.chartInstances.dau2Share.update();
+            if (this.reportType === 'DAU2') {
+                this.renderDau2Charts();
             }
             if (this.chartInstances.dau3Status) {
                 this.chartInstances.dau3Status.data.datasets[0].data = [this.dau3Metrics.niagaAcft, this.dau3Metrics.bukanNiagaAcft];

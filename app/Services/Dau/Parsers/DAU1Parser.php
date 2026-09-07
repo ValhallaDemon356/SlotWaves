@@ -19,6 +19,15 @@ class DAU1Parser extends BaseDauParser
             'passenger_transit'  => 0,
             'passenger_transfer' => 0,
             'passenger_total'    => 0,
+            'passenger_adult'    => 0,
+            'passenger_child'    => 0,
+            'passenger_infant'   => 0,
+            'arr_adult'          => 0,
+            'arr_child'          => 0,
+            'arr_infant'         => 0,
+            'dep_adult'          => 0,
+            'dep_child'          => 0,
+            'dep_infant'         => 0,
             'baggage_total'      => 0,
             'cargo_total'        => 0,
             'pos_total'          => 0,
@@ -65,6 +74,10 @@ class DAU1Parser extends BaseDauParser
             $pDepBayi   = $this->toInt($row[14] ?? 0);
             $pDepTotal  = $pDepDewasa + $pDepAnak + $pDepBayi;
 
+            $pAdultTot  = $pArrDewasa + $pDepDewasa;
+            $pChildTot  = $pArrAnak + $pDepAnak;
+            $pInfantTot = $pArrBayi + $pDepBayi;
+
             // Transit & Transfer
             $pTransitTotal  = $this->toInt($row[15] ?? 0) + $this->toInt($row[16] ?? 0) + $this->toInt($row[17] ?? 0);
             $pTransferTotal = $this->toInt($row[18] ?? 0) + $this->toInt($row[19] ?? 0) + $this->toInt($row[20] ?? 0);
@@ -99,6 +112,18 @@ class DAU1Parser extends BaseDauParser
                 'passenger_transit'    => $pTransitTotal,
                 'passenger_transfer'   => $pTransferTotal,
                 'passenger_total'      => $pTotal,
+                'passenger_adult'      => $pAdultTot,
+                'passenger_child'      => $pChildTot,
+                'passenger_infant'     => $pInfantTot,
+                'adult'                => $pAdultTot,
+                'child'                => $pChildTot,
+                'infant'               => $pInfantTot,
+                'arr_adult'            => $pArrDewasa,
+                'arr_child'            => $pArrAnak,
+                'arr_infant'           => $pArrBayi,
+                'dep_adult'            => $pDepDewasa,
+                'dep_child'            => $pDepAnak,
+                'dep_infant'           => $pDepBayi,
                 'baggage'              => $baggage,
                 'cargo'                => $cargo,
                 'pos'                  => $pos,
@@ -119,6 +144,15 @@ class DAU1Parser extends BaseDauParser
             $summary['passenger_transit']  += $pTransitTotal;
             $summary['passenger_transfer'] += $pTransferTotal;
             $summary['passenger_total']    += $pTotal;
+            $summary['passenger_adult']    += $pAdultTot;
+            $summary['passenger_child']    += $pChildTot;
+            $summary['passenger_infant']   += $pInfantTot;
+            $summary['arr_adult']          += $pArrDewasa;
+            $summary['arr_child']          += $pArrAnak;
+            $summary['arr_infant']         += $pArrBayi;
+            $summary['dep_adult']          += $pDepDewasa;
+            $summary['dep_child']          += $pDepAnak;
+            $summary['dep_infant']         += $pDepBayi;
             $summary['baggage_total']      += $baggage;
             $summary['cargo_total']        += $cargo;
             $summary['pos_total']          += $pos;

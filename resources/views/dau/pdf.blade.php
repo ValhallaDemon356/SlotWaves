@@ -239,8 +239,12 @@
                         DATA ANGKUTAN UDARA
                         @if ($reportType === 'DAU1')
                             ARUS LALU LINTAS PESAWAT, PENUMPANG, BAGASI & KARGO (DAU-01)
+                            @if (($filters['metric'] ?? 'aircraft') === 'passenger')
+                                <div style="font-size: 8pt; color: #2563eb; font-weight: normal; margin-top: 2px;">METRIC: PENUMPANG (PASSENGER BREAKDOWN: DEWASA, ANAK, BAYI)</div>
+                            @endif
                         @elseif ($reportType === 'DAU2')
                             SECARA TOTAL (DOMESTIK VS INTERNASIONAL) (DAU-02)
+                            <div style="font-size: 8pt; color: #2563eb; font-weight: normal; margin-top: 2px;">METRIC: {{ strtoupper($filters['metric'] ?? 'AIRCRAFT') }} &bull; MODE: {{ strtoupper($filters['display_mode'] ?? 'ABSOLUTE') }}</div>
                         @elseif ($reportType === 'DAU3')
                             STATUS PENERBANGAN (NIAGA & BUKAN NIAGA) (DAU-03)
                         @elseif ($reportType === 'DAU4')
@@ -297,6 +301,8 @@
                 if (!empty($filters['airline']) && $filters['airline'] !== 'ALL') $activeFilterList[] = 'Airline: ' . $filters['airline'];
                 if (!empty($filters['hour']) && $filters['hour'] !== 'ALL') $activeFilterList[] = 'Hour: ' . $filters['hour'];
                 if (!empty($filters['metric'])) $activeFilterList[] = 'Metric: ' . strtoupper($filters['metric']);
+                if (!empty($filters['passenger_type']) && $filters['passenger_type'] !== 'ALL') $activeFilterList[] = 'Pax Type: ' . $filters['passenger_type'];
+                if (!empty($filters['display_mode']) && $filters['display_mode'] !== 'absolute') $activeFilterList[] = 'Mode: ' . strtoupper($filters['display_mode']);
                 if (!empty($filters['search'])) $activeFilterList[] = 'Search: "' . $filters['search'] . '"';
             @endphp
             @if (count($activeFilterList) > 0)
@@ -313,81 +319,112 @@
     <table class="kpi-table">
         <tr>
             @if ($reportType === 'DAU1')
-                <td class="kpi-cell" style="width: 14.2%;">
-                    <div class="kpi-label">Total Aircraft</div>
-                    <div class="kpi-value">{{ number_format($summary['aircraft_total'] ?? 0) }}</div>
-                    <div class="kpi-sub">Movements</div>
-                </td>
-                <td class="kpi-cell" style="width: 14.2%;">
-                    <div class="kpi-label">Arrival Acft</div>
-                    <div class="kpi-value" style="color: #d97706;">{{ number_format($summary['aircraft_arrival'] ?? 0) }}</div>
-                    <div class="kpi-sub">Inbound</div>
-                </td>
-                <td class="kpi-cell" style="width: 14.2%;">
-                    <div class="kpi-label">Departure Acft</div>
-                    <div class="kpi-value" style="color: #0284c7;">{{ number_format($summary['aircraft_departure'] ?? 0) }}</div>
-                    <div class="kpi-sub">Outbound</div>
-                </td>
-                <td class="kpi-cell" style="width: 14.2%;">
-                    <div class="kpi-label">Total Passengers</div>
-                    <div class="kpi-value" style="color: #059669;">{{ number_format($summary['passenger_total'] ?? 0) }}</div>
-                    <div class="kpi-sub">PAX Carried</div>
-                </td>
-                <td class="kpi-cell" style="width: 14.2%;">
-                    <div class="kpi-label">Baggage (Kg)</div>
-                    <div class="kpi-value" style="color: #d97706;">{{ number_format($summary['baggage_total'] ?? 0) }}</div>
-                    <div class="kpi-sub">Luggage</div>
-                </td>
-                <td class="kpi-cell" style="width: 14.2%;">
-                    <div class="kpi-label">Cargo (Kg)</div>
-                    <div class="kpi-value" style="color: #4f46e5;">{{ number_format($summary['cargo_total'] ?? 0) }}</div>
-                    <div class="kpi-sub">Freight</div>
-                </td>
-                <td class="kpi-cell" style="width: 14.8%;">
-                    <div class="kpi-label">POS (Kg)</div>
-                    <div class="kpi-value" style="color: #64748b;">{{ number_format($summary['pos_total'] ?? 0) }}</div>
-                    <div class="kpi-sub">Mail &amp; Post</div>
-                </td>
+                @if (($filters['metric'] ?? 'aircraft') === 'passenger')
+                    @php
+                        $pAdult = $summary['passenger_adult'] ?? ($summary['arr_adult'] ?? 0) + ($summary['dep_adult'] ?? 0);
+                        $pChild = $summary['passenger_child'] ?? ($summary['arr_child'] ?? 0) + ($summary['dep_child'] ?? 0);
+                        $pInfant = $summary['passenger_infant'] ?? ($summary['arr_infant'] ?? 0) + ($summary['dep_infant'] ?? 0);
+                        $pTotal = $summary['passenger_total'] ?? ($pAdult + $pChild + $pInfant);
+                    @endphp
+                    <td class="kpi-cell" style="width: 16.6%;">
+                        <div class="kpi-label">Total Passengers</div>
+                        <div class="kpi-value" style="color: #059669;">{{ number_format($pTotal) }}</div>
+                        <div class="kpi-sub">Seluruh Pax</div>
+                    </td>
+                    <td class="kpi-cell" style="width: 16.6%;">
+                        <div class="kpi-label">Dewasa (Adult)</div>
+                        <div class="kpi-value" style="color: #2563eb;">{{ number_format($pAdult) }}</div>
+                        <div class="kpi-sub">Penumpang Dewasa</div>
+                    </td>
+                    <td class="kpi-cell" style="width: 16.6%;">
+                        <div class="kpi-label">Anak (Child)</div>
+                        <div class="kpi-value" style="color: #0284c7;">{{ number_format($pChild) }}</div>
+                        <div class="kpi-sub">Penumpang Anak</div>
+                    </td>
+                    <td class="kpi-cell" style="width: 16.6%;">
+                        <div class="kpi-label">Bayi (Infant)</div>
+                        <div class="kpi-value" style="color: #a855f7;">{{ number_format($pInfant) }}</div>
+                        <div class="kpi-sub">Penumpang Bayi</div>
+                    </td>
+                    <td class="kpi-cell" style="width: 16.6%;">
+                        <div class="kpi-label">Pax Kedatangan</div>
+                        <div class="kpi-value" style="color: #d97706;">{{ number_format($summary['passenger_arrival'] ?? 0) }}</div>
+                        <div class="kpi-sub">Arrival (ARR)</div>
+                    </td>
+                    <td class="kpi-cell" style="width: 17%;">
+                        <div class="kpi-label">Pax Keberangkatan</div>
+                        <div class="kpi-value" style="color: #0284c7;">{{ number_format($summary['passenger_departure'] ?? 0) }}</div>
+                        <div class="kpi-sub">Departure (DEP)</div>
+                    </td>
+                @else
+                    <td class="kpi-cell" style="width: 14.2%;">
+                        <div class="kpi-label">Total Aircraft</div>
+                        <div class="kpi-value">{{ number_format($summary['aircraft_total'] ?? 0) }}</div>
+                        <div class="kpi-sub">Movements</div>
+                    </td>
+                    <td class="kpi-cell" style="width: 14.2%;">
+                        <div class="kpi-label">Arrival Acft</div>
+                        <div class="kpi-value" style="color: #d97706;">{{ number_format($summary['aircraft_arrival'] ?? 0) }}</div>
+                        <div class="kpi-sub">Inbound</div>
+                    </td>
+                    <td class="kpi-cell" style="width: 14.2%;">
+                        <div class="kpi-label">Departure Acft</div>
+                        <div class="kpi-value" style="color: #0284c7;">{{ number_format($summary['aircraft_departure'] ?? 0) }}</div>
+                        <div class="kpi-sub">Outbound</div>
+                    </td>
+                    <td class="kpi-cell" style="width: 14.2%;">
+                        <div class="kpi-label">Total Passengers</div>
+                        <div class="kpi-value" style="color: #059669;">{{ number_format($summary['passenger_total'] ?? 0) }}</div>
+                        <div class="kpi-sub">PAX Carried</div>
+                    </td>
+                    <td class="kpi-cell" style="width: 14.2%;">
+                        <div class="kpi-label">Baggage (Kg)</div>
+                        <div class="kpi-value" style="color: #d97706;">{{ number_format($summary['baggage_total'] ?? 0) }}</div>
+                        <div class="kpi-sub">Luggage</div>
+                    </td>
+                    <td class="kpi-cell" style="width: 14.2%;">
+                        <div class="kpi-label">Cargo (Kg)</div>
+                        <div class="kpi-value" style="color: #4f46e5;">{{ number_format($summary['cargo_total'] ?? 0) }}</div>
+                        <div class="kpi-sub">Freight</div>
+                    </td>
+                    <td class="kpi-cell" style="width: 14.8%;">
+                        <div class="kpi-label">POS (Kg)</div>
+                        <div class="kpi-value" style="color: #64748b;">{{ number_format($summary['pos_total'] ?? 0) }}</div>
+                        <div class="kpi-sub">Mail &amp; Post</div>
+                    </td>
+                @endif
 
             @elseif ($reportType === 'DAU2')
                 @php
-                    $dAc = $analytics['dau2_distribution']['domestic']['aircraft'] ?? 0;
-                    $iAc = $analytics['dau2_distribution']['international']['aircraft'] ?? 0;
-                    $totAc = $dAc + $iAc;
-                    $dPax = $analytics['dau2_distribution']['domestic']['passenger'] ?? 0;
-                    $iPax = $analytics['dau2_distribution']['international']['passenger'] ?? 0;
-                    $totPax = $dPax + $iPax;
-                    $domShare = $totAc > 0 ? round(($dAc / $totAc) * 100, 1) : 0;
+                    $mKey = $filters['metric'] ?? 'aircraft';
+                    $comp = $analytics['dau2_comparative'][$mKey] ?? ($analytics['dau2_comparative']['aircraft'] ?? null);
+                    $dVal = $comp['domestic'] ?? ($analytics['dau2_distribution']['domestic'][$mKey] ?? 0);
+                    $iVal = $comp['international'] ?? ($analytics['dau2_distribution']['international'][$mKey] ?? 0);
+                    $tVal = $comp['total'] ?? ($dVal + $iVal);
+                    $dShare = $comp['domestic_pct'] ?? ($tVal > 0 ? round(($dVal / $tVal) * 100, 1) : 0);
+                    $iShare = $comp['international_pct'] ?? ($tVal > 0 ? round(($iVal / $tVal) * 100, 1) : 0);
+                    $unit = $comp['unit'] ?? 'Units';
+                    $label = $comp['metric'] ?? strtoupper($mKey);
                 @endphp
-                <td class="kpi-cell" style="width: 16.6%;">
-                    <div class="kpi-label">Domestic Acft</div>
-                    <div class="kpi-value">{{ number_format($dAc) }}</div>
-                    <div class="kpi-sub">{{ $domShare }}% share</div>
+                <td class="kpi-cell" style="width: 25%;">
+                    <div class="kpi-label">Domestic {{ $label }}</div>
+                    <div class="kpi-value" style="color: #2563eb;">{{ number_format($dVal) }}</div>
+                    <div class="kpi-sub">{{ $dShare }}% share ({{ $unit }})</div>
                 </td>
-                <td class="kpi-cell" style="width: 16.6%;">
-                    <div class="kpi-label">Int'l Acft</div>
-                    <div class="kpi-value" style="color: #7c3aed;">{{ number_format($iAc) }}</div>
-                    <div class="kpi-sub">{{ round(100 - $domShare, 1) }}% share</div>
+                <td class="kpi-cell" style="width: 25%;">
+                    <div class="kpi-label">Int'l {{ $label }}</div>
+                    <div class="kpi-value" style="color: #4f46e5;">{{ number_format($iVal) }}</div>
+                    <div class="kpi-sub">{{ $iShare }}% share ({{ $unit }})</div>
                 </td>
-                <td class="kpi-cell" style="width: 16.6%;">
-                    <div class="kpi-label">Total Movements</div>
-                    <div class="kpi-value">{{ number_format($totAc) }}</div>
-                    <div class="kpi-sub">Domestic + Int</div>
+                <td class="kpi-cell" style="width: 25%;">
+                    <div class="kpi-label">Total {{ $label }}</div>
+                    <div class="kpi-value" style="color: #0f172a;">{{ number_format($tVal) }}</div>
+                    <div class="kpi-sub">Domestic + Int ({{ $unit }})</div>
                 </td>
-                <td class="kpi-cell" style="width: 16.6%;">
-                    <div class="kpi-label">Domestic Pax</div>
-                    <div class="kpi-value" style="color: #059669;">{{ number_format($dPax) }}</div>
-                    <div class="kpi-sub">Passengers</div>
-                </td>
-                <td class="kpi-cell" style="width: 16.6%;">
-                    <div class="kpi-label">Int'l Pax</div>
-                    <div class="kpi-value" style="color: #059669;">{{ number_format($iPax) }}</div>
-                    <div class="kpi-sub">Passengers</div>
-                </td>
-                <td class="kpi-cell" style="width: 17%;">
-                    <div class="kpi-label">Total Passengers</div>
-                    <div class="kpi-value" style="color: #059669;">{{ number_format($totPax) }}</div>
-                    <div class="kpi-sub">PAX Carried</div>
+                <td class="kpi-cell" style="width: 25%;">
+                    <div class="kpi-label">Proporsi Domestik</div>
+                    <div class="kpi-value" style="color: #059669;">{{ $dShare }}%</div>
+                    <div class="kpi-sub">vs {{ $iShare }}% Int'l</div>
                 </td>
 
             @elseif ($reportType === 'DAU3')
@@ -742,107 +779,187 @@
 
     {{-- ══ REPORT-SPECIFIC CHARTS / VISUALIZATIONS SECTION ═══════════════════ --}}
     @if ($reportType === 'DAU1')
-        {{-- DAU-1: Top 10 Routes Combo & Cargo/Baggage Composition --}}
-        @php
-            $topR = $analytics['dau1_routes'] ?? [];
-            $maxRVal = 1;
-            foreach ($topR as $tr) {
-                $maxRVal = max($maxRVal, $tr['aircraft_arrival'] ?? 0, $tr['aircraft_departure'] ?? 0);
-            }
-        @endphp
-        <div class="chart-box">
-            <div class="chart-header" style="display: table; width: 100%;">
-                <div style="display: table-cell; text-align: left;">
-                    TOP 10 RUTE / BANDARA — Perbandingan Pergerakan Pesawat ARR vs DEP &amp; Penumpang
+        @if (($filters['metric'] ?? 'aircraft') === 'passenger')
+            {{-- DAU-1: Passenger Mode - Top 10 Routes Passenger Breakdown --}}
+            @php
+                $topR = array_slice($analytics['top_routes'] ?? ($analytics['dau1_routes'] ?? []), 0, 10);
+                $maxPaxVal = 1;
+                foreach ($topR as $tr) {
+                    $maxPaxVal = max($maxPaxVal, (int)($tr['passenger_total'] ?? 0));
+                }
+            @endphp
+            <div class="chart-box">
+                <div class="chart-header" style="display: table; width: 100%;">
+                    <div style="display: table-cell; text-align: left;">
+                        TOP 10 RUTE / BANDARA — Perincian Penumpang (Dewasa, Anak, Bayi)
+                    </div>
+                    <div style="display: table-cell; text-align: right; font-size: 5.5pt; color: #64748b;">
+                        <span style="display: inline-block; width: 8px; height: 8px; background: #2563eb; vertical-align: middle;"></span> Dewasa &nbsp;&nbsp;
+                        <span style="display: inline-block; width: 8px; height: 8px; background: #0284c7; vertical-align: middle;"></span> Anak &nbsp;&nbsp;
+                        <span style="display: inline-block; width: 8px; height: 8px; background: #a855f7; vertical-align: middle;"></span> Bayi
+                    </div>
                 </div>
-                <div style="display: table-cell; text-align: right; font-size: 5.5pt; color: #64748b;">
-                    <span style="display: inline-block; width: 8px; height: 8px; background: #f59e0b; vertical-align: middle;"></span> ARR Acft &nbsp;&nbsp;
-                    <span style="display: inline-block; width: 8px; height: 8px; background: #0284c7; vertical-align: middle;"></span> DEP Acft
-                </div>
+                <table class="chart-table" style="width: 100%;">
+                    <tr>
+                        @foreach ($topR as $rItem)
+                            @php
+                                $ad = (int)($rItem['passenger_adult'] ?? $rItem['adult'] ?? ((int)($rItem['arr_adult'] ?? 0) + (int)($rItem['dep_adult'] ?? 0)));
+                                $ch = (int)($rItem['passenger_child'] ?? $rItem['child'] ?? ((int)($rItem['arr_child'] ?? 0) + (int)($rItem['dep_child'] ?? 0)));
+                                $inf = (int)($rItem['passenger_infant'] ?? $rItem['infant'] ?? ((int)($rItem['arr_infant'] ?? 0) + (int)($rItem['dep_infant'] ?? 0)));
+                                $totPax = (int)($rItem['passenger_total'] ?? ($ad + $ch + $inf));
+                                $adH = max(2, round(($ad / $maxPaxVal) * 36));
+                                $chH = $ch > 0 ? max(1, round(($ch / $maxPaxVal) * 36)) : 0;
+                                $infH = $inf > 0 ? max(1, round(($inf / $maxPaxVal) * 36)) : 0;
+                            @endphp
+                            <td style="width: 10%; vertical-align: bottom; padding: 2px;">
+                                <div style="font-size: 5pt; font-weight: bold; margin-bottom: 2px; color: #0f172a;">
+                                    {{ number_format($totPax) }}
+                                </div>
+                                <table style="width: 80%; margin: 0 auto; border-collapse: collapse;">
+                                    @if ($infH > 0)
+                                        <tr><td style="padding: 0;"><div style="height: {{ $infH }}px; background-color: #a855f7; width: 100%; border-radius: 2px 2px 0 0;"></div></td></tr>
+                                    @endif
+                                    @if ($chH > 0)
+                                        <tr><td style="padding: 0;"><div style="height: {{ $chH }}px; background-color: #0284c7; width: 100%;"></div></td></tr>
+                                    @endif
+                                    <tr><td style="padding: 0;"><div style="height: {{ $adH }}px; background-color: #2563eb; width: 100%; border-radius: 0 0 2px 2px;"></div></td></tr>
+                                </table>
+                                <div style="font-size: 5.5pt; font-weight: bold; color: #0f172a; margin-top: 3px;">
+                                    {{ $rItem['airport_route'] ?? $rItem['origin'] ?? 'Route' }}
+                                </div>
+                                <div style="font-size: 4.5pt; color: #64748b;">
+                                    D:{{ number_format($ad) }} A:{{ number_format($ch) }} B:{{ number_format($inf) }}
+                                </div>
+                            </td>
+                        @endforeach
+                    </tr>
+                </table>
             </div>
-            <table class="chart-table" style="width: 100%;">
-                <tr>
-                    @foreach ($topR as $rItem)
-                        @php
-                            $aH = max(2, round((($rItem['aircraft_arrival'] ?? 0) / $maxRVal) * 44));
-                            $dH = max(2, round((($rItem['aircraft_departure'] ?? 0) / $maxRVal) * 44));
-                        @endphp
-                        <td style="width: 10%; vertical-align: bottom; padding: 2px;">
-                            <div style="font-size: 5pt; font-weight: bold; margin-bottom: 2px;">
-                                <span style="color: #d97706;">{{ $rItem['aircraft_arrival'] ?? 0 }}</span> /
-                                <span style="color: #0284c7;">{{ $rItem['aircraft_departure'] ?? 0 }}</span>
-                            </div>
-                            <table style="width: 100%; border-collapse: collapse;">
-                                <tr>
-                                    <td style="width: 50%; padding: 0; vertical-align: bottom;">
-                                        <div style="height: {{ $aH }}px; background-color: #f59e0b; width: 80%; margin: 0 auto; border-radius: 2px 2px 0 0;"></div>
-                                    </td>
-                                    <td style="width: 50%; padding: 0; vertical-align: bottom;">
-                                        <div style="height: {{ $dH }}px; background-color: #0284c7; width: 80%; margin: 0 auto; border-radius: 2px 2px 0 0;"></div>
-                                    </td>
-                                </tr>
-                            </table>
-                            <div style="font-size: 5.5pt; font-weight: bold; color: #0f172a; margin-top: 3px;">
-                                {{ $rItem['airport_route'] ?? $rItem['origin'] ?? 'Route' }}
-                            </div>
-                            <div style="font-size: 5pt; color: #059669; font-weight: bold;">
-                                {{ number_format($rItem['passenger_total'] ?? 0) }} pax
-                            </div>
-                        </td>
-                    @endforeach
-                </tr>
-            </table>
-        </div>
+        @else
+            {{-- DAU-1: Aircraft Mode - Top 10 Routes Combo & Cargo/Baggage Composition --}}
+            @php
+                $topR = $analytics['dau1_routes'] ?? [];
+                $maxRVal = 1;
+                foreach ($topR as $tr) {
+                    $maxRVal = max($maxRVal, $tr['aircraft_arrival'] ?? 0, $tr['aircraft_departure'] ?? 0);
+                }
+            @endphp
+            <div class="chart-box">
+                <div class="chart-header" style="display: table; width: 100%;">
+                    <div style="display: table-cell; text-align: left;">
+                        TOP 10 RUTE / BANDARA — Perbandingan Pergerakan Pesawat ARR vs DEP &amp; Penumpang
+                    </div>
+                    <div style="display: table-cell; text-align: right; font-size: 5.5pt; color: #64748b;">
+                        <span style="display: inline-block; width: 8px; height: 8px; background: #f59e0b; vertical-align: middle;"></span> ARR Acft &nbsp;&nbsp;
+                        <span style="display: inline-block; width: 8px; height: 8px; background: #0284c7; vertical-align: middle;"></span> DEP Acft
+                    </div>
+                </div>
+                <table class="chart-table" style="width: 100%;">
+                    <tr>
+                        @foreach ($topR as $rItem)
+                            @php
+                                $aH = max(2, round((($rItem['aircraft_arrival'] ?? 0) / $maxRVal) * 44));
+                                $dH = max(2, round((($rItem['aircraft_departure'] ?? 0) / $maxRVal) * 44));
+                            @endphp
+                            <td style="width: 10%; vertical-align: bottom; padding: 2px;">
+                                <div style="font-size: 5pt; font-weight: bold; margin-bottom: 2px;">
+                                    <span style="color: #d97706;">{{ $rItem['aircraft_arrival'] ?? 0 }}</span> /
+                                    <span style="color: #0284c7;">{{ $rItem['aircraft_departure'] ?? 0 }}</span>
+                                </div>
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <tr>
+                                        <td style="width: 50%; padding: 0; vertical-align: bottom;">
+                                            <div style="height: {{ $aH }}px; background-color: #f59e0b; width: 80%; margin: 0 auto; border-radius: 2px 2px 0 0;"></div>
+                                        </td>
+                                        <td style="width: 50%; padding: 0; vertical-align: bottom;">
+                                            <div style="height: {{ $dH }}px; background-color: #0284c7; width: 80%; margin: 0 auto; border-radius: 2px 2px 0 0;"></div>
+                                        </td>
+                                    </tr>
+                                </table>
+                                <div style="font-size: 5.5pt; font-weight: bold; color: #0f172a; margin-top: 3px;">
+                                    {{ $rItem['airport_route'] ?? $rItem['origin'] ?? 'Route' }}
+                                </div>
+                                <div style="font-size: 5pt; color: #059669; font-weight: bold;">
+                                    {{ number_format($rItem['passenger_total'] ?? 0) }} pax
+                                </div>
+                            </td>
+                        @endforeach
+                    </tr>
+                </table>
+            </div>
+        @endif
 
     @elseif ($reportType === 'DAU2')
-        {{-- DAU-2: 100% Stacked Bar Comparison --}}
+        {{-- DAU-2: Comparative Breakdown Table + 100% Stacked Bar Comparison --}}
         @php
-            $d2 = $analytics['dau2_distribution'] ?? [];
-            $metricsList = [
-                ['label' => 'AIRCRAFT MOVEMENTS', 'dom' => $d2['domestic']['aircraft'] ?? 0, 'int' => $d2['international']['aircraft'] ?? 0, 'unit' => 'mov'],
-                ['label' => 'PASSENGERS (PAX)', 'dom' => $d2['domestic']['passenger'] ?? 0, 'int' => $d2['international']['passenger'] ?? 0, 'unit' => 'pax'],
-                ['label' => 'BAGGAGE (KG)', 'dom' => $d2['domestic']['baggage'] ?? 0, 'int' => $d2['international']['baggage'] ?? 0, 'unit' => 'kg'],
-                ['label' => 'CARGO (KG)', 'dom' => $d2['domestic']['cargo'] ?? 0, 'int' => $d2['international']['cargo'] ?? 0, 'unit' => 'kg'],
+            $d2Comp = $analytics['dau2_comparative'] ?? [];
+            $activeM = $filters['metric'] ?? 'aircraft';
+            $compRows = [
+                'aircraft' => $d2Comp['aircraft'] ?? ['metric' => 'Aircraft Movements', 'unit' => 'A/C', 'domestic' => 0, 'international' => 0, 'total' => 0, 'domestic_pct' => 0, 'international_pct' => 0],
+                'passenger' => $d2Comp['passenger'] ?? ['metric' => 'Passengers (PAX)', 'unit' => 'PAX', 'domestic' => 0, 'international' => 0, 'total' => 0, 'domestic_pct' => 0, 'international_pct' => 0],
+                'baggage' => $d2Comp['baggage'] ?? ['metric' => 'Baggage Volume', 'unit' => 'KG', 'domestic' => 0, 'international' => 0, 'total' => 0, 'domestic_pct' => 0, 'international_pct' => 0],
+                'cargo' => $d2Comp['cargo'] ?? ['metric' => 'Cargo Volume', 'unit' => 'KG', 'domestic' => 0, 'international' => 0, 'total' => 0, 'domestic_pct' => 0, 'international_pct' => 0],
+                'pos' => $d2Comp['pos'] ?? ['metric' => 'POS / Mail Volume', 'unit' => 'KG', 'domestic' => 0, 'international' => 0, 'total' => 0, 'domestic_pct' => 0, 'international_pct' => 0],
             ];
         @endphp
         <div class="chart-box">
-            <div class="chart-header" style="display: table; width: 100%;">
-                <div style="display: table-cell; text-align: left;">
-                    KOMPOSISI 100% STACKED — DOMESTIK VS INTERNASIONAL
-                </div>
-                <div style="display: table-cell; text-align: right; font-size: 5.5pt; color: #64748b;">
-                    <span style="display: inline-block; width: 8px; height: 8px; background: #2563eb; vertical-align: middle;"></span> Domestik &nbsp;&nbsp;
-                    <span style="display: inline-block; width: 8px; height: 8px; background: #7c3aed; vertical-align: middle;"></span> Internasional
-                </div>
+            <div class="chart-header">
+                COMPARATIVE BREAKDOWN — DOMESTIK VS INTERNASIONAL (SELURUH METRIK OPERASIONAL)
             </div>
-            <table style="width: 100%; border-collapse: collapse; font-size: 6.5pt; margin-top: 4px;">
-                @foreach ($metricsList as $mItem)
-                    @php
-                        $tot = ($mItem['dom'] + $mItem['int']);
-                        $domPct = $tot > 0 ? round(($mItem['dom'] / $tot) * 100, 1) : 0;
-                        $intPct = $tot > 0 ? round(($mItem['int'] / $tot) * 100, 1) : 0;
-                    @endphp
+            <table class="data-table" style="margin-top: 3px; font-size: 6.5pt;">
+                <thead>
                     <tr>
-                        <td style="width: 22%; font-weight: bold; padding: 3px 0;">{{ $mItem['label'] }}</td>
-                        <td style="width: 58%; padding: 3px 6px;">
+                        <th style="width: 32%; text-align: left;">Metrik Operasional</th>
+                        <th class="text-right" style="width: 17%; color: #93c5fd;">Domestik</th>
+                        <th class="text-right" style="width: 17%; color: #c4b5fd;">Internasional</th>
+                        <th class="text-right" style="width: 17%;">Total</th>
+                        <th class="text-right" style="width: 17%; color: #fde68a;">Proporsi Dom / Int</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($compRows as $k => $cRow)
+                        <tr @if ($activeM === $k) style="background-color: #f0f9ff; font-weight: bold;" @endif>
+                            <td class="text-left font-bold">
+                                @if ($activeM === $k)
+                                    <span style="color: #0284c7;">&bull;</span>
+                                @endif
+                                {{ $cRow['metric'] }} <span style="font-size: 5.5pt; color: #64748b;">({{ $cRow['unit'] }})</span>
+                            </td>
+                            <td class="text-right" style="color: #2563eb;">{{ number_format($cRow['domestic']) }} <span style="font-size: 5pt; color: #64748b;">({{ $cRow['domestic_pct'] }}%)</span></td>
+                            <td class="text-right" style="color: #7c3aed;">{{ number_format($cRow['international']) }} <span style="font-size: 5pt; color: #64748b;">({{ $cRow['international_pct'] }}%)</span></td>
+                            <td class="text-right font-bold">{{ number_format($cRow['total']) }}</td>
+                            <td class="text-right font-bold" style="color: #059669;">{{ $cRow['domestic_pct'] }}% / {{ $cRow['international_pct'] }}%</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+
+            <div style="font-size: 6pt; font-weight: bold; color: #475569; margin: 6px 0 2px 0;">
+                KOMPOSISI 100% STACKED BAR — DOMESTIK VS INTERNASIONAL
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 6pt;">
+                @foreach ($compRows as $k => $cRow)
+                    <tr>
+                        <td style="width: 25%; font-weight: bold; padding: 2px 0;">{{ strtoupper($cRow['metric']) }}</td>
+                        <td style="width: 55%; padding: 2px 4px;">
                             <table style="width: 100%; border-collapse: collapse;">
                                 <tr>
-                                    @if ($domPct > 0)
-                                        <td style="width: {{ $domPct }}%; background: #2563eb; color: #ffffff; font-size: 5pt; font-weight: bold; text-align: center; padding: 2px 0;">
-                                            {{ $domPct }}%
+                                    @if ($cRow['domestic_pct'] > 0)
+                                        <td style="width: {{ $cRow['domestic_pct'] }}%; background: #2563eb; color: #ffffff; font-size: 4.5pt; font-weight: bold; text-align: center; padding: 1.5px 0;">
+                                            {{ $cRow['domestic_pct'] }}%
                                         </td>
                                     @endif
-                                    @if ($intPct > 0)
-                                        <td style="width: {{ $intPct }}%; background: #7c3aed; color: #ffffff; font-size: 5pt; font-weight: bold; text-align: center; padding: 2px 0;">
-                                            {{ $intPct }}%
+                                    @if ($cRow['international_pct'] > 0)
+                                        <td style="width: {{ $cRow['international_pct'] }}%; background: #7c3aed; color: #ffffff; font-size: 4.5pt; font-weight: bold; text-align: center; padding: 1.5px 0;">
+                                            {{ $cRow['international_pct'] }}%
                                         </td>
                                     @endif
                                 </tr>
                             </table>
                         </td>
-                        <td style="width: 20%; text-align: right; padding: 3px 0; font-size: 6pt;">
-                            <span style="color: #2563eb; font-weight: bold;">{{ number_format($mItem['dom']) }}</span> /
-                            <span style="color: #7c3aed; font-weight: bold;">{{ number_format($mItem['int']) }}</span>
+                        <td style="width: 20%; text-align: right; padding: 2px 0; font-size: 5.5pt;">
+                            <span style="color: #2563eb; font-weight: bold;">{{ number_format($cRow['domestic']) }}</span> /
+                            <span style="color: #7c3aed; font-weight: bold;">{{ number_format($cRow['international']) }}</span>
                         </td>
                     </tr>
                 @endforeach
@@ -1769,30 +1886,70 @@
                 <tr>
                     <th style="width: 3%; text-align: center;">#</th>
                     @if ($reportType === 'DAU1')
-                        <th style="width: 14%; text-align: left;">Bandara Asal / Tujuan</th>
-                        <th style="width: 8%;">Flight No</th>
-                        <th style="width: 7%;">Status</th>
-                        <th style="width: 8%;">Tipe Pesawat</th>
-                        <th class="text-right" style="width: 6%;">Seat Cap</th>
-                        <th class="text-right" style="width: 6%;">ARR Acft</th>
-                        <th class="text-right" style="width: 6%;">DEP Acft</th>
-                        <th class="text-right" style="width: 7%;">Total Acft</th>
-                        <th class="text-right" style="width: 9%; color: #a7f3d0;">Total Pax</th>
-                        <th class="text-right" style="width: 8%;">Bagasi (Kg)</th>
-                        <th class="text-right" style="width: 8%;">Kargo (Kg)</th>
-                        <th class="text-right" style="width: 8%;">POS (Kg)</th>
+                        @if (($filters['metric'] ?? 'aircraft') === 'passenger')
+                            <th style="width: 16%; text-align: left;">Bandara Asal / Tujuan</th>
+                            <th style="width: 8%;">Flight No</th>
+                            <th style="width: 12%; text-align: left;">Airline</th>
+                            <th class="text-right" style="width: 10%; color: #93c5fd;">Dewasa</th>
+                            <th class="text-right" style="width: 9%; color: #38bdf8;">Anak</th>
+                            <th class="text-right" style="width: 9%; color: #c084fc;">Bayi</th>
+                            <th class="text-right" style="width: 11%; color: #a7f3d0;">Total Pax</th>
+                            <th class="text-right" style="width: 9%;">Pax ARR</th>
+                            <th class="text-right" style="width: 9%;">Pax DEP</th>
+                            <th class="text-right" style="width: 7%;">Transit</th>
+                        @else
+                            <th style="width: 14%; text-align: left;">Bandara Asal / Tujuan</th>
+                            <th style="width: 8%;">Flight No</th>
+                            <th style="width: 7%;">Status</th>
+                            <th style="width: 8%;">Tipe Pesawat</th>
+                            <th class="text-right" style="width: 6%;">Seat Cap</th>
+                            <th class="text-right" style="width: 6%;">ARR Acft</th>
+                            <th class="text-right" style="width: 6%;">DEP Acft</th>
+                            <th class="text-right" style="width: 7%;">Total Acft</th>
+                            <th class="text-right" style="width: 9%; color: #a7f3d0;">Total Pax</th>
+                            <th class="text-right" style="width: 8%;">Bagasi (Kg)</th>
+                            <th class="text-right" style="width: 8%;">Kargo (Kg)</th>
+                            <th class="text-right" style="width: 8%;">POS (Kg)</th>
+                        @endif
 
                     @elseif ($reportType === 'DAU2')
-                        <th style="width: 25%; text-align: left;">Jenis Penerbangan (Kategori)</th>
-                        <th class="text-right" style="width: 8%;">ARR Acft</th>
-                        <th class="text-right" style="width: 8%;">DEP Acft</th>
-                        <th class="text-right" style="width: 9%;">Total Acft</th>
-                        <th class="text-right" style="width: 9%;">ARR Pax</th>
-                        <th class="text-right" style="width: 9%;">DEP Pax</th>
-                        <th class="text-right" style="width: 11%; color: #a7f3d0;">Total Pax</th>
-                        <th class="text-right" style="width: 7%;">Awak</th>
-                        <th class="text-right" style="width: 7%;">Bagasi</th>
-                        <th class="text-right" style="width: 7%;">Kargo</th>
+                        @php
+                            $d2m = $filters['metric'] ?? 'aircraft';
+                        @endphp
+                        @if ($d2m === 'passenger')
+                            <th style="width: 35%; text-align: left;">Kategori Penerbangan</th>
+                            <th class="text-right" style="width: 13%; color: #a7f3d0;">Pax ARR</th>
+                            <th class="text-right" style="width: 13%; color: #38bdf8;">Pax DEP</th>
+                            <th class="text-right" style="width: 15%; color: #fde68a;">Total Pax</th>
+                            <th class="text-right" style="width: 12%;">Transit</th>
+                            <th class="text-right" style="width: 12%;">Transfer</th>
+                        @elseif ($d2m === 'baggage')
+                            <th style="width: 40%; text-align: left;">Kategori Penerbangan</th>
+                            <th class="text-right" style="width: 20%; color: #fde68a;">Bagasi ARR (Kg)</th>
+                            <th class="text-right" style="width: 20%; color: #fde68a;">Bagasi DEP (Kg)</th>
+                            <th class="text-right" style="width: 20%; color: #fde68a;">Total Bagasi (Kg)</th>
+                        @elseif ($d2m === 'cargo')
+                            <th style="width: 40%; text-align: left;">Kategori Penerbangan</th>
+                            <th class="text-right" style="width: 20%; color: #c4b5fd;">Kargo ARR (Kg)</th>
+                            <th class="text-right" style="width: 20%; color: #c4b5fd;">Kargo DEP (Kg)</th>
+                            <th class="text-right" style="width: 20%; color: #c4b5fd;">Total Kargo (Kg)</th>
+                        @elseif ($d2m === 'pos')
+                            <th style="width: 40%; text-align: left;">Kategori Penerbangan</th>
+                            <th class="text-right" style="width: 20%; color: #cbd5e1;">POS ARR (Kg)</th>
+                            <th class="text-right" style="width: 20%; color: #cbd5e1;">POS DEP (Kg)</th>
+                            <th class="text-right" style="width: 20%; color: #cbd5e1;">Total POS (Kg)</th>
+                        @else
+                            <th style="width: 25%; text-align: left;">Jenis Penerbangan (Kategori)</th>
+                            <th class="text-right" style="width: 8%;">ARR Acft</th>
+                            <th class="text-right" style="width: 8%;">DEP Acft</th>
+                            <th class="text-right" style="width: 9%;">Total Acft</th>
+                            <th class="text-right" style="width: 9%;">ARR Pax</th>
+                            <th class="text-right" style="width: 9%;">DEP Pax</th>
+                            <th class="text-right" style="width: 11%; color: #a7f3d0;">Total Pax</th>
+                            <th class="text-right" style="width: 7%;">Awak</th>
+                            <th class="text-right" style="width: 7%;">Bagasi</th>
+                            <th class="text-right" style="width: 7%;">Kargo</th>
+                        @endif
 
                     @elseif ($reportType === 'DAU3')
                         <th style="width: 20%; text-align: left;">Status Usaha</th>
@@ -1949,30 +2106,72 @@
                     <tr>
                         <td class="text-center">{{ $idx + 1 }}</td>
                         @if ($reportType === 'DAU1')
-                            <td class="text-left font-bold">{{ $r['airport_route'] ?? $r['origin'] ?? '—' }}</td>
-                            <td class="text-center font-bold" style="color: #0284c7;">{{ $r['flight_number'] ?? '—' }}</td>
-                            <td class="text-center">{{ $r['schedule_type'] ?? '—' }}</td>
-                            <td class="text-center">{{ $r['aircraft_type'] ?? '—' }}</td>
-                            <td class="text-right">{{ number_format($r['seat_capacity'] ?? 0) }}</td>
-                            <td class="text-right">{{ number_format($r['aircraft_arrival'] ?? 0) }}</td>
-                            <td class="text-right">{{ number_format($r['aircraft_departure'] ?? 0) }}</td>
-                            <td class="text-right font-bold">{{ number_format($r['aircraft_total'] ?? 0) }}</td>
-                            <td class="text-right font-bold" style="color: #059669;">{{ number_format($r['passenger_total'] ?? 0) }}</td>
-                            <td class="text-right">{{ number_format($r['baggage'] ?? 0) }}</td>
-                            <td class="text-right">{{ number_format($r['cargo'] ?? 0) }}</td>
-                            <td class="text-right">{{ number_format($r['pos'] ?? 0) }}</td>
+                            @if (($filters['metric'] ?? 'aircraft') === 'passenger')
+                                @php
+                                    $pAdult = $r['passenger_adult'] ?? $r['adult'] ?? ((int)($r['arr_adult'] ?? 0) + (int)($r['dep_adult'] ?? 0));
+                                    $pChild = $r['passenger_child'] ?? $r['child'] ?? ((int)($r['arr_child'] ?? 0) + (int)($r['dep_child'] ?? 0));
+                                    $pInfant = $r['passenger_infant'] ?? $r['infant'] ?? ((int)($r['arr_infant'] ?? 0) + (int)($r['dep_infant'] ?? 0));
+                                    $pTotal = $r['passenger_total'] ?? ($pAdult + $pChild + $pInfant);
+                                @endphp
+                                <td class="text-left font-bold">{{ $r['airport_route'] ?? $r['origin'] ?? '—' }}</td>
+                                <td class="text-center font-bold" style="color: #0284c7;">{{ $r['flight_number'] ?? '—' }}</td>
+                                <td class="text-left">{{ $r['airline'] ?? $r['operator_name'] ?? '—' }}</td>
+                                <td class="text-right font-bold" style="color: #2563eb;">{{ number_format($pAdult) }}</td>
+                                <td class="text-right font-bold" style="color: #0284c7;">{{ number_format($pChild) }}</td>
+                                <td class="text-right font-bold" style="color: #a855f7;">{{ number_format($pInfant) }}</td>
+                                <td class="text-right font-bold" style="color: #059669;">{{ number_format($pTotal) }}</td>
+                                <td class="text-right">{{ number_format($r['passenger_arrival'] ?? 0) }}</td>
+                                <td class="text-right">{{ number_format($r['passenger_departure'] ?? 0) }}</td>
+                                <td class="text-right">{{ number_format($r['passenger_transit'] ?? 0) }}</td>
+                            @else
+                                <td class="text-left font-bold">{{ $r['airport_route'] ?? $r['origin'] ?? '—' }}</td>
+                                <td class="text-center font-bold" style="color: #0284c7;">{{ $r['flight_number'] ?? '—' }}</td>
+                                <td class="text-center">{{ $r['schedule_type'] ?? '—' }}</td>
+                                <td class="text-center">{{ $r['aircraft_type'] ?? '—' }}</td>
+                                <td class="text-right">{{ number_format($r['seat_capacity'] ?? 0) }}</td>
+                                <td class="text-right">{{ number_format($r['aircraft_arrival'] ?? 0) }}</td>
+                                <td class="text-right">{{ number_format($r['aircraft_departure'] ?? 0) }}</td>
+                                <td class="text-right font-bold">{{ number_format($r['aircraft_total'] ?? 0) }}</td>
+                                <td class="text-right font-bold" style="color: #059669;">{{ number_format($r['passenger_total'] ?? 0) }}</td>
+                                <td class="text-right">{{ number_format($r['baggage'] ?? 0) }}</td>
+                                <td class="text-right">{{ number_format($r['cargo'] ?? 0) }}</td>
+                                <td class="text-right">{{ number_format($r['pos'] ?? 0) }}</td>
+                            @endif
 
                         @elseif ($reportType === 'DAU2')
+                            @php
+                                $d2m = $filters['metric'] ?? 'aircraft';
+                            @endphp
                             <td class="text-left font-bold">{{ $r['category'] ?? '—' }}</td>
-                            <td class="text-right">{{ number_format($r['aircraft_arrival'] ?? 0) }}</td>
-                            <td class="text-right">{{ number_format($r['aircraft_departure'] ?? 0) }}</td>
-                            <td class="text-right font-bold">{{ number_format($r['aircraft_total'] ?? 0) }}</td>
-                            <td class="text-right">{{ number_format($r['passenger_arrival'] ?? 0) }}</td>
-                            <td class="text-right">{{ number_format($r['passenger_departure'] ?? 0) }}</td>
-                            <td class="text-right font-bold" style="color: #059669;">{{ number_format($r['passenger_total'] ?? 0) }}</td>
-                            <td class="text-right">{{ number_format($r['crew_total'] ?? 0) }}</td>
-                            <td class="text-right">{{ number_format($r['baggage'] ?? 0) }}</td>
-                            <td class="text-right">{{ number_format($r['cargo'] ?? 0) }}</td>
+                            @if ($d2m === 'passenger')
+                                <td class="text-right font-bold" style="color: #059669;">{{ number_format($r['passenger_arrival'] ?? 0) }}</td>
+                                <td class="text-right font-bold" style="color: #0284c7;">{{ number_format($r['passenger_departure'] ?? 0) }}</td>
+                                <td class="text-right font-bold" style="color: #10b981;">{{ number_format($r['passenger_total'] ?? 0) }}</td>
+                                <td class="text-right">{{ number_format($r['passenger_transit'] ?? 0) }}</td>
+                                <td class="text-right">{{ number_format($r['passenger_transfer'] ?? 0) }}</td>
+                            @elseif ($d2m === 'baggage')
+                                <td class="text-right font-bold" style="color: #d97706;">{{ number_format($r['baggage_arrival'] ?? 0) }}</td>
+                                <td class="text-right font-bold" style="color: #d97706;">{{ number_format($r['baggage_departure'] ?? 0) }}</td>
+                                <td class="text-right font-bold" style="color: #b45309;">{{ number_format($r['baggage'] ?? 0) }}</td>
+                            @elseif ($d2m === 'cargo')
+                                <td class="text-right font-bold" style="color: #4f46e5;">{{ number_format($r['cargo_arrival'] ?? 0) }}</td>
+                                <td class="text-right font-bold" style="color: #4f46e5;">{{ number_format($r['cargo_departure'] ?? 0) }}</td>
+                                <td class="text-right font-bold" style="color: #4338ca;">{{ number_format($r['cargo'] ?? 0) }}</td>
+                            @elseif ($d2m === 'pos')
+                                <td class="text-right font-bold" style="color: #64748b;">{{ number_format($r['pos_arrival'] ?? 0) }}</td>
+                                <td class="text-right font-bold" style="color: #64748b;">{{ number_format($r['pos_departure'] ?? 0) }}</td>
+                                <td class="text-right font-bold" style="color: #334155;">{{ number_format($r['pos'] ?? 0) }}</td>
+                            @else
+                                <td class="text-right">{{ number_format($r['aircraft_arrival'] ?? 0) }}</td>
+                                <td class="text-right">{{ number_format($r['aircraft_departure'] ?? 0) }}</td>
+                                <td class="text-right font-bold">{{ number_format($r['aircraft_total'] ?? 0) }}</td>
+                                <td class="text-right">{{ number_format($r['passenger_arrival'] ?? 0) }}</td>
+                                <td class="text-right">{{ number_format($r['passenger_departure'] ?? 0) }}</td>
+                                <td class="text-right font-bold" style="color: #059669;">{{ number_format($r['passenger_total'] ?? 0) }}</td>
+                                <td class="text-right">{{ number_format($r['crew_total'] ?? 0) }}</td>
+                                <td class="text-right">{{ number_format($r['baggage'] ?? 0) }}</td>
+                                <td class="text-right">{{ number_format($r['cargo'] ?? 0) }}</td>
+                            @endif
 
                         @elseif ($reportType === 'DAU3')
                             <td class="text-left font-bold" style="color: #0284c7;">{{ $r['section'] ?? '—' }}</td>

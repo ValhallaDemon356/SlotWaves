@@ -13,7 +13,7 @@ class DauDashboardController extends Controller
     /**
      * Display the DAU analytical dashboard for a completed DAU upload.
      */
-    public function show(Upload $upload)
+    public function show(Upload $upload, Request $request)
     {
         if ($upload->status !== 'completed') {
             return redirect()->route('home')->withErrors([
@@ -60,22 +60,28 @@ class DauDashboardController extends Controller
         } else {
             $termSet = [];
             foreach ($records as $r) {
-                if (!empty($r['terminal'])) {
-                    $termSet[(string)$r['terminal']] = true;
+                $t = $r['terminal'] ?? null;
+                if (!empty($t) && !isset($termSet[(string)$t])) {
+                    $termSet[(string)$t] = true;
+                    $terminals[] = (string)$t;
                 }
             }
-            $terminals = array_keys($termSet);
         }
 
         // Extract hours list
-        $hourSet = [];
-        foreach ($records as $r) {
-            $h = $r['hour'] ?? $r['period'] ?? null;
-            if (!empty($h)) {
-                $hourSet[(string)$h] = true;
+        $hours = [];
+        if (!empty($data['matrix_hours'])) {
+            $hours = $data['matrix_hours'];
+        } else {
+            $hourSet = [];
+            foreach ($records as $r) {
+                $h = $r['hour'] ?? $r['period'] ?? null;
+                if (!empty($h) && !isset($hourSet[$h])) {
+                    $hourSet[$h] = true;
+                    $hours[] = $h;
+                }
             }
         }
-        $hours = array_keys($hourSet);
 
         // Extract airlines list
         $airlineSet = [];
@@ -117,29 +123,35 @@ class DauDashboardController extends Controller
         }
         $categories = array_keys($catSet);
 
-        // Precompute initial full analytics
-        $analytics = $this->filterReportDataset($records, [
-            'flight_type' => 'ALL',
-            'terminal'    => 'ALL',
-            'hour'        => 'ALL',
-            'metric'      => 'aircraft',
-            'operation'   => 'ALL',
-            'direction'   => 'ALL',
-            'airline'     => 'ALL',
-            'airport'     => 'ALL',
-            'schedule_type' => 'ALL',
-            'status'      => 'ALL',
-            'aircraft_type' => 'ALL',
-            'category'    => 'ALL',
-            'search'      => '',
-            'top_n'       => 'ALL',
-            'threshold'   => 0,
-        ], $meta, $reportType);
+        // Read active filters from request query (or default to ALL)
+        $filters = [
+            'flight_type'   => strtoupper(trim($request->query('flight_type', 'ALL'))),
+            'terminal'      => trim($request->query('terminal', 'ALL')),
+            'hour'          => trim($request->query('hour', 'ALL')),
+            'metric'        => strtolower(trim($request->query('metric', 'aircraft'))),
+            'operation'     => strtoupper(trim($request->query('operation', 'ALL'))),
+            'direction'     => strtoupper(trim($request->query('direction', 'ALL'))),
+            'airline'       => trim($request->query('airline', 'ALL')),
+            'airport'       => trim($request->query('airport', 'ALL')),
+            'schedule_type' => strtoupper(trim($request->query('schedule_type', 'ALL'))),
+            'status'        => strtoupper(trim($request->query('status', 'ALL'))),
+            'aircraft_type' => trim($request->query('aircraft_type', 'ALL')),
+            'category'      => trim($request->query('category', 'ALL')),
+            'search'        => trim($request->query('search', '')),
+            'top_n'         => trim($request->query('top_n', 'ALL')),
+            'threshold'     => (int) $request->query('threshold', 0),
+            'passenger_type'=> strtoupper(trim($request->query('passenger_type', 'ALL'))),
+            'display_mode'  => strtolower(trim($request->query('display_mode', 'absolute'))),
+        ];
+
+        // Precompute initial analytics matching query filters
+        $analytics = $this->filterReportDataset($records, $filters, $meta, $reportType);
 
         $summary = $analytics['summary'];
         $peaks = $analytics['peaks'];
         $hourlyDistribution = $analytics['hourly_distribution'];
         $terminalComparison = $analytics['terminal_comparison'];
+        $dau2Comparative = $analytics['dau2_comparative'] ?? [];
         $columns = $data['columns'] ?? [];
         $matrixRecords = $data['records'] ?? [];
 
@@ -182,6 +194,8 @@ class DauDashboardController extends Controller
             'terminalComparison',
             'matrixRecords',
             'analytics',
+            'dau2Comparative',
+            'filters',
             'initialNac',
             'initialArrivalCapacity',
             'initialDepartureCapacity',
@@ -249,6 +263,8 @@ class DauDashboardController extends Controller
             'search'        => trim($request->query('search', '')),
             'top_n'         => trim($request->query('top_n', 'ALL')),
             'threshold'     => (int) $request->query('threshold', 0),
+            'passenger_type'=> strtoupper(trim($request->query('passenger_type', 'ALL'))),
+            'display_mode'  => strtolower(trim($request->query('display_mode', 'absolute'))),
             'start_date'    => trim($request->query('start_date', '')),
             'end_date'      => trim($request->query('end_date', '')),
         ];
@@ -524,6 +540,8 @@ class DauDashboardController extends Controller
             'aircraft_type' => trim($request->query('aircraft_type', 'ALL')),
             'category'      => trim($request->query('category', 'ALL')),
             'search'        => trim($request->query('search', '')),
+            'passenger_type'=> strtoupper(trim($request->query('passenger_type', 'ALL'))),
+            'display_mode'  => strtolower(trim($request->query('display_mode', 'absolute'))),
         ];
 
         $analytics = $this->filterReportDataset($baseRecords, $filters, $meta, $reportType);
@@ -778,6 +796,8 @@ class DauDashboardController extends Controller
         $searchQuery = strtolower(trim($filters['search'] ?? ''));
         $topN = $filters['top_n'] ?? 'ALL';
         $threshold = (int) ($filters['threshold'] ?? 0);
+        $passengerTypeFilter = strtoupper(trim($filters['passenger_type'] ?? 'ALL'));
+        $displayMode = strtolower(trim($filters['display_mode'] ?? 'absolute'));
         $metric = strtolower($filters['metric'] ?? 'aircraft');
 
         $cleanHourFilter = $hourFilter !== 'ALL' ? preg_replace('/[^0-9]/', '', $hourFilter) : null;
@@ -908,6 +928,19 @@ class DauDashboardController extends Controller
                 }
             }
 
+            // 12b. Passenger Type Filter (for DAU1)
+            if ($reportType === 'DAU1' && $passengerTypeFilter !== 'ALL') {
+                if ($passengerTypeFilter === 'ADULT' && (int)($r['passenger_adult'] ?? ($r['adult'] ?? 0)) <= 0) {
+                    continue;
+                }
+                if ($passengerTypeFilter === 'CHILD' && (int)($r['passenger_child'] ?? ($r['child'] ?? 0)) <= 0) {
+                    continue;
+                }
+                if ($passengerTypeFilter === 'INFANT' && (int)($r['passenger_infant'] ?? ($r['infant'] ?? 0)) <= 0) {
+                    continue;
+                }
+            }
+
             // 13. Search query
             if ($searchQuery !== '') {
                 $haystack = strtolower(implode(' ', array_map(function ($v) {
@@ -932,6 +965,15 @@ class DauDashboardController extends Controller
             'passenger_transit'  => 0,
             'passenger_transfer' => 0,
             'passenger_total'    => 0,
+            'passenger_adult'    => 0,
+            'passenger_child'    => 0,
+            'passenger_infant'   => 0,
+            'arr_adult'          => 0,
+            'arr_child'          => 0,
+            'arr_infant'         => 0,
+            'dep_adult'          => 0,
+            'dep_child'          => 0,
+            'dep_infant'         => 0,
             'crew_total'         => 0,
             'extra_crew_total'   => 0,
             'baggage_total'      => 0,
@@ -965,6 +1007,16 @@ class DauDashboardController extends Controller
             $cgo   = (int)($r['cargo'] ?? 0);
             $pos   = (int)($r['pos'] ?? 0);
 
+            $pAdult = (int)($r['passenger_adult'] ?? ($r['adult'] ?? (($r['details']['arr_adult'] ?? 0) + ($r['details']['dep_adult'] ?? 0))));
+            $pChild = (int)($r['passenger_child'] ?? ($r['child'] ?? (($r['details']['arr_child'] ?? 0) + ($r['details']['dep_child'] ?? 0))));
+            $pInfant = (int)($r['passenger_infant'] ?? ($r['infant'] ?? (($r['details']['arr_infant'] ?? 0) + ($r['details']['dep_infant'] ?? 0))));
+            $pArrAdult = (int)($r['arr_adult'] ?? ($r['details']['arr_adult'] ?? 0));
+            $pArrChild = (int)($r['arr_child'] ?? ($r['details']['arr_child'] ?? 0));
+            $pArrInfant = (int)($r['arr_infant'] ?? ($r['details']['arr_infant'] ?? 0));
+            $pDepAdult = (int)($r['dep_adult'] ?? ($r['details']['dep_adult'] ?? 0));
+            $pDepChild = (int)($r['dep_child'] ?? ($r['details']['dep_child'] ?? 0));
+            $pDepInfant = (int)($r['dep_infant'] ?? ($r['details']['dep_infant'] ?? 0));
+
             $summary['total_movements']    += $acTot;
             $summary['aircraft_total']     += $acTot;
             $summary['aircraft_arrival']   += $acArr;
@@ -974,6 +1026,15 @@ class DauDashboardController extends Controller
             $summary['passenger_transit']  += $pxTrn;
             $summary['passenger_transfer'] += $pxTrf;
             $summary['passenger_total']    += $pxTot;
+            $summary['passenger_adult']    += $pAdult;
+            $summary['passenger_child']    += $pChild;
+            $summary['passenger_infant']   += $pInfant;
+            $summary['arr_adult']          += $pArrAdult;
+            $summary['arr_child']          += $pArrChild;
+            $summary['arr_infant']         += $pArrInfant;
+            $summary['dep_adult']          += $pDepAdult;
+            $summary['dep_child']          += $pDepChild;
+            $summary['dep_infant']         += $pDepInfant;
             $summary['crew_total']         += $crew;
             $summary['extra_crew_total']   += (int)($r['extra_crew'] ?? 0);
             $summary['baggage_total']      += $bag;
@@ -1088,6 +1149,7 @@ class DauDashboardController extends Controller
                 if (!isset($airportBuckets[$ap])) {
                     $airportBuckets[$ap] = [
                         'airport'             => $ap,
+                        'airport_route'       => $r['airport_route'] ?? $r['origin'] ?? $ap,
                         'city_code'           => $r['city_code'] ?? '',
                         'city'                => $r['city'] ?? $ap,
                         'aircraft_arrival'    => 0,
@@ -1096,6 +1158,15 @@ class DauDashboardController extends Controller
                         'passenger_arrival'   => 0,
                         'passenger_departure' => 0,
                         'passenger_total'     => 0,
+                        'adult'               => 0,
+                        'child'               => 0,
+                        'infant'              => 0,
+                        'arr_adult'           => 0,
+                        'arr_child'           => 0,
+                        'arr_infant'          => 0,
+                        'dep_adult'           => 0,
+                        'dep_child'           => 0,
+                        'dep_infant'          => 0,
                     ];
                 }
                 $airportBuckets[$ap]['aircraft_arrival']    += $acArr;
@@ -1104,6 +1175,15 @@ class DauDashboardController extends Controller
                 $airportBuckets[$ap]['passenger_arrival']   += $pxArr;
                 $airportBuckets[$ap]['passenger_departure'] += $pxDep;
                 $airportBuckets[$ap]['passenger_total']     += $pxTot;
+                $airportBuckets[$ap]['adult']               += $pAdult;
+                $airportBuckets[$ap]['child']               += $pChild;
+                $airportBuckets[$ap]['infant']              += $pInfant;
+                $airportBuckets[$ap]['arr_adult']           += $pArrAdult;
+                $airportBuckets[$ap]['arr_child']           += $pArrChild;
+                $airportBuckets[$ap]['arr_infant']          += $pArrInfant;
+                $airportBuckets[$ap]['dep_adult']           += $pDepAdult;
+                $airportBuckets[$ap]['dep_child']           += $pDepChild;
+                $airportBuckets[$ap]['dep_infant']          += $pDepInfant;
             }
         }
 
@@ -1171,19 +1251,21 @@ class DauDashboardController extends Controller
         });
         $topRoutes = array_slice(array_values($airportBuckets), 0, 10);
 
-        // DAU2: Dom vs Int Stacked Data
+        // DAU2: Dom vs Int Stacked Data & Comparative Breakdown
         $dau2Distribution = [
             'domestic' => [
                 'aircraft'  => 0,
                 'passenger' => 0,
                 'baggage'   => 0,
                 'cargo'     => 0,
+                'pos'       => 0,
             ],
             'international' => [
                 'aircraft'  => 0,
                 'passenger' => 0,
                 'baggage'   => 0,
                 'cargo'     => 0,
+                'pos'       => 0,
             ],
         ];
         foreach ($filtered as $r) {
@@ -1193,7 +1275,56 @@ class DauDashboardController extends Controller
             $dau2Distribution[$k]['passenger'] += (int)($r['passenger_total'] ?? 0);
             $dau2Distribution[$k]['baggage']   += (int)($r['baggage'] ?? 0);
             $dau2Distribution[$k]['cargo']     += (int)($r['cargo'] ?? 0);
+            $dau2Distribution[$k]['pos']       += (int)($r['pos'] ?? 0);
         }
+
+        $dau2Comparative = [
+            'aircraft' => [
+                'label'             => 'Pesawat (Aircraft Movements)',
+                'unit'              => 'A/C',
+                'domestic'          => $dau2Distribution['domestic']['aircraft'],
+                'international'     => $dau2Distribution['international']['aircraft'],
+                'total'             => $dau2Distribution['domestic']['aircraft'] + $dau2Distribution['international']['aircraft'],
+                'domestic_pct'      => ($dau2Distribution['domestic']['aircraft'] + $dau2Distribution['international']['aircraft']) > 0 ? round(($dau2Distribution['domestic']['aircraft'] / ($dau2Distribution['domestic']['aircraft'] + $dau2Distribution['international']['aircraft'])) * 100, 1) : 0,
+                'international_pct' => ($dau2Distribution['domestic']['aircraft'] + $dau2Distribution['international']['aircraft']) > 0 ? round(($dau2Distribution['international']['aircraft'] / ($dau2Distribution['domestic']['aircraft'] + $dau2Distribution['international']['aircraft'])) * 100, 1) : 0,
+            ],
+            'passenger' => [
+                'label'             => 'Penumpang (Passengers)',
+                'unit'              => 'Pax',
+                'domestic'          => $dau2Distribution['domestic']['passenger'],
+                'international'     => $dau2Distribution['international']['passenger'],
+                'total'             => $dau2Distribution['domestic']['passenger'] + $dau2Distribution['international']['passenger'],
+                'domestic_pct'      => ($dau2Distribution['domestic']['passenger'] + $dau2Distribution['international']['passenger']) > 0 ? round(($dau2Distribution['domestic']['passenger'] / ($dau2Distribution['domestic']['passenger'] + $dau2Distribution['international']['passenger'])) * 100, 1) : 0,
+                'international_pct' => ($dau2Distribution['domestic']['passenger'] + $dau2Distribution['international']['passenger']) > 0 ? round(($dau2Distribution['international']['passenger'] / ($dau2Distribution['domestic']['passenger'] + $dau2Distribution['international']['passenger'])) * 100, 1) : 0,
+            ],
+            'baggage' => [
+                'label'             => 'Bagasi (Baggage)',
+                'unit'              => 'Kg',
+                'domestic'          => $dau2Distribution['domestic']['baggage'],
+                'international'     => $dau2Distribution['international']['baggage'],
+                'total'             => $dau2Distribution['domestic']['baggage'] + $dau2Distribution['international']['baggage'],
+                'domestic_pct'      => ($dau2Distribution['domestic']['baggage'] + $dau2Distribution['international']['baggage']) > 0 ? round(($dau2Distribution['domestic']['baggage'] / ($dau2Distribution['domestic']['baggage'] + $dau2Distribution['international']['baggage'])) * 100, 1) : 0,
+                'international_pct' => ($dau2Distribution['domestic']['baggage'] + $dau2Distribution['international']['baggage']) > 0 ? round(($dau2Distribution['international']['baggage'] / ($dau2Distribution['domestic']['baggage'] + $dau2Distribution['international']['baggage'])) * 100, 1) : 0,
+            ],
+            'cargo' => [
+                'label'             => 'Kargo (Freight Cargo)',
+                'unit'              => 'Kg',
+                'domestic'          => $dau2Distribution['domestic']['cargo'],
+                'international'     => $dau2Distribution['international']['cargo'],
+                'total'             => $dau2Distribution['domestic']['cargo'] + $dau2Distribution['international']['cargo'],
+                'domestic_pct'      => ($dau2Distribution['domestic']['cargo'] + $dau2Distribution['international']['cargo']) > 0 ? round(($dau2Distribution['domestic']['cargo'] / ($dau2Distribution['domestic']['cargo'] + $dau2Distribution['international']['cargo'])) * 100, 1) : 0,
+                'international_pct' => ($dau2Distribution['domestic']['cargo'] + $dau2Distribution['international']['cargo']) > 0 ? round(($dau2Distribution['international']['cargo'] / ($dau2Distribution['domestic']['cargo'] + $dau2Distribution['international']['cargo'])) * 100, 1) : 0,
+            ],
+            'pos' => [
+                'label'             => 'POS (Mail / Post)',
+                'unit'              => 'Kg',
+                'domestic'          => $dau2Distribution['domestic']['pos'],
+                'international'     => $dau2Distribution['international']['pos'],
+                'total'             => $dau2Distribution['domestic']['pos'] + $dau2Distribution['international']['pos'],
+                'domestic_pct'      => ($dau2Distribution['domestic']['pos'] + $dau2Distribution['international']['pos']) > 0 ? round(($dau2Distribution['domestic']['pos'] / ($dau2Distribution['domestic']['pos'] + $dau2Distribution['international']['pos'])) * 100, 1) : 0,
+                'international_pct' => ($dau2Distribution['domestic']['pos'] + $dau2Distribution['international']['pos']) > 0 ? round(($dau2Distribution['international']['pos'] / ($dau2Distribution['domestic']['pos'] + $dau2Distribution['international']['pos'])) * 100, 1) : 0,
+            ],
+        ];
 
         // DAU3: Niaga vs Bukan Niaga Breakdown
         $dau3Status = [
@@ -1441,6 +1572,7 @@ class DauDashboardController extends Controller
             'heatmap_matrix'      => $heatmapMatrix,
             'dau1_routes'         => $topRoutes,
             'dau2_distribution'   => $dau2Distribution,
+            'dau2_comparative'    => $dau2Comparative,
             'dau3_status'         => $dau3Status,
             'dau4_diverging'      => $dau4Diverging,
             'dau4b_matrix'        => $dau4bMatrix,
