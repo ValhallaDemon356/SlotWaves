@@ -80,7 +80,7 @@
                     <span class="font-mono">{{ $conf['code'] ?? $reportType }}</span>
                 </div>
                 <h1 class="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-                    {{ $conf['title'] ?? 'Data Angkutan Udara' }}
+                    {{ strtoupper($conf['title'] ?? 'Data Angkutan Udara') }}
                 </h1>
                 <div class="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
                     <svg class="w-3.5 h-3.5 text-aviation-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
@@ -111,9 +111,19 @@
         {{-- ══ 2. ADVANCED FILTER BAR (POSITIONED ABOVE CHARTS) ════════════════ --}}
         <div class="glass-card p-5 shadow-sm space-y-4">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
-                <div class="flex items-center gap-2">
-                    <svg class="w-4 h-4 text-aviation-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
-                    <span class="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">Filter &amp; Analytics Controls</span>
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <div class="flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-aviation-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                        <span class="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">Filter &amp; Analytics Controls</span>
+                    </div>
+                    {{-- Filter state indicator & Record counter --}}
+                    <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider"
+                          :class="hasActiveFilters ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700' : 'bg-slate-100 dark:bg-navy-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'"
+                          x-text="hasActiveFilters ? 'FILTERED VIEW' : 'ALL DATA'"></span>
+                    <span class="text-xs text-slate-500 font-mono">
+                        Showing <strong class="text-slate-800 dark:text-slate-200" x-text="formatNumber(filteredRecords.length)"></strong>
+                        of <span x-text="formatNumber(records.length)"></span> records
+                    </span>
                 </div>
 
                 @if (in_array($reportType, ['DAU1', 'DAU2', 'DAU3', 'DAU4', 'DAU4A', 'DAU10', 'DAU10A', 'DAU10B', 'DAU11', 'DAU12']))
@@ -137,7 +147,8 @@
                     <div>
                         <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Metric</label>
                         <select x-model="selectedMetric" @change="applyFilters()"
-                                class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
+                                :class="selectedMetric !== 'aircraft' ? 'ring-2 ring-aviation-500 border-aviation-500 bg-aviation-50/50 dark:bg-aviation-950/30' : 'border-slate-200 dark:border-slate-700'"
+                                class="w-full px-2.5 py-1.5 rounded-lg border bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
                             <option value="aircraft">Pesawat (Aircraft)</option>
                             <option value="passenger">Penumpang (Passenger)</option>
                             @if (in_array($reportType, ['DAU2', 'DAU5', 'DAU5C']))
@@ -156,7 +167,8 @@
                     <div>
                         <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Direction</label>
                         <select x-model="filterDirection" @change="applyFilters()"
-                                class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
+                                :class="filterDirection !== 'ALL' ? 'ring-2 ring-aviation-500 border-aviation-500 bg-aviation-50/50 dark:bg-aviation-950/30' : 'border-slate-200 dark:border-slate-700'"
+                                class="w-full px-2.5 py-1.5 rounded-lg border bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
                             <option value="ALL">ALL (ARR &amp; DEP)</option>
                             <option value="ARRIVAL">ARRIVAL (Kedatangan)</option>
                             <option value="DEPARTURE">DEPARTURE (Keberangkatan)</option>
@@ -168,10 +180,53 @@
                     <div>
                         <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Terminal</label>
                         <select x-model="filterTerminal" @change="applyFilters()"
-                                class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
+                                :class="filterTerminal !== 'ALL' ? 'ring-2 ring-aviation-500 border-aviation-500 bg-aviation-50/50 dark:bg-aviation-950/30' : 'border-slate-200 dark:border-slate-700'"
+                                class="w-full px-2.5 py-1.5 rounded-lg border bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
                             <option value="ALL">ALL TERMINALS</option>
                             @foreach ($terminals as $t)
                                 <option value="{{ $t }}">Terminal {{ $t }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endif
+
+                @if (in_array($reportType, ['DAU1', 'DAU4A', 'DAU4B', 'DAU5', 'DAU5A', 'DAU5B', 'DAU5C']) && !empty($airlines))
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Airline / Operator</label>
+                        <select x-model="filterAirline" @change="applyFilters()"
+                                :class="filterAirline !== 'ALL' ? 'ring-2 ring-aviation-500 border-aviation-500 bg-aviation-50/50 dark:bg-aviation-950/30' : 'border-slate-200 dark:border-slate-700'"
+                                class="w-full px-2.5 py-1.5 rounded-lg border bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
+                            <option value="ALL">ALL AIRLINES</option>
+                            @foreach ($airlines as $al)
+                                <option value="{{ $al }}">{{ $al }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endif
+
+                @if (in_array($reportType, ['DAU1', 'DAU4', 'DAU4A', 'DAU4B']) && !empty($airports))
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Airport / Rute</label>
+                        <select x-model="filterAirport" @change="applyFilters()"
+                                :class="filterAirport !== 'ALL' ? 'ring-2 ring-aviation-500 border-aviation-500 bg-aviation-50/50 dark:bg-aviation-950/30' : 'border-slate-200 dark:border-slate-700'"
+                                class="w-full px-2.5 py-1.5 rounded-lg border bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
+                            <option value="ALL">ALL AIRPORTS</option>
+                            @foreach ($airports as $ap)
+                                <option value="{{ $ap }}">{{ $ap }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endif
+
+                @if (in_array($reportType, ['DAU1', 'DAU5C', 'DAU6']) && !empty($aircraftTypes))
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Aircraft Type</label>
+                        <select x-model="filterAircraftType" @change="applyFilters()"
+                                :class="filterAircraftType !== 'ALL' ? 'ring-2 ring-aviation-500 border-aviation-500 bg-aviation-50/50 dark:bg-aviation-950/30' : 'border-slate-200 dark:border-slate-700'"
+                                class="w-full px-2.5 py-1.5 rounded-lg border bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
+                            <option value="ALL">ALL TYPES</option>
+                            @foreach ($aircraftTypes as $at)
+                                <option value="{{ $at }}">{{ $at }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -181,7 +236,8 @@
                     <div>
                         <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Top N Routes</label>
                         <select x-model="filterTopN" @change="applyFilters()"
-                                class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
+                                :class="filterTopN !== '10' ? 'ring-2 ring-aviation-500 border-aviation-500 bg-aviation-50/50 dark:bg-aviation-950/30' : 'border-slate-200 dark:border-slate-700'"
+                                class="w-full px-2.5 py-1.5 rounded-lg border bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
                             <option value="5">TOP 5</option>
                             <option value="10">TOP 10</option>
                             <option value="20">TOP 20</option>
@@ -194,7 +250,8 @@
                     <div>
                         <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Min. Flights</label>
                         <select x-model="filterThreshold" @change="applyFilters()"
-                                class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
+                                :class="filterThreshold !== 0 ? 'ring-2 ring-aviation-500 border-aviation-500 bg-aviation-50/50 dark:bg-aviation-950/30' : 'border-slate-200 dark:border-slate-700'"
+                                class="w-full px-2.5 py-1.5 rounded-lg border bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
                             <option value="0">&ge; 0 Flights (All)</option>
                             <option value="1">&ge; 1 Flight</option>
                             <option value="3">&ge; 3 Flights</option>
@@ -208,7 +265,8 @@
                     <div>
                         <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Hour</label>
                         <select x-model="filterHour" @change="applyFilters()"
-                                class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-mono text-xs focus:ring-1 focus:ring-aviation-500 cursor-pointer">
+                                :class="filterHour !== 'ALL' ? 'ring-2 ring-aviation-500 border-aviation-500 bg-aviation-50/50 dark:bg-aviation-950/30' : 'border-slate-200 dark:border-slate-700'"
+                                class="w-full px-2.5 py-1.5 rounded-lg border bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-mono text-xs focus:ring-1 focus:ring-aviation-500 cursor-pointer">
                             <option value="ALL">ALL 24 HOURS</option>
                             @foreach ($hours as $h)
                                 <option value="{{ $h }}">{{ $h }}</option>
@@ -221,7 +279,8 @@
                     <div>
                         <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Operation</label>
                         <select x-model="filterOperation" @change="applyFilters()"
-                                class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
+                                :class="filterOperation !== 'ALL' ? 'ring-2 ring-aviation-500 border-aviation-500 bg-aviation-50/50 dark:bg-aviation-950/30' : 'border-slate-200 dark:border-slate-700'"
+                                class="w-full px-2.5 py-1.5 rounded-lg border bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
                             <option value="ALL">ALL (BLOCK ON &amp; OFF)</option>
                             <option value="BLOCK_ON">BLOCK ON (DTG - Inbound)</option>
                             <option value="BLOCK_OFF">BLOCK OFF (BRK - Outbound)</option>
@@ -233,7 +292,8 @@
                     <div>
                         <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Jadwal</label>
                         <select x-model="filterScheduleType" @change="applyFilters()"
-                                class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
+                                :class="filterScheduleType !== 'ALL' ? 'ring-2 ring-aviation-500 border-aviation-500 bg-aviation-50/50 dark:bg-aviation-950/30' : 'border-slate-200 dark:border-slate-700'"
+                                class="w-full px-2.5 py-1.5 rounded-lg border bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
                             <option value="ALL">ALL STATUS</option>
                             <option value="BERJADWAL">Berjadwal</option>
                             <option value="TIDAK">Tdk Berjadwal</option>
@@ -245,7 +305,8 @@
                     <div>
                         <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Status Usaha</label>
                         <select x-model="filterStatus" @change="applyFilters()"
-                                class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
+                                :class="filterStatus !== 'ALL' ? 'ring-2 ring-aviation-500 border-aviation-500 bg-aviation-50/50 dark:bg-aviation-950/30' : 'border-slate-200 dark:border-slate-700'"
+                                class="w-full px-2.5 py-1.5 rounded-lg border bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
                             <option value="ALL">ALL STATUS</option>
                             <option value="NIAGA">Niaga</option>
                             <option value="BUKAN NIAGA">Bukan Niaga</option>
@@ -257,7 +318,8 @@
                     <div>
                         <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Kategori Body</label>
                         <select x-model="filterCategory" @change="applyFilters()"
-                                class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
+                                :class="filterCategory !== 'ALL' ? 'ring-2 ring-aviation-500 border-aviation-500 bg-aviation-50/50 dark:bg-aviation-950/30' : 'border-slate-200 dark:border-slate-700'"
+                                class="w-full px-2.5 py-1.5 rounded-lg border bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
                             <option value="ALL">ALL CATEGORIES</option>
                             <option value="Narrow Body">Narrow Body</option>
                             <option value="Wide Body">Wide Body</option>
@@ -267,7 +329,8 @@
                     <div>
                         <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">WTC</label>
                         <select x-model="filterWtc" @change="applyFilters()"
-                                class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
+                                :class="filterWtc !== 'ALL' ? 'ring-2 ring-aviation-500 border-aviation-500 bg-aviation-50/50 dark:bg-aviation-950/30' : 'border-slate-200 dark:border-slate-700'"
+                                class="w-full px-2.5 py-1.5 rounded-lg border bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
                             <option value="ALL">ALL WTC</option>
                             <option value="Medium">Medium (M)</option>
                             <option value="Heavy">Heavy (H)</option>
@@ -295,8 +358,19 @@
                 </div>
             </div>
 
-            <div x-show="hasActiveFilters" class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[11px] font-mono">
+            <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[11px] font-mono">
                 <span class="text-[10px] uppercase font-bold text-slate-400">ACTIVE FILTERS:</span>
+
+                <template x-if="!hasActiveFilters">
+                    <span class="text-slate-400 italic">All Data (No active filters)</span>
+                </template>
+
+                <template x-if="selectedMetric !== 'aircraft'">
+                    <span class="px-2 py-0.5 rounded-full bg-aviation-50 dark:bg-aviation-950 text-aviation-700 dark:text-aviation-300 border border-aviation-300 font-bold flex items-center gap-1">
+                        Metric: <span class="uppercase font-mono" x-text="selectedMetric"></span>
+                        <button type="button" @click="selectedMetric = 'aircraft'; applyFilters();" class="hover:text-red-500">&times;</button>
+                    </span>
+                </template>
 
                 <template x-if="filterFlightType !== 'ALL'">
                     <span class="px-2 py-0.5 rounded-full bg-aviation-50 dark:bg-aviation-950 text-aviation-700 dark:text-aviation-300 border border-aviation-200 font-bold flex items-center gap-1">
@@ -309,6 +383,27 @@
                     <span class="px-2 py-0.5 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-bold flex items-center gap-1">
                         Terminal: <span x-text="filterTerminal"></span>
                         <button type="button" @click="setTerminal('ALL')" class="hover:text-red-400">&times;</button>
+                    </span>
+                </template>
+
+                <template x-if="filterAirline !== 'ALL'">
+                    <span class="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 font-bold flex items-center gap-1">
+                        Airline: <span x-text="filterAirline"></span>
+                        <button type="button" @click="filterAirline = 'ALL'; applyFilters();" class="hover:text-red-500">&times;</button>
+                    </span>
+                </template>
+
+                <template x-if="filterAirport !== 'ALL'">
+                    <span class="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 font-bold flex items-center gap-1">
+                        Airport: <span x-text="filterAirport"></span>
+                        <button type="button" @click="filterAirport = 'ALL'; applyFilters();" class="hover:text-red-500">&times;</button>
+                    </span>
+                </template>
+
+                <template x-if="filterAircraftType !== 'ALL'">
+                    <span class="px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 font-bold flex items-center gap-1">
+                        Aircraft: <span x-text="filterAircraftType"></span>
+                        <button type="button" @click="filterAircraftType = 'ALL'; applyFilters();" class="hover:text-red-500">&times;</button>
                     </span>
                 </template>
 
@@ -333,6 +428,34 @@
                     </span>
                 </template>
 
+                <template x-if="filterScheduleType !== 'ALL'">
+                    <span class="px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 font-bold flex items-center gap-1">
+                        Jadwal: <span x-text="filterScheduleType"></span>
+                        <button type="button" @click="filterScheduleType = 'ALL'; applyFilters();" class="hover:text-red-500">&times;</button>
+                    </span>
+                </template>
+
+                <template x-if="filterStatus !== 'ALL'">
+                    <span class="px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border border-teal-200 font-bold flex items-center gap-1">
+                        Status: <span x-text="filterStatus"></span>
+                        <button type="button" @click="filterStatus = 'ALL'; applyFilters();" class="hover:text-red-500">&times;</button>
+                    </span>
+                </template>
+
+                <template x-if="filterCategory !== 'ALL'">
+                    <span class="px-2 py-0.5 rounded-full bg-sky-50 dark:bg-sky-950 text-sky-700 dark:text-sky-300 border border-sky-200 font-bold flex items-center gap-1">
+                        Body: <span x-text="filterCategory"></span>
+                        <button type="button" @click="filterCategory = 'ALL'; applyFilters();" class="hover:text-red-500">&times;</button>
+                    </span>
+                </template>
+
+                <template x-if="filterWtc !== 'ALL'">
+                    <span class="px-2 py-0.5 rounded-full bg-orange-50 dark:bg-orange-950 text-orange-700 dark:text-orange-300 border border-orange-200 font-bold flex items-center gap-1">
+                        WTC: <span x-text="filterWtc"></span>
+                        <button type="button" @click="filterWtc = 'ALL'; applyFilters();" class="hover:text-red-500">&times;</button>
+                    </span>
+                </template>
+
                 <template x-if="searchQuery !== ''">
                     <span class="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300 border border-slate-200 font-bold flex items-center gap-1">
                         Search: "<span x-text="searchQuery"></span>"
@@ -340,9 +463,11 @@
                     </span>
                 </template>
 
-                <button type="button" @click="resetFilters()" class="text-red-500 hover:text-red-700 underline font-bold ml-auto cursor-pointer">
-                    Clear All
-                </button>
+                <template x-if="hasActiveFilters">
+                    <button type="button" @click="resetFilters()" class="text-red-500 hover:text-red-700 underline font-bold ml-auto cursor-pointer">
+                        Clear All
+                    </button>
+                </template>
             </div>
         </div>
 
@@ -917,6 +1042,42 @@
                         </template>
                     </div>
                 </div>
+
+                {{-- ══ PEAK HOUR ANALYSIS SECTION ═════════════════════════════════════ --}}
+                <div class="glass-card p-5 sm:p-6 shadow-md border-l-4 border-l-blue-600 space-y-4">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            <h2 class="text-base font-black tracking-tight text-slate-900 dark:text-white">PEAK HOUR ANALYSIS</h2>
+                        </div>
+                        <div class="text-xs font-mono text-slate-500">
+                            Active Filter Applied: <span class="font-bold text-slate-800 dark:text-slate-200" x-text="activeFlightScope + ' • ' + activeTerminalScope"></span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-navy-900 border border-slate-200 dark:border-slate-800">
+                            <div class="text-[10px] font-bold uppercase text-slate-400">Peak Hour Period</div>
+                            <div class="text-base font-black text-blue-600 dark:text-blue-400 mt-1 font-mono" x-text="peaks.peak_hour"></div>
+                            <div class="text-[10px] text-slate-400 mt-0.5">Highest movement concentration</div>
+                        </div>
+                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-navy-900 border border-slate-200 dark:border-slate-800">
+                            <div class="text-[10px] font-bold uppercase text-slate-400">Peak Aircraft Movement</div>
+                            <div class="text-base font-black text-amber-600 dark:text-amber-400 mt-1 font-mono" x-text="formatNumber(peaks.peak_aircraft) + ' Acft'"></div>
+                            <div class="text-[10px] text-slate-400 mt-0.5" x-text="'At ' + peaks.peak_aircraft_hour"></div>
+                        </div>
+                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-navy-900 border border-slate-200 dark:border-slate-800">
+                            <div class="text-[10px] font-bold uppercase text-slate-400">Peak Passenger Volume</div>
+                            <div class="text-base font-black text-emerald-600 dark:text-emerald-400 mt-1 font-mono" x-text="formatNumber(peaks.peak_passenger) + ' Pax'"></div>
+                            <div class="text-[10px] text-slate-400 mt-0.5" x-text="'At ' + peaks.peak_passenger_hour"></div>
+                        </div>
+                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-navy-900 border border-slate-200 dark:border-slate-800">
+                            <div class="text-[10px] font-bold uppercase text-slate-400">Busiest Terminal</div>
+                            <div class="text-base font-black text-purple-600 dark:text-purple-400 mt-1 font-mono" x-text="'T' + (peaks.peak_terminal || '—')"></div>
+                            <div class="text-[10px] text-slate-400 mt-0.5" x-text="formatNumber(peaks.peak_terminal_val) + ' movements'"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         @endif
 
@@ -988,15 +1149,55 @@
 
                 {{-- VIEW 2: DISTRIBUSI PER JAM --}}
                 <div x-show="dauViewMode === 'distribution'" class="space-y-6">
+                    {{-- METRIC SELECTION HEADER FOR DAU-10A (PART 48) --}}
+                    <div class="glass-card p-3 shadow-xs border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500">METRIC:</span>
+                            <div class="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-navy-900 border border-slate-200 dark:border-slate-800">
+                                <button type="button" @click="selectedMetric = 'aircraft'; applyFilters();"
+                                        :class="selectedMetric === 'aircraft' ? 'bg-aviation-600 text-white shadow-sm font-black' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 font-bold'"
+                                        class="px-3.5 py-1.5 rounded-lg text-xs transition cursor-pointer">
+                                    PESAWAT
+                                </button>
+                                <button type="button" @click="selectedMetric = 'passenger'; applyFilters();"
+                                        :class="selectedMetric === 'passenger' ? 'bg-emerald-600 text-white shadow-sm font-black' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 font-bold'"
+                                        class="px-3.5 py-1.5 rounded-lg text-xs transition cursor-pointer">
+                                    PENUMPANG
+                                </button>
+                                <button type="button" @click="selectedMetric = 'crew'; applyFilters();"
+                                        :class="selectedMetric === 'crew' ? 'bg-purple-600 text-white shadow-sm font-black' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 font-bold'"
+                                        class="px-3.5 py-1.5 rounded-lg text-xs transition cursor-pointer">
+                                    AWAK
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="text-xs font-mono text-slate-500 flex items-center gap-2">
+                            <span class="text-[10px] font-bold uppercase text-slate-400">Mode Aktif:</span>
+                            <span class="px-2 py-0.5 rounded font-bold uppercase"
+                                  :class="{
+                                      'bg-aviation-50 text-aviation-700 dark:bg-aviation-950 dark:text-aviation-300': selectedMetric === 'aircraft',
+                                      'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300': selectedMetric === 'passenger',
+                                      'bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300': selectedMetric === 'crew'
+                                  }"
+                                  x-text="selectedMetric === 'aircraft' ? 'Aircraft Capacity Envelope Active' : (selectedMetric === 'passenger' ? 'Passenger Distribution (No Capacity Envelope)' : 'Crew Distribution (No Capacity Envelope)')">
+                            </span>
+                        </div>
+                    </div>
+
+                    {{-- DYNAMIC SUMMARY CARD (AIRCRAFT VS PASSENGER VS CREW) --}}
                     <div class="glass-card p-4 shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                         <div class="space-y-0.5">
                             <div class="text-[11px] font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
-                                <span>CAPACITY STATUS SUMMARY</span>
-                                <span class="text-[10px] font-mono font-normal text-slate-400">(ARR: <strong class="text-amber-600 font-bold" x-text="arrivalCapacity + ' A/C'"></strong> | DEP: <strong class="text-blue-600 font-bold" x-text="departureCapacity + ' A/C'"></strong>)</span>
+                                <span x-text="selectedMetric === 'aircraft' ? 'CAPACITY STATUS SUMMARY' : (selectedMetric === 'passenger' ? 'PASSENGER TRAFFIC SUMMARY' : 'CREW TRAFFIC SUMMARY')"></span>
+                                <span x-show="selectedMetric === 'aircraft'" class="text-[10px] font-mono font-normal text-slate-400">(ARR: <strong class="text-amber-600 font-bold" x-text="arrivalCapacity + ' A/C'"></strong> | DEP: <strong class="text-blue-600 font-bold" x-text="departureCapacity + ' A/C'"></strong>)</span>
                             </div>
-                            <p class="text-xs text-slate-500">Evaluasi langsung status jam operasional bandara terhadap batas kapasitas penerbangan.</p>
+                            <p class="text-xs text-slate-500"
+                               x-text="selectedMetric === 'aircraft' ? 'Evaluasi langsung status jam operasional bandara terhadap batas kapasitas penerbangan.' : (selectedMetric === 'passenger' ? 'Ringkasan distribusi volume penumpang datang dan berangkat per jam.' : 'Ringkasan distribusi awak penerbangan dan extra crew per jam.')"></p>
                         </div>
-                        <div class="flex flex-wrap items-center gap-2 text-xs font-bold font-mono">
+
+                        {{-- Aircraft Summary Pills --}}
+                        <div x-show="selectedMetric === 'aircraft'" class="flex flex-wrap items-center gap-2 text-xs font-bold font-mono">
                             <div class="px-3 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5">
                                 <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
                                 <span>AVAILABLE:</span>
@@ -1016,16 +1217,44 @@
                                 <span class="text-[10px] font-normal text-purple-600">jam</span>
                             </div>
                         </div>
+
+                        {{-- Passenger Summary Pills --}}
+                        <div x-show="selectedMetric === 'passenger'" class="flex flex-wrap items-center gap-2 text-xs font-bold font-mono">
+                            <div class="px-3 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5">
+                                <span class="text-[10px] text-emerald-600 uppercase font-bold">Total Pax:</span>
+                                <span class="font-black text-sm" x-text="formatNumber(hourlyCapacityAnalysis.summary.totalDemand)"></span>
+                                <span class="text-[10px] font-normal text-emerald-600">pax</span>
+                            </div>
+                            <div class="px-3 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1.5">
+                                <span class="text-[10px] text-amber-600 uppercase font-bold">Peak Hour:</span>
+                                <span class="font-black text-sm" x-text="hourlyCapacityAnalysis.summary.peakHour"></span>
+                            </div>
+                        </div>
+
+                        {{-- Crew Summary Pills --}}
+                        <div x-show="selectedMetric === 'crew'" class="flex flex-wrap items-center gap-2 text-xs font-bold font-mono">
+                            <div class="px-3 py-1 rounded-lg bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 flex items-center gap-1.5">
+                                <span class="text-[10px] text-purple-600 uppercase font-bold">Total Awak:</span>
+                                <span class="font-black text-sm" x-text="formatNumber(hourlyCapacityAnalysis.summary.totalDemand)"></span>
+                                <span class="text-[10px] font-normal text-purple-600">crew</span>
+                            </div>
+                            <div class="px-3 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center gap-1.5">
+                                <span class="text-[10px] text-blue-600 uppercase font-bold">Peak Hour:</span>
+                                <span class="font-black text-sm" x-text="hourlyCapacityAnalysis.summary.peakHour"></span>
+                            </div>
+                        </div>
                     </div>
 
+                    {{-- CHART BOX --}}
                     <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
                         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
                             <div>
                                 <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">DISTRIBUSI PER JAM</h2>
-                                <p class="text-xs text-slate-500">Two-Direction Operational Aircraft Capacity Envelope &amp; Demand Analysis.</p>
+                                <p class="text-xs text-slate-500"
+                                   x-text="selectedMetric === 'aircraft' ? 'Two-Direction Operational Aircraft Capacity Envelope & Demand Analysis.' : (selectedMetric === 'passenger' ? 'Two-Direction Passenger Hourly Distribution (Arrivals Above, Departures Below).' : 'Two-Direction Crew Hourly Distribution (Operating Crew Above, Extra Crew Below).')"></p>
                             </div>
                             <div class="flex items-center gap-2">
-                                <button type="button" @click="openUnifiedModal()"
+                                <button type="button" x-show="selectedMetric === 'aircraft'" @click="openUnifiedModal()"
                                         class="px-3 py-1.5 rounded-lg text-xs font-bold text-aviation-700 dark:text-aviation-300 bg-aviation-50 dark:bg-aviation-950 border border-aviation-300 dark:border-aviation-800 hover:bg-aviation-100 transition cursor-pointer">
                                     ⚙ Edit Capacity &amp; Hours
                                 </button>
@@ -1035,14 +1264,18 @@
                         <x-hourly-capacity-envelope-chart mode="dau" />
                     </div>
 
+                    {{-- HOURLY STATUS / DISTRIBUTION DETAIL TABLE --}}
                     <div class="glass-card p-5 shadow-md space-y-3">
                         <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
-                            <h3 class="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">HOURLY CAPACITY STATUS</h3>
-                            <p class="text-xs text-slate-500">Analisis demand pesawat per jam operasional dibandingkan dengan batas Aircraft Capacity.</p>
+                            <h3 class="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white"
+                                x-text="selectedMetric === 'aircraft' ? 'HOURLY CAPACITY STATUS' : (selectedMetric === 'passenger' ? 'HOURLY PASSENGER STATUS' : 'HOURLY CREW STATUS')"></h3>
+                            <p class="text-xs text-slate-500"
+                               x-text="selectedMetric === 'aircraft' ? 'Analisis demand pesawat per jam operasional dibandingkan dengan batas Aircraft Capacity.' : (selectedMetric === 'passenger' ? 'Distribusi penumpang kedatangan (ARR), keberangkatan (DEP), transit, dan transfer per jam.' : 'Distribusi awak pesawat operasi (ARR) dan extra crew (DEP) per jam.')"></p>
                         </div>
                         <div class="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl">
                             <table class="w-full text-xs font-mono text-center border-collapse">
-                                <thead class="bg-slate-100 dark:bg-navy-900 text-[10px] font-bold text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 uppercase">
+                                {{-- AIRCRAFT THEAD --}}
+                                <thead x-show="selectedMetric === 'aircraft'" class="bg-slate-100 dark:bg-navy-900 text-[10px] font-bold text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 uppercase">
                                     <tr>
                                         <th class="px-3 py-2 text-left">Hour</th>
                                         <th class="px-3 py-2 text-right">ARR</th>
@@ -1054,27 +1287,94 @@
                                         <th class="px-3 py-2 text-center">Status</th>
                                     </tr>
                                 </thead>
+
+                                {{-- PASSENGER THEAD --}}
+                                <thead x-show="selectedMetric === 'passenger'" class="bg-slate-100 dark:bg-navy-900 text-[10px] font-bold text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 uppercase">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left">Hour</th>
+                                        <th class="px-3 py-2 text-right text-emerald-600">Passenger ARR</th>
+                                        <th class="px-3 py-2 text-right text-blue-600">Passenger DEP</th>
+                                        <th class="px-3 py-2 text-right">Transit</th>
+                                        <th class="px-3 py-2 text-right">Transfer</th>
+                                        <th class="px-3 py-2 text-right font-black text-amber-600">Total Passenger</th>
+                                    </tr>
+                                </thead>
+
+                                {{-- CREW THEAD --}}
+                                <thead x-show="selectedMetric === 'crew'" class="bg-slate-100 dark:bg-navy-900 text-[10px] font-bold text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 uppercase">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left">Hour</th>
+                                        <th class="px-3 py-2 text-right text-blue-600">Operating Crew (ARR)</th>
+                                        <th class="px-3 py-2 text-right text-purple-600">Extra Crew (DEP)</th>
+                                        <th class="px-3 py-2 text-right font-black">Total Crew</th>
+                                    </tr>
+                                </thead>
+
                                 <tbody class="divide-y divide-slate-100 dark:divide-slate-800/80">
                                     <template x-for="row in hourlyCapacityAnalysis.list" :key="row.hour">
                                         <tr @click="setHourFilter(row.hour)" class="hover:bg-slate-50/70 dark:hover:bg-navy-800/50 cursor-pointer transition"
                                             :class="filterHour === row.hour ? 'bg-aviation-50/70 dark:bg-aviation-950/40 font-bold' : ''">
                                             <td class="px-3 py-2 text-left font-bold text-slate-900 dark:text-white" x-text="formatHourDisplay(row.hour)"></td>
-                                            <td class="px-3 py-2 text-right text-amber-600 font-bold" x-text="formatNumber(row.arr)"></td>
-                                            <td class="px-2 py-2 text-center font-mono font-bold text-slate-500" x-text="row.arrCap"></td>
-                                            <td class="px-3 py-2 text-right text-blue-600 font-bold" x-text="formatNumber(row.dep)"></td>
-                                            <td class="px-2 py-2 text-center font-mono font-bold text-slate-500" x-text="row.depCap"></td>
-                                            <td class="px-2 py-2 text-center text-slate-400" x-text="row.opc"></td>
-                                            <td class="px-3 py-2 text-right font-black text-slate-900 dark:text-white" x-text="formatNumber(row.demand)"></td>
-                                            <td class="px-3 py-2 text-center">
-                                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider inline-block"
-                                                      :class="{
-                                                          'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300': row.status === 'AVAILABLE',
-                                                          'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300': row.status === 'FULL / MAX',
-                                                          'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300': row.status === 'OVER CAPACITY',
-                                                          'bg-slate-100 text-slate-600 dark:bg-navy-800 dark:text-slate-400': row.status === 'OFF HOURS'
-                                                      }"
-                                                      x-text="row.status"></span>
-                                            </td>
+
+                                            {{-- AIRCRAFT CELLS --}}
+                                            <template x-if="selectedMetric === 'aircraft'">
+                                                <td class="px-3 py-2 text-right text-amber-600 font-bold" x-text="formatNumber(row.arr)"></td>
+                                            </template>
+                                            <template x-if="selectedMetric === 'aircraft'">
+                                                <td class="px-2 py-2 text-center font-mono font-bold text-slate-500" x-text="row.arrCap"></td>
+                                            </template>
+                                            <template x-if="selectedMetric === 'aircraft'">
+                                                <td class="px-3 py-2 text-right text-blue-600 font-bold" x-text="formatNumber(row.dep)"></td>
+                                            </template>
+                                            <template x-if="selectedMetric === 'aircraft'">
+                                                <td class="px-2 py-2 text-center font-mono font-bold text-slate-500" x-text="row.depCap"></td>
+                                            </template>
+                                            <template x-if="selectedMetric === 'aircraft'">
+                                                <td class="px-2 py-2 text-center text-slate-400" x-text="row.opc"></td>
+                                            </template>
+                                            <template x-if="selectedMetric === 'aircraft'">
+                                                <td class="px-3 py-2 text-right font-black text-slate-900 dark:text-white" x-text="formatNumber(row.demand)"></td>
+                                            </template>
+                                            <template x-if="selectedMetric === 'aircraft'">
+                                                <td class="px-3 py-2 text-center">
+                                                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider inline-block"
+                                                          :class="{
+                                                              'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300': row.status === 'AVAILABLE',
+                                                              'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300': row.status === 'FULL / MAX',
+                                                              'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300': row.status === 'OVER CAPACITY',
+                                                              'bg-slate-100 text-slate-600 dark:bg-navy-800 dark:text-slate-400': row.status === 'OFF HOURS'
+                                                          }"
+                                                          x-text="row.status"></span>
+                                                </td>
+                                            </template>
+
+                                            {{-- PASSENGER CELLS --}}
+                                            <template x-if="selectedMetric === 'passenger'">
+                                                <td class="px-3 py-2 text-right text-emerald-600 font-bold" x-text="formatNumber(row.arr)"></td>
+                                            </template>
+                                            <template x-if="selectedMetric === 'passenger'">
+                                                <td class="px-3 py-2 text-right text-blue-600 font-bold" x-text="formatNumber(row.dep)"></td>
+                                            </template>
+                                            <template x-if="selectedMetric === 'passenger'">
+                                                <td class="px-3 py-2 text-right text-slate-500" x-text="formatNumber(row.transit)"></td>
+                                            </template>
+                                            <template x-if="selectedMetric === 'passenger'">
+                                                <td class="px-3 py-2 text-right text-slate-500" x-text="formatNumber(row.transfer)"></td>
+                                            </template>
+                                            <template x-if="selectedMetric === 'passenger'">
+                                                <td class="px-3 py-2 text-right font-black text-slate-900 dark:text-white" x-text="formatNumber(row.demand)"></td>
+                                            </template>
+
+                                            {{-- CREW CELLS --}}
+                                            <template x-if="selectedMetric === 'crew'">
+                                                <td class="px-3 py-2 text-right text-blue-600 font-bold" x-text="formatNumber(row.arr)"></td>
+                                            </template>
+                                            <template x-if="selectedMetric === 'crew'">
+                                                <td class="px-3 py-2 text-right text-purple-600 font-bold" x-text="formatNumber(row.dep)"></td>
+                                            </template>
+                                            <template x-if="selectedMetric === 'crew'">
+                                                <td class="px-3 py-2 text-right font-black text-slate-900 dark:text-white" x-text="formatNumber(row.demand)"></td>
+                                            </template>
                                         </tr>
                                     </template>
                                 </tbody>
@@ -1290,7 +1590,46 @@
                                     <th class="px-2.5 py-2.5 text-right">Awak</th>
                                     <th class="px-2.5 py-2.5 text-right">Bagasi</th>
                                     <th class="px-2.5 py-2.5 text-right">Kargo</th>
-                                @elseif ($reportType === 'DAU10' || $reportType === 'DAU10A' || $reportType === 'DAU10B')
+                                @elseif ($reportType === 'DAU10A')
+                                    <th @click="sortBy('hour')" class="px-3 py-2.5 cursor-pointer">Hour</th>
+                                    <th class="px-2.5 py-2.5">Terminal</th>
+                                    {{-- AIRCRAFT HEADERS --}}
+                                    <template x-if="selectedMetric === 'aircraft'">
+                                        <th class="px-2.5 py-2.5 text-right text-amber-600">Acft ARR</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'aircraft'">
+                                        <th class="px-2.5 py-2.5 text-right text-blue-600">Acft DEP</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'aircraft'">
+                                        <th class="px-2.5 py-2.5 text-right font-bold">Total Acft</th>
+                                    </template>
+                                    {{-- PASSENGER HEADERS --}}
+                                    <template x-if="selectedMetric === 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right text-emerald-600">Pax ARR</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right text-blue-600">Pax DEP</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right text-slate-500">Transit</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right text-slate-500">Transfer</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right font-bold text-amber-600">Total Pax</th>
+                                    </template>
+                                    {{-- CREW HEADERS --}}
+                                    <template x-if="selectedMetric === 'crew'">
+                                        <th class="px-2.5 py-2.5 text-right text-blue-600">Operating Crew (ARR)</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'crew'">
+                                        <th class="px-2.5 py-2.5 text-right text-purple-600">Extra Crew (DEP)</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'crew'">
+                                        <th class="px-2.5 py-2.5 text-right font-bold">Total Crew</th>
+                                    </template>
+                                @elseif ($reportType === 'DAU10' || $reportType === 'DAU10B')
                                     <th @click="sortBy('hour')" class="px-3 py-2.5 cursor-pointer">Hour</th>
                                     <th class="px-2.5 py-2.5">Terminal</th>
                                     <th class="px-2.5 py-2.5 text-right">@if ($reportType === 'DAU10B') Acft On (DTG) @else Acft ARR @endif</th>
@@ -1429,7 +1768,46 @@
                                         <td class="px-2.5 py-2 text-right text-slate-500" x-text="formatNumber(row.crew_total)"></td>
                                         <td class="px-2.5 py-2 text-right text-slate-500" x-text="formatNumber(row.baggage)"></td>
                                         <td class="px-2.5 py-2 text-right text-slate-500" x-text="formatNumber(row.cargo)"></td>
-                                    @elseif ($reportType === 'DAU10' || $reportType === 'DAU10A' || $reportType === 'DAU10B')
+                                    @elseif ($reportType === 'DAU10A')
+                                        <td class="px-3 py-2 font-bold text-aviation-600 dark:text-aviation-400" x-text="row.hour || row.period || '—'"></td>
+                                        <td class="px-2.5 py-2 font-sans font-bold text-slate-800 dark:text-slate-200" x-text="row.terminal || '—'"></td>
+                                        {{-- AIRCRAFT CELLS --}}
+                                        <template x-if="selectedMetric === 'aircraft'">
+                                            <td class="px-2.5 py-2 text-right text-amber-600" x-text="formatNumber(row.aircraft_arrival)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'aircraft'">
+                                            <td class="px-2.5 py-2 text-right text-blue-600" x-text="formatNumber(row.aircraft_departure)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'aircraft'">
+                                            <td class="px-2.5 py-2 text-right font-bold text-slate-900 dark:text-white" x-text="formatNumber(row.aircraft_total)"></td>
+                                        </template>
+                                        {{-- PASSENGER CELLS --}}
+                                        <template x-if="selectedMetric === 'passenger'">
+                                            <td class="px-2.5 py-2 text-right text-emerald-600" x-text="formatNumber(row.passenger_arrival)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'passenger'">
+                                            <td class="px-2.5 py-2 text-right text-blue-600" x-text="formatNumber(row.passenger_departure)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'passenger'">
+                                            <td class="px-2.5 py-2 text-right text-slate-500" x-text="formatNumber(row.passenger_transit)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'passenger'">
+                                            <td class="px-2.5 py-2 text-right text-slate-500" x-text="formatNumber(row.passenger_transfer)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'passenger'">
+                                            <td class="px-2.5 py-2 text-right font-bold text-amber-600" x-text="formatNumber(row.passenger_total)"></td>
+                                        </template>
+                                        {{-- CREW CELLS --}}
+                                        <template x-if="selectedMetric === 'crew'">
+                                            <td class="px-2.5 py-2 text-right text-blue-600 font-bold" x-text="formatNumber(row.crew)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'crew'">
+                                            <td class="px-2.5 py-2 text-right text-purple-600 font-bold" x-text="formatNumber(row.extra_crew)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'crew'">
+                                            <td class="px-2.5 py-2 text-right font-bold text-slate-900 dark:text-white" x-text="formatNumber(row.crew_total)"></td>
+                                        </template>
+                                    @elseif ($reportType === 'DAU10' || $reportType === 'DAU10B')
                                         <td class="px-3 py-2 font-bold text-aviation-600 dark:text-aviation-400" x-text="row.hour || row.period || '—'"></td>
                                         <td class="px-2.5 py-2 font-sans font-bold text-slate-800 dark:text-slate-200" x-text="row.terminal || '—'"></td>
                                         <td class="px-2.5 py-2 text-right" x-text="formatNumber(row.aircraft_arrival)"></td>
@@ -1584,6 +1962,7 @@ function dauEnhancedDashboard() {
         hours: @json($hours),
         airlines: @json($airlines),
         airports: @json($airports),
+        aircraftTypes: @json($aircraftTypes ?? []),
 
         // Canonical Filter State
         filterStartDate: @json($meta['start_date'] ?? date('Y-m-d')),
@@ -1592,6 +1971,9 @@ function dauEnhancedDashboard() {
         filterTerminal: 'ALL',
         filterHour: 'ALL',
         filterDirection: 'ALL',
+        filterAirline: 'ALL',
+        filterAirport: 'ALL',
+        filterAircraftType: 'ALL',
         filterOperation: 'ALL',
         filterScheduleType: 'ALL',
         filterStatus: 'ALL',
@@ -1669,6 +2051,9 @@ function dauEnhancedDashboard() {
                    this.filterTerminal !== 'ALL' ||
                    this.filterHour !== 'ALL' ||
                    this.filterDirection !== 'ALL' ||
+                   this.filterAirline !== 'ALL' ||
+                   this.filterAirport !== 'ALL' ||
+                   this.filterAircraftType !== 'ALL' ||
                    this.filterOperation !== 'ALL' ||
                    this.filterScheduleType !== 'ALL' ||
                    this.filterStatus !== 'ALL' ||
@@ -1766,6 +2151,9 @@ function dauEnhancedDashboard() {
             this.filterTerminal = 'ALL';
             this.filterHour = 'ALL';
             this.filterDirection = 'ALL';
+            this.filterAirline = 'ALL';
+            this.filterAirport = 'ALL';
+            this.filterAircraftType = 'ALL';
             this.filterOperation = 'ALL';
             this.filterScheduleType = 'ALL';
             this.filterStatus = 'ALL';
@@ -1784,6 +2172,9 @@ function dauEnhancedDashboard() {
             const term = this.filterTerminal;
             const hr = this.filterHour;
             const dir = this.filterDirection;
+            const alFilter = this.filterAirline;
+            const apFilter = this.filterAirport;
+            const actFilter = this.filterAircraftType;
             const op = this.filterOperation;
             const sched = this.filterScheduleType;
             const st = this.filterStatus;
@@ -1808,6 +2199,24 @@ function dauEnhancedDashboard() {
                 if (term !== 'ALL') {
                     const rTerm = String(r.terminal || '');
                     if (rTerm && rTerm.toLowerCase() !== term.toLowerCase()) return false;
+                }
+
+                // Airline
+                if (alFilter !== 'ALL') {
+                    const rAl = String(r.airline || r.operator_name || '');
+                    if (rAl.toLowerCase() !== alFilter.toLowerCase()) return false;
+                }
+
+                // Airport
+                if (apFilter !== 'ALL') {
+                    const rAp = String(r.airport || r.city || r.airport_route || r.origin || '');
+                    if (rAp.toLowerCase() !== apFilter.toLowerCase()) return false;
+                }
+
+                // Aircraft Type
+                if (actFilter !== 'ALL') {
+                    const rAct = String(r.aircraft_type || '');
+                    if (rAct.toLowerCase() !== actFilter.toLowerCase()) return false;
                 }
 
                 // Hour
@@ -1905,7 +2314,12 @@ function dauEnhancedDashboard() {
                     aircraft_total: 0,
                     passenger_arrival: 0,
                     passenger_departure: 0,
+                    passenger_transit: 0,
+                    passenger_transfer: 0,
                     passenger_total: 0,
+                    crew: 0,
+                    extra_crew: 0,
+                    crew_total: 0,
                 };
             });
 
@@ -1920,7 +2334,11 @@ function dauEnhancedDashboard() {
                 const pxTrf = Number(r.passenger_transfer || 0);
                 const pxTot = Number(r.passenger_total || (pxArr + pxDep + pxTrn + pxTrf));
 
-                const crew = Number(r.crew_total || (Number(r.crew || 0) + Number(r.extra_crew || 0)));
+                const crw = Number(r.crew || 0);
+                const exCrw = Number(r.extra_crew || (Number(r.arr_extra_crew || 0) + Number(r.dep_extra_crew || 0)));
+                const crwTot = Number(r.crew_total || (crw + exCrw));
+
+                const crew = crwTot;
                 const bag = Number(r.baggage || 0);
                 const cgo = Number(r.cargo || 0);
                 const pos = Number(r.pos || 0);
@@ -1952,28 +2370,34 @@ function dauEnhancedDashboard() {
                 }
 
                 // DAU5A Extra Crew
-                opCrew += Number(r.crew || 0);
+                opCrew += crw;
                 arrExCrew += Number(r.arr_extra_crew || 0);
                 depExCrew += Number(r.dep_extra_crew || 0);
-                exCrew += Number(r.extra_crew || (Number(r.arr_extra_crew || 0) + Number(r.dep_extra_crew || 0)));
+                exCrew += exCrw;
 
                 // Groupings
                 const h = r.hour || r.period;
                 if (h) {
-                    if (!hourlyMap[h]) hourlyMap[h] = { hour: h, aircraft_arrival: 0, aircraft_departure: 0, aircraft_total: 0, passenger_arrival: 0, passenger_departure: 0, passenger_total: 0 };
+                    if (!hourlyMap[h]) hourlyMap[h] = { hour: h, aircraft_arrival: 0, aircraft_departure: 0, aircraft_total: 0, passenger_arrival: 0, passenger_departure: 0, passenger_transit: 0, passenger_transfer: 0, passenger_total: 0, crew: 0, extra_crew: 0, crew_total: 0 };
                     hourlyMap[h].aircraft_arrival += acArr;
                     hourlyMap[h].aircraft_departure += acDep;
                     hourlyMap[h].aircraft_total += acTot;
                     hourlyMap[h].passenger_arrival += pxArr;
                     hourlyMap[h].passenger_departure += pxDep;
+                    hourlyMap[h].passenger_transit += pxTrn;
+                    hourlyMap[h].passenger_transfer += pxTrf;
                     hourlyMap[h].passenger_total += pxTot;
+                    hourlyMap[h].crew += crw;
+                    hourlyMap[h].extra_crew += exCrw;
+                    hourlyMap[h].crew_total += crwTot;
                 }
 
                 const t = r.terminal;
                 if (t) {
-                    if (!termMap[t]) termMap[t] = { terminal: t, aircraft_total: 0, passenger_total: 0 };
+                    if (!termMap[t]) termMap[t] = { terminal: t, aircraft_total: 0, passenger_total: 0, crew_total: 0 };
                     termMap[t].aircraft_total += acTot;
                     termMap[t].passenger_total += pxTot;
+                    termMap[t].crew_total += crwTot;
                 }
 
                 const ap = r.airport || r.city || r.airport_route;
@@ -2003,23 +2427,31 @@ function dauEnhancedDashboard() {
             // Peaks
             let peakAc = 0, peakAcH = '—';
             let peakPx = 0, peakPxH = '—';
+            let peakCrw = 0, peakCrwH = '—';
             this.activeHourlyDistribution.forEach(hb => {
                 if (hb.aircraft_total > peakAc) { peakAc = hb.aircraft_total; peakAcH = hb.hour; }
                 if (hb.passenger_total > peakPx) { peakPx = hb.passenger_total; peakPxH = hb.hour; }
+                if ((hb.crew_total || 0) > peakCrw) { peakCrw = hb.crew_total; peakCrwH = hb.hour; }
             });
 
             let peakT = '—', peakTV = 0;
             this.activeTerminalComparison.forEach(tb => {
-                const val = this.selectedMetric === 'passenger' ? tb.passenger_total : tb.aircraft_total;
+                const val = this.selectedMetric === 'passenger' ? tb.passenger_total : (this.selectedMetric === 'crew' ? (tb.crew_total || 0) : tb.aircraft_total);
                 if (val > peakTV) { peakTV = val; peakT = tb.terminal; }
             });
+
+            let peakHour = peakAcH;
+            if (this.selectedMetric === 'passenger') peakHour = peakPxH;
+            else if (this.selectedMetric === 'crew') peakHour = peakCrwH;
 
             this.peaks = {
                 peak_aircraft_hour: peakAcH,
                 peak_aircraft: peakAc,
                 peak_passenger_hour: peakPxH,
                 peak_passenger: peakPx,
-                peak_hour: this.selectedMetric === 'passenger' ? peakPxH : peakAcH,
+                peak_crew_hour: peakCrwH,
+                peak_crew: peakCrw,
+                peak_hour: peakHour,
                 peak_terminal: peakT,
                 peak_terminal_val: peakTV
             };
@@ -2206,6 +2638,9 @@ function dauEnhancedDashboard() {
             p.set('hour', this.filterHour);
             p.set('direction', this.filterDirection);
             p.set('metric', this.selectedMetric);
+            p.set('airline', this.filterAirline);
+            p.set('airport', this.filterAirport);
+            p.set('aircraft_type', this.filterAircraftType);
             p.set('operation', this.filterOperation);
             p.set('schedule_type', this.filterScheduleType);
             p.set('status', this.filterStatus);
@@ -2261,71 +2696,117 @@ function dauEnhancedDashboard() {
 
         // DAU-10A Capacity Analysis
         get hourlyCapacityAnalysis() {
+            const isPax = this.selectedMetric === 'passenger';
+            const isCrew = this.selectedMetric === 'crew';
             const arrCap = Number(this.arrivalCapacity) || 6;
             const depCap = Number(this.departureCapacity) || 6;
             let avail = 0, full = 0, over = 0, off = 0;
 
             const list = this.activeHourlyDistribution.map(item => {
-                const arr = Number(item.aircraft_arrival || 0);
-                const dep = Number(item.aircraft_departure || 0);
-                const demand = arr + dep;
-                const is24h = (this.opsStartTime === '00:00' && (this.opsEndTime === '24:00' || this.opsEndTime === '23:59'));
-                let isOff = false;
-                if (!is24h) {
-                    const hNum = parseInt(String(item.hour).split(/[.:]/)[0], 10);
-                    const sNum = parseInt(this.opsStartTime.split(/[.:]/)[0], 10);
-                    const eNum = parseInt(this.opsEndTime.split(/[.:]/)[0], 10);
-                    if (hNum < sNum || hNum >= eNum) isOff = true;
-                }
-
-                let arrSt = 'AVAILABLE';
-                if (isOff) {
-                    arrSt = 'OFF HOURS';
-                } else if (arr > arrCap) {
-                    arrSt = 'OVER CAPACITY';
-                } else if (arr === arrCap && arrCap > 0) {
-                    arrSt = 'FULL / MAX';
-                }
-
-                let depSt = 'AVAILABLE';
-                if (isOff) {
-                    depSt = 'OFF HOURS';
-                } else if (dep > depCap) {
-                    depSt = 'OVER CAPACITY';
-                } else if (dep === depCap && depCap > 0) {
-                    depSt = 'FULL / MAX';
-                }
-
-                let st = 'AVAILABLE';
-                if (isOff) {
-                    st = 'OFF HOURS';
-                    off++;
-                } else if (arr > arrCap || dep > depCap) {
-                    st = 'OVER CAPACITY';
-                    over++;
-                } else if (arr === arrCap || dep === depCap) {
-                    st = 'FULL / MAX';
-                    full++;
+                if (isPax) {
+                    const arr = Number(item.passenger_arrival || 0);
+                    const dep = Number(item.passenger_departure || 0);
+                    const transit = Number(item.passenger_transit || 0);
+                    const transfer = Number(item.passenger_transfer || 0);
+                    const demand = Number(item.passenger_total || (arr + dep + transit + transfer));
+                    return {
+                        hour: item.hour,
+                        shortLabel: String(item.hour).split(/[.:\s-–]/)[0].padStart(2, '0'),
+                        label: item.hour,
+                        isOps: true,
+                        arr: arr,
+                        dep: dep,
+                        transit: transit,
+                        transfer: transfer,
+                        arrCap: null,
+                        depCap: null,
+                        arrStatus: '',
+                        depStatus: '',
+                        opc: 'N/A',
+                        demand: demand,
+                        status: ''
+                    };
+                } else if (isCrew) {
+                    const arr = Number(item.crew || 0);
+                    const dep = Number(item.extra_crew || 0);
+                    const demand = Number(item.crew_total || (arr + dep));
+                    return {
+                        hour: item.hour,
+                        shortLabel: String(item.hour).split(/[.:\s-–]/)[0].padStart(2, '0'),
+                        label: item.hour,
+                        isOps: true,
+                        arr: arr,
+                        dep: dep,
+                        arrCap: null,
+                        depCap: null,
+                        arrStatus: '',
+                        depStatus: '',
+                        opc: 'N/A',
+                        demand: demand,
+                        status: ''
+                    };
                 } else {
-                    st = 'AVAILABLE';
-                    avail++;
-                }
+                    const arr = Number(item.aircraft_arrival || 0);
+                    const dep = Number(item.aircraft_departure || 0);
+                    const demand = arr + dep;
+                    const is24h = (this.opsStartTime === '00:00' && (this.opsEndTime === '24:00' || this.opsEndTime === '23:59'));
+                    let isOff = false;
+                    if (!is24h) {
+                        const hNum = parseInt(String(item.hour).split(/[.:]/)[0], 10);
+                        const sNum = parseInt(this.opsStartTime.split(/[.:]/)[0], 10);
+                        const eNum = parseInt(this.opsEndTime.split(/[.:]/)[0], 10);
+                        if (hNum < sNum || hNum >= eNum) isOff = true;
+                    }
 
-                return {
-                    hour: item.hour,
-                    shortLabel: String(item.hour).split(/[.:\s-–]/)[0].padStart(2, '0'),
-                    label: item.hour,
-                    isOps: !isOff,
-                    arr: arr,
-                    dep: dep,
-                    arrCap: arrCap,
-                    depCap: depCap,
-                    arrStatus: arrSt,
-                    depStatus: depSt,
-                    opc: 'N/A',
-                    demand: demand,
-                    status: st
-                };
+                    let arrSt = 'AVAILABLE';
+                    if (isOff) {
+                        arrSt = 'OFF HOURS';
+                    } else if (arr > arrCap) {
+                        arrSt = 'OVER CAPACITY';
+                    } else if (arr === arrCap && arrCap > 0) {
+                        arrSt = 'FULL / MAX';
+                    }
+
+                    let depSt = 'AVAILABLE';
+                    if (isOff) {
+                        depSt = 'OFF HOURS';
+                    } else if (dep > depCap) {
+                        depSt = 'OVER CAPACITY';
+                    } else if (dep === depCap && depCap > 0) {
+                        depSt = 'FULL / MAX';
+                    }
+
+                    let st = 'AVAILABLE';
+                    if (isOff) {
+                        st = 'OFF HOURS';
+                        off++;
+                    } else if (arr > arrCap || dep > depCap) {
+                        st = 'OVER CAPACITY';
+                        over++;
+                    } else if (arr === arrCap || dep === depCap) {
+                        st = 'FULL / MAX';
+                        full++;
+                    } else {
+                        st = 'AVAILABLE';
+                        avail++;
+                    }
+
+                    return {
+                        hour: item.hour,
+                        shortLabel: String(item.hour).split(/[.:\s-–]/)[0].padStart(2, '0'),
+                        label: item.hour,
+                        isOps: !isOff,
+                        arr: arr,
+                        dep: dep,
+                        arrCap: arrCap,
+                        depCap: depCap,
+                        arrStatus: arrSt,
+                        depStatus: depSt,
+                        opc: 'N/A',
+                        demand: demand,
+                        status: st
+                    };
+                }
             });
 
             return {
@@ -2338,8 +2819,12 @@ function dauEnhancedDashboard() {
             const list = (this.hourlyCapacityAnalysis && this.hourlyCapacityAnalysis.list) ? this.hourlyCapacityAnalysis.list : [];
             const maxArr = Math.max(...list.map(d => Number(d.arr || 0)), 0);
             const maxDep = Math.max(...list.map(d => Number(d.dep || 0)), 0);
-            const maxCap = Math.max(Number(this.arrivalCapacity || 6), Number(this.departureCapacity || 6));
-            const maxMovement = Math.max(maxArr, maxDep, maxCap);
+            if (this.selectedMetric === 'aircraft') {
+                const maxCap = Math.max(Number(this.arrivalCapacity || 6), Number(this.departureCapacity || 6));
+                const maxMovement = Math.max(maxArr, maxDep, maxCap);
+                return Math.max(Math.ceil(maxMovement * 1.15), maxMovement + 2, 8);
+            }
+            const maxMovement = Math.max(maxArr, maxDep);
             return Math.max(Math.ceil(maxMovement * 1.15), maxMovement + 2, 8);
         },
 
@@ -2363,6 +2848,9 @@ function dauEnhancedDashboard() {
         },
 
         get envelopeCoords() {
+            if (this.selectedMetric !== 'aircraft') {
+                return { left: 0, width: 100, top: 20, bottom: 20, isVisible: false };
+            }
             const list = (this.hourlyCapacityAnalysis && this.hourlyCapacityAnalysis.list) ? this.hourlyCapacityAnalysis.list : [];
             const totalCols = list.length;
             if (totalCols === 0) {
@@ -2449,13 +2937,23 @@ function dauEnhancedDashboard() {
             if (this.reportType === 'DAU2') {
                 const ctxSt = document.getElementById('dau2StackedChart')?.getContext('2d');
                 if (ctxSt) {
+                    let domAc = 0, intAc = 0, domPx = 0, intPx = 0, domBg = 0, intBg = 0, domCg = 0, intCg = 0;
+                    this.filteredRecords.forEach(r => {
+                        const isDom = String(r.category || '').toUpperCase().includes('DOM');
+                        const ac = Number(r.aircraft_total || (Number(r.aircraft_arrival || 0) + Number(r.aircraft_departure || 0)));
+                        const px = Number(r.passenger_total || (Number(r.passenger_arrival || 0) + Number(r.passenger_departure || 0)));
+                        const bg = Number(r.baggage || 0);
+                        const cg = Number(r.cargo || 0);
+                        if (isDom) { domAc += ac; domPx += px; domBg += bg; domCg += cg; }
+                        else { intAc += ac; intPax += px; intBg += bg; intCg += cg; }
+                    });
                     this.chartInstances.dau2Stacked = new Chart(ctxSt, {
                         type: 'bar',
                         data: {
                             labels: ['Aircraft Movements', 'Passengers', 'Baggage (Kg)', 'Cargo (Kg)'],
                             datasets: [
-                                { label: 'Domestic', data: [this.dau2Metrics.domAircraft, this.dau2Metrics.domAircraft * 140, 1200000, 1300000], backgroundColor: '#2563eb' },
-                                { label: 'International', data: [this.dau2Metrics.intAircraft, this.dau2Metrics.intAircraft * 180, 500000, 470000], backgroundColor: '#4f46e5' }
+                                { label: 'Domestic', data: [domAc, domPx, domBg, domCg], backgroundColor: '#2563eb' },
+                                { label: 'International', data: [intAc, intPax, intBg, intCg], backgroundColor: '#4f46e5' }
                             ]
                         },
                         options: {
@@ -2515,15 +3013,17 @@ function dauEnhancedDashboard() {
                 if (ctxPareto) {
                     const topAirlines = this.dau4aOperators.slice(0, 15);
                     let cum = 0;
-                    const tot = topAirlines.reduce((acc, o) => acc + o.total, 0) || 1;
-                    const cumData = topAirlines.map(o => { cum += o.total; return Math.round((cum / tot) * 100); });
+                    const isPax = this.selectedMetric === 'passenger';
+                    const tot = topAirlines.reduce((acc, o) => acc + (isPax ? o.pax : o.total), 0) || 1;
+                    const seriesData = topAirlines.map(o => (isPax ? o.pax : o.total));
+                    const cumData = topAirlines.map(o => { cum += (isPax ? o.pax : o.total); return Math.round((cum / tot) * 100); });
 
                     this.chartInstances.dau5Pareto = new Chart(ctxPareto, {
                         type: 'bar',
                         data: {
                             labels: topAirlines.map(o => o.name),
                             datasets: [
-                                { label: 'Movements', data: topAirlines.map(o => o.total), backgroundColor: '#0284c7', yAxisID: 'y' },
+                                { label: isPax ? 'Passengers' : 'Movements', data: seriesData, backgroundColor: '#0284c7', yAxisID: 'y' },
                                 { label: 'Cumulative %', data: cumData, type: 'line', borderColor: '#f59e0b', backgroundColor: '#f59e0b', yAxisID: 'y1', tension: 0.2 }
                             ]
                         },
@@ -2543,14 +3043,24 @@ function dauEnhancedDashboard() {
             if (this.reportType === 'DAU5A') {
                 const ctxCrew = document.getElementById('dau5aCrewChart')?.getContext('2d');
                 if (ctxCrew) {
-                    const list = this.dau4aOperators.slice(0, 12);
+                    const alMap5a = {};
+                    this.filteredRecords.forEach(r => {
+                        const al = r.airline || 'Unknown';
+                        if (!alMap5a[al]) alMap5a[al] = { name: al, opCrew: 0, exCrew: 0, totalCrew: 0 };
+                        const op = Number(r.crew || 0);
+                        const ex = Number(r.extra_crew || (Number(r.arr_extra_crew || 0) + Number(r.dep_extra_crew || 0)));
+                        alMap5a[al].opCrew += op;
+                        alMap5a[al].exCrew += ex;
+                        alMap5a[al].totalCrew += (op + ex);
+                    });
+                    const list5a = Object.values(alMap5a).sort((a, b) => b.totalCrew - a.totalCrew).slice(0, 12);
                     this.chartInstances.dau5aCrew = new Chart(ctxCrew, {
                         type: 'bar',
                         data: {
-                            labels: list.map(o => o.name),
+                            labels: list5a.map(o => o.name),
                             datasets: [
-                                { label: 'Operating Crew', data: list.map(o => Math.round(o.total * 0.9)), backgroundColor: '#2563eb' },
-                                { label: 'Extra Crew', data: list.map(o => Math.round(o.total * 0.1)), backgroundColor: '#9333ea' }
+                                { label: 'Operating Crew', data: list5a.map(o => o.opCrew), backgroundColor: '#2563eb' },
+                                { label: 'Extra Crew', data: list5a.map(o => o.exCrew), backgroundColor: '#9333ea' }
                             ]
                         },
                         options: { responsive: true, maintainAspectRatio: false }
@@ -2562,16 +3072,22 @@ function dauEnhancedDashboard() {
             if (this.reportType === 'DAU5B') {
                 const ctxTerm = document.getElementById('dau5bTerminalChart')?.getContext('2d');
                 if (ctxTerm) {
+                    const topTerminals = [...new Set(this.filteredRecords.map(r => r.terminal))].filter(Boolean);
+                    const topAirlines5b = [...new Set(this.filteredRecords.map(r => r.airline))].filter(Boolean).slice(0, 5);
+                    const colors5b = ['#0284c7', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'];
+                    const datasets5b = topAirlines5b.map((al, idx) => {
+                        const data = topTerminals.map(term => {
+                            return this.filteredRecords
+                                .filter(r => r.terminal === term && r.airline === al)
+                                .reduce((acc, r) => acc + (this.selectedMetric === 'passenger' ? Number(r.passenger_total || 0) : Number(r.aircraft_total || 0)), 0);
+                        });
+                        return { label: al, data: data, backgroundColor: colors5b[idx % colors5b.length] };
+                    });
                     this.chartInstances.dau5bTerm = new Chart(ctxTerm, {
                         type: 'bar',
                         data: {
-                            labels: ['T1', 'T2D', 'T2E', 'T2F', 'T3U'],
-                            datasets: [
-                                { label: 'Garuda Indonesia', data: [0, 0, 0, 0, 240], backgroundColor: '#0284c7' },
-                                { label: 'Lion Air', data: [180, 0, 0, 0, 0], backgroundColor: '#ef4444' },
-                                { label: 'Citilink', data: [0, 120, 0, 0, 0], backgroundColor: '#10b981' },
-                                { label: 'Batik Air', data: [0, 0, 90, 0, 0], backgroundColor: '#f59e0b' }
-                            ]
+                            labels: topTerminals.map(t => 'T' + t),
+                            datasets: datasets5b
                         },
                         options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } }
                     });
@@ -2602,16 +3118,31 @@ function dauEnhancedDashboard() {
                 const ctxFleet = document.getElementById('dau6FleetChart')?.getContext('2d');
                 if (ctxFleet) {
                     const types = [...new Set(this.filteredRecords.map(r => r.aircraft_type))].filter(Boolean).slice(0, 15);
-                    const counts = types.map(t => this.filteredRecords.filter(r => r.aircraft_type === t).reduce((acc, r) => acc + Number(r.aircraft_total || 0), 0));
+                    const counts = types.map(t => this.filteredRecords.filter(r => r.aircraft_type === t).reduce((acc, r) => acc + (this.selectedMetric === 'passenger' ? Number(r.passenger_total || 0) : Number(r.aircraft_total || 0)), 0));
                     this.chartInstances.dau6Fleet = new Chart(ctxFleet, {
                         type: 'bar',
                         data: {
                             labels: types,
-                            datasets: [{ label: 'Aircraft Total', data: counts, backgroundColor: '#0284c7' }]
+                            datasets: [{ label: this.selectedMetric === 'passenger' ? 'Passengers Total' : 'Aircraft Total', data: counts, backgroundColor: '#0284c7' }]
                         },
                         options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
                     });
                 }
+
+                let nb = 0, wb = 0, reg = 0;
+                let wtcM = 0, wtcH = 0, wtcL = 0;
+                this.filteredRecords.forEach(r => {
+                    const val = Number(r.aircraft_total || 1);
+                    const cat = String(r.category || '').toUpperCase();
+                    if (cat.includes('WIDE')) wb += val;
+                    else if (cat.includes('REGIONAL')) reg += val;
+                    else nb += val;
+
+                    const wtc = String(r.wtc || '').toUpperCase();
+                    if (wtc.includes('H') || wtc.includes('HEAVY')) wtcH += val;
+                    else if (wtc.includes('L') || wtc.includes('LIGHT')) wtcL += val;
+                    else wtcM += val;
+                });
 
                 const ctxCat = document.getElementById('dau6CategoryDonut')?.getContext('2d');
                 if (ctxCat) {
@@ -2619,7 +3150,7 @@ function dauEnhancedDashboard() {
                         type: 'doughnut',
                         data: {
                             labels: ['Narrow Body', 'Wide Body', 'Regional'],
-                            datasets: [{ data: [780, 210, 29], backgroundColor: ['#0284c7', '#4f46e5', '#10b981'] }]
+                            datasets: [{ data: [nb, wb, reg], backgroundColor: ['#0284c7', '#4f46e5', '#10b981'] }]
                         },
                         options: { responsive: true, maintainAspectRatio: false }
                     });
@@ -2631,7 +3162,7 @@ function dauEnhancedDashboard() {
                         type: 'doughnut',
                         data: {
                             labels: ['Medium (M)', 'Heavy (H)', 'Light (L)'],
-                            datasets: [{ data: [820, 195, 4], backgroundColor: ['#f59e0b', '#7c3aed', '#64748b'] }]
+                            datasets: [{ data: [wtcM, wtcH, wtcL], backgroundColor: ['#f59e0b', '#7c3aed', '#64748b'] }]
                         },
                         options: { responsive: true, maintainAspectRatio: false }
                     });
@@ -2658,6 +3189,23 @@ function dauEnhancedDashboard() {
 
             // DAU-11: Flow
             if (this.reportType === 'DAU11') {
+                let domArrDir = 0, domDepDir = 0, intArrDir = 0, intDepDir = 0;
+                let domTransit = 0, domTransfer = 0;
+                this.filteredRecords.forEach(r => {
+                    domArrDir += Number(r.passenger_dom_arrival || 0);
+                    domDepDir += Number(r.passenger_dom_departure || 0);
+                    intArrDir += Number(r.passenger_int_arrival || 0);
+                    intDepDir += Number(r.passenger_int_departure || 0);
+                    domTransit += Number(r.passenger_transit || 0);
+                    domTransfer += Number(r.passenger_transfer || 0);
+                });
+                if (domArrDir === 0 && domDepDir === 0) {
+                    this.filteredRecords.forEach(r => {
+                        domArrDir += Number(r.passenger_arrival || 0);
+                        domDepDir += Number(r.passenger_departure || 0);
+                    });
+                }
+
                 const ctxFl = document.getElementById('dau11FlowChart')?.getContext('2d');
                 if (ctxFl) {
                     this.chartInstances.dau11Flow = new Chart(ctxFl, {
@@ -2665,8 +3213,8 @@ function dauEnhancedDashboard() {
                         data: {
                             labels: ['DOMESTIC ARR', 'DOMESTIC DEP', 'INT ARR', 'INT DEP'],
                             datasets: [
-                                { label: 'Direct Passengers', data: [68000, 61000, 7400, 6500], backgroundColor: '#10b981' },
-                                { label: 'Transit', data: [3100, 3196, 0, 0], backgroundColor: '#f59e0b' }
+                                { label: 'Direct Passengers', data: [domArrDir, domDepDir, intArrDir, intDepDir], backgroundColor: '#10b981' },
+                                { label: 'Transit', data: [domTransit, domTransfer, 0, 0], backgroundColor: '#f59e0b' }
                             ]
                         },
                         options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } }
@@ -2674,11 +3222,13 @@ function dauEnhancedDashboard() {
                 }
                 const ctxD11 = document.getElementById('dau11Donut')?.getContext('2d');
                 if (ctxD11) {
+                    const domTot = domArrDir + domDepDir + domTransit + domTransfer;
+                    const intTot = intArrDir + intDepDir;
                     this.chartInstances.dau11Donut = new Chart(ctxD11, {
                         type: 'doughnut',
                         data: {
                             labels: ['Domestic', 'International'],
-                            datasets: [{ data: [135296, 14000], backgroundColor: ['#2563eb', '#4f46e5'] }]
+                            datasets: [{ data: [domTot, intTot], backgroundColor: ['#2563eb', '#4f46e5'] }]
                         },
                         options: { responsive: true, maintainAspectRatio: false }
                     });
@@ -2689,13 +3239,27 @@ function dauEnhancedDashboard() {
             if (this.reportType === 'DAU12') {
                 const ctx12 = document.getElementById('dau12GroupedChart')?.getContext('2d');
                 if (ctx12) {
+                    let domArr = 0, intArr = 0, domDep = 0, intDep = 0;
+                    this.filteredRecords.forEach(r => {
+                        if (this.selectedMetric === 'passenger') {
+                            domArr += Number(r.passenger_arr_domestic || 0);
+                            intArr += Number(r.passenger_arr_int || 0);
+                            domDep += Number(r.passenger_dep_domestic || 0);
+                            intDep += Number(r.passenger_dep_int || 0);
+                        } else {
+                            domArr += Number(r.aircraft_arr_domestic || 0);
+                            intArr += Number(r.aircraft_arr_int || 0);
+                            domDep += Number(r.aircraft_dep_domestic || 0);
+                            intDep += Number(r.aircraft_dep_int || 0);
+                        }
+                    });
                     this.chartInstances.dau12 = new Chart(ctx12, {
                         type: 'bar',
                         data: {
                             labels: ['ARRIVAL', 'DEPARTURE'],
                             datasets: [
-                                { label: 'Domestic', data: [this.selectedMetric === 'passenger' ? 68000 : 446, this.selectedMetric === 'passenger' ? 61000 : 445], backgroundColor: '#2563eb' },
-                                { label: 'International', data: [this.selectedMetric === 'passenger' ? 7400 : 64, this.selectedMetric === 'passenger' ? 6500 : 64], backgroundColor: '#4f46e5' }
+                                { label: 'Domestic', data: [domArr, domDep], backgroundColor: '#2563eb' },
+                                { label: 'International', data: [intArr, intDep], backgroundColor: '#4f46e5' }
                             ]
                         },
                         options: { responsive: true, maintainAspectRatio: false }
@@ -2714,8 +3278,23 @@ function dauEnhancedDashboard() {
                 this.chartInstances.dau1Combo.update();
             }
             if (this.chartInstances.dau1Payload) {
-                this.chartInstances.dau1Payload.data.datasets[0].data = [this.activeSummary.baggage_total || 1, this.activeSummary.cargo_total || 1];
+                this.chartInstances.dau1Payload.data.datasets[0].data = [this.activeSummary.baggage_total || 0, this.activeSummary.cargo_total || 0];
                 this.chartInstances.dau1Payload.update();
+            }
+            if (this.chartInstances.dau2Stacked) {
+                let domAc = 0, intAc = 0, domPx = 0, intPx = 0, domBg = 0, intBg = 0, domCg = 0, intCg = 0;
+                this.filteredRecords.forEach(r => {
+                    const isDom = String(r.category || '').toUpperCase().includes('DOM');
+                    const ac = Number(r.aircraft_total || (Number(r.aircraft_arrival || 0) + Number(r.aircraft_departure || 0)));
+                    const px = Number(r.passenger_total || (Number(r.passenger_arrival || 0) + Number(r.passenger_departure || 0)));
+                    const bg = Number(r.baggage || 0);
+                    const cg = Number(r.cargo || 0);
+                    if (isDom) { domAc += ac; domPx += px; domBg += bg; domCg += cg; }
+                    else { intAc += ac; intPax += px; intBg += bg; intCg += cg; }
+                });
+                this.chartInstances.dau2Stacked.data.datasets[0].data = [domAc, domPx, domBg, domCg];
+                this.chartInstances.dau2Stacked.data.datasets[1].data = [intAc, intPx, intBg, intCg];
+                this.chartInstances.dau2Stacked.update();
             }
             if (this.chartInstances.dau2Share) {
                 this.chartInstances.dau2Share.data.datasets[0].data = [this.dau2Metrics.domAircraft, this.dau2Metrics.intAircraft];
@@ -2729,15 +3308,152 @@ function dauEnhancedDashboard() {
                 this.chartInstances.dau3Cat.data.datasets[0].data = [this.dau3Metrics.domAcft, this.dau3Metrics.intAcft];
                 this.chartInstances.dau3Cat.update();
             }
+            if (this.chartInstances.dau5Pareto) {
+                const topAirlines = this.dau4aOperators.slice(0, 15);
+                let cum = 0;
+                const isPax = this.selectedMetric === 'passenger';
+                const tot = topAirlines.reduce((acc, o) => acc + (isPax ? o.pax : o.total), 0) || 1;
+                const seriesData = topAirlines.map(o => (isPax ? o.pax : o.total));
+                const cumData = topAirlines.map(o => { cum += (isPax ? o.pax : o.total); return Math.round((cum / tot) * 100); });
+                this.chartInstances.dau5Pareto.data.labels = topAirlines.map(o => o.name);
+                this.chartInstances.dau5Pareto.data.datasets[0].label = isPax ? 'Passengers' : 'Movements';
+                this.chartInstances.dau5Pareto.data.datasets[0].data = seriesData;
+                this.chartInstances.dau5Pareto.data.datasets[1].data = cumData;
+                this.chartInstances.dau5Pareto.update();
+            }
+            if (this.chartInstances.dau5aCrew) {
+                const alMap5a = {};
+                this.filteredRecords.forEach(r => {
+                    const al = r.airline || 'Unknown';
+                    if (!alMap5a[al]) alMap5a[al] = { name: al, opCrew: 0, exCrew: 0, totalCrew: 0 };
+                    const op = Number(r.crew || 0);
+                    const ex = Number(r.extra_crew || (Number(r.arr_extra_crew || 0) + Number(r.dep_extra_crew || 0)));
+                    alMap5a[al].opCrew += op;
+                    alMap5a[al].exCrew += ex;
+                    alMap5a[al].totalCrew += (op + ex);
+                });
+                const list5a = Object.values(alMap5a).sort((a, b) => b.totalCrew - a.totalCrew).slice(0, 12);
+                this.chartInstances.dau5aCrew.data.labels = list5a.map(o => o.name);
+                this.chartInstances.dau5aCrew.data.datasets[0].data = list5a.map(o => o.opCrew);
+                this.chartInstances.dau5aCrew.data.datasets[1].data = list5a.map(o => o.exCrew);
+                this.chartInstances.dau5aCrew.update();
+            }
+            if (this.chartInstances.dau5bTerm) {
+                const topTerminals = [...new Set(this.filteredRecords.map(r => r.terminal))].filter(Boolean);
+                const topAirlines5b = [...new Set(this.filteredRecords.map(r => r.airline))].filter(Boolean).slice(0, 5);
+                const colors5b = ['#0284c7', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'];
+                this.chartInstances.dau5bTerm.data.labels = topTerminals.map(t => 'T' + t);
+                this.chartInstances.dau5bTerm.data.datasets = topAirlines5b.map((al, idx) => {
+                    const data = topTerminals.map(term => {
+                        return this.filteredRecords
+                            .filter(r => r.terminal === term && r.airline === al)
+                            .reduce((acc, r) => acc + (this.selectedMetric === 'passenger' ? Number(r.passenger_total || 0) : Number(r.aircraft_total || 0)), 0);
+                    });
+                    return { label: al, data: data, backgroundColor: colors5b[idx % colors5b.length] };
+                });
+                this.chartInstances.dau5bTerm.update();
+            }
+            if (this.chartInstances.dau5c) {
+                const topAirlines = this.dau4aOperators.slice(0, 10);
+                this.chartInstances.dau5c.data.labels = topAirlines.map(o => o.name);
+                this.chartInstances.dau5c.data.datasets[0].data = topAirlines.map(o => o.total);
+                this.chartInstances.dau5c.data.datasets[1].data = topAirlines.map(o => Math.round(o.pax / 10));
+                this.chartInstances.dau5c.update();
+            }
+            if (this.chartInstances.dau6Fleet) {
+                const types = [...new Set(this.filteredRecords.map(r => r.aircraft_type))].filter(Boolean).slice(0, 15);
+                const counts = types.map(t => this.filteredRecords.filter(r => r.aircraft_type === t).reduce((acc, r) => acc + (this.selectedMetric === 'passenger' ? Number(r.passenger_total || 0) : Number(r.aircraft_total || 0)), 0));
+                this.chartInstances.dau6Fleet.data.labels = types;
+                this.chartInstances.dau6Fleet.data.datasets[0].label = this.selectedMetric === 'passenger' ? 'Passengers Total' : 'Aircraft Total';
+                this.chartInstances.dau6Fleet.data.datasets[0].data = counts;
+                this.chartInstances.dau6Fleet.update();
+            }
+            if (this.chartInstances.dau6Cat) {
+                let nb = 0, wb = 0, reg = 0;
+                this.filteredRecords.forEach(r => {
+                    const val = Number(r.aircraft_total || 1);
+                    const cat = String(r.category || '').toUpperCase();
+                    if (cat.includes('WIDE')) wb += val;
+                    else if (cat.includes('REGIONAL')) reg += val;
+                    else nb += val;
+                });
+                this.chartInstances.dau6Cat.data.datasets[0].data = [nb, wb, reg];
+                this.chartInstances.dau6Cat.update();
+            }
+            if (this.chartInstances.dau6Wtc) {
+                let wtcM = 0, wtcH = 0, wtcL = 0;
+                this.filteredRecords.forEach(r => {
+                    const val = Number(r.aircraft_total || 1);
+                    const wtc = String(r.wtc || '').toUpperCase();
+                    if (wtc.includes('H') || wtc.includes('HEAVY')) wtcH += val;
+                    else if (wtc.includes('L') || wtc.includes('LIGHT')) wtcL += val;
+                    else wtcM += val;
+                });
+                this.chartInstances.dau6Wtc.data.datasets[0].data = [wtcM, wtcH, wtcL];
+                this.chartInstances.dau6Wtc.update();
+            }
             if (this.chartInstances.dau10b) {
                 this.chartInstances.dau10b.data.labels = this.activeHourlyDistribution.map(h => h.hour.split(' - ')[0] || h.hour);
                 this.chartInstances.dau10b.data.datasets[0].data = this.activeHourlyDistribution.map(h => h.aircraft_arrival);
                 this.chartInstances.dau10b.data.datasets[1].data = this.activeHourlyDistribution.map(h => h.aircraft_departure);
                 this.chartInstances.dau10b.update();
             }
+            if (this.chartInstances.dau11Flow) {
+                let domArrDir = 0, domDepDir = 0, intArrDir = 0, intDepDir = 0;
+                let domTransit = 0, domTransfer = 0;
+                this.filteredRecords.forEach(r => {
+                    domArrDir += Number(r.passenger_dom_arrival || 0);
+                    domDepDir += Number(r.passenger_dom_departure || 0);
+                    intArrDir += Number(r.passenger_int_arrival || 0);
+                    intDepDir += Number(r.passenger_int_departure || 0);
+                    domTransit += Number(r.passenger_transit || 0);
+                    domTransfer += Number(r.passenger_transfer || 0);
+                });
+                if (domArrDir === 0 && domDepDir === 0) {
+                    this.filteredRecords.forEach(r => {
+                        domArrDir += Number(r.passenger_arrival || 0);
+                        domDepDir += Number(r.passenger_departure || 0);
+                    });
+                }
+                this.chartInstances.dau11Flow.data.datasets[0].data = [domArrDir, domDepDir, intArrDir, intDepDir];
+                this.chartInstances.dau11Flow.data.datasets[1].data = [domTransit, domTransfer, 0, 0];
+                this.chartInstances.dau11Flow.update();
+            }
+            if (this.chartInstances.dau11Donut) {
+                let domTot = 0, intTot = 0;
+                this.filteredRecords.forEach(r => {
+                    const dom = Number(r.passenger_dom_arrival || 0) + Number(r.passenger_dom_departure || 0) + Number(r.passenger_transit || 0) + Number(r.passenger_transfer || 0);
+                    const int = Number(r.passenger_int_arrival || 0) + Number(r.passenger_int_departure || 0);
+                    domTot += dom;
+                    intTot += int;
+                });
+                if (domTot === 0 && intTot === 0) {
+                    this.filteredRecords.forEach(r => {
+                        const isDom = String(r.category || '').toUpperCase().includes('DOM');
+                        const px = Number(r.passenger_total || 0);
+                        if (isDom) domTot += px; else intTot += px;
+                    });
+                }
+                this.chartInstances.dau11Donut.data.datasets[0].data = [domTot, intTot];
+                this.chartInstances.dau11Donut.update();
+            }
             if (this.chartInstances.dau12) {
-                this.chartInstances.dau12.data.datasets[0].data = [this.selectedMetric === 'passenger' ? 68000 : 446, this.selectedMetric === 'passenger' ? 61000 : 445];
-                this.chartInstances.dau12.data.datasets[1].data = [this.selectedMetric === 'passenger' ? 7400 : 64, this.selectedMetric === 'passenger' ? 6500 : 64];
+                let domArr = 0, intArr = 0, domDep = 0, intDep = 0;
+                this.filteredRecords.forEach(r => {
+                    if (this.selectedMetric === 'passenger') {
+                        domArr += Number(r.passenger_arr_domestic || 0);
+                        intArr += Number(r.passenger_arr_int || 0);
+                        domDep += Number(r.passenger_dep_domestic || 0);
+                        intDep += Number(r.passenger_dep_int || 0);
+                    } else {
+                        domArr += Number(r.aircraft_arr_domestic || 0);
+                        intArr += Number(r.aircraft_arr_int || 0);
+                        domDep += Number(r.aircraft_dep_domestic || 0);
+                        intDep += Number(r.aircraft_dep_int || 0);
+                    }
+                });
+                this.chartInstances.dau12.data.datasets[0].data = [domArr, domDep];
+                this.chartInstances.dau12.data.datasets[1].data = [intArr, intDep];
                 this.chartInstances.dau12.update();
             }
         }

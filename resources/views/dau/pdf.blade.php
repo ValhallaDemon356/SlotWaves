@@ -1188,165 +1188,376 @@
         </div>
 
     @elseif ($reportType === 'DAU10A')
-        {{-- DAU-10A DISTRIBUSI PER JAM & HOURLY CAPACITY STATUS --}}
+        {{-- DAU-10A DISTRIBUSI PER JAM & HOURLY STATUS (METRIC SEPARATED) --}}
         @php
+            $metricMode = strtolower($metric ?? 'aircraft');
             $arrNacVal = (int)($arrNac ?? ($capacitySummary['arr_nac'] ?? 6));
             $depNacVal = (int)($depNac ?? ($capacitySummary['dep_nac'] ?? 6));
             $opsStartStr = $opsStart ?? '00:00';
             $opsEndStr = $opsEnd ?? '24:00';
-            $maxAmpPdf = max($arrNacVal, $depNacVal, 1);
-            foreach ($hourlyData as $hd) {
-                $a = (int)($hd['aircraft_arrival'] ?? 0);
-                $d = (int)($hd['aircraft_departure'] ?? 0);
-                if ($a > $maxAmpPdf) $maxAmpPdf = $a;
-                if ($d > $maxAmpPdf) $maxAmpPdf = $d;
+
+            if ($metricMode === 'passenger') {
+                $maxAmpPdf = 1;
+                foreach ($hourlyData as $hd) {
+                    $a = (int)($hd['passenger_arrival'] ?? 0);
+                    $d = (int)($hd['passenger_departure'] ?? 0);
+                    if ($a > $maxAmpPdf) $maxAmpPdf = $a;
+                    if ($d > $maxAmpPdf) $maxAmpPdf = $d;
+                }
+            } elseif ($metricMode === 'crew') {
+                $maxAmpPdf = 1;
+                foreach ($hourlyData as $hd) {
+                    $a = (int)($hd['crew'] ?? 0);
+                    $d = (int)($hd['extra_crew'] ?? 0);
+                    if ($a > $maxAmpPdf) $maxAmpPdf = $a;
+                    if ($d > $maxAmpPdf) $maxAmpPdf = $d;
+                }
+            } else {
+                $maxAmpPdf = max($arrNacVal, $depNacVal, 1);
+                foreach ($hourlyData as $hd) {
+                    $a = (int)($hd['aircraft_arrival'] ?? 0);
+                    $d = (int)($hd['aircraft_departure'] ?? 0);
+                    if ($a > $maxAmpPdf) $maxAmpPdf = $a;
+                    if ($d > $maxAmpPdf) $maxAmpPdf = $d;
+                }
             }
         @endphp
 
-        <div class="chart-box">
-            <div class="chart-header" style="display: table; width: 100%;">
-                <div style="display: table-cell; text-align: left;">
-                    DISTRIBUSI PER JAM — Two-Direction Aircraft Capacity Envelope (ARR Cap: {{ $arrNacVal }} A/C | DEP Cap: {{ $depNacVal }} A/C | Ops: {{ $opsStartStr }}-{{ $opsEndStr }})
+        @if ($metricMode === 'passenger')
+            {{-- PASSENGER MODE: NO AIRCRAFT CAPACITY ENVELOPE --}}
+            <div class="chart-box">
+                <div class="chart-header" style="display: table; width: 100%;">
+                    <div style="display: table-cell; text-align: left;">
+                        DISTRIBUSI PER JAM — Hourly Passenger Distribution
+                    </div>
+                    <div style="display: table-cell; text-align: right; font-size: 5.5pt; color: #475569;">
+                        <span style="display: inline-block; width: 7px; height: 7px; background: #059669; vertical-align: middle;"></span> Pax ARR &uarr; &nbsp;
+                        <span style="display: inline-block; width: 7px; height: 7px; background: #0284c7; vertical-align: middle;"></span> Pax DEP &darr;
+                    </div>
                 </div>
-                <div style="display: table-cell; text-align: right; font-size: 5.5pt; color: #475569;">
-                    <span style="display: inline-block; width: 7px; height: 7px; background: #f59e0b; vertical-align: middle;"></span> ARR &uarr; &nbsp;
-                    <span style="display: inline-block; width: 7px; height: 7px; background: #0284c7; vertical-align: middle;"></span> DEP &darr; &nbsp;
-                    <span style="display: inline-block; width: 8px; height: 8px; border: 1.5px dashed #059669; vertical-align: middle;"></span> Ops Hours &nbsp;
-                    <span style="display: inline-block; width: 14px; border-top: 1.5px dashed #d97706; vertical-align: middle;"></span> +ARR Cap ({{ $arrNacVal }}) &nbsp;
-                    <span style="display: inline-block; width: 14px; border-top: 1.5px dashed #0284c7; vertical-align: middle;"></span> -DEP Cap ({{ $depNacVal }})
-                </div>
-            </div>
 
-            <table class="chart-table" style="border-collapse: collapse; width: 100%;">
-                {{-- UPPER SECTION: ARRIVALS (+Y, Grows UPWARD) --}}
-                <tr>
-                    @foreach ($hourlyData as $hd)
-                        @php
-                            $arrVal = (int)($hd['aircraft_arrival'] ?? 0);
-                            $depVal = (int)($hd['aircraft_departure'] ?? 0);
-                            $demVal = $arrVal + $depVal;
-                            $arrH = $arrVal > 0 ? max(3, round(($arrVal / $maxAmpPdf) * 32)) : 0;
-
-                            $isOffHour = false;
-                            if ($opsStartStr !== '00:00' || ($opsEndStr !== '24:00' && $opsEndStr !== '23:59')) {
-                                $hNum = (int)explode(':', explode(' - ', $hd['hour'])[0] ?? $hd['hour'])[0];
-                                $sNum = (int)explode(':', $opsStartStr)[0];
-                                $eNum = (int)explode(':', $opsEndStr)[0];
-                                if ($hNum < $sNum || $hNum >= $eNum) {
-                                    $isOffHour = true;
-                                }
-                            }
-
-                            if ($isOffHour) {
-                                $statusText = 'OFF';
-                                $statusCol = '#64748b';
-                            } elseif ($arrVal > $arrNacVal || $depVal > $depNacVal) {
-                                $statusText = 'OVER';
-                                $statusCol = '#7c3aed';
-                            } elseif ($arrVal === $arrNacVal || $depVal === $depNacVal) {
-                                $statusText = 'FULL';
-                                $statusCol = '#d97706';
-                            } else {
-                                $statusText = 'AVAIL';
-                                $statusCol = '#059669';
-                            }
-                        @endphp
-                        <td style="width: {{ 100 / max(1, count($hourlyData)) }}%; vertical-align: bottom; text-align: center; padding: 1px 1px 0 1px; background-color: {{ $isOffHour ? '#f8fafc' : '#ffffff' }};">
-                            <div style="font-size: 4.5pt; font-weight: bold; color: {{ $statusCol }}; margin-bottom: 1px;">
-                                {{ $statusText }}
-                            </div>
-                            @if($arrVal > 0)
-                                <div style="font-size: 4.5pt; font-weight: bold; color: #d97706; margin-bottom: 1px;">
-                                    {{ $arrVal }}
-                                </div>
-                                <div style="height: {{ $arrH }}px; background-color: #f59e0b; width: 70%; margin: 0 auto; border-radius: 1px 1px 0 0;"></div>
-                            @else
-                                <div style="height: 1px; background-color: #cbd5e1; width: 50%; margin: 0 auto;"></div>
-                            @endif
-                        </td>
-                    @endforeach
-                </tr>
-
-                {{-- CENTER TIME AXIS (Y=0 Separator) --}}
-                <tr>
-                    @foreach ($hourlyData as $hd)
-                        @php
-                            $isOffH = false;
-                            if ($opsStartStr !== '00:00' || ($opsEndStr !== '24:00' && $opsEndStr !== '23:59')) {
-                                $hNum = (int)explode(':', explode(' - ', $hd['hour'])[0] ?? $hd['hour'])[0];
-                                $sNum = (int)explode(':', $opsStartStr)[0];
-                                $eNum = (int)explode(':', $opsEndStr)[0];
-                                if ($hNum < $sNum || $hNum >= $eNum) {
-                                    $isOffH = true;
-                                }
-                            }
-                        @endphp
-                        <td style="text-align: center; font-size: 5pt; font-weight: bold; font-family: monospace; padding: 2px 0; background-color: {{ $isOffH ? '#e2e8f0' : '#dcfce7' }}; border-top: 1px solid {{ $isOffH ? '#94a3b8' : '#10b981' }}; border-bottom: 1px solid {{ $isOffH ? '#94a3b8' : '#10b981' }}; color: {{ $isOffH ? '#64748b' : '#065f46' }};">
-                            {{ explode(' - ', $hd['hour'])[0] ?? $hd['hour'] }}
-                        </td>
-                    @endforeach
-                </tr>
-
-                {{-- LOWER SECTION: DEPARTURES (-Y, Grows DOWNWARD) --}}
-                <tr>
-                    @foreach ($hourlyData as $hd)
-                        @php
-                            $depVal = (int)($hd['aircraft_departure'] ?? 0);
-                            $depH = $depVal > 0 ? max(3, round(($depVal / $maxAmpPdf) * 32)) : 0;
-                        @endphp
-                        <td style="width: {{ 100 / max(1, count($hourlyData)) }}%; vertical-align: top; text-align: center; padding: 0 1px 1px 1px;">
-                            @if($depVal > 0)
-                                <div style="height: {{ $depH }}px; background-color: #0284c7; width: 70%; margin: 0 auto; border-radius: 0 0 1px 1px;"></div>
-                                <div style="font-size: 4.5pt; font-weight: bold; color: #0284c7; margin-top: 1px;">
-                                    {{ $depVal }}
-                                </div>
-                            @else
-                                <div style="height: 1px; background-color: #cbd5e1; width: 50%; margin: 0 auto;"></div>
-                            @endif
-                        </td>
-                    @endforeach
-                </tr>
-            </table>
-        </div>
-
-        {{-- Hourly Capacity Status Table --}}
-        <div class="chart-box" style="margin-top: 5px;">
-            <div class="chart-header">
-                HOURLY CAPACITY STATUS (Evaluasi ARR Cap: {{ $arrNacVal }} A/C | DEP Cap: {{ $depNacVal }} A/C | Ops: {{ $opsStartStr }}-{{ $opsEndStr }})
-            </div>
-            <table class="data-table" style="margin-top: 1px;">
-                <thead>
+                <table class="chart-table" style="border-collapse: collapse; width: 100%;">
+                    {{-- UPPER SECTION: PASSENGER ARRIVALS (+Y) --}}
                     <tr>
-                        <th style="width: 14%; text-align: left;">Hour</th>
-                        <th class="text-right" style="width: 11%;">ARR</th>
-                        <th class="text-center" style="width: 11%; color: #d97706;">ARR Cap</th>
-                        <th class="text-right" style="width: 11%;">DEP</th>
-                        <th class="text-center" style="width: 11%; color: #0284c7;">DEP Cap</th>
-                        <th class="text-center" style="width: 8%;">OPC</th>
-                        <th class="text-right" style="width: 18%;">Aircraft Demand</th>
-                        <th class="text-center" style="width: 16%;">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($hourlyCapacityStatus as $hcs)
-                        <tr>
-                            <td class="font-bold text-left">{{ $hcs['hour'] }}</td>
-                            <td class="text-right" style="color: #d97706; font-weight: bold;">{{ number_format($hcs['arr']) }}</td>
-                            <td class="text-center font-bold" style="color: #d97706;">{{ $hcs['arr_nac'] ?? $arrNacVal }}</td>
-                            <td class="text-right" style="color: #0284c7; font-weight: bold;">{{ number_format($hcs['dep']) }}</td>
-                            <td class="text-center font-bold" style="color: #0284c7;">{{ $hcs['dep_nac'] ?? $depNacVal }}</td>
-                            <td class="text-center" style="color: #64748b;">{{ $hcs['opc'] }}</td>
-                            <td class="text-right font-bold">{{ number_format($hcs['demand']) }}</td>
-                            <td class="text-center">
-                                <span class="{{ $hcs['status'] === 'AVAILABLE' ? 'badge-available' : ($hcs['status'] === 'FULL / MAX' ? 'badge-full' : ($hcs['status'] === 'OFF HOURS' ? 'badge-off' : 'badge-over')) }}">
-                                    {{ $hcs['status'] }}
-                                </span>
+                        @foreach ($hourlyData as $hd)
+                            @php
+                                $arrVal = (int)($hd['passenger_arrival'] ?? 0);
+                                $arrH = $arrVal > 0 ? max(3, round(($arrVal / $maxAmpPdf) * 32)) : 0;
+                            @endphp
+                            <td style="width: {{ 100 / max(1, count($hourlyData)) }}%; vertical-align: bottom; text-align: center; padding: 1px 1px 0 1px;">
+                                @if($arrVal > 0)
+                                    <div style="font-size: 4pt; font-weight: bold; color: #059669; margin-bottom: 1px;">
+                                        {{ number_format($arrVal) }}
+                                    </div>
+                                    <div style="height: {{ $arrH }}px; background-color: #10b981; width: 70%; margin: 0 auto; border-radius: 1px 1px 0 0;"></div>
+                                @else
+                                    <div style="height: 1px; background-color: #cbd5e1; width: 50%; margin: 0 auto;"></div>
+                                @endif
                             </td>
+                        @endforeach
+                    </tr>
+
+                    {{-- CENTER TIME AXIS --}}
+                    <tr>
+                        @foreach ($hourlyData as $hd)
+                            <td style="text-align: center; font-size: 5pt; font-weight: bold; font-family: monospace; padding: 2px 0; background-color: #f1f5f9; border-top: 1px solid #94a3b8; border-bottom: 1px solid #94a3b8; color: #334155;">
+                                {{ explode(' - ', $hd['hour'])[0] ?? $hd['hour'] }}
+                            </td>
+                        @endforeach
+                    </tr>
+
+                    {{-- LOWER SECTION: PASSENGER DEPARTURES (-Y) --}}
+                    <tr>
+                        @foreach ($hourlyData as $hd)
+                            @php
+                                $depVal = (int)($hd['passenger_departure'] ?? 0);
+                                $depH = $depVal > 0 ? max(3, round(($depVal / $maxAmpPdf) * 32)) : 0;
+                            @endphp
+                            <td style="width: {{ 100 / max(1, count($hourlyData)) }}%; vertical-align: top; text-align: center; padding: 0 1px 1px 1px;">
+                                @if($depVal > 0)
+                                    <div style="height: {{ $depH }}px; background-color: #0284c7; width: 70%; margin: 0 auto; border-radius: 0 0 1px 1px;"></div>
+                                    <div style="font-size: 4pt; font-weight: bold; color: #0284c7; margin-top: 1px;">
+                                        {{ number_format($depVal) }}
+                                    </div>
+                                @else
+                                    <div style="height: 1px; background-color: #cbd5e1; width: 50%; margin: 0 auto;"></div>
+                                @endif
+                            </td>
+                        @endforeach
+                    </tr>
+                </table>
+            </div>
+
+            {{-- Hourly Passenger Distribution Table --}}
+            <div class="chart-box" style="margin-top: 5px;">
+                <div class="chart-header">
+                    HOURLY PASSENGER DISTRIBUTION
+                </div>
+                <table class="data-table" style="margin-top: 1px;">
+                    <thead>
+                        <tr>
+                            <th style="width: 15%; text-align: left;">Hour</th>
+                            <th class="text-right" style="width: 18%; color: #a7f3d0;">Passenger ARR</th>
+                            <th class="text-right" style="width: 18%; color: #38bdf8;">Passenger DEP</th>
+                            <th class="text-right" style="width: 15%;">Transit</th>
+                            <th class="text-right" style="width: 15%;">Transfer</th>
+                            <th class="text-right" style="width: 19%; color: #fde68a;">Total Passenger</th>
                         </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
+                    </thead>
+                    <tbody>
+                        @foreach ($hourlyCapacityStatus as $hcs)
+                            <tr>
+                                <td class="font-bold text-left">{{ $hcs['hour'] }}</td>
+                                <td class="text-right font-bold" style="color: #059669;">{{ number_format($hcs['arr']) }}</td>
+                                <td class="text-right font-bold" style="color: #0284c7;">{{ number_format($hcs['dep']) }}</td>
+                                <td class="text-right" style="color: #64748b;">{{ number_format($hcs['transit'] ?? 0) }}</td>
+                                <td class="text-right" style="color: #64748b;">{{ number_format($hcs['transfer'] ?? 0) }}</td>
+                                <td class="text-right font-bold" style="color: #d97706;">{{ number_format($hcs['demand']) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+        @elseif ($metricMode === 'crew')
+            {{-- CREW MODE: NO AIRCRAFT CAPACITY ENVELOPE --}}
+            <div class="chart-box">
+                <div class="chart-header" style="display: table; width: 100%;">
+                    <div style="display: table-cell; text-align: left;">
+                        DISTRIBUSI PER JAM — Hourly Crew Distribution
+                    </div>
+                    <div style="display: table-cell; text-align: right; font-size: 5.5pt; color: #475569;">
+                        <span style="display: inline-block; width: 7px; height: 7px; background: #2563eb; vertical-align: middle;"></span> Operating Crew (ARR) &uarr; &nbsp;
+                        <span style="display: inline-block; width: 7px; height: 7px; background: #7c3aed; vertical-align: middle;"></span> Extra Crew (DEP) &darr;
+                    </div>
+                </div>
+
+                <table class="chart-table" style="border-collapse: collapse; width: 100%;">
+                    {{-- UPPER SECTION: OPERATING CREW (+Y) --}}
+                    <tr>
+                        @foreach ($hourlyData as $hd)
+                            @php
+                                $arrVal = (int)($hd['crew'] ?? 0);
+                                $arrH = $arrVal > 0 ? max(3, round(($arrVal / $maxAmpPdf) * 32)) : 0;
+                            @endphp
+                            <td style="width: {{ 100 / max(1, count($hourlyData)) }}%; vertical-align: bottom; text-align: center; padding: 1px 1px 0 1px;">
+                                @if($arrVal > 0)
+                                    <div style="font-size: 4.5pt; font-weight: bold; color: #2563eb; margin-bottom: 1px;">
+                                        {{ $arrVal }}
+                                    </div>
+                                    <div style="height: {{ $arrH }}px; background-color: #2563eb; width: 70%; margin: 0 auto; border-radius: 1px 1px 0 0;"></div>
+                                @else
+                                    <div style="height: 1px; background-color: #cbd5e1; width: 50%; margin: 0 auto;"></div>
+                                @endif
+                            </td>
+                        @endforeach
+                    </tr>
+
+                    {{-- CENTER TIME AXIS --}}
+                    <tr>
+                        @foreach ($hourlyData as $hd)
+                            <td style="text-align: center; font-size: 5pt; font-weight: bold; font-family: monospace; padding: 2px 0; background-color: #f1f5f9; border-top: 1px solid #94a3b8; border-bottom: 1px solid #94a3b8; color: #334155;">
+                                {{ explode(' - ', $hd['hour'])[0] ?? $hd['hour'] }}
+                            </td>
+                        @endforeach
+                    </tr>
+
+                    {{-- LOWER SECTION: EXTRA CREW (-Y) --}}
+                    <tr>
+                        @foreach ($hourlyData as $hd)
+                            @php
+                                $depVal = (int)($hd['extra_crew'] ?? 0);
+                                $depH = $depVal > 0 ? max(3, round(($depVal / $maxAmpPdf) * 32)) : 0;
+                            @endphp
+                            <td style="width: {{ 100 / max(1, count($hourlyData)) }}%; vertical-align: top; text-align: center; padding: 0 1px 1px 1px;">
+                                @if($depVal > 0)
+                                    <div style="height: {{ $depH }}px; background-color: #7c3aed; width: 70%; margin: 0 auto; border-radius: 0 0 1px 1px;"></div>
+                                    <div style="font-size: 4.5pt; font-weight: bold; color: #7c3aed; margin-top: 1px;">
+                                        {{ $depVal }}
+                                    </div>
+                                @else
+                                    <div style="height: 1px; background-color: #cbd5e1; width: 50%; margin: 0 auto;"></div>
+                                @endif
+                            </td>
+                        @endforeach
+                    </tr>
+                </table>
+            </div>
+
+            {{-- Hourly Crew Distribution Table --}}
+            <div class="chart-box" style="margin-top: 5px;">
+                <div class="chart-header">
+                    HOURLY CREW DISTRIBUTION
+                </div>
+                <table class="data-table" style="margin-top: 1px;">
+                    <thead>
+                        <tr>
+                            <th style="width: 25%; text-align: left;">Hour</th>
+                            <th class="text-right" style="width: 25%; color: #93c5fd;">Operating Crew (ARR)</th>
+                            <th class="text-right" style="width: 25%; color: #c4b5fd;">Extra Crew (DEP)</th>
+                            <th class="text-right" style="width: 25%; color: #fde68a;">Total Crew</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($hourlyCapacityStatus as $hcs)
+                            <tr>
+                                <td class="font-bold text-left">{{ $hcs['hour'] }}</td>
+                                <td class="text-right font-bold" style="color: #2563eb;">{{ number_format($hcs['arr']) }}</td>
+                                <td class="text-right font-bold" style="color: #7c3aed;">{{ number_format($hcs['dep']) }}</td>
+                                <td class="text-right font-bold" style="color: #0f172a;">{{ number_format($hcs['demand']) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+        @else
+            {{-- AIRCRAFT MODE: TWO-DIRECTION CAPACITY ENVELOPE & STATUS --}}
+            <div class="chart-box">
+                <div class="chart-header" style="display: table; width: 100%;">
+                    <div style="display: table-cell; text-align: left;">
+                        DISTRIBUSI PER JAM — Two-Direction Aircraft Capacity Envelope (ARR Cap: {{ $arrNacVal }} A/C | DEP Cap: {{ $depNacVal }} A/C | Ops: {{ $opsStartStr }}-{{ $opsEndStr }})
+                    </div>
+                    <div style="display: table-cell; text-align: right; font-size: 5.5pt; color: #475569;">
+                        <span style="display: inline-block; width: 7px; height: 7px; background: #f59e0b; vertical-align: middle;"></span> ARR &uarr; &nbsp;
+                        <span style="display: inline-block; width: 7px; height: 7px; background: #0284c7; vertical-align: middle;"></span> DEP &darr; &nbsp;
+                        <span style="display: inline-block; width: 8px; height: 8px; border: 1.5px dashed #059669; vertical-align: middle;"></span> Ops Hours &nbsp;
+                        <span style="display: inline-block; width: 14px; border-top: 1.5px dashed #d97706; vertical-align: middle;"></span> +ARR Cap ({{ $arrNacVal }}) &nbsp;
+                        <span style="display: inline-block; width: 14px; border-top: 1.5px dashed #0284c7; vertical-align: middle;"></span> -DEP Cap ({{ $depNacVal }})
+                    </div>
+                </div>
+
+                <table class="chart-table" style="border-collapse: collapse; width: 100%;">
+                    {{-- UPPER SECTION: ARRIVALS (+Y, Grows UPWARD) --}}
+                    <tr>
+                        @foreach ($hourlyData as $hd)
+                            @php
+                                $arrVal = (int)($hd['aircraft_arrival'] ?? 0);
+                                $depVal = (int)($hd['aircraft_departure'] ?? 0);
+                                $demVal = $arrVal + $depVal;
+                                $arrH = $arrVal > 0 ? max(3, round(($arrVal / $maxAmpPdf) * 32)) : 0;
+
+                                $isOffHour = false;
+                                if ($opsStartStr !== '00:00' || ($opsEndStr !== '24:00' && $opsEndStr !== '23:59')) {
+                                    $hNum = (int)explode(':', explode(' - ', $hd['hour'])[0] ?? $hd['hour'])[0];
+                                    $sNum = (int)explode(':', $opsStartStr)[0];
+                                    $eNum = (int)explode(':', $opsEndStr)[0];
+                                    if ($hNum < $sNum || $hNum >= $eNum) {
+                                        $isOffHour = true;
+                                    }
+                                }
+
+                                if ($isOffHour) {
+                                    $statusText = 'OFF';
+                                    $statusCol = '#64748b';
+                                } elseif ($arrVal > $arrNacVal || $depVal > $depNacVal) {
+                                    $statusText = 'OVER';
+                                    $statusCol = '#7c3aed';
+                                } elseif ($arrVal === $arrNacVal || $depVal === $depNacVal) {
+                                    $statusText = 'FULL';
+                                    $statusCol = '#d97706';
+                                } else {
+                                    $statusText = 'AVAIL';
+                                    $statusCol = '#059669';
+                                }
+                            @endphp
+                            <td style="width: {{ 100 / max(1, count($hourlyData)) }}%; vertical-align: bottom; text-align: center; padding: 1px 1px 0 1px; background-color: {{ $isOffHour ? '#f8fafc' : '#ffffff' }};">
+                                <div style="font-size: 4.5pt; font-weight: bold; color: {{ $statusCol }}; margin-bottom: 1px;">
+                                    {{ $statusText }}
+                                </div>
+                                @if($arrVal > 0)
+                                    <div style="font-size: 4.5pt; font-weight: bold; color: #d97706; margin-bottom: 1px;">
+                                        {{ $arrVal }}
+                                    </div>
+                                    <div style="height: {{ $arrH }}px; background-color: #f59e0b; width: 70%; margin: 0 auto; border-radius: 1px 1px 0 0;"></div>
+                                @else
+                                    <div style="height: 1px; background-color: #cbd5e1; width: 50%; margin: 0 auto;"></div>
+                                @endif
+                            </td>
+                        @endforeach
+                    </tr>
+
+                    {{-- CENTER TIME AXIS (Y=0 Separator) --}}
+                    <tr>
+                        @foreach ($hourlyData as $hd)
+                            @php
+                                $isOffH = false;
+                                if ($opsStartStr !== '00:00' || ($opsEndStr !== '24:00' && $opsEndStr !== '23:59')) {
+                                    $hNum = (int)explode(':', explode(' - ', $hd['hour'])[0] ?? $hd['hour'])[0];
+                                    $sNum = (int)explode(':', $opsStartStr)[0];
+                                    $eNum = (int)explode(':', $opsEndStr)[0];
+                                    if ($hNum < $sNum || $hNum >= $eNum) {
+                                        $isOffH = true;
+                                    }
+                                }
+                            @endphp
+                            <td style="text-align: center; font-size: 5pt; font-weight: bold; font-family: monospace; padding: 2px 0; background-color: {{ $isOffH ? '#e2e8f0' : '#dcfce7' }}; border-top: 1px solid {{ $isOffH ? '#94a3b8' : '#10b981' }}; border-bottom: 1px solid {{ $isOffH ? '#94a3b8' : '#10b981' }}; color: {{ $isOffH ? '#64748b' : '#065f46' }};">
+                                {{ explode(' - ', $hd['hour'])[0] ?? $hd['hour'] }}
+                            </td>
+                        @endforeach
+                    </tr>
+
+                    {{-- LOWER SECTION: DEPARTURES (-Y, Grows DOWNWARD) --}}
+                    <tr>
+                        @foreach ($hourlyData as $hd)
+                            @php
+                                $depVal = (int)($hd['aircraft_departure'] ?? 0);
+                                $depH = $depVal > 0 ? max(3, round(($depVal / $maxAmpPdf) * 32)) : 0;
+                            @endphp
+                            <td style="width: {{ 100 / max(1, count($hourlyData)) }}%; vertical-align: top; text-align: center; padding: 0 1px 1px 1px;">
+                                @if($depVal > 0)
+                                    <div style="height: {{ $depH }}px; background-color: #0284c7; width: 70%; margin: 0 auto; border-radius: 0 0 1px 1px;"></div>
+                                    <div style="font-size: 4.5pt; font-weight: bold; color: #0284c7; margin-top: 1px;">
+                                        {{ $depVal }}
+                                    </div>
+                                @else
+                                    <div style="height: 1px; background-color: #cbd5e1; width: 50%; margin: 0 auto;"></div>
+                                @endif
+                            </td>
+                        @endforeach
+                    </tr>
+                </table>
+            </div>
+
+            {{-- Hourly Capacity Status Table --}}
+            <div class="chart-box" style="margin-top: 5px;">
+                <div class="chart-header">
+                    HOURLY CAPACITY STATUS (Evaluasi ARR Cap: {{ $arrNacVal }} A/C | DEP Cap: {{ $depNacVal }} A/C | Ops: {{ $opsStartStr }}-{{ $opsEndStr }})
+                </div>
+                <table class="data-table" style="margin-top: 1px;">
+                    <thead>
+                        <tr>
+                            <th style="width: 14%; text-align: left;">Hour</th>
+                            <th class="text-right" style="width: 11%;">ARR</th>
+                            <th class="text-center" style="width: 11%; color: #d97706;">ARR Cap</th>
+                            <th class="text-right" style="width: 11%;">DEP</th>
+                            <th class="text-center" style="width: 11%; color: #0284c7;">DEP Cap</th>
+                            <th class="text-center" style="width: 8%;">OPC</th>
+                            <th class="text-right" style="width: 18%;">Aircraft Demand</th>
+                            <th class="text-center" style="width: 16%;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($hourlyCapacityStatus as $hcs)
+                            <tr>
+                                <td class="font-bold text-left">{{ $hcs['hour'] }}</td>
+                                <td class="text-right" style="color: #d97706; font-weight: bold;">{{ number_format($hcs['arr']) }}</td>
+                                <td class="text-center font-bold" style="color: #d97706;">{{ $hcs['arr_nac'] ?? $arrNacVal }}</td>
+                                <td class="text-right" style="color: #0284c7; font-weight: bold;">{{ number_format($hcs['dep']) }}</td>
+                                <td class="text-center font-bold" style="color: #0284c7;">{{ $hcs['dep_nac'] ?? $depNacVal }}</td>
+                                <td class="text-center" style="color: #64748b;">{{ $hcs['opc'] }}</td>
+                                <td class="text-right font-bold">{{ number_format($hcs['demand']) }}</td>
+                                <td class="text-center">
+                                    <span class="{{ $hcs['status'] === 'AVAILABLE' ? 'badge-available' : ($hcs['status'] === 'FULL / MAX' ? 'badge-full' : ($hcs['status'] === 'OFF HOURS' ? 'badge-off' : 'badge-over')) }}">
+                                        {{ $hcs['status'] }}
+                                    </span>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
 
         <div class="page-break"></div>
 
@@ -1359,7 +1570,14 @@
                 $pdfTerms = ['1', '2F', '3U', '1B', '2D', '2E', '1C'];
                 $allHours = [];
                 foreach ($hourlyData as $hd) $allHours[] = $hd['hour'];
-                $maxVal = ($metric === 'passenger') ? 3500 : 30;
+                $calcMax = 1;
+                foreach ($pdfTerms as $term) {
+                    foreach ($allHours as $h) {
+                        $cv = (int)($heatmapMatrix[$term][$h] ?? 0);
+                        if ($cv > $calcMax) $calcMax = $cv;
+                    }
+                }
+                $maxVal = $calcMax;
             @endphp
             <table class="heatmap-table">
                 <thead>
@@ -1660,7 +1878,36 @@
                         <th class="text-right" style="width: 10%;">Bagasi</th>
                         <th class="text-right" style="width: 10%;">Kargo</th>
 
-                    @elseif ($reportType === 'DAU10' || $reportType === 'DAU10A' || $reportType === 'DAU10B')
+                    @elseif ($reportType === 'DAU10A')
+                        @if ($metricMode === 'passenger')
+                            <th style="width: 14%;">Jam / Periode</th>
+                            <th style="width: 10%;">Terminal</th>
+                            <th class="text-right" style="width: 18%; color: #a7f3d0;">Pax ARR</th>
+                            <th class="text-right" style="width: 18%; color: #38bdf8;">Pax DEP</th>
+                            <th class="text-right" style="width: 18%; color: #fde68a;">Total Pax</th>
+                            <th class="text-right" style="width: 11%;">Transit</th>
+                            <th class="text-right" style="width: 11%;">Transfer</th>
+                        @elseif ($metricMode === 'crew')
+                            <th style="width: 25%;">Jam / Periode</th>
+                            <th style="width: 15%;">Terminal</th>
+                            <th class="text-right" style="width: 20%; color: #93c5fd;">Operating Crew (ARR)</th>
+                            <th class="text-right" style="width: 20%; color: #c4b5fd;">Extra Crew (DEP)</th>
+                            <th class="text-right" style="width: 20%; color: #fde68a;">Total Crew</th>
+                        @else
+                            <th style="width: 11%;">Jam / Periode</th>
+                            <th style="width: 7%;">Terminal</th>
+                            <th class="text-right" style="width: 8%;">Acft ARR</th>
+                            <th class="text-right" style="width: 8%;">Acft DEP</th>
+                            <th class="text-right" style="width: 8%;">Total Acft</th>
+                            <th class="text-right" style="width: 9%;">Pax ARR</th>
+                            <th class="text-right" style="width: 9%;">Pax DEP</th>
+                            <th class="text-right" style="width: 11%; color: #a7f3d0;">Total Pax</th>
+                            <th class="text-right" style="width: 8%;">Transit</th>
+                            <th class="text-right" style="width: 8%;">Transfer</th>
+                            <th class="text-right" style="width: 8%;">Awak</th>
+                        @endif
+
+                    @elseif ($reportType === 'DAU10' || $reportType === 'DAU10B')
                         <th style="width: 11%;">Jam / Periode</th>
                         <th style="width: 7%;">Terminal</th>
                         <th class="text-right" style="width: 7%;">@if ($reportType === 'DAU10B') Acft On @else Acft ARR @endif</th>
@@ -1672,10 +1919,8 @@
                         <th class="text-right" style="width: 6%;">Transit</th>
                         <th class="text-right" style="width: 6%;">Transfer</th>
                         <th class="text-right" style="width: 6%;">Awak</th>
-                        @if ($reportType !== 'DAU10A')
-                            <th class="text-right" style="width: 8%;">Bagasi</th>
-                            <th class="text-right" style="width: 8%;">Kargo</th>
-                        @endif
+                        <th class="text-right" style="width: 8%;">Bagasi</th>
+                        <th class="text-right" style="width: 8%;">Kargo</th>
 
                     @elseif ($reportType === 'DAU11')
                         <th style="width: 12%;">Tanggal</th>
@@ -1813,7 +2058,36 @@
                             <td class="text-right">{{ number_format($r['baggage'] ?? 0) }}</td>
                             <td class="text-right">{{ number_format($r['cargo'] ?? 0) }}</td>
 
-                        @elseif ($reportType === 'DAU10' || $reportType === 'DAU10A' || $reportType === 'DAU10B')
+                        @elseif ($reportType === 'DAU10A')
+                            @if ($metricMode === 'passenger')
+                                <td class="font-bold">{{ $r['hour'] ?? $r['period'] ?? '—' }}</td>
+                                <td>{{ $r['terminal'] ?? '—' }}</td>
+                                <td class="text-right" style="color: #059669; font-weight: bold;">{{ number_format($r['passenger_arrival'] ?? 0) }}</td>
+                                <td class="text-right" style="color: #0284c7; font-weight: bold;">{{ number_format($r['passenger_departure'] ?? 0) }}</td>
+                                <td class="text-right font-bold" style="color: #059669;">{{ number_format($r['passenger_total'] ?? 0) }}</td>
+                                <td class="text-right">{{ number_format($r['passenger_transit'] ?? 0) }}</td>
+                                <td class="text-right">{{ number_format($r['passenger_transfer'] ?? 0) }}</td>
+                            @elseif ($metricMode === 'crew')
+                                <td class="font-bold">{{ $r['hour'] ?? $r['period'] ?? '—' }}</td>
+                                <td>{{ $r['terminal'] ?? '—' }}</td>
+                                <td class="text-right" style="color: #2563eb; font-weight: bold;">{{ number_format($r['crew'] ?? 0) }}</td>
+                                <td class="text-right" style="color: #7c3aed; font-weight: bold;">{{ number_format($r['extra_crew'] ?? 0) }}</td>
+                                <td class="text-right font-bold">{{ number_format($r['crew_total'] ?? (($r['crew'] ?? 0) + ($r['extra_crew'] ?? 0))) }}</td>
+                            @else
+                                <td class="font-bold">{{ $r['hour'] ?? $r['period'] ?? '—' }}</td>
+                                <td>{{ $r['terminal'] ?? '—' }}</td>
+                                <td class="text-right">{{ number_format($r['aircraft_arrival'] ?? 0) }}</td>
+                                <td class="text-right">{{ number_format($r['aircraft_departure'] ?? 0) }}</td>
+                                <td class="text-right font-bold">{{ number_format($r['aircraft_total'] ?? 0) }}</td>
+                                <td class="text-right">{{ number_format($r['passenger_arrival'] ?? 0) }}</td>
+                                <td class="text-right">{{ number_format($r['passenger_departure'] ?? 0) }}</td>
+                                <td class="text-right font-bold" style="color: #059669;">{{ number_format($r['passenger_total'] ?? 0) }}</td>
+                                <td class="text-right">{{ number_format($r['passenger_transit'] ?? 0) }}</td>
+                                <td class="text-right">{{ number_format($r['passenger_transfer'] ?? 0) }}</td>
+                                <td class="text-right">{{ number_format($r['crew'] ?? 0) }}</td>
+                            @endif
+
+                        @elseif ($reportType === 'DAU10' || $reportType === 'DAU10B')
                             <td class="font-bold">{{ $r['hour'] ?? $r['period'] ?? '—' }}</td>
                             <td>{{ $r['terminal'] ?? '—' }}</td>
                             <td class="text-right">{{ number_format($r['aircraft_arrival'] ?? 0) }}</td>
@@ -1825,10 +2099,8 @@
                             <td class="text-right">{{ number_format($r['passenger_transit'] ?? 0) }}</td>
                             <td class="text-right">{{ number_format($r['passenger_transfer'] ?? 0) }}</td>
                             <td class="text-right">{{ number_format($r['crew'] ?? 0) }}</td>
-                            @if ($reportType !== 'DAU10A')
-                                <td class="text-right">{{ number_format($r['baggage'] ?? 0) }}</td>
-                                <td class="text-right">{{ number_format($r['cargo'] ?? 0) }}</td>
-                            @endif
+                            <td class="text-right">{{ number_format($r['baggage'] ?? 0) }}</td>
+                            <td class="text-right">{{ number_format($r['cargo'] ?? 0) }}</td>
 
                         @elseif ($reportType === 'DAU11')
                             <td class="text-center font-bold">{{ $r['date'] ?? '—' }}</td>

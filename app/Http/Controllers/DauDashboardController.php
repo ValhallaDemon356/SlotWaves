@@ -366,43 +366,86 @@ class DauDashboardController extends Controller
 
         $hourlyCapacityStatus = [];
         if ($reportType === 'DAU10A') {
+            $metricMode = strtolower($filters['metric'] ?? 'aircraft');
             foreach ($hourlyData as $hd) {
-                $arr = (int)($hd['aircraft_arrival'] ?? 0);
-                $dep = (int)($hd['aircraft_departure'] ?? 0);
-                $demand = $arr + $dep;
-                $util = $nac > 0 ? round(($demand / $nac) * 100) : 0;
+                if ($metricMode === 'passenger') {
+                    $arr = (int)($hd['passenger_arrival'] ?? 0);
+                    $dep = (int)($hd['passenger_departure'] ?? 0);
+                    $transit = (int)($hd['passenger_transit'] ?? 0);
+                    $transfer = (int)($hd['passenger_transfer'] ?? 0);
+                    $demand = (int)($hd['passenger_total'] ?? ($arr + $dep + $transit + $transfer));
 
-                $hNum = (int) explode(':', explode(' - ', $hd['hour'])[0])[0];
-                $isOffHour = (!$is24h && ($hNum < $startNum || $hNum >= $endNum));
+                    $hourlyCapacityStatus[] = [
+                        'hour'        => $hd['hour'],
+                        'arr'         => $arr,
+                        'dep'         => $dep,
+                        'transit'     => $transit,
+                        'transfer'    => $transfer,
+                        'demand'      => $demand,
+                        'arr_nac'     => null,
+                        'dep_nac'     => null,
+                        'opc'         => 'N/A',
+                        'nac'         => null,
+                        'utilization' => null,
+                        'status'      => '',
+                        'is_ops'      => true,
+                    ];
+                } elseif ($metricMode === 'crew') {
+                    $arr = (int)($hd['crew'] ?? 0);
+                    $dep = (int)($hd['extra_crew'] ?? 0);
+                    $demand = (int)($hd['crew_total'] ?? ($arr + $dep));
 
-                $status = 'AVAILABLE';
-                if ($isOffHour) {
-                    $status = 'OFF HOURS';
-                    $capacitySummary['off_hours']++;
-                } elseif ($arr > $arrNac || $dep > $depNac) {
-                    $status = 'OVER CAPACITY';
-                    $capacitySummary['over_capacity_hours']++;
-                } elseif ($arr === $arrNac || $dep === $depNac) {
-                    $status = 'FULL / MAX';
-                    $capacitySummary['full_hours']++;
+                    $hourlyCapacityStatus[] = [
+                        'hour'        => $hd['hour'],
+                        'arr'         => $arr,
+                        'dep'         => $dep,
+                        'demand'      => $demand,
+                        'arr_nac'     => null,
+                        'dep_nac'     => null,
+                        'opc'         => 'N/A',
+                        'nac'         => null,
+                        'utilization' => null,
+                        'status'      => '',
+                        'is_ops'      => true,
+                    ];
                 } else {
-                    $status = 'AVAILABLE';
-                    $capacitySummary['available_hours']++;
-                }
+                    $arr = (int)($hd['aircraft_arrival'] ?? 0);
+                    $dep = (int)($hd['aircraft_departure'] ?? 0);
+                    $demand = $arr + $dep;
+                    $util = $nac > 0 ? round(($demand / $nac) * 100) : 0;
 
-                $hourlyCapacityStatus[] = [
-                    'hour'        => $hd['hour'],
-                    'arr'         => $arr,
-                    'dep'         => $dep,
-                    'arr_nac'     => $arrNac,
-                    'dep_nac'     => $depNac,
-                    'opc'         => 'N/A',
-                    'demand'      => $demand,
-                    'nac'         => $nac,
-                    'utilization' => $util,
-                    'status'      => $status,
-                    'is_ops'      => !$isOffHour,
-                ];
+                    $hNum = (int) explode(':', explode(' - ', $hd['hour'])[0])[0];
+                    $isOffHour = (!$is24h && ($hNum < $startNum || $hNum >= $endNum));
+
+                    $status = 'AVAILABLE';
+                    if ($isOffHour) {
+                        $status = 'OFF HOURS';
+                        $capacitySummary['off_hours']++;
+                    } elseif ($arr > $arrNac || $dep > $depNac) {
+                        $status = 'OVER CAPACITY';
+                        $capacitySummary['over_capacity_hours']++;
+                    } elseif ($arr === $arrNac || $dep === $depNac) {
+                        $status = 'FULL / MAX';
+                        $capacitySummary['full_hours']++;
+                    } else {
+                        $status = 'AVAILABLE';
+                        $capacitySummary['available_hours']++;
+                    }
+
+                    $hourlyCapacityStatus[] = [
+                        'hour'        => $hd['hour'],
+                        'arr'         => $arr,
+                        'dep'         => $dep,
+                        'arr_nac'     => $arrNac,
+                        'dep_nac'     => $depNac,
+                        'opc'         => 'N/A',
+                        'demand'      => $demand,
+                        'nac'         => $nac,
+                        'utilization' => $util,
+                        'status'      => $status,
+                        'is_ops'      => !$isOffHour,
+                    ];
+                }
             }
         }
 
@@ -947,7 +990,11 @@ class DauDashboardController extends Controller
                         'aircraft_total'      => 0,
                         'passenger_arrival'   => 0,
                         'passenger_departure' => 0,
+                        'passenger_transit'   => 0,
+                        'passenger_transfer'  => 0,
                         'passenger_total'     => 0,
+                        'crew'                => 0,
+                        'extra_crew'          => 0,
                         'crew_total'          => 0,
                         'baggage'             => 0,
                         'cargo'               => 0,
@@ -959,7 +1006,11 @@ class DauDashboardController extends Controller
                 $hourlyBuckets[$h]['aircraft_total']      += $acTot;
                 $hourlyBuckets[$h]['passenger_arrival']   += $pxArr;
                 $hourlyBuckets[$h]['passenger_departure'] += $pxDep;
+                $hourlyBuckets[$h]['passenger_transit']   += $pxTrn;
+                $hourlyBuckets[$h]['passenger_transfer']  += $pxTrf;
                 $hourlyBuckets[$h]['passenger_total']     += $pxTot;
+                $hourlyBuckets[$h]['crew']                += (int)($r['crew'] ?? 0);
+                $hourlyBuckets[$h]['extra_crew']          += (int)($r['extra_crew'] ?? (($r['arr_extra_crew'] ?? 0) + ($r['dep_extra_crew'] ?? 0)));
                 $hourlyBuckets[$h]['crew_total']          += $crew;
                 $hourlyBuckets[$h]['baggage']             += $bag;
                 $hourlyBuckets[$h]['cargo']               += $cgo;

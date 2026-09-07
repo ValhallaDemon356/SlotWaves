@@ -51,14 +51,17 @@
                  const maxArr = Math.max(...list.map(d => (d.arrCount || 0) + (d.opcCount || 0)), 0);
                  const maxDep = Math.max(...list.map(d => (d.depCount || 0)), 0);
                  const maxCap = Math.max(Number(this.arrivalCapacity || 6), Number(this.departureCapacity || 6), Number(this.nacLimit || 6));
+                 const maxVal = Math.max(maxArr, maxDep, maxCap);
+                 return Math.max(Math.ceil(maxVal * 1.15), maxVal + 2, 8);
              @else
                  const list = (this.hourlyCapacityAnalysis && this.hourlyCapacityAnalysis.list) ? this.hourlyCapacityAnalysis.list : [];
                  const maxArr = Math.max(...list.map(d => Number(d.arr || 0)), 0);
                  const maxDep = Math.max(...list.map(d => Number(d.dep || 0)), 0);
-                 const maxCap = Math.max(Number(this.arrivalCapacity || 6), Number(this.departureCapacity || 6));
+                 const isAcft = (typeof this.selectedMetric === 'undefined' || this.selectedMetric === 'aircraft');
+                 const maxCap = isAcft ? Math.max(Number(this.arrivalCapacity || 6), Number(this.departureCapacity || 6)) : 0;
+                 const maxVal = Math.max(maxArr, maxDep, maxCap);
+                 return Math.max(Math.ceil(maxVal * 1.15), maxVal + 2, isAcft ? 8 : 1);
              @endif
-             const maxVal = Math.max(maxArr, maxDep, maxCap);
-             return Math.max(Math.ceil(maxVal * 1.15), maxVal + 2, 8);
          },
          get safeEnvelope() {
              if (typeof this.envelopeCoords !== 'undefined' && this.envelopeCoords && this.envelopeCoords.isVisible) {
@@ -187,6 +190,9 @@
              @if($mode === 'schedule')
                  const val = Number(item.arrCount ?? 0);
              @else
+                 if (this.selectedMetric && this.selectedMetric !== 'aircraft') {
+                     return { key: '', label: '', badgeLabel: '', showBadge: false, badgeClass: '', statusBadgeClass: '' };
+                 }
                  const val = Number(item.arr ?? 0);
              @endif
              const cap = Number(this.arrivalCapacity ?? 0);
@@ -196,6 +202,9 @@
              @if($mode === 'schedule')
                  const val = Number(item.depCount ?? 0);
              @else
+                 if (this.selectedMetric && this.selectedMetric !== 'aircraft') {
+                     return { key: '', label: '', badgeLabel: '', showBadge: false, badgeClass: '', statusBadgeClass: '' };
+                 }
                  const val = Number(item.dep ?? 0);
              @endif
              const cap = Number(this.departureCapacity ?? 0);
@@ -207,83 +216,165 @@
              const isOpc = type === 'opc';
 
              @if($mode === 'schedule')
-                 const tz = this.displayTimezoneLabel || 'WIB';
-                 let scope = 'ALL TERMINALS';
-             @else
-                 const tz = 'WIB';
-                 let scope = (this.filterTerminal && this.filterTerminal !== 'ALL') ? ('TERMINAL ' + String(this.filterTerminal).replace(/^Terminal\s*/i, '').toUpperCase()) : 'ALL TERMINALS';
-             @endif
+                const tz = this.displayTimezoneLabel || 'WIB';
+                let scope = 'ALL MOVEMENTS';
+            @else
+                const tz = 'WIB';
+                let scope = (this.filterTerminal && this.filterTerminal !== 'ALL') ? ('TERMINAL ' + String(this.filterTerminal).replace(/^Terminal\s*/i, '').toUpperCase()) : 'ALL TERMINALS';
+                const metric = this.selectedMetric || 'aircraft';
+            @endif
              const hourLabel = (item.label || item.hour) + ' (' + tz + ')';
 
-             if (isArr) {
-                 @if($mode === 'schedule')
+             @if($mode === 'schedule')
+                 if (isArr) {
                      const actual = Number(item.arrCount ?? 0);
-                 @else
-                     const actual = Number(item.arr ?? 0);
-                 @endif
-                 const cap = Number(this.arrivalCapacity ?? 0);
-                 const dirStatus = this.getArrivalStatus(item);
+                     const cap = Number(this.arrivalCapacity ?? 0);
+                     const dirStatus = this.getArrivalStatus(item);
 
-                 this.tooltip = {
-                     visible: true,
-                     x: 0,
-                     y: 0,
-                     hourLabel: hourLabel,
-                     type: 'arrival',
-                     typeLabel: 'ARRIVAL',
-                     typeColor: 'text-amber-400',
-                     icon: '🟠',
-                     actual: actual,
-                     capacity: cap,
-                     scope: scope,
-                     status: dirStatus.label,
-                     statusBadgeClass: dirStatus.statusBadgeClass,
-                     extra: null
-                 };
-             } else if (isDep) {
-                 @if($mode === 'schedule')
+                     this.tooltip = {
+                         visible: true,
+                         x: 0,
+                         y: 0,
+                         hourLabel: hourLabel,
+                         type: 'arrival',
+                         typeLabel: 'ARRIVAL',
+                         typeColor: 'text-amber-400',
+                         icon: '🟠',
+                         actual: actual,
+                         capacity: cap,
+                         scope: scope,
+                         status: dirStatus.label,
+                         statusBadgeClass: dirStatus.statusBadgeClass,
+                         metricLabel: 'Aircraft',
+                         unitLabel: 'A/C',
+                         totalText: null,
+                         extra: null
+                     };
+                 } else if (isDep) {
                      const actual = Number(item.depCount ?? 0);
-                 @else
-                     const actual = Number(item.dep ?? 0);
-                 @endif
-                 const cap = Number(this.departureCapacity ?? 0);
-                 const dirStatus = this.getDepartureStatus(item);
+                     const cap = Number(this.departureCapacity ?? 0);
+                     const dirStatus = this.getDepartureStatus(item);
 
-                 this.tooltip = {
-                     visible: true,
-                     x: 0,
-                     y: 0,
-                     hourLabel: hourLabel,
-                     type: 'departure',
-                     typeLabel: 'DEPARTURE',
-                     typeColor: 'text-blue-400',
-                     icon: '🔵',
-                     actual: actual,
-                     capacity: cap,
-                     scope: scope,
-                     status: dirStatus.label,
-                     statusBadgeClass: dirStatus.statusBadgeClass,
-                     extra: null
-                 };
-             } else if (isOpc) {
-                 const opcVal = Number(item.opcCount ?? 0);
-                 this.tooltip = {
-                     visible: true,
-                     x: 0,
-                     y: 0,
-                     hourLabel: hourLabel,
-                     type: 'opc',
-                     typeLabel: 'OPC (RON)',
-                     typeColor: 'text-purple-400',
-                     icon: '🟣',
-                     actual: opcVal,
-                     capacity: null,
-                     scope: scope,
-                     status: 'RON STAND OCCUPIED',
-                     statusBadgeClass: 'bg-purple-600 text-white border-purple-400 font-black shadow-xs',
-                     extra: 'RON Parking Stand Occupied'
-                 };
-             }
+                     this.tooltip = {
+                         visible: true,
+                         x: 0,
+                         y: 0,
+                         hourLabel: hourLabel,
+                         type: 'departure',
+                         typeLabel: 'DEPARTURE',
+                         typeColor: 'text-blue-400',
+                         icon: '🔵',
+                         actual: actual,
+                         capacity: cap,
+                         scope: scope,
+                         status: dirStatus.label,
+                         statusBadgeClass: dirStatus.statusBadgeClass,
+                         metricLabel: 'Aircraft',
+                         unitLabel: 'A/C',
+                         totalText: null,
+                         extra: null
+                     };
+                 } else if (isOpc) {
+                     const opcVal = Number(item.opcCount ?? 0);
+                     this.tooltip = {
+                         visible: true,
+                         x: 0,
+                         y: 0,
+                         hourLabel: hourLabel,
+                         type: 'opc',
+                         typeLabel: 'OPC (RON)',
+                         typeColor: 'text-purple-400',
+                         icon: '🟣',
+                         actual: opcVal,
+                         capacity: null,
+                         scope: scope,
+                         status: 'RON STAND OCCUPIED',
+                         statusBadgeClass: 'bg-purple-600 text-white border-purple-400 font-black shadow-xs',
+                         metricLabel: 'Aircraft',
+                         unitLabel: 'A/C',
+                         totalText: null,
+                         extra: 'RON Parking Stand Occupied'
+                     };
+                 }
+             @else
+                 if (metric === 'passenger') {
+                     const arrVal = Number(item.arr ?? 0);
+                     const depVal = Number(item.dep ?? 0);
+                     const totVal = Number(item.demand ?? (arrVal + depVal));
+                     const val = isArr ? arrVal : depVal;
+
+                     this.tooltip = {
+                         visible: true,
+                         x: 0,
+                         y: 0,
+                         hourLabel: hourLabel,
+                         type: isArr ? 'arrival' : 'departure',
+                         typeLabel: isArr ? 'PASSENGER ARRIVAL' : 'PASSENGER DEPARTURE',
+                         typeColor: isArr ? 'text-amber-400' : 'text-blue-400',
+                         icon: isArr ? '🟠' : '🔵',
+                         actual: Number(val).toLocaleString('id-ID'),
+                         capacity: null,
+                         scope: scope,
+                         status: '',
+                         statusBadgeClass: '',
+                         metricLabel: 'PENUMPANG',
+                         unitLabel: 'Pax',
+                         totalText: 'Total: ' + Number(totVal).toLocaleString('id-ID') + ' Pax (ARR: ' + Number(arrVal).toLocaleString('id-ID') + ' | DEP: ' + Number(depVal).toLocaleString('id-ID') + ')',
+                         extra: null
+                     };
+                 } else if (metric === 'crew') {
+                     const opVal = Number(item.arr ?? 0);
+                     const exVal = Number(item.dep ?? 0);
+                     const totVal = Number(item.demand ?? (opVal + exVal));
+                     const val = isArr ? opVal : exVal;
+
+                     this.tooltip = {
+                         visible: true,
+                         x: 0,
+                         y: 0,
+                         hourLabel: hourLabel,
+                         type: isArr ? 'arrival' : 'departure',
+                         typeLabel: isArr ? 'OPERATING CREW' : 'EXTRA CREW',
+                         typeColor: isArr ? 'text-amber-400' : 'text-blue-400',
+                         icon: isArr ? '🟠' : '🔵',
+                         actual: Number(val).toLocaleString('id-ID'),
+                         capacity: null,
+                         scope: scope,
+                         status: '',
+                         statusBadgeClass: '',
+                         metricLabel: 'AWAK',
+                         unitLabel: 'Crew',
+                         totalText: 'Total Awak: ' + Number(totVal).toLocaleString('id-ID') + ' (Operating: ' + Number(opVal).toLocaleString('id-ID') + ' | Extra: ' + Number(exVal).toLocaleString('id-ID') + ')',
+                         extra: null
+                     };
+                 } else {
+                     // Existing aircraft mode
+                     const actual = isArr ? Number(item.arr ?? 0) : Number(item.dep ?? 0);
+                     const cap = isArr ? Number(this.arrivalCapacity ?? 0) : Number(this.departureCapacity ?? 0);
+                     const dirStatus = isArr ? this.getArrivalStatus(item) : this.getDepartureStatus(item);
+
+                     this.tooltip = {
+                         visible: true,
+                         x: 0,
+                         y: 0,
+                         hourLabel: hourLabel,
+                         type: isArr ? 'arrival' : 'departure',
+                         typeLabel: isArr ? 'ARRIVAL' : 'DEPARTURE',
+                         typeColor: isArr ? 'text-amber-400' : 'text-blue-400',
+                         icon: isArr ? '🟠' : '🔵',
+                         actual: actual,
+                         capacity: cap,
+                         scope: scope,
+                         status: dirStatus.label,
+                         statusBadgeClass: dirStatus.statusBadgeClass,
+                         metricLabel: 'Aircraft',
+                         unitLabel: 'A/C',
+                         totalText: null,
+                         extra: null
+                     };
+                 }
+             @endif
+
              if (e && e.clientX) {
                  this.calcTooltipPos(e.clientX, e.clientY);
              }
@@ -299,11 +390,11 @@
             <div class="flex flex-wrap items-center gap-2">
                 {{-- Aircraft Capacity Badge & Edit Button --}}
                 <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10.5px] font-mono bg-white dark:bg-navy-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
-                    <span class="text-[9.5px] font-black uppercase tracking-wider text-slate-400">AIRCRAFT CAPACITY</span>
+                    <span class="text-[9.5px] font-black uppercase tracking-wider text-slate-400">AIRCRAFT CAPACITY:</span>
                     <span class="text-slate-300 dark:text-slate-700">|</span>
-                    <span class="text-amber-600 dark:text-amber-400 font-bold">ARR: <strong x-text="arrivalCapacity"></strong> A/C</span>
+                    <span class="text-amber-600 dark:text-amber-400 font-bold">ARR CAP: <strong x-text="arrivalCapacity"></strong> A/C</span>
                     <span class="text-slate-300 dark:text-slate-700">|</span>
-                    <span class="text-blue-600 dark:text-blue-400 font-bold">DEP: <strong x-text="departureCapacity"></strong> A/C</span>
+                    <span class="text-blue-600 dark:text-blue-400 font-bold">DEP CAP: <strong x-text="departureCapacity"></strong> A/C</span>
                     <button type="button" @click="openUnifiedModal()" class="ml-1 text-[9.5px] font-black text-aviation-600 dark:text-aviation-400 hover:underline cursor-pointer">EDIT ⚙</button>
                 </div>
 
@@ -355,23 +446,45 @@
         {{-- DAU Mode Header Control Bar --}}
         <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800/80 pb-2">
             <div class="flex flex-wrap items-center gap-2">
-                {{-- Aircraft Capacity Badge & Edit Button --}}
-                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10.5px] font-mono bg-white dark:bg-navy-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
-                    <span class="text-[9.5px] font-black uppercase tracking-wider text-slate-400">AIRCRAFT CAPACITY</span>
-                    <span class="text-slate-300 dark:text-slate-700">|</span>
-                    <span class="text-amber-600 dark:text-amber-400 font-bold">ARR: <strong x-text="arrivalCapacity"></strong> A/C</span>
-                    <span class="text-slate-300 dark:text-slate-700">|</span>
-                    <span class="text-blue-600 dark:text-blue-400 font-bold">DEP: <strong x-text="departureCapacity"></strong> A/C</span>
-                    <button type="button" @click="openUnifiedModal()" class="ml-1 text-[9.5px] font-black text-aviation-600 dark:text-aviation-400 hover:underline cursor-pointer">EDIT ⚙</button>
-                </div>
+                <template x-if="typeof selectedMetric === 'undefined' || selectedMetric === 'aircraft'">
+                    <div class="flex flex-wrap items-center gap-2">
+                        {{-- Aircraft Capacity Badge & Edit Button --}}
+                        <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10.5px] font-mono bg-white dark:bg-navy-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
+                            <span class="text-[9.5px] font-black uppercase tracking-wider text-slate-400">AIRCRAFT CAPACITY:</span>
+                            <span class="text-slate-300 dark:text-slate-700">|</span>
+                            <span class="text-amber-600 dark:text-amber-400 font-bold">ARR CAP: <strong x-text="arrivalCapacity"></strong> A/C</span>
+                            <span class="text-slate-300 dark:text-slate-700">|</span>
+                            <span class="text-blue-600 dark:text-blue-400 font-bold">DEP CAP: <strong x-text="departureCapacity"></strong> A/C</span>
+                            <button type="button" @click="openUnifiedModal()" class="ml-1 text-[9.5px] font-black text-aviation-600 dark:text-aviation-400 hover:underline cursor-pointer">EDIT ⚙</button>
+                        </div>
 
-                {{-- Ops Hours Badge & Edit Button --}}
-                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10.5px] font-mono bg-white dark:bg-navy-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
-                    <span class="text-[9.5px] font-black uppercase tracking-wider text-slate-400">OPS HOURS</span>
-                    <span class="text-slate-300 dark:text-slate-700">|</span>
-                    <span class="text-emerald-600 dark:text-emerald-400 font-bold"><span x-text="opsStartTime"></span> &rarr; <span x-text="opsEndTime"></span></span>
-                    <button type="button" @click="openUnifiedModal()" class="ml-1 text-[9.5px] font-black text-aviation-600 dark:text-aviation-400 hover:underline cursor-pointer">EDIT ⚙</button>
-                </div>
+                        {{-- Ops Hours Badge & Edit Button --}}
+                        <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10.5px] font-mono bg-white dark:bg-navy-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
+                            <span class="text-[9.5px] font-black uppercase tracking-wider text-slate-400">OPS HOURS</span>
+                            <span class="text-slate-300 dark:text-slate-700">|</span>
+                            <span class="text-emerald-600 dark:text-emerald-400 font-bold"><span x-text="opsStartTime"></span> &rarr; <span x-text="opsEndTime"></span></span>
+                            <button type="button" @click="openUnifiedModal()" class="ml-1 text-[9.5px] font-black text-aviation-600 dark:text-aviation-400 hover:underline cursor-pointer">EDIT ⚙</button>
+                        </div>
+                    </div>
+                </template>
+
+                <template x-if="selectedMetric === 'passenger'">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg text-[11px] font-mono bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 shadow-2xs font-bold">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span>METRIC: PENUMPANG</span>
+                        <span class="text-emerald-400 font-normal">|</span>
+                        <span class="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium">Distribusi Dua Arah (Kedatangan &uarr; / Keberangkatan &darr;)</span>
+                    </div>
+                </template>
+
+                <template x-if="selectedMetric === 'crew'">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg text-[11px] font-mono bg-purple-50 dark:bg-purple-950/40 border border-purple-300 dark:border-purple-800 text-purple-800 dark:text-purple-300 shadow-2xs font-bold">
+                        <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+                        <span>METRIC: AWAK</span>
+                        <span class="text-purple-400 font-normal">|</span>
+                        <span class="text-[10px] text-purple-700 dark:text-purple-400 font-medium">Distribusi Awak Pesawat (Operating &uarr; / Extra &darr;)</span>
+                    </div>
+                </template>
 
                 <template x-if="filterTerminal !== 'ALL'">
                     <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-mono font-bold bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-2xs">
