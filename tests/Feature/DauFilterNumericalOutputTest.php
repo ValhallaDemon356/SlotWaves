@@ -292,4 +292,242 @@ class DauFilterNumericalOutputTest extends TestCase
         $this->assertEquals(0, $res['summary']['total_movements']);
         $this->assertEquals(0, $res['summary']['passenger_total']);
     }
+
+    /**
+     * TEST 7: DAU-04 Top N and Origin/Destination diverging.
+     */
+    public function test_dau04_top_n_and_diverging(): void
+    {
+        $records = [
+            ['airport_route' => 'DPS', 'aircraft_arrival' => 50, 'aircraft_departure' => 45],
+            ['airport_route' => 'SUB', 'aircraft_arrival' => 30, 'aircraft_departure' => 35],
+            ['airport_route' => 'KNO', 'aircraft_arrival' => 20, 'aircraft_departure' => 25],
+            ['airport_route' => 'UPG', 'aircraft_arrival' => 15, 'aircraft_departure' => 10],
+            ['airport_route' => 'YIA', 'aircraft_arrival' => 10, 'aircraft_departure' => 12],
+            ['airport_route' => 'SRG', 'aircraft_arrival' => 8,  'aircraft_departure' => 9],
+        ];
+
+        $reqTop5 = new Request(['top_n' => 5, 'metric' => 'aircraft']);
+        $resTop5 = $this->filterDataset('DAU4', $records, $reqTop5);
+
+        $this->assertCount(5, $resTop5['dau4_diverging']['top_arrival']);
+        $this->assertCount(5, $resTop5['dau4_diverging']['top_departure']);
+        $this->assertEquals('DPS', $resTop5['dau4_diverging']['top_arrival'][0]['airport_route']);
+        $this->assertEquals('DPS', $resTop5['dau4_diverging']['top_departure'][0]['airport_route']);
+    }
+
+    /**
+     * TEST 8: DAU-04A Operator and Airport intersection.
+     */
+    public function test_dau04a_operator_and_airport_intersection(): void
+    {
+        $records = [
+            ['operator_name' => 'Garuda Indonesia', 'airport' => 'DPS', 'aircraft_total' => 20, 'passenger_total' => 3000],
+            ['operator_name' => 'Garuda Indonesia', 'airport' => 'SUB', 'aircraft_total' => 15, 'passenger_total' => 2200],
+            ['operator_name' => 'Lion Air',         'airport' => 'DPS', 'aircraft_total' => 25, 'passenger_total' => 4000],
+        ];
+
+        $req = new Request(['airline' => 'Garuda Indonesia', 'airport' => 'DPS']);
+        $res = $this->filterDataset('DAU4A', $records, $req);
+
+        $this->assertCount(1, $res['filtered_records']);
+        $this->assertEquals('Garuda Indonesia', $res['filtered_records'][0]['operator_name']);
+        $this->assertEquals('DPS', $res['filtered_records'][0]['airport']);
+        $this->assertEquals(20, $res['summary']['total_movements']);
+        $this->assertEquals(3000, $res['summary']['passenger_total']);
+    }
+
+    /**
+     * TEST 9: DAU-04B Minimum Flight Threshold.
+     */
+    public function test_dau04b_threshold_filtering(): void
+    {
+        $records = [
+            ['city' => 'Denpasar', 'airline' => 'Garuda Indonesia', 'aircraft_total' => 10],
+            ['city' => 'Surabaya', 'airline' => 'Lion Air',         'aircraft_total' => 4],
+            ['city' => 'Medan',    'airline' => 'Citilink',         'aircraft_total' => 2],
+        ];
+
+        $req = new Request(['threshold' => 5]);
+        $res = $this->filterDataset('DAU4B', $records, $req);
+
+        $this->assertCount(1, $res['filtered_records']);
+        $this->assertEquals('Denpasar', $res['filtered_records'][0]['city']);
+        $this->assertEquals(10, $res['summary']['total_movements']);
+    }
+
+    /**
+     * TEST 10: DAU-05A Operating Crew and Extra Crew isolation.
+     */
+    public function test_dau05a_crew_breakdown(): void
+    {
+        $records = [
+            [
+                'airline'        => 'Garuda Indonesia',
+                'crew'           => 120,
+                'extra_crew'     => 15,
+                'crew_total'     => 135,
+                'aircraft_total' => 10,
+            ],
+            [
+                'airline'        => 'Lion Air',
+                'crew'           => 200,
+                'extra_crew'     => 10,
+                'crew_total'     => 210,
+                'aircraft_total' => 25,
+            ],
+        ];
+
+        $req = new Request(['airline' => 'Garuda Indonesia']);
+        $res = $this->filterDataset('DAU5A', $records, $req);
+
+        $this->assertCount(1, $res['filtered_records']);
+        $this->assertEquals(135, $res['summary']['crew_total']);
+        $this->assertEquals(15, $res['summary']['extra_crew_total']);
+    }
+
+    /**
+     * TEST 11: DAU-05C Fleet and Aircraft Type filtering.
+     */
+    public function test_dau05c_fleet_filtering(): void
+    {
+        $records = [
+            ['airline' => 'Garuda Indonesia', 'aircraft_type' => 'B777-300ER', 'category' => 'Wide Body', 'aircraft_total' => 4],
+            ['airline' => 'Garuda Indonesia', 'aircraft_type' => 'B737-800',   'category' => 'Narrow Body', 'aircraft_total' => 12],
+            ['airline' => 'Lion Air',         'aircraft_type' => 'B737-900ER', 'category' => 'Narrow Body', 'aircraft_total' => 20],
+        ];
+
+        $req = new Request(['aircraft_type' => 'B777-300ER']);
+        $res = $this->filterDataset('DAU5C', $records, $req);
+
+        $this->assertCount(1, $res['filtered_records']);
+        $this->assertEquals('B777-300ER', $res['filtered_records'][0]['aircraft_type']);
+        $this->assertEquals(4, $res['summary']['total_movements']);
+    }
+
+    /**
+     * TEST 12: DAU-06 Fleet Mix and Metric Switching.
+     */
+    public function test_dau06_fleet_mix_metric_switch(): void
+    {
+        $records = [
+            ['aircraft_type' => 'A320-200', 'category' => 'Narrow Body', 'aircraft_total' => 50, 'passenger_total' => 8000],
+            ['aircraft_type' => 'A330-300', 'category' => 'Wide Body',   'aircraft_total' => 10, 'passenger_total' => 3500],
+        ];
+
+        $reqAc = new Request(['metric' => 'aircraft']);
+        $resAc = $this->filterDataset('DAU6', $records, $reqAc);
+        $this->assertEquals(60, $resAc['summary']['total_movements']);
+
+        $reqPax = new Request(['metric' => 'passenger']);
+        $resPax = $this->filterDataset('DAU6', $records, $reqPax);
+        $this->assertEquals(11500, $resPax['summary']['passenger_total']);
+    }
+
+    /**
+     * TEST 13: DAU-10 Hour and Metric filtering.
+     */
+    public function test_dau10_hour_filtering(): void
+    {
+        $records = [
+            ['hour' => '06:00', 'aircraft_arrival' => 10, 'aircraft_departure' => 5,  'aircraft_total' => 15, 'passenger_total' => 2000],
+            ['hour' => '07:00', 'aircraft_arrival' => 12, 'aircraft_departure' => 14, 'aircraft_total' => 26, 'passenger_total' => 3500],
+        ];
+
+        $req = new Request(['hour' => '06:00']);
+        $res = $this->filterDataset('DAU10', $records, $req);
+
+        $this->assertCount(1, $res['filtered_records']);
+        $this->assertEquals(15, $res['summary']['total_movements']);
+        $this->assertEquals(2000, $res['summary']['passenger_total']);
+    }
+
+    /**
+     * TEST 14: DAU-10B Block On vs Block Off operation filter.
+     */
+    public function test_dau10b_operation_filter(): void
+    {
+        $records = [
+            ['hour' => '08:00', 'terminal' => '1A', 'aircraft_arrival' => 5, 'aircraft_departure' => 0, 'aircraft_total' => 5],
+            ['hour' => '08:00', 'terminal' => '1A', 'aircraft_arrival' => 0, 'aircraft_departure' => 7, 'aircraft_total' => 7],
+        ];
+
+        $reqOn = new Request(['operation' => 'BLOCK_ON']);
+        $resOn = $this->filterDataset('DAU10B', $records, $reqOn);
+
+        $this->assertCount(1, $resOn['filtered_records']);
+        $this->assertEquals(5, $resOn['summary']['aircraft_arrival']);
+
+        $reqOff = new Request(['operation' => 'BLOCK_OFF']);
+        $resOff = $this->filterDataset('DAU10B', $records, $reqOff);
+
+        $this->assertCount(1, $resOff['filtered_records']);
+        $this->assertEquals(7, $resOff['summary']['aircraft_departure']);
+    }
+
+    /**
+     * TEST 15: DAU-11 Traffic Flow and Direction filtering.
+     */
+    public function test_dau11_traffic_flow_and_direction(): void
+    {
+        $records = [
+            [
+                'passenger_dom_arrival'   => 500,
+                'passenger_dom_departure' => 400,
+                'passenger_dom_transit'   => 50,
+                'passenger_dom_transfer'  => 30,
+                'passenger_int_arrival'   => 200,
+                'passenger_int_departure' => 150,
+                'passenger_int_transit'   => 20,
+                'passenger_int_transfer'  => 10,
+                'passenger_total'         => 1360,
+                'aircraft_arrival'        => 5,
+                'aircraft_departure'      => 4,
+                'aircraft_total'          => 9,
+            ],
+        ];
+
+        $req = new Request(['direction' => 'ALL']);
+        $res = $this->filterDataset('DAU11', $records, $req);
+
+        $flow = $res['dau11_flow'];
+        $this->assertEquals(500, $flow['dom_arr']);
+        $this->assertEquals(400, $flow['dom_dep']);
+        $this->assertEquals(200, $flow['int_arr']);
+        $this->assertEquals(150, $flow['int_dep']);
+        $this->assertEquals(1360, $res['summary']['passenger_total']);
+    }
+
+    /**
+     * TEST 16: DAU-12 ARR/DEP and DOM/INT Matrix.
+     */
+    public function test_dau12_arr_dep_dom_int_matrix(): void
+    {
+        $records = [
+            [
+                'aircraft_arr_domestic'  => 100,
+                'aircraft_arr_int'       => 25,
+                'aircraft_dep_domestic'  => 95,
+                'aircraft_dep_int'       => 20,
+                'passenger_arr_domestic' => 15000,
+                'passenger_arr_int'      => 4000,
+                'passenger_dep_domestic' => 14000,
+                'passenger_dep_int'      => 3500,
+            ],
+        ];
+
+        $req = new Request();
+        $res = $this->filterDataset('DAU12', $records, $req);
+
+        $mat = $res['dau12_matrix'];
+        $this->assertEquals(100, $mat['aircraft']['arr_dom']);
+        $this->assertEquals(25, $mat['aircraft']['arr_int']);
+        $this->assertEquals(95, $mat['aircraft']['dep_dom']);
+        $this->assertEquals(20, $mat['aircraft']['dep_int']);
+
+        $this->assertEquals(15000, $mat['passenger']['arr_dom']);
+        $this->assertEquals(4000, $mat['passenger']['arr_int']);
+        $this->assertEquals(14000, $mat['passenger']['dep_dom']);
+        $this->assertEquals(3500, $mat['passenger']['dep_int']);
+    }
 }
