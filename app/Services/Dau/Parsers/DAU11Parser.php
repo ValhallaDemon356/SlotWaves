@@ -83,6 +83,13 @@ class DAU11Parser extends BaseDauParser
                 'passenger_dom_transfer' => $pDomTrf,
                 'passenger_dom_crew'     => $pDomCrw + $pDomExCr,
                 'passenger_total'        => $totPax,
+                // Normalized aliases required by filterReportDataset + Alpine.js applyFilters / recalculateAnalytics
+                'aircraft_arrival'       => $acIntArr + $acDomArr,
+                'aircraft_departure'     => $acIntDep + $acDomDep,
+                'passenger_arrival'      => $pIntArr + $pDomArr,
+                'passenger_departure'    => $pIntDep + $pDomDep,
+                'passenger_transit'      => $pIntTrn + $pDomTrn,
+                'passenger_transfer'     => $pIntTrf + $pDomTrf,
             ];
             $records[] = $rec;
 

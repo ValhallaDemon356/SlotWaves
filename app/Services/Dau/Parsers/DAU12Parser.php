@@ -76,6 +76,11 @@ class DAU12Parser extends BaseDauParser
                 'passenger_dep_int'     => $pDepInt,
                 'passenger_departure_tot'=> $pDepTot,
                 'passenger_total'       => $pTot,
+                // Normalized aliases required by filterReportDataset + Alpine.js applyFilters / recalculateAnalytics
+                'aircraft_arrival'      => $acArrTot,
+                'aircraft_departure'    => $acDepTot,
+                'passenger_arrival'     => $pArrTot,
+                'passenger_departure'   => $pDepTot,
             ];
             $records[] = $rec;
 
