@@ -122,7 +122,7 @@
                           x-text="hasActiveFilters ? 'FILTERED VIEW' : 'ALL DATA'"></span>
                     <span class="text-xs text-slate-500 font-mono">
                         Showing <strong class="text-slate-800 dark:text-slate-200" x-text="formatNumber(filteredRecords.length)"></strong>
-                        of <span x-text="formatNumber(records.length)"></span> records
+                        of <span x-text="formatNumber(allRecords.length)"></span> records
                     </span>
                 </div>
 
@@ -143,7 +143,7 @@
             </div>
 
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 text-xs font-sans">
-                @if (in_array($reportType, ['DAU1', 'DAU2', 'DAU4', 'DAU4A', 'DAU4B', 'DAU5', 'DAU5C', 'DAU6', 'DAU10', 'DAU10A', 'DAU10B', 'DAU12']))
+                @if (in_array($reportType, ['DAU1', 'DAU2', 'DAU4', 'DAU4A', 'DAU4B', 'DAU5', 'DAU5C', 'DAU6', 'DAU10', 'DAU10A', 'DAU10B', 'DAU11', 'DAU12']))
                     <div>
                         <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Metric</label>
                         @if ($reportType === 'DAU1')
@@ -165,7 +165,7 @@
                                     class="w-full px-2.5 py-1.5 rounded-lg border bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
                                 <option value="aircraft">Pesawat (Aircraft)</option>
                                 <option value="passenger">Penumpang (Passenger)</option>
-                                @if (in_array($reportType, ['DAU2', 'DAU5', 'DAU5C']))
+                                @if (in_array($reportType, ['DAU2', 'DAU5', 'DAU5C', 'DAU6']))
                                     <option value="baggage">Bagasi (Baggage)</option>
                                     <option value="cargo">Kargo (Cargo)</option>
                                     <option value="pos">POS / Surat (Mail)</option>
@@ -204,7 +204,7 @@
                     </div>
                 @endif
 
-                @if (in_array($reportType, ['DAU1', 'DAU3', 'DAU4', 'DAU5', 'DAU5A', 'DAU11']))
+                @if (in_array($reportType, ['DAU1', 'DAU3', 'DAU4', 'DAU5', 'DAU5A', 'DAU6', 'DAU11', 'DAU12']))
                     <div>
                         <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Direction</label>
                         <select x-model="filterDirection" @change="applyFilters()"
@@ -1961,20 +1961,20 @@
                                     @endif
                                 @elseif ($reportType === 'DAU11')
                                     <th class="px-3 py-2.5">Tanggal</th>
-                                    <th class="px-2.5 py-2.5 text-right">INT ARR</th>
-                                    <th class="px-2.5 py-2.5 text-right">INT DEP</th>
-                                    <th class="px-2.5 py-2.5 text-right">DOM ARR</th>
-                                    <th class="px-2.5 py-2.5 text-right">DOM DEP</th>
+                                    <th class="px-2.5 py-2.5 text-right" x-text="selectedMetric === 'passenger' ? 'INT ARR (Pax)' : 'INT ARR'"></th>
+                                    <th class="px-2.5 py-2.5 text-right" x-text="selectedMetric === 'passenger' ? 'INT DEP (Pax)' : 'INT DEP'"></th>
+                                    <th class="px-2.5 py-2.5 text-right" x-text="selectedMetric === 'passenger' ? 'DOM ARR (Pax)' : 'DOM ARR'"></th>
+                                    <th class="px-2.5 py-2.5 text-right" x-text="selectedMetric === 'passenger' ? 'DOM DEP (Pax)' : 'DOM DEP'"></th>
                                     <th class="px-2.5 py-2.5 text-right font-bold">Total Acft</th>
                                     <th class="px-2.5 py-2.5 text-right text-emerald-600 font-bold">Total Pax</th>
                                 @elseif ($reportType === 'DAU12')
                                     <th class="px-3 py-2.5">Tanggal</th>
-                                    <th class="px-2.5 py-2.5 text-right">ARR DOM</th>
-                                    <th class="px-2.5 py-2.5 text-right">ARR INT</th>
-                                    <th class="px-2.5 py-2.5 text-right font-bold">ARR Total</th>
-                                    <th class="px-2.5 py-2.5 text-right">DEP DOM</th>
-                                    <th class="px-2.5 py-2.5 text-right">DEP INT</th>
-                                    <th class="px-2.5 py-2.5 text-right font-bold">DEP Total</th>
+                                    <th class="px-2.5 py-2.5 text-right" x-text="selectedMetric === 'passenger' ? 'ARR DOM (Pax)' : 'ARR DOM'"></th>
+                                    <th class="px-2.5 py-2.5 text-right" x-text="selectedMetric === 'passenger' ? 'ARR INT (Pax)' : 'ARR INT'"></th>
+                                    <th class="px-2.5 py-2.5 text-right font-bold" x-text="selectedMetric === 'passenger' ? 'ARR Tot (Pax)' : 'ARR Total'"></th>
+                                    <th class="px-2.5 py-2.5 text-right" x-text="selectedMetric === 'passenger' ? 'DEP DOM (Pax)' : 'DEP DOM'"></th>
+                                    <th class="px-2.5 py-2.5 text-right" x-text="selectedMetric === 'passenger' ? 'DEP INT (Pax)' : 'DEP INT'"></th>
+                                    <th class="px-2.5 py-2.5 text-right font-bold" x-text="selectedMetric === 'passenger' ? 'DEP Tot (Pax)' : 'DEP Total'"></th>
                                     <th class="px-2.5 py-2.5 text-right font-black">Total Acft</th>
                                     <th class="px-2.5 py-2.5 text-right text-emerald-600 font-black">Total Pax</th>
                                 @endif
@@ -2218,20 +2218,20 @@
                                         @endif
                                     @elseif ($reportType === 'DAU11')
                                         <td class="px-3 py-2 font-bold text-slate-800 dark:text-slate-200" x-text="row.date || '—'"></td>
-                                        <td class="px-2.5 py-2 text-right" x-text="formatNumber(row.aircraft_int_arrival)"></td>
-                                        <td class="px-2.5 py-2 text-right" x-text="formatNumber(row.aircraft_int_departure)"></td>
-                                        <td class="px-2.5 py-2 text-right" x-text="formatNumber(row.aircraft_dom_arrival)"></td>
-                                        <td class="px-2.5 py-2 text-right" x-text="formatNumber(row.aircraft_dom_departure)"></td>
+                                        <td class="px-2.5 py-2 text-right" x-text="formatNumber(selectedMetric === 'passenger' ? (row.passenger_int_arrival ?? 0) : row.aircraft_int_arrival)"></td>
+                                        <td class="px-2.5 py-2 text-right" x-text="formatNumber(selectedMetric === 'passenger' ? (row.passenger_int_departure ?? 0) : row.aircraft_int_departure)"></td>
+                                        <td class="px-2.5 py-2 text-right" x-text="formatNumber(selectedMetric === 'passenger' ? (row.passenger_dom_arrival ?? 0) : row.aircraft_dom_arrival)"></td>
+                                        <td class="px-2.5 py-2 text-right" x-text="formatNumber(selectedMetric === 'passenger' ? (row.passenger_dom_departure ?? 0) : row.aircraft_dom_departure)"></td>
                                         <td class="px-2.5 py-2 text-right font-bold text-slate-900 dark:text-white" x-text="formatNumber(row.aircraft_total)"></td>
                                         <td class="px-2.5 py-2 text-right font-bold text-emerald-600" x-text="formatNumber(row.passenger_total)"></td>
                                     @elseif ($reportType === 'DAU12')
                                         <td class="px-3 py-2 font-bold text-slate-800 dark:text-slate-200" x-text="row.date || '—'"></td>
-                                        <td class="px-2.5 py-2 text-right" x-text="formatNumber(row.aircraft_arr_domestic)"></td>
-                                        <td class="px-2.5 py-2 text-right" x-text="formatNumber(row.aircraft_arr_int)"></td>
-                                        <td class="px-2.5 py-2 text-right font-bold" x-text="formatNumber(row.aircraft_arrival_tot)"></td>
-                                        <td class="px-2.5 py-2 text-right" x-text="formatNumber(row.aircraft_dep_domestic)"></td>
-                                        <td class="px-2.5 py-2 text-right" x-text="formatNumber(row.aircraft_dep_int)"></td>
-                                        <td class="px-2.5 py-2 text-right font-bold" x-text="formatNumber(row.aircraft_departure_tot)"></td>
+                                        <td class="px-2.5 py-2 text-right" x-text="formatNumber(selectedMetric === 'passenger' ? (row.passenger_arr_domestic ?? 0) : row.aircraft_arr_domestic)"></td>
+                                        <td class="px-2.5 py-2 text-right" x-text="formatNumber(selectedMetric === 'passenger' ? (row.passenger_arr_int ?? 0) : row.aircraft_arr_int)"></td>
+                                        <td class="px-2.5 py-2 text-right font-bold" x-text="formatNumber(selectedMetric === 'passenger' ? ((Number(row.passenger_arr_domestic || 0)) + (Number(row.passenger_arr_int || 0))) : row.aircraft_arrival_tot)"></td>
+                                        <td class="px-2.5 py-2 text-right" x-text="formatNumber(selectedMetric === 'passenger' ? (row.passenger_dep_domestic ?? 0) : row.aircraft_dep_domestic)"></td>
+                                        <td class="px-2.5 py-2 text-right" x-text="formatNumber(selectedMetric === 'passenger' ? (row.passenger_dep_int ?? 0) : row.aircraft_dep_int)"></td>
+                                        <td class="px-2.5 py-2 text-right font-bold" x-text="formatNumber(selectedMetric === 'passenger' ? ((Number(row.passenger_dep_domestic || 0)) + (Number(row.passenger_dep_int || 0))) : row.aircraft_departure_tot)"></td>
                                         <td class="px-2.5 py-2 text-right font-black text-slate-900 dark:text-white" x-text="formatNumber(row.aircraft_total)"></td>
                                         <td class="px-2.5 py-2 text-right font-black text-emerald-600" x-text="formatNumber(row.passenger_total)"></td>
                                     @endif
@@ -2649,10 +2649,32 @@ function dauEnhancedDashboard() {
                 // Direction
                 if (dir !== 'ALL') {
                     if (dir === 'ARRIVAL') {
-                        if (Number(r.aircraft_arrival || 0) === 0 && Number(r.passenger_arrival || 0) === 0) return false;
+                        const hasArr = (Number(r.aircraft_arrival || 0) > 0)
+                                    || (Number(r.passenger_arrival || 0) > 0)
+                                    || (Number(r.aircraft_arr_domestic || 0) > 0)
+                                    || (Number(r.aircraft_arr_int || 0) > 0)
+                                    || (Number(r.passenger_arr_domestic || 0) > 0)
+                                    || (Number(r.passenger_arr_int || 0) > 0)
+                                    || (Number(r.aircraft_int_arrival || 0) > 0)
+                                    || (Number(r.aircraft_dom_arrival || 0) > 0);
+                        if (!hasArr) return false;
                     } else if (dir === 'DEPARTURE') {
-                        if (Number(r.aircraft_departure || 0) === 0 && Number(r.passenger_departure || 0) === 0) return false;
+                        const hasDep = (Number(r.aircraft_departure || 0) > 0)
+                                    || (Number(r.passenger_departure || 0) > 0)
+                                    || (Number(r.aircraft_dep_domestic || 0) > 0)
+                                    || (Number(r.aircraft_dep_int || 0) > 0)
+                                    || (Number(r.passenger_dep_domestic || 0) > 0)
+                                    || (Number(r.passenger_dep_int || 0) > 0)
+                                    || (Number(r.aircraft_int_departure || 0) > 0)
+                                    || (Number(r.aircraft_dom_departure || 0) > 0);
+                        if (!hasDep) return false;
                     }
+                }
+
+                // DAU1 Passenger mode: exclude pure cargo / 0 passenger flights if Metric is passenger
+                if (this.reportType === 'DAU1' && this.selectedMetric === 'passenger') {
+                    const totPx = Number(r.passenger_total ?? r.total_passengers ?? 0);
+                    if (totPx <= 0) return false;
                 }
 
                 // Passenger Type (DAU1)
@@ -2766,22 +2788,25 @@ function dauEnhancedDashboard() {
             });
 
             this.filteredRecords.forEach(r => {
-                const acArr = Number(r.aircraft_arrival || (Number(r.aircraft_arr_domestic || 0) + Number(r.aircraft_arr_int || 0)));
-                const acDep = Number(r.aircraft_departure || (Number(r.aircraft_dep_domestic || 0) + Number(r.aircraft_dep_int || 0)));
-                const acTot = Number(r.aircraft_total || (acArr + acDep));
+                const dir = this.filterDirection;
+                const pType = this.filterPassengerType;
 
-                const pxArr = Number(r.passenger_arrival || (Number(r.passenger_arr_domestic || 0) + Number(r.passenger_arr_int || 0)));
-                const pxDep = Number(r.passenger_departure || (Number(r.passenger_dep_domestic || 0) + Number(r.passenger_dep_int || 0)));
+                const acArr = Number(r.aircraft_arrival || (Number(r.aircraft_arr_domestic || 0) + Number(r.aircraft_arr_int || 0)) || (Number(r.aircraft_dom_arrival || 0) + Number(r.aircraft_int_arrival || 0)));
+                const acDep = Number(r.aircraft_departure || (Number(r.aircraft_dep_domestic || 0) + Number(r.aircraft_dep_int || 0)) || (Number(r.aircraft_dom_departure || 0) + Number(r.aircraft_int_departure || 0)));
+                const acTot = Number(r.aircraft_total || r.total_flights || (acArr + acDep));
+
+                const pxArr = Number(r.passenger_arrival || (Number(r.passenger_arr_domestic || 0) + Number(r.passenger_arr_int || 0)) || (Number(r.passenger_dom_arrival || 0) + Number(r.passenger_int_arrival || 0)));
+                const pxDep = Number(r.passenger_departure || (Number(r.passenger_dep_domestic || 0) + Number(r.passenger_dep_int || 0)) || (Number(r.passenger_dom_departure || 0) + Number(r.passenger_int_departure || 0)));
                 const pxTrn = Number(r.passenger_transit || 0);
                 const pxTrf = Number(r.passenger_transfer || 0);
-                const pxTot = Number(r.passenger_total || (pxArr + pxDep + pxTrn + pxTrf));
+                const pxTot = Number(r.passenger_total || r.total_passengers || (pxArr + pxDep + pxTrn + pxTrf));
 
-                const adArr = Number(r.arr_adult || 0);
-                const chArr = Number(r.arr_child || 0);
-                const infArr = Number(r.arr_infant || 0);
-                const adDep = Number(r.dep_adult || 0);
-                const chDep = Number(r.dep_child || 0);
-                const infDep = Number(r.dep_infant || 0);
+                const adArr = Number(r.arr_adult || (r.details?.arr_adult || 0));
+                const chArr = Number(r.arr_child || (r.details?.arr_child || 0));
+                const infArr = Number(r.arr_infant || (r.details?.arr_infant || 0));
+                const adDep = Number(r.dep_adult || (r.details?.dep_adult || 0));
+                const chDep = Number(r.dep_child || (r.details?.dep_child || 0));
+                const infDep = Number(r.dep_infant || (r.details?.dep_infant || 0));
                 const adTot = Number(r.passenger_adult ?? r.adult ?? (adArr + adDep));
                 const chTot = Number(r.passenger_child ?? r.child ?? (chArr + chDep));
                 const infTot = Number(r.passenger_infant ?? r.infant ?? (infArr + infDep));
@@ -2795,23 +2820,58 @@ function dauEnhancedDashboard() {
                 const cgo = Number(r.cargo || 0);
                 const pos = Number(r.pos || 0);
 
-                sum.total_movements += acTot;
-                sum.aircraft_arrival += acArr;
-                sum.aircraft_departure += acDep;
-                sum.passenger_arrival += pxArr;
-                sum.passenger_departure += pxDep;
-                sum.passenger_transit += pxTrn;
-                sum.passenger_transfer += pxTrf;
-                sum.passenger_total += pxTot;
-                sum.passenger_adult += adTot;
-                sum.passenger_child += chTot;
-                sum.passenger_infant += infTot;
-                sum.arr_adult += adArr;
-                sum.arr_child += chArr;
-                sum.arr_infant += infArr;
-                sum.dep_adult += adDep;
-                sum.dep_child += chDep;
-                sum.dep_infant += infDep;
+                // Effective directional values
+                const effAcArr = (dir === 'DEPARTURE') ? 0 : acArr;
+                const effAcDep = (dir === 'ARRIVAL') ? 0 : acDep;
+                const effAcTot = (dir === 'ARRIVAL') ? acArr : ((dir === 'DEPARTURE') ? acDep : acTot);
+
+                let effPxArr = (dir === 'DEPARTURE') ? 0 : pxArr;
+                let effPxDep = (dir === 'ARRIVAL') ? 0 : pxDep;
+                let effPxTrn = (dir === 'ARRIVAL' || dir === 'DEPARTURE') ? 0 : pxTrn;
+                let effPxTrf = (dir === 'ARRIVAL' || dir === 'DEPARTURE') ? 0 : pxTrf;
+                let effPxTot = (dir === 'ARRIVAL') ? pxArr : ((dir === 'DEPARTURE') ? pxDep : pxTot);
+
+                let effAd = adTot, effCh = chTot, effInf = infTot;
+                if (pType === 'ADULT') {
+                    const effAdArr = (dir === 'DEPARTURE') ? 0 : adArr;
+                    const effAdDep = (dir === 'ARRIVAL') ? 0 : adDep;
+                    effPxTot = (dir === 'ARRIVAL') ? effAdArr : ((dir === 'DEPARTURE') ? effAdDep : adTot);
+                    effPxArr = effAdArr;
+                    effPxDep = effAdDep;
+                    effCh = 0; effInf = 0;
+                } else if (pType === 'CHILD') {
+                    const effChArr = (dir === 'DEPARTURE') ? 0 : chArr;
+                    const effChDep = (dir === 'ARRIVAL') ? 0 : chDep;
+                    effPxTot = (dir === 'ARRIVAL') ? effChArr : ((dir === 'DEPARTURE') ? effChDep : chTot);
+                    effPxArr = effChArr;
+                    effPxDep = effChDep;
+                    effAd = 0; effInf = 0;
+                } else if (pType === 'INFANT') {
+                    const effInfArr = (dir === 'DEPARTURE') ? 0 : infArr;
+                    const effInfDep = (dir === 'ARRIVAL') ? 0 : infDep;
+                    effPxTot = (dir === 'ARRIVAL') ? effInfArr : ((dir === 'DEPARTURE') ? effInfDep : infTot);
+                    effPxArr = effInfArr;
+                    effPxDep = effInfDep;
+                    effAd = 0; effCh = 0;
+                }
+
+                sum.total_movements += effAcTot;
+                sum.aircraft_arrival += effAcArr;
+                sum.aircraft_departure += effAcDep;
+                sum.passenger_arrival += effPxArr;
+                sum.passenger_departure += effPxDep;
+                sum.passenger_transit += effPxTrn;
+                sum.passenger_transfer += effPxTrf;
+                sum.passenger_total += effPxTot;
+                sum.passenger_adult += effAd;
+                sum.passenger_child += effCh;
+                sum.passenger_infant += effInf;
+                sum.arr_adult += (dir === 'DEPARTURE' ? 0 : adArr);
+                sum.arr_child += (dir === 'DEPARTURE' ? 0 : chArr);
+                sum.arr_infant += (dir === 'DEPARTURE' ? 0 : infArr);
+                sum.dep_adult += (dir === 'ARRIVAL' ? 0 : adDep);
+                sum.dep_child += (dir === 'ARRIVAL' ? 0 : chDep);
+                sum.dep_infant += (dir === 'ARRIVAL' ? 0 : infDep);
                 sum.crew_total += crew;
                 sum.baggage_total += bag;
                 sum.cargo_total += cgo;
@@ -2819,23 +2879,23 @@ function dauEnhancedDashboard() {
 
                 // DAU2 & 3 Classification
                 if (String(r.category || '').toUpperCase().includes('DOM')) {
-                    domAcft += acTot;
-                    domPax += pxTot;
+                    domAcft += effAcTot;
+                    domPax += effPxTot;
                     domBag += bag;
                     domCgo += cgo;
                     domPos += pos;
                 } else {
-                    intAcft += acTot;
-                    intPax += pxTot;
+                    intAcft += effAcTot;
+                    intPax += effPxTot;
                     intBag += bag;
                     intCgo += cgo;
                     intPos += pos;
                 }
 
                 if (String(r.section || '').toUpperCase().includes('BUKAN')) {
-                    bukanNiagaAcft += acTot;
+                    bukanNiagaAcft += effAcTot;
                 } else {
-                    niagaAcft += acTot;
+                    niagaAcft += effAcTot;
                 }
 
                 // DAU5A Extra Crew
@@ -2848,14 +2908,14 @@ function dauEnhancedDashboard() {
                 const h = r.hour || r.period;
                 if (h) {
                     if (!hourlyMap[h]) hourlyMap[h] = { hour: h, aircraft_arrival: 0, aircraft_departure: 0, aircraft_total: 0, passenger_arrival: 0, passenger_departure: 0, passenger_transit: 0, passenger_transfer: 0, passenger_total: 0, crew: 0, extra_crew: 0, crew_total: 0 };
-                    hourlyMap[h].aircraft_arrival += acArr;
-                    hourlyMap[h].aircraft_departure += acDep;
-                    hourlyMap[h].aircraft_total += acTot;
-                    hourlyMap[h].passenger_arrival += pxArr;
-                    hourlyMap[h].passenger_departure += pxDep;
-                    hourlyMap[h].passenger_transit += pxTrn;
-                    hourlyMap[h].passenger_transfer += pxTrf;
-                    hourlyMap[h].passenger_total += pxTot;
+                    hourlyMap[h].aircraft_arrival += effAcArr;
+                    hourlyMap[h].aircraft_departure += effAcDep;
+                    hourlyMap[h].aircraft_total += effAcTot;
+                    hourlyMap[h].passenger_arrival += effPxArr;
+                    hourlyMap[h].passenger_departure += effPxDep;
+                    hourlyMap[h].passenger_transit += effPxTrn;
+                    hourlyMap[h].passenger_transfer += effPxTrf;
+                    hourlyMap[h].passenger_total += effPxTot;
                     hourlyMap[h].crew += crw;
                     hourlyMap[h].extra_crew += exCrw;
                     hourlyMap[h].crew_total += crwTot;
@@ -2864,8 +2924,8 @@ function dauEnhancedDashboard() {
                 const t = r.terminal;
                 if (t) {
                     if (!termMap[t]) termMap[t] = { terminal: t, aircraft_total: 0, passenger_total: 0, crew_total: 0 };
-                    termMap[t].aircraft_total += acTot;
-                    termMap[t].passenger_total += pxTot;
+                    termMap[t].aircraft_total += effAcTot;
+                    termMap[t].passenger_total += effPxTot;
                     termMap[t].crew_total += crwTot;
                 }
 
@@ -2885,22 +2945,25 @@ function dauEnhancedDashboard() {
                         passenger_child: 0,
                         passenger_infant: 0
                     };
-                    airportMap[ap].aircraft_arrival += acArr;
-                    airportMap[ap].aircraft_departure += acDep;
-                    airportMap[ap].aircraft_total += acTot;
-                    airportMap[ap].passenger_arrival += pxArr;
-                    airportMap[ap].passenger_departure += pxDep;
-                    airportMap[ap].passenger_total += pxTot;
-                    airportMap[ap].passenger_adult += adTot;
-                    airportMap[ap].passenger_child += chTot;
-                    airportMap[ap].passenger_infant += infTot;
+                    airportMap[ap].aircraft_arrival += effAcArr;
+                    airportMap[ap].aircraft_departure += effAcDep;
+                    airportMap[ap].aircraft_total += effAcTot;
+                    airportMap[ap].passenger_arrival += effPxArr;
+                    airportMap[ap].passenger_departure += effPxDep;
+                    airportMap[ap].passenger_total += effPxTot;
+                    airportMap[ap].passenger_adult += effAd;
+                    airportMap[ap].passenger_child += effCh;
+                    airportMap[ap].passenger_infant += effInf;
                 }
 
                 const al = r.airline || r.operator_name;
                 if (al) {
-                    if (!airlineMap[al]) airlineMap[al] = { name: al, total: 0, pax: 0, routesCount: 0 };
-                    airlineMap[al].total += acTot;
-                    airlineMap[al].pax += pxTot;
+                    if (!airlineMap[al]) airlineMap[al] = { name: al, total: 0, pax: 0, baggage: 0, cargo: 0, pos: 0, routesCount: 0 };
+                    airlineMap[al].total += effAcTot;
+                    airlineMap[al].pax += effPxTot;
+                    airlineMap[al].baggage += bag;
+                    airlineMap[al].cargo += cgo;
+                    airlineMap[al].pos += pos;
                     airlineMap[al].routesCount++;
                 }
             });
@@ -3025,7 +3088,11 @@ function dauEnhancedDashboard() {
             };
 
             // DAU4A Operators
-            this.dau4aOperators = Object.values(airlineMap).sort((a, b) => b.total - a.total);
+            const opMetricKey = (this.selectedMetric === 'passenger') ? 'pax' :
+                               (this.selectedMetric === 'baggage') ? 'baggage' :
+                               (this.selectedMetric === 'cargo') ? 'cargo' :
+                               (this.selectedMetric === 'pos') ? 'pos' : 'total';
+            this.dau4aOperators = Object.values(airlineMap).sort((a, b) => (b[opMetricKey] || 0) - (a[opMetricKey] || 0));
 
             // DAU4B Matrix Data
             if (this.reportType === 'DAU4B') {
@@ -3639,322 +3706,74 @@ function dauEnhancedDashboard() {
                 this.renderDau2Charts();
             }
 
-            // DAU-3: Donuts
-            if (this.reportType === 'DAU3') {
-                const ctxSt = document.getElementById('dau3StatusDonut')?.getContext('2d');
-                if (ctxSt) {
-                    this.chartInstances.dau3Status = new Chart(ctxSt, {
-                        type: 'doughnut',
-                        data: {
-                            labels: ['Niaga (Commercial)', 'Bukan Niaga'],
-                            datasets: [{ data: [this.dau3Metrics.niagaAcft, this.dau3Metrics.bukanNiagaAcft], backgroundColor: ['#0284c7', '#f59e0b'] }]
-                        },
-                        options: { responsive: true, maintainAspectRatio: false }
-                    });
-                }
-                const ctxCat = document.getElementById('dau3CategoryDonut')?.getContext('2d');
-                if (ctxCat) {
-                    this.chartInstances.dau3Cat = new Chart(ctxCat, {
-                        type: 'doughnut',
-                        data: {
-                            labels: ['Domestik', 'Internasional'],
-                            datasets: [{ data: [this.dau3Metrics.domAcft, this.dau3Metrics.intAcft], backgroundColor: ['#2563eb', '#4f46e5'] }]
-                        },
-                        options: { responsive: true, maintainAspectRatio: false }
-                    });
-                }
-            }
-
-            // DAU-5: Pareto
-            if (this.reportType === 'DAU5') {
-                const ctxPareto = document.getElementById('dau5ParetoChart')?.getContext('2d');
-                if (ctxPareto) {
-                    const topAirlines = this.dau4aOperators.slice(0, 15);
-                    let cum = 0;
-                    const isPax = this.selectedMetric === 'passenger';
-                    const tot = topAirlines.reduce((acc, o) => acc + (isPax ? o.pax : o.total), 0) || 1;
-                    const seriesData = topAirlines.map(o => (isPax ? o.pax : o.total));
-                    const cumData = topAirlines.map(o => { cum += (isPax ? o.pax : o.total); return Math.round((cum / tot) * 100); });
-
-                    this.chartInstances.dau5Pareto = new Chart(ctxPareto, {
-                        type: 'bar',
-                        data: {
-                            labels: topAirlines.map(o => o.name),
-                            datasets: [
-                                { label: isPax ? 'Passengers' : 'Movements', data: seriesData, backgroundColor: '#0284c7', yAxisID: 'y' },
-                                { label: 'Cumulative %', data: cumData, type: 'line', borderColor: '#f59e0b', backgroundColor: '#f59e0b', yAxisID: 'y1', tension: 0.2 }
-                            ]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: { type: 'linear', position: 'left', beginAtZero: true },
-                                y1: { type: 'linear', position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false } }
-                            }
-                        }
-                    });
-                }
-            }
-
-            // DAU-5A: Crew
-            if (this.reportType === 'DAU5A') {
-                const ctxCrew = document.getElementById('dau5aCrewChart')?.getContext('2d');
-                if (ctxCrew) {
-                    const alMap5a = {};
-                    this.filteredRecords.forEach(r => {
-                        const al = r.airline || 'Unknown';
-                        if (!alMap5a[al]) alMap5a[al] = { name: al, opCrew: 0, exCrew: 0, totalCrew: 0 };
-                        const op = Number(r.crew || 0);
-                        const ex = Number(r.extra_crew || (Number(r.arr_extra_crew || 0) + Number(r.dep_extra_crew || 0)));
-                        alMap5a[al].opCrew += op;
-                        alMap5a[al].exCrew += ex;
-                        alMap5a[al].totalCrew += (op + ex);
-                    });
-                    const list5a = Object.values(alMap5a).sort((a, b) => b.totalCrew - a.totalCrew).slice(0, 12);
-                    this.chartInstances.dau5aCrew = new Chart(ctxCrew, {
-                        type: 'bar',
-                        data: {
-                            labels: list5a.map(o => o.name),
-                            datasets: [
-                                { label: 'Operating Crew', data: list5a.map(o => o.opCrew), backgroundColor: '#2563eb' },
-                                { label: 'Extra Crew', data: list5a.map(o => o.exCrew), backgroundColor: '#9333ea' }
-                            ]
-                        },
-                        options: { responsive: true, maintainAspectRatio: false }
-                    });
-                }
-            }
-
-            // DAU-5B: Terminal x Airline
-            if (this.reportType === 'DAU5B') {
-                const ctxTerm = document.getElementById('dau5bTerminalChart')?.getContext('2d');
-                if (ctxTerm) {
-                    const topTerminals = [...new Set(this.filteredRecords.map(r => r.terminal))].filter(Boolean);
-                    const topAirlines5b = [...new Set(this.filteredRecords.map(r => r.airline))].filter(Boolean).slice(0, 5);
-                    const colors5b = ['#0284c7', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'];
-                    const datasets5b = topAirlines5b.map((al, idx) => {
-                        const data = topTerminals.map(term => {
-                            return this.filteredRecords
-                                .filter(r => r.terminal === term && r.airline === al)
-                                .reduce((acc, r) => acc + (this.selectedMetric === 'passenger' ? Number(r.passenger_total || 0) : Number(r.aircraft_total || 0)), 0);
-                        });
-                        return { label: al, data: data, backgroundColor: colors5b[idx % colors5b.length] };
-                    });
-                    this.chartInstances.dau5bTerm = new Chart(ctxTerm, {
-                        type: 'bar',
-                        data: {
-                            labels: topTerminals.map(t => 'T' + t),
-                            datasets: datasets5b
-                        },
-                        options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } }
-                    });
-                }
-            }
-
-            // DAU-5C: Airline Profile
-            if (this.reportType === 'DAU5C') {
-                const ctx5c = document.getElementById('dau5cBarChart')?.getContext('2d');
-                if (ctx5c) {
-                    const topAirlines = this.dau4aOperators.slice(0, 10);
-                    this.chartInstances.dau5c = new Chart(ctx5c, {
-                        type: 'bar',
-                        data: {
-                            labels: topAirlines.map(o => o.name),
-                            datasets: [
-                                { label: 'Movements (A/C)', data: topAirlines.map(o => o.total), backgroundColor: '#0284c7' },
-                                { label: 'Passengers (Pax/10)', data: topAirlines.map(o => Math.round(o.pax / 10)), backgroundColor: '#10b981' }
-                            ]
-                        },
-                        options: { responsive: true, maintainAspectRatio: false }
-                    });
-                }
-            }
-
-            // DAU-6: Fleet Mix
-            if (this.reportType === 'DAU6') {
-                const ctxFleet = document.getElementById('dau6FleetChart')?.getContext('2d');
-                if (ctxFleet) {
-                    const types = [...new Set(this.filteredRecords.map(r => r.aircraft_type))].filter(Boolean).slice(0, 15);
-                    const counts = types.map(t => this.filteredRecords.filter(r => r.aircraft_type === t).reduce((acc, r) => acc + (this.selectedMetric === 'passenger' ? Number(r.passenger_total || 0) : Number(r.aircraft_total || 0)), 0));
-                    this.chartInstances.dau6Fleet = new Chart(ctxFleet, {
-                        type: 'bar',
-                        data: {
-                            labels: types,
-                            datasets: [{ label: this.selectedMetric === 'passenger' ? 'Passengers Total' : 'Aircraft Total', data: counts, backgroundColor: '#0284c7' }]
-                        },
-                        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
-                    });
-                }
-
-                let nb = 0, wb = 0, reg = 0;
-                let wtcM = 0, wtcH = 0, wtcL = 0;
-                this.filteredRecords.forEach(r => {
-                    const val = Number(r.aircraft_total || 1);
-                    const cat = String(r.category || '').toUpperCase();
-                    if (cat.includes('WIDE')) wb += val;
-                    else if (cat.includes('REGIONAL')) reg += val;
-                    else nb += val;
-
-                    const wtc = String(r.wtc || '').toUpperCase();
-                    if (wtc.includes('H') || wtc.includes('HEAVY')) wtcH += val;
-                    else if (wtc.includes('L') || wtc.includes('LIGHT')) wtcL += val;
-                    else wtcM += val;
+        renderDau3Charts() {
+            if (!window.Chart) return;
+            const ctxSt = document.getElementById('dau3StatusDonut')?.getContext('2d');
+            if (ctxSt) {
+                if (this.chartInstances.dau3Status) this.chartInstances.dau3Status.destroy();
+                this.chartInstances.dau3Status = new Chart(ctxSt, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Niaga (Commercial)', 'Bukan Niaga'],
+                        datasets: [{ data: [this.dau3Metrics.niagaAcft || 1, this.dau3Metrics.bukanNiagaAcft || 0], backgroundColor: ['#0284c7', '#f59e0b'] }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
                 });
-
-                const ctxCat = document.getElementById('dau6CategoryDonut')?.getContext('2d');
-                if (ctxCat) {
-                    this.chartInstances.dau6Cat = new Chart(ctxCat, {
-                        type: 'doughnut',
-                        data: {
-                            labels: ['Narrow Body', 'Wide Body', 'Regional'],
-                            datasets: [{ data: [nb, wb, reg], backgroundColor: ['#0284c7', '#4f46e5', '#10b981'] }]
-                        },
-                        options: { responsive: true, maintainAspectRatio: false }
-                    });
-                }
-
-                const ctxWtc = document.getElementById('dau6WtcDonut')?.getContext('2d');
-                if (ctxWtc) {
-                    this.chartInstances.dau6Wtc = new Chart(ctxWtc, {
-                        type: 'doughnut',
-                        data: {
-                            labels: ['Medium (M)', 'Heavy (H)', 'Light (L)'],
-                            datasets: [{ data: [wtcM, wtcH, wtcL], backgroundColor: ['#f59e0b', '#7c3aed', '#64748b'] }]
-                        },
-                        options: { responsive: true, maintainAspectRatio: false }
-                    });
-                }
             }
-
-            // DAU-10B: Block On/Off
-            if (this.reportType === 'DAU10B') {
-                const ctxBlk = document.getElementById('dau10bBlockChart')?.getContext('2d');
-                if (ctxBlk) {
-                    this.chartInstances.dau10b = new Chart(ctxBlk, {
-                        type: 'bar',
-                        data: {
-                            labels: this.activeHourlyDistribution.map(h => h.hour.split(' - ')[0] || h.hour),
-                            datasets: [
-                                { label: 'Block On (DTG)', data: this.activeHourlyDistribution.map(h => h.aircraft_arrival), backgroundColor: '#7c3aed' },
-                                { label: 'Block Off (BRK)', data: this.activeHourlyDistribution.map(h => h.aircraft_departure), backgroundColor: '#f59e0b' }
-                            ]
-                        },
-                        options: { responsive: true, maintainAspectRatio: false }
-                    });
-                }
-            }
-
-            // DAU-11: Flow
-            if (this.reportType === 'DAU11') {
-                let domArrDir = 0, domDepDir = 0, intArrDir = 0, intDepDir = 0;
-                let domTransit = 0, domTransfer = 0;
-                this.filteredRecords.forEach(r => {
-                    domArrDir += Number(r.passenger_dom_arrival || 0);
-                    domDepDir += Number(r.passenger_dom_departure || 0);
-                    intArrDir += Number(r.passenger_int_arrival || 0);
-                    intDepDir += Number(r.passenger_int_departure || 0);
-                    domTransit += Number(r.passenger_transit || 0);
-                    domTransfer += Number(r.passenger_transfer || 0);
+            const ctxCat = document.getElementById('dau3CategoryDonut')?.getContext('2d');
+            if (ctxCat) {
+                if (this.chartInstances.dau3Cat) this.chartInstances.dau3Cat.destroy();
+                this.chartInstances.dau3Cat = new Chart(ctxCat, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Domestik', 'Internasional'],
+                        datasets: [{ data: [this.dau3Metrics.domAcft || 1, this.dau3Metrics.intAcft || 0], backgroundColor: ['#2563eb', '#4f46e5'] }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
                 });
-                if (domArrDir === 0 && domDepDir === 0) {
-                    this.filteredRecords.forEach(r => {
-                        domArrDir += Number(r.passenger_arrival || 0);
-                        domDepDir += Number(r.passenger_departure || 0);
-                    });
-                }
-
-                const ctxFl = document.getElementById('dau11FlowChart')?.getContext('2d');
-                if (ctxFl) {
-                    this.chartInstances.dau11Flow = new Chart(ctxFl, {
-                        type: 'bar',
-                        data: {
-                            labels: ['DOMESTIC ARR', 'DOMESTIC DEP', 'INT ARR', 'INT DEP'],
-                            datasets: [
-                                { label: 'Direct Passengers', data: [domArrDir, domDepDir, intArrDir, intDepDir], backgroundColor: '#10b981' },
-                                { label: 'Transit', data: [domTransit, domTransfer, 0, 0], backgroundColor: '#f59e0b' }
-                            ]
-                        },
-                        options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } }
-                    });
-                }
-                const ctxD11 = document.getElementById('dau11Donut')?.getContext('2d');
-                if (ctxD11) {
-                    const domTot = domArrDir + domDepDir + domTransit + domTransfer;
-                    const intTot = intArrDir + intDepDir;
-                    this.chartInstances.dau11Donut = new Chart(ctxD11, {
-                        type: 'doughnut',
-                        data: {
-                            labels: ['Domestic', 'International'],
-                            datasets: [{ data: [domTot, intTot], backgroundColor: ['#2563eb', '#4f46e5'] }]
-                        },
-                        options: { responsive: true, maintainAspectRatio: false }
-                    });
-                }
-            }
-
-            // DAU-12: Grouped Column
-            if (this.reportType === 'DAU12') {
-                const ctx12 = document.getElementById('dau12GroupedChart')?.getContext('2d');
-                if (ctx12) {
-                    let domArr = 0, intArr = 0, domDep = 0, intDep = 0;
-                    this.filteredRecords.forEach(r => {
-                        if (this.selectedMetric === 'passenger') {
-                            domArr += Number(r.passenger_arr_domestic || 0);
-                            intArr += Number(r.passenger_arr_int || 0);
-                            domDep += Number(r.passenger_dep_domestic || 0);
-                            intDep += Number(r.passenger_dep_int || 0);
-                        } else {
-                            domArr += Number(r.aircraft_arr_domestic || 0);
-                            intArr += Number(r.aircraft_arr_int || 0);
-                            domDep += Number(r.aircraft_dep_domestic || 0);
-                            intDep += Number(r.aircraft_dep_int || 0);
-                        }
-                    });
-                    this.chartInstances.dau12 = new Chart(ctx12, {
-                        type: 'bar',
-                        data: {
-                            labels: ['ARRIVAL', 'DEPARTURE'],
-                            datasets: [
-                                { label: 'Domestic', data: [domArr, domDep], backgroundColor: '#2563eb' },
-                                { label: 'International', data: [intArr, intDep], backgroundColor: '#4f46e5' }
-                            ]
-                        },
-                        options: { responsive: true, maintainAspectRatio: false }
-                    });
-                }
             }
         },
 
-        updateCharts() {
-            if (this.reportType === 'DAU1') {
-                this.renderDau1Charts();
-            }
-            if (this.reportType === 'DAU2') {
-                this.renderDau2Charts();
-            }
-            if (this.chartInstances.dau3Status) {
-                this.chartInstances.dau3Status.data.datasets[0].data = [this.dau3Metrics.niagaAcft, this.dau3Metrics.bukanNiagaAcft];
-                this.chartInstances.dau3Status.update();
-            }
-            if (this.chartInstances.dau3Cat) {
-                this.chartInstances.dau3Cat.data.datasets[0].data = [this.dau3Metrics.domAcft, this.dau3Metrics.intAcft];
-                this.chartInstances.dau3Cat.update();
-            }
-            if (this.chartInstances.dau5Pareto) {
+        renderDau5Charts() {
+            if (!window.Chart) return;
+            const ctxPareto = document.getElementById('dau5ParetoChart')?.getContext('2d');
+            if (ctxPareto) {
+                if (this.chartInstances.dau5Pareto) this.chartInstances.dau5Pareto.destroy();
+                const m = this.selectedMetric;
+                const mKey = (m === 'passenger') ? 'pax' : (m === 'baggage') ? 'baggage' : (m === 'cargo') ? 'cargo' : (m === 'pos') ? 'pos' : 'total';
+                const mLabel = (m === 'passenger') ? 'Passengers' : (m === 'baggage') ? 'Baggage (Kg)' : (m === 'cargo') ? 'Cargo (Kg)' : (m === 'pos') ? 'POS (Kg)' : 'Aircraft Movements';
                 const topAirlines = this.dau4aOperators.slice(0, 15);
                 let cum = 0;
-                const isPax = this.selectedMetric === 'passenger';
-                const tot = topAirlines.reduce((acc, o) => acc + (isPax ? o.pax : o.total), 0) || 1;
-                const seriesData = topAirlines.map(o => (isPax ? o.pax : o.total));
-                const cumData = topAirlines.map(o => { cum += (isPax ? o.pax : o.total); return Math.round((cum / tot) * 100); });
-                this.chartInstances.dau5Pareto.data.labels = topAirlines.map(o => o.name);
-                this.chartInstances.dau5Pareto.data.datasets[0].label = isPax ? 'Passengers' : 'Movements';
-                this.chartInstances.dau5Pareto.data.datasets[0].data = seriesData;
-                this.chartInstances.dau5Pareto.data.datasets[1].data = cumData;
-                this.chartInstances.dau5Pareto.update();
+                const tot = topAirlines.reduce((acc, o) => acc + (o[mKey] || 0), 0) || 1;
+                const seriesData = topAirlines.map(o => (o[mKey] || 0));
+                const cumData = topAirlines.map(o => { cum += (o[mKey] || 0); return Math.round((cum / tot) * 100); });
+
+                this.chartInstances.dau5Pareto = new Chart(ctxPareto, {
+                    type: 'bar',
+                    data: {
+                        labels: topAirlines.map(o => o.name),
+                        datasets: [
+                            { label: mLabel, data: seriesData, backgroundColor: '#0284c7', yAxisID: 'y' },
+                            { label: 'Cumulative %', data: cumData, type: 'line', borderColor: '#f59e0b', backgroundColor: '#f59e0b', yAxisID: 'y1', tension: 0.2 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { type: 'linear', position: 'left', beginAtZero: true },
+                            y1: { type: 'linear', position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false } }
+                        }
+                    }
+                });
             }
-            if (this.chartInstances.dau5aCrew) {
+        },
+
+        renderDau5aCharts() {
+            if (!window.Chart) return;
+            const ctxCrew = document.getElementById('dau5aCrewChart')?.getContext('2d');
+            if (ctxCrew) {
+                if (this.chartInstances.dau5aCrew) this.chartInstances.dau5aCrew.destroy();
                 const alMap5a = {};
                 this.filteredRecords.forEach(r => {
                     const al = r.airline || 'Unknown';
@@ -3966,17 +3785,29 @@ function dauEnhancedDashboard() {
                     alMap5a[al].totalCrew += (op + ex);
                 });
                 const list5a = Object.values(alMap5a).sort((a, b) => b.totalCrew - a.totalCrew).slice(0, 12);
-                this.chartInstances.dau5aCrew.data.labels = list5a.map(o => o.name);
-                this.chartInstances.dau5aCrew.data.datasets[0].data = list5a.map(o => o.opCrew);
-                this.chartInstances.dau5aCrew.data.datasets[1].data = list5a.map(o => o.exCrew);
-                this.chartInstances.dau5aCrew.update();
+                this.chartInstances.dau5aCrew = new Chart(ctxCrew, {
+                    type: 'bar',
+                    data: {
+                        labels: list5a.map(o => o.name),
+                        datasets: [
+                            { label: 'Operating Crew', data: list5a.map(o => o.opCrew), backgroundColor: '#2563eb' },
+                            { label: 'Extra Crew', data: list5a.map(o => o.exCrew), backgroundColor: '#9333ea' }
+                        ]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
             }
-            if (this.chartInstances.dau5bTerm) {
+        },
+
+        renderDau5bCharts() {
+            if (!window.Chart) return;
+            const ctxTerm = document.getElementById('dau5bTerminalChart')?.getContext('2d');
+            if (ctxTerm) {
+                if (this.chartInstances.dau5bTerm) this.chartInstances.dau5bTerm.destroy();
                 const topTerminals = [...new Set(this.filteredRecords.map(r => r.terminal))].filter(Boolean);
                 const topAirlines5b = [...new Set(this.filteredRecords.map(r => r.airline))].filter(Boolean).slice(0, 5);
                 const colors5b = ['#0284c7', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'];
-                this.chartInstances.dau5bTerm.data.labels = topTerminals.map(t => 'T' + t);
-                this.chartInstances.dau5bTerm.data.datasets = topAirlines5b.map((al, idx) => {
+                const datasets5b = topAirlines5b.map((al, idx) => {
                     const data = topTerminals.map(term => {
                         return this.filteredRecords
                             .filter(r => r.terminal === term && r.airline === al)
@@ -3984,93 +3815,201 @@ function dauEnhancedDashboard() {
                     });
                     return { label: al, data: data, backgroundColor: colors5b[idx % colors5b.length] };
                 });
-                this.chartInstances.dau5bTerm.update();
+                this.chartInstances.dau5bTerm = new Chart(ctxTerm, {
+                    type: 'bar',
+                    data: {
+                        labels: topTerminals.map(t => 'T' + t),
+                        datasets: datasets5b
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } }
+                });
             }
-            if (this.chartInstances.dau5c) {
+        },
+
+        renderDau5cCharts() {
+            if (!window.Chart) return;
+            const ctx5c = document.getElementById('dau5cBarChart')?.getContext('2d');
+            if (ctx5c) {
+                if (this.chartInstances.dau5c) this.chartInstances.dau5c.destroy();
                 const topAirlines = this.dau4aOperators.slice(0, 10);
-                this.chartInstances.dau5c.data.labels = topAirlines.map(o => o.name);
-                this.chartInstances.dau5c.data.datasets[0].data = topAirlines.map(o => o.total);
-                this.chartInstances.dau5c.data.datasets[1].data = topAirlines.map(o => Math.round(o.pax / 10));
-                this.chartInstances.dau5c.update();
-            }
-            if (this.chartInstances.dau6Fleet) {
-                const types = [...new Set(this.filteredRecords.map(r => r.aircraft_type))].filter(Boolean).slice(0, 15);
-                const counts = types.map(t => this.filteredRecords.filter(r => r.aircraft_type === t).reduce((acc, r) => acc + (this.selectedMetric === 'passenger' ? Number(r.passenger_total || 0) : Number(r.aircraft_total || 0)), 0));
-                this.chartInstances.dau6Fleet.data.labels = types;
-                this.chartInstances.dau6Fleet.data.datasets[0].label = this.selectedMetric === 'passenger' ? 'Passengers Total' : 'Aircraft Total';
-                this.chartInstances.dau6Fleet.data.datasets[0].data = counts;
-                this.chartInstances.dau6Fleet.update();
-            }
-            if (this.chartInstances.dau6Cat) {
-                let nb = 0, wb = 0, reg = 0;
-                this.filteredRecords.forEach(r => {
-                    const val = Number(r.aircraft_total || 1);
-                    const cat = String(r.category || '').toUpperCase();
-                    if (cat.includes('WIDE')) wb += val;
-                    else if (cat.includes('REGIONAL')) reg += val;
-                    else nb += val;
+                this.chartInstances.dau5c = new Chart(ctx5c, {
+                    type: 'bar',
+                    data: {
+                        labels: topAirlines.map(o => o.name),
+                        datasets: [
+                            { label: 'Movements (A/C)', data: topAirlines.map(o => o.total), backgroundColor: '#0284c7' },
+                            { label: 'Passengers (Pax/10)', data: topAirlines.map(o => Math.round(o.pax / 10)), backgroundColor: '#10b981' }
+                        ]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
                 });
-                this.chartInstances.dau6Cat.data.datasets[0].data = [nb, wb, reg];
-                this.chartInstances.dau6Cat.update();
             }
-            if (this.chartInstances.dau6Wtc) {
-                let wtcM = 0, wtcH = 0, wtcL = 0;
+        },
+
+        renderDau6Charts() {
+            if (!window.Chart) return;
+            const ctxFleet = document.getElementById('dau6FleetChart')?.getContext('2d');
+            if (ctxFleet) {
+                if (this.chartInstances.dau6Fleet) this.chartInstances.dau6Fleet.destroy();
+                const m = this.selectedMetric;
+                const getVal = (r) => {
+                    if (m === 'passenger') return Number(r.passenger_total || 0);
+                    if (m === 'baggage') return Number(r.baggage || 0);
+                    if (m === 'cargo') return Number(r.cargo || 0);
+                    if (m === 'pos') return Number(r.pos || 0);
+                    return Number(r.aircraft_total || 0);
+                };
+                const fleetMap = {};
                 this.filteredRecords.forEach(r => {
-                    const val = Number(r.aircraft_total || 1);
-                    const wtc = String(r.wtc || '').toUpperCase();
-                    if (wtc.includes('H') || wtc.includes('HEAVY')) wtcH += val;
-                    else if (wtc.includes('L') || wtc.includes('LIGHT')) wtcL += val;
-                    else wtcM += val;
+                    const t = r.aircraft_type || 'Unknown';
+                    fleetMap[t] = (fleetMap[t] || 0) + getVal(r);
                 });
-                this.chartInstances.dau6Wtc.data.datasets[0].data = [wtcM, wtcH, wtcL];
-                this.chartInstances.dau6Wtc.update();
+                const sortedFleet = Object.entries(fleetMap).sort((a, b) => b[1] - a[1]).slice(0, 15);
+                const types = sortedFleet.map(e => e[0]);
+                const counts = sortedFleet.map(e => e[1]);
+                const metricLabel = m === 'passenger' ? 'Passengers Total' :
+                                   (m === 'baggage' ? 'Baggage (Kg)' :
+                                   (m === 'cargo' ? 'Cargo (Kg)' :
+                                   (m === 'pos' ? 'POS (Kg)' : 'Aircraft Movements')));
+                this.chartInstances.dau6Fleet = new Chart(ctxFleet, {
+                    type: 'bar',
+                    data: {
+                        labels: types,
+                        datasets: [{ label: metricLabel, data: counts, backgroundColor: '#0284c7' }]
+                    },
+                    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
+                });
             }
-            if (this.chartInstances.dau10b) {
-                this.chartInstances.dau10b.data.labels = this.activeHourlyDistribution.map(h => h.hour.split(' - ')[0] || h.hour);
-                this.chartInstances.dau10b.data.datasets[0].data = this.activeHourlyDistribution.map(h => h.aircraft_arrival);
-                this.chartInstances.dau10b.data.datasets[1].data = this.activeHourlyDistribution.map(h => h.aircraft_departure);
-                this.chartInstances.dau10b.update();
+
+            let nb = 0, wb = 0, reg = 0;
+            let wtcM = 0, wtcH = 0, wtcL = 0;
+            this.filteredRecords.forEach(r => {
+                const val = Number(r.aircraft_total || 1);
+                const cat = String(r.category || '').toUpperCase();
+                if (cat.includes('WIDE')) wb += val;
+                else if (cat.includes('REGIONAL')) reg += val;
+                else nb += val;
+
+                const wtc = String(r.wtc || '').toUpperCase();
+                if (wtc.includes('H') || wtc.includes('HEAVY')) wtcH += val;
+                else if (wtc.includes('L') || wtc.includes('LIGHT')) wtcL += val;
+                else wtcM += val;
+            });
+
+            const ctxCat = document.getElementById('dau6CategoryDonut')?.getContext('2d');
+            if (ctxCat) {
+                if (this.chartInstances.dau6Cat) this.chartInstances.dau6Cat.destroy();
+                this.chartInstances.dau6Cat = new Chart(ctxCat, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Narrow Body', 'Wide Body', 'Regional'],
+                        datasets: [{ data: [nb || 1, wb || 0, reg || 0], backgroundColor: ['#0284c7', '#4f46e5', '#10b981'] }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
             }
-            if (this.chartInstances.dau11Flow) {
-                let domArrDir = 0, domDepDir = 0, intArrDir = 0, intDepDir = 0;
-                let domTransit = 0, domTransfer = 0;
-                this.filteredRecords.forEach(r => {
+
+            const ctxWtc = document.getElementById('dau6WtcDonut')?.getContext('2d');
+            if (ctxWtc) {
+                if (this.chartInstances.dau6Wtc) this.chartInstances.dau6Wtc.destroy();
+                this.chartInstances.dau6Wtc = new Chart(ctxWtc, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Medium (M)', 'Heavy (H)', 'Light (L)'],
+                        datasets: [{ data: [wtcM || 1, wtcH || 0, wtcL || 0], backgroundColor: ['#f59e0b', '#7c3aed', '#64748b'] }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+        },
+
+        renderDau10bCharts() {
+            if (!window.Chart) return;
+            const ctxBlk = document.getElementById('dau10bBlockChart')?.getContext('2d');
+            if (ctxBlk) {
+                if (this.chartInstances.dau10b) this.chartInstances.dau10b.destroy();
+                this.chartInstances.dau10b = new Chart(ctxBlk, {
+                    type: 'bar',
+                    data: {
+                        labels: this.activeHourlyDistribution.map(h => (h.hour ? String(h.hour).split(' - ')[0] : '—')),
+                        datasets: [
+                            { label: 'Block On (DTG)', data: this.activeHourlyDistribution.map(h => h.aircraft_arrival), backgroundColor: '#7c3aed' },
+                            { label: 'Block Off (BRK)', data: this.activeHourlyDistribution.map(h => h.aircraft_departure), backgroundColor: '#f59e0b' }
+                        ]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+        },
+
+        renderDau11Charts() {
+            if (!window.Chart) return;
+            let domArrDir = 0, domDepDir = 0, intArrDir = 0, intDepDir = 0;
+            let domTransit = 0, domTransfer = 0;
+            const isPax = this.selectedMetric === 'passenger';
+            this.filteredRecords.forEach(r => {
+                if (isPax) {
                     domArrDir += Number(r.passenger_dom_arrival || 0);
                     domDepDir += Number(r.passenger_dom_departure || 0);
                     intArrDir += Number(r.passenger_int_arrival || 0);
                     intDepDir += Number(r.passenger_int_departure || 0);
-                    domTransit += Number(r.passenger_transit || 0);
-                    domTransfer += Number(r.passenger_transfer || 0);
-                });
-                if (domArrDir === 0 && domDepDir === 0) {
-                    this.filteredRecords.forEach(r => {
+                } else {
+                    domArrDir += Number(r.aircraft_dom_arrival || 0);
+                    domDepDir += Number(r.aircraft_dom_departure || 0);
+                    intArrDir += Number(r.aircraft_int_arrival || 0);
+                    intDepDir += Number(r.aircraft_int_departure || 0);
+                }
+                domTransit += Number(r.passenger_transit || 0);
+                domTransfer += Number(r.passenger_transfer || 0);
+            });
+            if (domArrDir === 0 && domDepDir === 0 && intArrDir === 0 && intDepDir === 0) {
+                this.filteredRecords.forEach(r => {
+                    if (isPax) {
                         domArrDir += Number(r.passenger_arrival || 0);
                         domDepDir += Number(r.passenger_departure || 0);
-                    });
-                }
-                this.chartInstances.dau11Flow.data.datasets[0].data = [domArrDir, domDepDir, intArrDir, intDepDir];
-                this.chartInstances.dau11Flow.data.datasets[1].data = [domTransit, domTransfer, 0, 0];
-                this.chartInstances.dau11Flow.update();
-            }
-            if (this.chartInstances.dau11Donut) {
-                let domTot = 0, intTot = 0;
-                this.filteredRecords.forEach(r => {
-                    const dom = Number(r.passenger_dom_arrival || 0) + Number(r.passenger_dom_departure || 0) + Number(r.passenger_transit || 0) + Number(r.passenger_transfer || 0);
-                    const int = Number(r.passenger_int_arrival || 0) + Number(r.passenger_int_departure || 0);
-                    domTot += dom;
-                    intTot += int;
+                    } else {
+                        domArrDir += Number(r.aircraft_arrival || 0);
+                        domDepDir += Number(r.aircraft_departure || 0);
+                    }
                 });
-                if (domTot === 0 && intTot === 0) {
-                    this.filteredRecords.forEach(r => {
-                        const isDom = String(r.category || '').toUpperCase().includes('DOM');
-                        const px = Number(r.passenger_total || 0);
-                        if (isDom) domTot += px; else intTot += px;
-                    });
-                }
-                this.chartInstances.dau11Donut.data.datasets[0].data = [domTot, intTot];
-                this.chartInstances.dau11Donut.update();
             }
-            if (this.chartInstances.dau12) {
+
+            const ctxFl = document.getElementById('dau11FlowChart')?.getContext('2d');
+            if (ctxFl) {
+                if (this.chartInstances.dau11Flow) this.chartInstances.dau11Flow.destroy();
+                this.chartInstances.dau11Flow = new Chart(ctxFl, {
+                    type: 'bar',
+                    data: {
+                        labels: ['DOMESTIC ARR', 'DOMESTIC DEP', 'INT ARR', 'INT DEP'],
+                        datasets: [
+                            { label: isPax ? 'Direct Passengers' : 'Direct Aircraft', data: [domArrDir, domDepDir, intArrDir, intDepDir], backgroundColor: '#10b981' },
+                            { label: 'Transit', data: [domTransit, domTransfer, 0, 0], backgroundColor: '#f59e0b' }
+                        ]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } }
+                });
+            }
+            const ctxD11 = document.getElementById('dau11Donut')?.getContext('2d');
+            if (ctxD11) {
+                if (this.chartInstances.dau11Donut) this.chartInstances.dau11Donut.destroy();
+                const domTot = domArrDir + domDepDir + (isPax ? (domTransit + domTransfer) : 0);
+                const intTot = intArrDir + intDepDir;
+                this.chartInstances.dau11Donut = new Chart(ctxD11, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Domestic', 'International'],
+                        datasets: [{ data: [domTot || 1, intTot || 0], backgroundColor: ['#2563eb', '#4f46e5'] }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+        },
+
+        renderDau12Charts() {
+            if (!window.Chart) return;
+            const ctx12 = document.getElementById('dau12GroupedChart')?.getContext('2d');
+            if (ctx12) {
+                if (this.chartInstances.dau12) this.chartInstances.dau12.destroy();
                 let domArr = 0, intArr = 0, domDep = 0, intDep = 0;
                 this.filteredRecords.forEach(r => {
                     if (this.selectedMetric === 'passenger') {
@@ -4085,10 +4024,37 @@ function dauEnhancedDashboard() {
                         intDep += Number(r.aircraft_dep_int || 0);
                     }
                 });
-                this.chartInstances.dau12.data.datasets[0].data = [domArr, domDep];
-                this.chartInstances.dau12.data.datasets[1].data = [intArr, intDep];
-                this.chartInstances.dau12.update();
+                this.chartInstances.dau12 = new Chart(ctx12, {
+                    type: 'bar',
+                    data: {
+                        labels: ['ARRIVAL', 'DEPARTURE'],
+                        datasets: [
+                            { label: 'Domestic', data: [domArr, domDep], backgroundColor: '#2563eb' },
+                            { label: 'International', data: [intArr, intDep], backgroundColor: '#4f46e5' }
+                        ]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
             }
+        },
+
+        initCharts() {
+            this.updateCharts();
+        },
+
+        updateCharts() {
+            if (!window.Chart) return;
+            if (this.reportType === 'DAU1') this.renderDau1Charts();
+            else if (this.reportType === 'DAU2') this.renderDau2Charts();
+            else if (this.reportType === 'DAU3') this.renderDau3Charts();
+            else if (this.reportType === 'DAU5') this.renderDau5Charts();
+            else if (this.reportType === 'DAU5A') this.renderDau5aCharts();
+            else if (this.reportType === 'DAU5B') this.renderDau5bCharts();
+            else if (this.reportType === 'DAU5C') this.renderDau5cCharts();
+            else if (this.reportType === 'DAU6') this.renderDau6Charts();
+            else if (this.reportType === 'DAU10B') this.renderDau10bCharts();
+            else if (this.reportType === 'DAU11') this.renderDau11Charts();
+            else if (this.reportType === 'DAU12') this.renderDau12Charts();
         }
     };
 }

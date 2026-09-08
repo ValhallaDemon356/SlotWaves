@@ -852,13 +852,37 @@ class DauDashboardController extends Controller
             // 4. Direction filter
             if ($directionFilter !== 'ALL') {
                 if ($directionFilter === 'ARRIVAL') {
-                    if (($r['aircraft_arrival'] ?? 0) === 0 && ($r['passenger_arrival'] ?? 0) === 0) {
+                    $hasArr = ((int)($r['aircraft_arrival'] ?? 0) > 0)
+                           || ((int)($r['passenger_arrival'] ?? 0) > 0)
+                           || ((int)($r['aircraft_arr_domestic'] ?? 0) > 0)
+                           || ((int)($r['aircraft_arr_int'] ?? 0) > 0)
+                           || ((int)($r['passenger_arr_domestic'] ?? 0) > 0)
+                           || ((int)($r['passenger_arr_int'] ?? 0) > 0)
+                           || ((int)($r['aircraft_int_arrival'] ?? 0) > 0)
+                           || ((int)($r['aircraft_dom_arrival'] ?? 0) > 0);
+                    if (!$hasArr) {
                         continue;
                     }
                 } elseif ($directionFilter === 'DEPARTURE') {
-                    if (($r['aircraft_departure'] ?? 0) === 0 && ($r['passenger_departure'] ?? 0) === 0) {
+                    $hasDep = ((int)($r['aircraft_departure'] ?? 0) > 0)
+                           || ((int)($r['passenger_departure'] ?? 0) > 0)
+                           || ((int)($r['aircraft_dep_domestic'] ?? 0) > 0)
+                           || ((int)($r['aircraft_dep_int'] ?? 0) > 0)
+                           || ((int)($r['passenger_dep_domestic'] ?? 0) > 0)
+                           || ((int)($r['passenger_dep_int'] ?? 0) > 0)
+                           || ((int)($r['aircraft_int_departure'] ?? 0) > 0)
+                           || ((int)($r['aircraft_dom_departure'] ?? 0) > 0);
+                    if (!$hasDep) {
                         continue;
                     }
+                }
+            }
+
+            // 4b. DAU1 Passenger mode: exclude pure cargo / 0 passenger flights if Metric is passenger
+            if ($reportType === 'DAU1' && $metric === 'passenger') {
+                $totPx = (int)($r['passenger_total'] ?? ($r['total_passengers'] ?? 0));
+                if ($totPx <= 0) {
+                    continue;
                 }
             }
 
@@ -1017,24 +1041,59 @@ class DauDashboardController extends Controller
             $pDepChild = (int)($r['dep_child'] ?? ($r['details']['dep_child'] ?? 0));
             $pDepInfant = (int)($r['dep_infant'] ?? ($r['details']['dep_infant'] ?? 0));
 
-            $summary['total_movements']    += $acTot;
-            $summary['aircraft_total']     += $acTot;
-            $summary['aircraft_arrival']   += $acArr;
-            $summary['aircraft_departure'] += $acDep;
-            $summary['passenger_arrival']  += $pxArr;
-            $summary['passenger_departure']+= $pxDep;
-            $summary['passenger_transit']  += $pxTrn;
-            $summary['passenger_transfer'] += $pxTrf;
-            $summary['passenger_total']    += $pxTot;
+            // Effective values respecting Direction and Passenger Type
+            $effAcArr = ($directionFilter === 'DEPARTURE') ? 0 : $acArr;
+            $effAcDep = ($directionFilter === 'ARRIVAL') ? 0 : $acDep;
+            $effAcTot = ($directionFilter === 'ARRIVAL') ? $acArr : (($directionFilter === 'DEPARTURE') ? $acDep : $acTot);
+
+            $effPxArr = ($directionFilter === 'DEPARTURE') ? 0 : $pxArr;
+            $effPxDep = ($directionFilter === 'ARRIVAL') ? 0 : $pxDep;
+            $effPxTrn = ($directionFilter === 'ARRIVAL' || $directionFilter === 'DEPARTURE') ? 0 : $pxTrn;
+            $effPxTrf = ($directionFilter === 'ARRIVAL' || $directionFilter === 'DEPARTURE') ? 0 : $pxTrf;
+
+            if ($passengerTypeFilter === 'ADULT') {
+                $effArrAdult = ($directionFilter === 'DEPARTURE') ? 0 : $pArrAdult;
+                $effDepAdult = ($directionFilter === 'ARRIVAL') ? 0 : $pDepAdult;
+                $effPxTot = ($directionFilter === 'ARRIVAL') ? $effArrAdult : (($directionFilter === 'DEPARTURE') ? $effDepAdult : $pAdult);
+                $effPxArr = $effArrAdult;
+                $effPxDep = $effDepAdult;
+                $pChild = 0; $pInfant = 0; $pArrChild = 0; $pArrInfant = 0; $pDepChild = 0; $pDepInfant = 0;
+            } elseif ($passengerTypeFilter === 'CHILD') {
+                $effArrChild = ($directionFilter === 'DEPARTURE') ? 0 : $pArrChild;
+                $effDepChild = ($directionFilter === 'ARRIVAL') ? 0 : $pDepChild;
+                $effPxTot = ($directionFilter === 'ARRIVAL') ? $effArrChild : (($directionFilter === 'DEPARTURE') ? $effDepChild : $pChild);
+                $effPxArr = $effArrChild;
+                $effPxDep = $effDepChild;
+                $pAdult = 0; $pInfant = 0; $pArrAdult = 0; $pArrInfant = 0; $pDepAdult = 0; $pDepInfant = 0;
+            } elseif ($passengerTypeFilter === 'INFANT') {
+                $effArrInfant = ($directionFilter === 'DEPARTURE') ? 0 : $pArrInfant;
+                $effDepInfant = ($directionFilter === 'ARRIVAL') ? 0 : $pDepInfant;
+                $effPxTot = ($directionFilter === 'ARRIVAL') ? $effArrInfant : (($directionFilter === 'DEPARTURE') ? $effDepInfant : $pInfant);
+                $effPxArr = $effArrInfant;
+                $effPxDep = $effDepInfant;
+                $pAdult = 0; $pChild = 0; $pArrAdult = 0; $pArrChild = 0; $pDepAdult = 0; $pDepChild = 0;
+            } else {
+                $effPxTot = ($directionFilter === 'ARRIVAL') ? $pxArr : (($directionFilter === 'DEPARTURE') ? $pxDep : $pxTot);
+            }
+
+            $summary['total_movements']    += $effAcTot;
+            $summary['aircraft_total']     += $effAcTot;
+            $summary['aircraft_arrival']   += $effAcArr;
+            $summary['aircraft_departure'] += $effAcDep;
+            $summary['passenger_arrival']  += $effPxArr;
+            $summary['passenger_departure']+= $effPxDep;
+            $summary['passenger_transit']  += $effPxTrn;
+            $summary['passenger_transfer'] += $effPxTrf;
+            $summary['passenger_total']    += $effPxTot;
             $summary['passenger_adult']    += $pAdult;
             $summary['passenger_child']    += $pChild;
             $summary['passenger_infant']   += $pInfant;
-            $summary['arr_adult']          += $pArrAdult;
-            $summary['arr_child']          += $pArrChild;
-            $summary['arr_infant']         += $pArrInfant;
-            $summary['dep_adult']          += $pDepAdult;
-            $summary['dep_child']          += $pDepChild;
-            $summary['dep_infant']         += $pDepInfant;
+            $summary['arr_adult']          += ($directionFilter === 'DEPARTURE' ? 0 : $pArrAdult);
+            $summary['arr_child']          += ($directionFilter === 'DEPARTURE' ? 0 : $pArrChild);
+            $summary['arr_infant']         += ($directionFilter === 'DEPARTURE' ? 0 : $pArrInfant);
+            $summary['dep_adult']          += ($directionFilter === 'ARRIVAL' ? 0 : $pDepAdult);
+            $summary['dep_child']          += ($directionFilter === 'ARRIVAL' ? 0 : $pDepChild);
+            $summary['dep_infant']         += ($directionFilter === 'ARRIVAL' ? 0 : $pDepInfant);
             $summary['crew_total']         += $crew;
             $summary['extra_crew_total']   += (int)($r['extra_crew'] ?? 0);
             $summary['baggage_total']      += $bag;
@@ -1062,14 +1121,14 @@ class DauDashboardController extends Controller
                         'pos'                 => 0,
                     ];
                 }
-                $hourlyBuckets[$h]['aircraft_arrival']    += $acArr;
-                $hourlyBuckets[$h]['aircraft_departure']  += $acDep;
-                $hourlyBuckets[$h]['aircraft_total']      += $acTot;
-                $hourlyBuckets[$h]['passenger_arrival']   += $pxArr;
-                $hourlyBuckets[$h]['passenger_departure'] += $pxDep;
-                $hourlyBuckets[$h]['passenger_transit']   += $pxTrn;
-                $hourlyBuckets[$h]['passenger_transfer']  += $pxTrf;
-                $hourlyBuckets[$h]['passenger_total']     += $pxTot;
+                $hourlyBuckets[$h]['aircraft_arrival']    += $effAcArr;
+                $hourlyBuckets[$h]['aircraft_departure']  += $effAcDep;
+                $hourlyBuckets[$h]['aircraft_total']      += $effAcTot;
+                $hourlyBuckets[$h]['passenger_arrival']   += $effPxArr;
+                $hourlyBuckets[$h]['passenger_departure'] += $effPxDep;
+                $hourlyBuckets[$h]['passenger_transit']   += $effPxTrn;
+                $hourlyBuckets[$h]['passenger_transfer']  += $effPxTrf;
+                $hourlyBuckets[$h]['passenger_total']     += $effPxTot;
                 $hourlyBuckets[$h]['crew']                += (int)($r['crew'] ?? 0);
                 $hourlyBuckets[$h]['extra_crew']          += (int)($r['extra_crew'] ?? (($r['arr_extra_crew'] ?? 0) + ($r['dep_extra_crew'] ?? 0)));
                 $hourlyBuckets[$h]['crew_total']          += $crew;
@@ -1095,12 +1154,12 @@ class DauDashboardController extends Controller
                         'pos'                 => 0,
                     ];
                 }
-                $terminalBuckets[$t]['aircraft_arrival']    += $acArr;
-                $terminalBuckets[$t]['aircraft_departure']  += $acDep;
-                $terminalBuckets[$t]['aircraft_total']      += $acTot;
-                $terminalBuckets[$t]['passenger_arrival']   += $pxArr;
-                $terminalBuckets[$t]['passenger_departure'] += $pxDep;
-                $terminalBuckets[$t]['passenger_total']     += $pxTot;
+                $terminalBuckets[$t]['aircraft_arrival']    += $effAcArr;
+                $terminalBuckets[$t]['aircraft_departure']  += $effAcDep;
+                $terminalBuckets[$t]['aircraft_total']      += $effAcTot;
+                $terminalBuckets[$t]['passenger_arrival']   += $effPxArr;
+                $terminalBuckets[$t]['passenger_departure'] += $effPxDep;
+                $terminalBuckets[$t]['passenger_total']     += $effPxTot;
                 $terminalBuckets[$t]['crew_total']          += $crew;
                 $terminalBuckets[$t]['baggage']             += $bag;
                 $terminalBuckets[$t]['cargo']               += $cgo;
@@ -1128,12 +1187,12 @@ class DauDashboardController extends Controller
                         'pos'                 => 0,
                     ];
                 }
-                $airlineBuckets[$al]['aircraft_arrival']    += $acArr;
-                $airlineBuckets[$al]['aircraft_departure']  += $acDep;
-                $airlineBuckets[$al]['aircraft_total']      += $acTot;
-                $airlineBuckets[$al]['passenger_arrival']   += $pxArr;
-                $airlineBuckets[$al]['passenger_departure'] += $pxDep;
-                $airlineBuckets[$al]['passenger_total']     += $pxTot;
+                $airlineBuckets[$al]['aircraft_arrival']    += $effAcArr;
+                $airlineBuckets[$al]['aircraft_departure']  += $effAcDep;
+                $airlineBuckets[$al]['aircraft_total']      += $effAcTot;
+                $airlineBuckets[$al]['passenger_arrival']   += $effPxArr;
+                $airlineBuckets[$al]['passenger_departure'] += $effPxDep;
+                $airlineBuckets[$al]['passenger_total']     += $effPxTot;
                 $airlineBuckets[$al]['crew_total']          += $crew;
                 $airlineBuckets[$al]['operating_crew']      += (int)($r['crew'] ?? 0);
                 $airlineBuckets[$al]['arr_extra_crew']      += (int)($r['arr_extra_crew'] ?? 0);
@@ -1169,21 +1228,21 @@ class DauDashboardController extends Controller
                         'dep_infant'          => 0,
                     ];
                 }
-                $airportBuckets[$ap]['aircraft_arrival']    += $acArr;
-                $airportBuckets[$ap]['aircraft_departure']  += $acDep;
-                $airportBuckets[$ap]['aircraft_total']      += $acTot;
-                $airportBuckets[$ap]['passenger_arrival']   += $pxArr;
-                $airportBuckets[$ap]['passenger_departure'] += $pxDep;
-                $airportBuckets[$ap]['passenger_total']     += $pxTot;
+                $airportBuckets[$ap]['aircraft_arrival']    += $effAcArr;
+                $airportBuckets[$ap]['aircraft_departure']  += $effAcDep;
+                $airportBuckets[$ap]['aircraft_total']      += $effAcTot;
+                $airportBuckets[$ap]['passenger_arrival']   += $effPxArr;
+                $airportBuckets[$ap]['passenger_departure'] += $effPxDep;
+                $airportBuckets[$ap]['passenger_total']     += $effPxTot;
                 $airportBuckets[$ap]['adult']               += $pAdult;
                 $airportBuckets[$ap]['child']               += $pChild;
                 $airportBuckets[$ap]['infant']              += $pInfant;
-                $airportBuckets[$ap]['arr_adult']           += $pArrAdult;
-                $airportBuckets[$ap]['arr_child']           += $pArrChild;
-                $airportBuckets[$ap]['arr_infant']          += $pArrInfant;
-                $airportBuckets[$ap]['dep_adult']           += $pDepAdult;
-                $airportBuckets[$ap]['dep_child']           += $pDepChild;
-                $airportBuckets[$ap]['dep_infant']          += $pDepInfant;
+                $airportBuckets[$ap]['arr_adult']           += ($directionFilter === 'DEPARTURE' ? 0 : $pArrAdult);
+                $airportBuckets[$ap]['arr_child']           += ($directionFilter === 'DEPARTURE' ? 0 : $pArrChild);
+                $airportBuckets[$ap]['arr_infant']          += ($directionFilter === 'DEPARTURE' ? 0 : $pArrInfant);
+                $airportBuckets[$ap]['dep_adult']           += ($directionFilter === 'ARRIVAL' ? 0 : $pDepAdult);
+                $airportBuckets[$ap]['dep_child']           += ($directionFilter === 'ARRIVAL' ? 0 : $pDepChild);
+                $airportBuckets[$ap]['dep_infant']          += ($directionFilter === 'ARRIVAL' ? 0 : $pDepInfant);
             }
         }
 
@@ -1271,8 +1330,18 @@ class DauDashboardController extends Controller
         foreach ($filtered as $r) {
             $isDom = stripos($r['category'] ?? '', 'DOM') !== false;
             $k = $isDom ? 'domestic' : 'international';
-            $dau2Distribution[$k]['aircraft']  += (int)($r['aircraft_total'] ?? 0);
-            $dau2Distribution[$k]['passenger'] += (int)($r['passenger_total'] ?? 0);
+            $rAcArr = (int)($r['aircraft_arrival'] ?? ($r['aircraft_arr_domestic'] ?? 0) + ($r['aircraft_arr_int'] ?? 0));
+            $rAcDep = (int)($r['aircraft_departure'] ?? ($r['aircraft_dep_domestic'] ?? 0) + ($r['aircraft_dep_int'] ?? 0));
+            $rAcTot = (int)($r['aircraft_total'] ?? ($r['total_flights'] ?? ($rAcArr + $rAcDep)));
+            $rPxArr = (int)($r['passenger_arrival'] ?? ($r['passenger_arr_domestic'] ?? 0) + ($r['passenger_arr_int'] ?? 0));
+            $rPxDep = (int)($r['passenger_departure'] ?? ($r['passenger_dep_domestic'] ?? 0) + ($r['passenger_dep_int'] ?? 0));
+            $rPxTot = (int)($r['passenger_total'] ?? ($r['total_passengers'] ?? ($rPxArr + $rPxDep)));
+
+            $effAc = ($directionFilter === 'ARRIVAL') ? $rAcArr : (($directionFilter === 'DEPARTURE') ? $rAcDep : $rAcTot);
+            $effPx = ($directionFilter === 'ARRIVAL') ? $rPxArr : (($directionFilter === 'DEPARTURE') ? $rPxDep : $rPxTot);
+
+            $dau2Distribution[$k]['aircraft']  += $effAc;
+            $dau2Distribution[$k]['passenger'] += $effPx;
             $dau2Distribution[$k]['baggage']   += (int)($r['baggage'] ?? 0);
             $dau2Distribution[$k]['cargo']     += (int)($r['cargo'] ?? 0);
             $dau2Distribution[$k]['pos']       += (int)($r['pos'] ?? 0);
@@ -1339,20 +1408,30 @@ class DauDashboardController extends Controller
             'internasional' => ['aircraft' => 0, 'passenger' => 0],
         ];
         foreach ($filtered as $r) {
+            $rAcArr = (int)($r['aircraft_arrival'] ?? ($r['aircraft_arr_domestic'] ?? 0) + ($r['aircraft_arr_int'] ?? 0));
+            $rAcDep = (int)($r['aircraft_departure'] ?? ($r['aircraft_dep_domestic'] ?? 0) + ($r['aircraft_dep_int'] ?? 0));
+            $rAcTot = (int)($r['aircraft_total'] ?? ($r['total_flights'] ?? ($rAcArr + $rAcDep)));
+            $rPxArr = (int)($r['passenger_arrival'] ?? ($r['passenger_arr_domestic'] ?? 0) + ($r['passenger_arr_int'] ?? 0));
+            $rPxDep = (int)($r['passenger_departure'] ?? ($r['passenger_dep_domestic'] ?? 0) + ($r['passenger_dep_int'] ?? 0));
+            $rPxTot = (int)($r['passenger_total'] ?? ($r['total_passengers'] ?? ($rPxArr + $rPxDep)));
+
+            $effAc = ($directionFilter === 'ARRIVAL') ? $rAcArr : (($directionFilter === 'DEPARTURE') ? $rAcDep : $rAcTot);
+            $effPx = ($directionFilter === 'ARRIVAL') ? $rPxArr : (($directionFilter === 'DEPARTURE') ? $rPxDep : $rPxTot);
+
             $sec = strtoupper($r['section'] ?? '');
             if (stripos($sec, 'BUKAN') !== false) {
-                $dau3Status['bukan_niaga']['aircraft']  += (int)($r['aircraft_total'] ?? 0);
-                $dau3Status['bukan_niaga']['passenger'] += (int)($r['passenger_total'] ?? 0);
+                $dau3Status['bukan_niaga']['aircraft']  += $effAc;
+                $dau3Status['bukan_niaga']['passenger'] += $effPx;
             } else {
-                $dau3Status['niaga']['aircraft']  += (int)($r['aircraft_total'] ?? 0);
-                $dau3Status['niaga']['passenger'] += (int)($r['passenger_total'] ?? 0);
+                $dau3Status['niaga']['aircraft']  += $effAc;
+                $dau3Status['niaga']['passenger'] += $effPx;
             }
             if (stripos($r['category'] ?? '', 'DOM') !== false) {
-                $dau3Status['domestik']['aircraft']  += (int)($r['aircraft_total'] ?? 0);
-                $dau3Status['domestik']['passenger'] += (int)($r['passenger_total'] ?? 0);
+                $dau3Status['domestik']['aircraft']  += $effAc;
+                $dau3Status['domestik']['passenger'] += $effPx;
             } else {
-                $dau3Status['internasional']['aircraft']  += (int)($r['aircraft_total'] ?? 0);
-                $dau3Status['internasional']['passenger'] += (int)($r['passenger_total'] ?? 0);
+                $dau3Status['internasional']['aircraft']  += $effAc;
+                $dau3Status['internasional']['passenger'] += $effPx;
             }
         }
 
