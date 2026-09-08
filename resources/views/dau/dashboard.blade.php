@@ -3692,20 +3692,6 @@ function dauEnhancedDashboard() {
             }
         },
 
-        // Chart.js Manager
-        initCharts() {
-            if (!window.Chart) return;
-
-            // DAU-1: Combo Chart & Payload Donut
-            if (this.reportType === 'DAU1') {
-                this.renderDau1Charts();
-            }
-
-            // DAU-2: Stacked & Donut
-            if (this.reportType === 'DAU2') {
-                this.renderDau2Charts();
-            }
-
         renderDau3Charts() {
             if (!window.Chart) return;
             const ctxSt = document.getElementById('dau3StatusDonut')?.getContext('2d');
