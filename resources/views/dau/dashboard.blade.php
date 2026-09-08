@@ -143,7 +143,7 @@
             </div>
 
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 text-xs font-sans">
-                @if (in_array($reportType, ['DAU1', 'DAU2', 'DAU4', 'DAU4A', 'DAU4B', 'DAU5', 'DAU5C', 'DAU6', 'DAU10', 'DAU10A', 'DAU10B', 'DAU11', 'DAU12']))
+                @if (in_array($reportType, ['DAU1', 'DAU2', 'DAU4', 'DAU4A', 'DAU4B', 'DAU5', 'DAU5C', 'DAU6', 'DAU10A', 'DAU10B', 'DAU11', 'DAU12']))
                     <div>
                         <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Metric</label>
                         @if ($reportType === 'DAU1')
@@ -204,7 +204,7 @@
                     </div>
                 @endif
 
-                @if (in_array($reportType, ['DAU1', 'DAU3', 'DAU4', 'DAU5', 'DAU5A', 'DAU6', 'DAU11', 'DAU12']))
+                @if (in_array($reportType, ['DAU1', 'DAU3', 'DAU4', 'DAU5', 'DAU5A', 'DAU6', 'DAU10', 'DAU10B', 'DAU11', 'DAU12']))
                     <div>
                         <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Direction</label>
                         <select x-model="filterDirection" @change="applyFilters()"
@@ -356,17 +356,6 @@
                 @endif
 
                 @if ($reportType === 'DAU6')
-                    <div>
-                        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Kategori Body</label>
-                        <select x-model="filterCategory" @change="applyFilters()"
-                                :class="filterCategory !== 'ALL' ? 'ring-2 ring-aviation-500 border-aviation-500 bg-aviation-50/50 dark:bg-aviation-950/30' : 'border-slate-200 dark:border-slate-700'"
-                                class="w-full px-2.5 py-1.5 rounded-lg border bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 font-bold focus:ring-1 focus:ring-aviation-500 cursor-pointer">
-                            <option value="ALL">ALL CATEGORIES</option>
-                            <option value="Narrow Body">Narrow Body</option>
-                            <option value="Wide Body">Wide Body</option>
-                            <option value="Regional">Regional</option>
-                        </select>
-                    </div>
                     <div>
                         <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">WTC</label>
                         <select x-model="filterWtc" @change="applyFilters()"
@@ -1016,15 +1005,17 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
                     <template x-for="(op, idx) in dau4aOperators.slice(0, 12)" :key="'op-' + idx">
-                        <div @click="searchQuery = op.name; applyFilters();"
-                             class="p-4 rounded-xl bg-slate-50 dark:bg-navy-900 hover:bg-slate-100 dark:hover:bg-navy-800/80 border border-slate-200 dark:border-slate-800 transition cursor-pointer space-y-2">
+                        <div @click="filterAirline = op.name; applyFilters();"
+                             class="p-4 rounded-xl bg-slate-50 dark:bg-navy-900 hover:bg-slate-100 dark:hover:bg-navy-800/80 border border-slate-200 dark:border-slate-800 transition cursor-pointer space-y-2"
+                             :class="filterAirline === op.name ? 'ring-2 ring-aviation-500 bg-aviation-50/30 dark:bg-aviation-950/30' : ''">
                             <div class="flex items-center justify-between">
                                 <span class="font-bold text-slate-900 dark:text-white truncate text-xs" x-text="op.name"></span>
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-aviation-50 text-aviation-700 dark:bg-aviation-950 dark:text-aviation-300" x-text="formatNumber(op.total) + ' A/C'"></span>
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-aviation-50 text-aviation-700 dark:bg-aviation-950 dark:text-aviation-300"
+                                      x-text="selectedMetric === 'passenger' ? (formatNumber(op.pax) + ' Pax') : (selectedMetric === 'baggage' ? (formatNumber(op.baggage) + ' Kg') : (selectedMetric === 'cargo' ? (formatNumber(op.cargo) + ' Kg') : (selectedMetric === 'pos' ? (formatNumber(op.pos) + ' Kg') : (formatNumber(op.total) + ' A/C'))))"></span>
                             </div>
                             <div class="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
                                 <div class="bg-aviation-600 h-full rounded-full"
-                                     :style="'width: ' + calculateBarHeight(op.total, dau4aMax) + '%'"></div>
+                                     :style="'width: ' + calculateBarHeight((selectedMetric === 'passenger' ? op.pax : (selectedMetric === 'baggage' ? op.baggage : (selectedMetric === 'cargo' ? op.cargo : (selectedMetric === 'pos' ? op.pos : op.total)))), dau4aMax) + '%'"></div>
                             </div>
                             <div class="flex items-center justify-between text-[10px] text-slate-400 font-mono">
                                 <span x-text="op.routesCount + ' Routes Served'"></span>
@@ -2604,11 +2595,21 @@ function dauEnhancedDashboard() {
 
             this.filteredRecords = this.allRecords.filter(r => {
                 // Flight Type
+                const intTerminals = ['2E', '2F', '3U', 'T2E', 'T2F', 'T3U', '3'];
+                const isIntTerminal = (t) => intTerminals.some(x => String(t || '').toUpperCase().replace(/\s/g,'') === x);
                 if (ft === 'DOM') {
                     if (r.category && String(r.category).toUpperCase().includes('INT')) return false;
+                    // DAU10/10B: derive scope from terminal when category field is absent
+                    if (!r.category && ['DAU10', 'DAU10B'].includes(this.reportType)) {
+                        if (isIntTerminal(r.terminal)) return false;
+                    }
                 } else if (ft === 'INT') {
                     if (r.category && String(r.category).toUpperCase().includes('DOM')) return false;
-                    if (['DAU10', 'DAU10A', 'DAU10B'].includes(this.reportType)) {
+                    // DAU10/10B: derive scope from terminal when category field is absent
+                    if (!r.category && ['DAU10', 'DAU10B'].includes(this.reportType)) {
+                        if (!isIntTerminal(r.terminal)) return false;
+                    }
+                    if (['DAU10A'].includes(this.reportType)) {
                         const termStr = String(r.terminal || '').toUpperCase();
                         if (termStr && !['2E', '2F', '3U', '3', 'T2E', 'T2F', 'T3U'].includes(termStr)) return false;
                     }
@@ -3124,7 +3125,8 @@ function dauEnhancedDashboard() {
         },
 
         get dau4aMax() {
-            return Math.max(...(this.dau4aOperators.map(o => o.total) || [1]), 1);
+            const k = (this.selectedMetric === 'passenger') ? 'pax' : (this.selectedMetric === 'baggage') ? 'baggage' : (this.selectedMetric === 'cargo') ? 'cargo' : (this.selectedMetric === 'pos') ? 'pos' : 'total';
+            return Math.max(...(this.dau4aOperators.map(o => o[k] || 0) || [1]), 1);
         },
 
         getDau4bValue(city, air) {
@@ -3888,8 +3890,8 @@ function dauEnhancedDashboard() {
                 this.chartInstances.dau6Cat = new Chart(ctxCat, {
                     type: 'doughnut',
                     data: {
-                        labels: ['Narrow Body', 'Wide Body', 'Regional'],
-                        datasets: [{ data: [nb || 1, wb || 0, reg || 0], backgroundColor: ['#0284c7', '#4f46e5', '#10b981'] }]
+                        labels: ['Narrow Body / Regional', 'Wide Body'],
+                        datasets: [{ data: [(nb + reg) || 1, wb || 0], backgroundColor: ['#0284c7', '#4f46e5'] }]
                     },
                     options: { responsive: true, maintainAspectRatio: false }
                 });
@@ -4029,7 +4031,11 @@ function dauEnhancedDashboard() {
         },
 
         updateCharts() {
-            if (!window.Chart) return;
+            if (!window.Chart) {
+                // Chart.js may not be loaded yet — retry after a short delay
+                setTimeout(() => this.updateCharts(), 200);
+                return;
+            }
             if (this.reportType === 'DAU1') this.renderDau1Charts();
             else if (this.reportType === 'DAU2') this.renderDau2Charts();
             else if (this.reportType === 'DAU3') this.renderDau3Charts();
