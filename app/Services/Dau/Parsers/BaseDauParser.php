@@ -153,15 +153,61 @@ abstract class BaseDauParser
             $meta['airport']      = $meta['airport_code'];
         }
 
-        // 2. Date match (TANGGAL 2026-08-01 s/d 2026-08-01)
-        if (preg_match('/TANGGAL\s*([0-9]{4}-[0-9]{2}-[0-9]{2})\s*s\/d\s*([0-9]{4}-[0-9]{2}-[0-9]{2})/i', $fullText, $m)) {
-            $meta['start_date'] = $m[1];
-            $meta['end_date']   = $m[2];
-            $meta['date_range'] = "{$m[1]} s/d {$m[2]}";
-        } elseif (preg_match('/([0-9]{4}-[0-9]{2}-[0-9]{2})/i', $fullText, $m)) {
-            $meta['start_date'] = $m[1];
-            $meta['end_date']   = $m[1];
-            $meta['date_range'] = $m[1];
+        // 2. Date match (Supports DD-MM-YYYY, DD/MM/YYYY, YYYY-MM-DD, DD Mon YYYY, and ranges)
+        $datePat = '(?:\d{1,2}[-\/]\d{1,2}[-\/]\d{4}|\d{4}[-\/]\d{1,2}[-\/]\d{1,2}|\d{1,2}\s+[A-Za-z]+\s+\d{4})';
+        $foundDate = false;
+
+        // Header text only needs first 4096 bytes
+        $headerSection = substr($fullText, 0, 4096);
+
+        // Range: TANGGAL <start> s/d <end>
+        if (preg_match('/(?:TANGGAL|DATE)[\s:]*(' . $datePat . ')\s*(?:s\/d|s\.d|to|\-|sampai)\s*(' . $datePat . ')/i', $headerSection, $m)) {
+            $s = static::normalizeOperationalDate($m[1]);
+            $e = static::normalizeOperationalDate($m[2]);
+            if ($s && $e) {
+                $meta['start_date'] = $s;
+                $meta['end_date']   = $e;
+                $meta['date_range'] = ($s === $e) ? $s : "{$s} s/d {$e}";
+                $foundDate = true;
+            } elseif ($s) {
+                $meta['start_date'] = $s;
+                $meta['end_date']   = $s;
+                $meta['date_range'] = $s;
+                $foundDate = true;
+            }
+        }
+
+        // Single date with TANGGAL keyword
+        if (!$foundDate && preg_match('/(?:TANGGAL|DATE)[\s:]*(' . $datePat . ')/i', $headerSection, $m)) {
+            $s = static::normalizeOperationalDate($m[1]);
+            if ($s) {
+                $meta['start_date'] = $s;
+                $meta['end_date']   = $s;
+                $meta['date_range'] = $s;
+                $foundDate = true;
+            }
+        }
+
+        // Fallback standalone date range
+        if (!$foundDate && preg_match('/(' . $datePat . ')\s*(?:s\/d|s\.d|to|\-)\s*(' . $datePat . ')/i', $headerSection, $m)) {
+            $s = static::normalizeOperationalDate($m[1]);
+            $e = static::normalizeOperationalDate($m[2]);
+            if ($s && $e) {
+                $meta['start_date'] = $s;
+                $meta['end_date']   = $e;
+                $meta['date_range'] = ($s === $e) ? $s : "{$s} s/d {$e}";
+                $foundDate = true;
+            }
+        }
+
+        // Fallback single date
+        if (!$foundDate && preg_match('/(' . $datePat . ')/i', $headerSection, $m)) {
+            $s = static::normalizeOperationalDate($m[1]);
+            if ($s) {
+                $meta['start_date'] = $s;
+                $meta['end_date']   = $s;
+                $meta['date_range'] = $s;
+            }
         }
 
         // 3. Flight scope
@@ -217,4 +263,114 @@ abstract class BaseDauParser
         if ($val === null) return '';
         return trim(preg_replace('/\s+/', ' ', (string) $val));
     }
+
+    /**
+     * Canonical operational date normalization.
+     * 
+     * Supported formats:
+     *  - DD-MM-YYYY (e.g. 01-08-2026 -> 2026-08-01, 31-08-2026 -> 2026-08-31)
+     *  - DD/MM/YYYY (e.g. 01/08/2026 -> 2026-08-01, 31/01/2027 -> 2027-01-31)
+     *  - YYYY-MM-DD (e.g. 2026-08-01 -> 2026-08-01)
+     *  - DD Mon YYYY (e.g. 01 Aug 2026, 31 Jan 2027, 01 Agustus 2026)
+     * 
+     * Returns normalized YYYY-MM-DD string, or null if invalid/unparseable.
+     * NEVER returns a silent fallback like 2026-01-01.
+     */
+    public static function normalizeOperationalDate(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('Y-m-d');
+        }
+
+        $str = trim((string) $value);
+        if ($str === '') {
+            return null;
+        }
+
+        // Clean surrounding punctuation or brackets if any
+        $str = trim($str, " \t\n\r\0\x0B()[]{}.,;:'\"");
+
+        // 1. ISO format: YYYY-MM-DD or YYYY/MM/DD
+        if (preg_match('/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/', $str, $m)) {
+            $year  = (int) $m[1];
+            $month = (int) $m[2];
+            $day   = (int) $m[3];
+            if (checkdate($month, $day, $year)) {
+                return sprintf('%04d-%02d-%02d', $year, $month, $day);
+            }
+            \Illuminate\Support\Facades\Log::warning("DAU Date Normalizer: Invalid ISO date components", ['raw' => $str]);
+            return null;
+        }
+
+        // 2. Standard Indonesian/UK format: DD-MM-YYYY or DD/MM/YYYY
+        // Critical: 01-08-2026 is day 1, month 8, year 2026 (2026-08-01), NOT 2026-01-08
+        if (preg_match('/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/', $str, $m)) {
+            $day   = (int) $m[1];
+            $month = (int) $m[2];
+            $year  = (int) $m[3];
+            if (checkdate($month, $day, $year)) {
+                return sprintf('%04d-%02d-%02d', $year, $month, $day);
+            }
+            \Illuminate\Support\Facades\Log::warning("DAU Date Normalizer: Invalid DD-MM-YYYY date components", ['raw' => $str]);
+            return null;
+        }
+
+        // 3. Textual month format: DD Mon YYYY (e.g. 01 Aug 2026, 31 Jan 2027, 01 Agustus 2026)
+        if (preg_match('/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/', $str, $m)) {
+            $day    = (int) $m[1];
+            $monStr = strtolower($m[2]);
+            $year   = (int) $m[3];
+
+            $monthMap = [
+                'jan' => 1, 'januari' => 1, 'january' => 1,
+                'feb' => 2, 'februari' => 2, 'february' => 2,
+                'mar' => 3, 'maret' => 3, 'march' => 3,
+                'apr' => 4, 'april' => 4,
+                'mei' => 5, 'may' => 5,
+                'jun' => 6, 'juni' => 6, 'june' => 6,
+                'jul' => 7, 'juli' => 7, 'july' => 7,
+                'agu' => 8, 'aug' => 8, 'agustus' => 8, 'august' => 8,
+                'sep' => 9, 'september' => 9,
+                'okt' => 10, 'oct' => 10, 'oktober' => 10, 'october' => 10,
+                'nov' => 11, 'november' => 11,
+                'des' => 12, 'dec' => 12, 'desember' => 12, 'december' => 12,
+            ];
+
+            if (isset($monthMap[$monStr])) {
+                $month = $monthMap[$monStr];
+                if (checkdate($month, $day, $year)) {
+                    return sprintf('%04d-%02d-%02d', $year, $month, $day);
+                }
+            }
+            \Illuminate\Support\Facades\Log::warning("DAU Date Normalizer: Invalid DD Mon YYYY date components", ['raw' => $str]);
+            return null;
+        }
+
+        // Failed to match any known operational date format
+        if (strlen($str) > 0 && preg_match('/\d/', $str)) {
+            \Illuminate\Support\Facades\Log::warning("DAU Date Normalizer: Failed to parse date string", ['raw' => $str]);
+        }
+        return null;
+    }
+
+    /**
+     * Convert normalized ISO date (YYYY-MM-DD) to display format (DD-MM-YYYY).
+     */
+    public static function formatDisplayDate(?string $isoDate): string
+    {
+        if (empty($isoDate)) {
+            return '';
+        }
+        $clean = trim($isoDate);
+        $parts = explode('-', $clean);
+        if (count($parts) === 3 && strlen($parts[0]) === 4) {
+            return sprintf('%02d-%02d-%04d', (int) $parts[2], (int) $parts[1], (int) $parts[0]);
+        }
+        return $clean;
+    }
 }
+

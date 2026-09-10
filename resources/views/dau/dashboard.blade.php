@@ -1501,10 +1501,10 @@
                             <div class="flex flex-wrap items-center gap-2 text-[10.5px] font-mono">
                                 <div class="px-2 py-1 rounded-md bg-white dark:bg-navy-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1 shadow-2xs">
                                     <span class="text-slate-400 uppercase text-[9px]">DATA PERIOD:</span>
-                                    <strong class="font-bold" x-text="averageWindowStartDate + ' → ' + averageWindowEndDate"></strong>
+                                    <strong class="font-bold" x-text="formatDateDisplay(averageWindowStartDate) + ' - ' + formatDateDisplay(averageWindowEndDate)"></strong>
                                 </div>
                                 <div class="px-2 py-1 rounded-md bg-white dark:bg-navy-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1 shadow-2xs">
-                                    <span class="text-slate-400 uppercase text-[9px]">AVAILABLE DAYS:</span>
+                                    <span class="text-slate-400 uppercase text-[9px]">AVAILABLE DATA DAYS:</span>
                                     <strong class="font-bold text-emerald-600 dark:text-emerald-400" x-text="totalAvailableDays"></strong>
                                 </div>
                             </div>
@@ -2531,9 +2531,8 @@ function dauEnhancedDashboard() {
         customAverageDays: Math.min(30, Number(@json($totalAvailableDays ?? 1))),
         customInputDays: '',
         customDayError: '',
-        averageDataUsedDays: Number(@json($totalAvailableDays ?? 1)),
-        averageWindowStartDate: @json($meta['start_date'] ?? date('Y-m-d')),
-        averageWindowEndDate: @json($meta['end_date'] ?? date('Y-m-d')),
+        averageWindowStartDate: @json(!empty($availableDates) ? $availableDates[0] : ($meta['start_date'] ?? '')),
+        averageWindowEndDate: @json(!empty($availableDates) ? $availableDates[count($availableDates) - 1] : ($meta['end_date'] ?? '')),
 
         // Table Pagination & Sorting
         currentPage: 1,
@@ -3632,8 +3631,8 @@ function dauEnhancedDashboard() {
                 return;
             }
 
-            if (num > this.totalAvailableDays) {
-                this.customDayError = `Maximum available average period is ${this.totalAvailableDays} days.`;
+            if (num > 365) {
+                this.customDayError = 'Custom average period cannot exceed 365 days.';
                 return;
             }
 
@@ -3653,6 +3652,26 @@ function dauEnhancedDashboard() {
             this.$nextTick(() => { this.updateCharts(); });
         },
 
+        formatDateDisplay(isoDate) {
+            if (!isoDate || typeof isoDate !== 'string') return '—';
+            const clean = isoDate.trim();
+            if (!clean) return '—';
+            const parts = clean.split('-');
+            if (parts.length === 3 && parts[0].length === 4) {
+                return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+            if (clean.includes('/')) {
+                const slashParts = clean.split('/');
+                if (slashParts.length === 3) {
+                    if (slashParts[0].length === 4) {
+                        return `${slashParts[2]}-${slashParts[1]}-${slashParts[0]}`;
+                    }
+                    return `${slashParts[0]}-${slashParts[1]}-${slashParts[2]}`;
+                }
+            }
+            return clean;
+        },
+
         updateAverageWindow() {
             const availDates = (this.availableDates && this.availableDates.length > 0)
                 ? this.availableDates
@@ -3663,8 +3682,8 @@ function dauEnhancedDashboard() {
             const selectedDates = availDates.slice(0, nDays);
             this.averageDataUsedDays = (this.averagePeriod === 'original')
                 ? this.totalAvailableDays
-                : Math.min(this.selectedAverageDays, this.totalAvailableDays);
-            this.averageWindowStartDate = selectedDates[0] || (this.meta.start_date ?? '—');
+                : this.selectedAverageDays;
+            this.averageWindowStartDate = selectedDates[0] || (this.meta.start_date ?? '');
             this.averageWindowEndDate = selectedDates[selectedDates.length - 1] || (this.meta.end_date ?? this.averageWindowStartDate);
         },
 

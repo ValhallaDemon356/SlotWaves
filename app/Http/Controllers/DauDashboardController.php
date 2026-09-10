@@ -176,25 +176,47 @@ class DauDashboardController extends Controller
 
         // Extract available unique operational dates (for Average Terminal Capacity Analysis)
         $availableDates = [];
-        if (!empty($data['available_dates'])) {
-            $availableDates = $data['available_dates'];
-        } else {
-            $dateSet = [];
-            foreach ($records as $r) {
-                $d = $r['date'] ?? null;
-                if (!empty($d) && !isset($dateSet[$d])) {
-                    $dateSet[$d] = true;
-                    $availableDates[] = (string) $d;
+        if (!empty($data['available_dates']) && is_array($data['available_dates'])) {
+            foreach ($data['available_dates'] as $ad) {
+                $norm = \App\Services\Dau\Parsers\BaseDauParser::normalizeOperationalDate($ad);
+                if ($norm && !in_array($norm, $availableDates)) {
+                    $availableDates[] = $norm;
                 }
             }
         }
+
+        // Fallback: extract normalized dates from records if available_dates was not stored
+        $recordsWithDate = 0;
+        if (empty($availableDates) && !empty($records) && is_array($records)) {
+            $dateSet = [];
+            foreach ($records as $r) {
+                $d = \App\Services\Dau\Parsers\BaseDauParser::normalizeOperationalDate($r['date'] ?? null);
+                if (!empty($d)) {
+                    $recordsWithDate++;
+                    if (!isset($dateSet[$d])) {
+                        $dateSet[$d] = true;
+                        $availableDates[] = $d;
+                    }
+                }
+            }
+        }
+
         if (empty($availableDates) && !empty($meta['start_date'])) {
-            $availableDates[] = $meta['start_date'];
+            $normStart = \App\Services\Dau\Parsers\BaseDauParser::normalizeOperationalDate($meta['start_date']);
+            if ($normStart) {
+                $availableDates[] = $normStart;
+            }
         }
         sort($availableDates);
         $totalAvailableDays = count($availableDates);
 
-        if ($totalAvailableDays <= 1 && !empty($meta['start_date']) && !empty($meta['end_date']) && $meta['start_date'] !== $meta['end_date']) {
+        // If actual discrete operational dates exist in the report (e.g. 3 specific dates),
+        // DO NOT invent missing dates. Only expand when report is a single aggregate table
+        // representing a season date range without per-day breakdown.
+        $hasDiscreteDates = (!empty($data['available_dates']) && count($data['available_dates']) > 1)
+            || (isset($dateSet) && count($dateSet) > 1);
+
+        if (!$hasDiscreteDates && $totalAvailableDays <= 1 && !empty($meta['start_date']) && !empty($meta['end_date']) && $meta['start_date'] !== $meta['end_date']) {
             try {
                 $sDate = \Carbon\Carbon::parse($meta['start_date']);
                 $eDate = \Carbon\Carbon::parse($meta['end_date']);

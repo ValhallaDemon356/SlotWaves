@@ -16,12 +16,14 @@ class DAU10AParser extends BaseDauParser
         $tablesData = [];
         if ($isHtml) {
             $tablesData = $this->extractAllTablesFromHtml($content, $meta);
+        } else {
+            $tablesData = $this->extractTablesFromSpreadsheetRows($rawRows, $meta);
         }
 
         if (empty($tablesData)) {
             $tablesData = [
                 [
-                    'date' => $meta['start_date'] ?? null,
+                    'date' => static::normalizeOperationalDate($meta['start_date'] ?? null),
                     'rows' => $rawRows,
                 ]
             ];
@@ -45,7 +47,11 @@ class DAU10AParser extends BaseDauParser
         $uniqueDates = [];
 
         foreach ($tablesData as $tBlock) {
-            $blockDate = $tBlock['date'] ?? ($meta['start_date'] ?? null);
+            $rawBlockDate = $tBlock['date'] ?? null;
+            $blockDate = static::normalizeOperationalDate($rawBlockDate);
+            if (empty($blockDate) && count($tablesData) === 1 && !empty($meta['start_date'])) {
+                $blockDate = static::normalizeOperationalDate($meta['start_date']);
+            }
             if (!empty($blockDate) && !in_array($blockDate, $uniqueDates)) {
                 $uniqueDates[] = $blockDate;
             }
@@ -55,6 +61,23 @@ class DAU10AParser extends BaseDauParser
 
             $header0 = $bRows[0] ?? [];
             $header1 = $bRows[1] ?? [];
+
+            // Check if there is an explicit Date / Tanggal column in header
+            $dateColIdx = null;
+            foreach ($header0 as $colI => $hVal) {
+                if (preg_match('/^(?:TANGGAL|DATE)$/i', trim($this->toStr($hVal)))) {
+                    $dateColIdx = $colI;
+                    break;
+                }
+            }
+            if ($dateColIdx === null) {
+                foreach ($header1 as $colI => $hVal) {
+                    if (preg_match('/^(?:TANGGAL|DATE)$/i', trim($this->toStr($hVal)))) {
+                        $dateColIdx = $colI;
+                        break;
+                    }
+                }
+            }
 
             // Terminals are in header row 0 (e.g. 1, 2F, 3U, 1B, 2D, 2E, 1C)
             $terminals = [];
@@ -89,6 +112,19 @@ class DAU10AParser extends BaseDauParser
 
                 if (!is_numeric($first)) continue;
 
+                // Determine row operational date: per-cell date if column exists, else blockDate
+                $rowDate = null;
+                if ($dateColIdx !== null && isset($row[$dateColIdx])) {
+                    $rowDate = static::normalizeOperationalDate($row[$dateColIdx]);
+                }
+                if (!$rowDate) {
+                    $rowDate = $blockDate;
+                }
+
+                if (!empty($rowDate) && !in_array($rowDate, $uniqueDates)) {
+                    $uniqueDates[] = $rowDate;
+                }
+
                 $rowTotFlights = 0;
                 $rowTotPax = 0;
                 $termBreakdown = [];
@@ -107,7 +143,7 @@ class DAU10AParser extends BaseDauParser
                     $totPx = $this->toInt($row[$c+9] ?? ($pArr + $pDep + $pTrn + $pTrf));
 
                     $tData = [
-                        'date'                => $blockDate,
+                        'date'                => $rowDate,
                         'hour'                => $period,
                         'period'              => $period,
                         'terminal'            => $t['name'],
@@ -145,7 +181,7 @@ class DAU10AParser extends BaseDauParser
 
                 $records[] = [
                     'no'               => $this->toInt($first),
-                    'date'             => $blockDate,
+                    'date'             => $rowDate,
                     'period'           => $period,
                     'total_flights'    => $rowTotFlights,
                     'total_passengers' => $rowTotPax,
@@ -154,13 +190,35 @@ class DAU10AParser extends BaseDauParser
             }
         }
 
+        // Clean & sort unique non-null dates
+        $uniqueDates = array_values(array_unique(array_filter($uniqueDates)));
+        sort($uniqueDates);
+
         if (!empty($uniqueDates)) {
-            sort($uniqueDates);
-            $meta['start_date'] = $uniqueDates[0];
-            $meta['end_date']   = $uniqueDates[count($uniqueDates) - 1];
-            $meta['date_range'] = (count($uniqueDates) === 1)
-                ? $meta['start_date']
-                : "{$meta['start_date']} s/d {$meta['end_date']}";
+            // If multiple operational dates are present, update start/end to span of actual data
+            // If only 1 date is found, but meta already contained an explicit season date range (e.g. 01-08-2026 s/d 31-01-2027),
+            // preserve the pre-extracted season metadata and populate available_dates with the full season span.
+            if (count($uniqueDates) > 1 || empty($meta['end_date'])) {
+                $meta['start_date'] = $uniqueDates[0];
+                $meta['end_date']   = $uniqueDates[count($uniqueDates) - 1];
+                $meta['date_range'] = (count($uniqueDates) === 1)
+                    ? $meta['start_date']
+                    : "{$meta['start_date']} s/d {$meta['end_date']}";
+            } elseif (count($uniqueDates) === 1 && !empty($meta['start_date']) && !empty($meta['end_date']) && $meta['start_date'] !== $meta['end_date']) {
+                try {
+                    $sDate = \Carbon\Carbon::parse($meta['start_date']);
+                    $eDate = \Carbon\Carbon::parse($meta['end_date']);
+                    if ($sDate->lte($eDate)) {
+                        $seasonDates = [];
+                        $curr = $sDate->copy();
+                        while ($curr->lte($eDate)) {
+                            $seasonDates[] = $curr->format('Y-m-d');
+                            $curr->addDay();
+                        }
+                        $uniqueDates = $seasonDates;
+                    }
+                } catch (\Throwable $e) {}
+            }
         }
 
         return [
@@ -174,7 +232,7 @@ class DAU10AParser extends BaseDauParser
             'records'          => $records,
             'normalized_pairs' => $normalizedPairs,
             'available_dates'  => $uniqueDates,
-            'available_days'   => max(1, count($uniqueDates)),
+            'available_days'   => count($uniqueDates),
             'columns'          => ['No', 'Periode Jam', 'Total Pesawat', 'Total Penumpang', 'Terminal Breakdown'],
         ];
     }
@@ -201,18 +259,77 @@ class DAU10AParser extends BaseDauParser
             $table = $tables->item($tIdx);
 
             $tableDate = null;
+
+            // 1. Search preceding siblings for date header
             $curr = $table->previousSibling;
             while ($curr) {
-                $text = $curr->textContent ?? '';
-                if (preg_match('/TANGGAL\s*([0-9]{4}-[0-9]{2}-[0-9]{2})/i', $text, $m)) {
-                    $tableDate = $m[1];
-                    break;
+                $text = trim($curr->textContent ?? '');
+                if (!empty($text)) {
+                    if (preg_match('/(?:TANGGAL|DATE)[\s:]*([0-9A-Za-z\/\-]+(?:\s+[A-Za-z]+)?)/i', $text, $m)) {
+                        $parsed = static::normalizeOperationalDate($m[1]);
+                        if ($parsed) {
+                            $tableDate = $parsed;
+                            break;
+                        }
+                    }
+                    if (preg_match('/\b(\d{1,2}[-\/]\d{1,2}[-\/]\d{4})\b/', $text, $m) ||
+                        preg_match('/\b(\d{4}[-\/]\d{1,2}[-\/]\d{1,2})\b/', $text, $m)) {
+                        $parsed = static::normalizeOperationalDate($m[1]);
+                        if ($parsed) {
+                            $tableDate = $parsed;
+                            break;
+                        }
+                    }
                 }
                 $curr = $curr->previousSibling;
             }
 
+            // 2. Search parent node's previous siblings if table is wrapped in div or center
+            if (!$tableDate && $table->parentNode && !in_array(strtolower($table->parentNode->nodeName), ['body', 'html'])) {
+                $pCurr = $table->parentNode->previousSibling;
+                while ($pCurr) {
+                    $pText = trim($pCurr->textContent ?? '');
+                    if (!empty($pText)) {
+                        if (preg_match('/(?:TANGGAL|DATE)[\s:]*([0-9A-Za-z\/\-]+(?:\s+[A-Za-z]+)?)/i', $pText, $m)) {
+                            $parsed = static::normalizeOperationalDate($m[1]);
+                            if ($parsed) {
+                                $tableDate = $parsed;
+                                break;
+                            }
+                        }
+                    }
+                    $pCurr = $pCurr->previousSibling;
+                }
+            }
+
+            // 3. Search caption tag inside table
+            if (!$tableDate) {
+                $captions = $table->getElementsByTagName('caption');
+                if ($captions->length > 0) {
+                    $cText = trim($captions->item(0)->textContent ?? '');
+                    if (preg_match('/(?:TANGGAL|DATE)[\s:]*([0-9A-Za-z\/\-]+(?:\s+[A-Za-z]+)?)/i', $cText, $m)) {
+                        $tableDate = static::normalizeOperationalDate($m[1]);
+                    }
+                }
+            }
+
+            // 4. Search top 3 rows of table for date header
+            if (!$tableDate) {
+                $firstTrs = $table->getElementsByTagName('tr');
+                for ($r = 0; $r < min(3, $firstTrs->length); $r++) {
+                    $rText = trim($firstTrs->item($r)->textContent ?? '');
+                    if (preg_match('/(?:TANGGAL|DATE)[\s:]*([0-9A-Za-z\/\-]+(?:\s+[A-Za-z]+)?)/i', $rText, $m)) {
+                        $parsed = static::normalizeOperationalDate($m[1]);
+                        if ($parsed) {
+                            $tableDate = $parsed;
+                            break;
+                        }
+                    }
+                }
+            }
+
             if (!$tableDate && $tables->length === 1) {
-                $tableDate = $globalMeta['start_date'] ?? null;
+                $tableDate = static::normalizeOperationalDate($globalMeta['start_date'] ?? null);
             }
 
             $rows = $table->getElementsByTagName('tr');
@@ -251,6 +368,11 @@ class DAU10AParser extends BaseDauParser
                 $matrix[$r] = array_values($cols);
             }
 
+            // Filter out layout tables (less than 2 rows)
+            if (count($matrix) < 2) {
+                continue;
+            }
+
             $results[] = [
                 'date' => $tableDate,
                 'rows' => $matrix,
@@ -258,5 +380,48 @@ class DAU10AParser extends BaseDauParser
         }
 
         return $results;
+    }
+
+    /**
+     * Extract multiple tables with individual date contexts from spreadsheet rows.
+     */
+    protected function extractTablesFromSpreadsheetRows(array $rawRows, array $globalMeta): array
+    {
+        $blocks = [];
+        $currentRows = [];
+        $currentDate = static::normalizeOperationalDate($globalMeta['start_date'] ?? null);
+
+        foreach ($rawRows as $row) {
+            $rowStr = implode(' ', array_filter(array_map('strval', $row)));
+            if (preg_match('/(?:TANGGAL|DATE)[\s:]*([0-9A-Za-z\/\-]+(?:\s+[A-Za-z]+)?)/i', $rowStr, $m)) {
+                $parsed = static::normalizeOperationalDate($m[1]);
+                if ($parsed) {
+                    if (!empty($currentRows)) {
+                        $blocks[] = [
+                            'date' => $currentDate,
+                            'rows' => $currentRows,
+                        ];
+                        $currentRows = [];
+                    }
+                    $currentDate = $parsed;
+                    continue;
+                }
+            }
+            $currentRows[] = $row;
+        }
+
+        if (!empty($currentRows)) {
+            $blocks[] = [
+                'date' => $currentDate,
+                'rows' => $currentRows,
+            ];
+        }
+
+        return !empty($blocks) ? $blocks : [
+            [
+                'date' => static::normalizeOperationalDate($globalMeta['start_date'] ?? null),
+                'rows' => $rawRows,
+            ]
+        ];
     }
 }

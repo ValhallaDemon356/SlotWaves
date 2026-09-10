@@ -334,7 +334,7 @@ class Dau10AAverageByDaysTest extends TestCase
         $response->assertSee('ORIGINAL DATA');
         $response->assertSee('[5, 15, 30, 60]');
         $response->assertSee('CUSTOM');
-        $response->assertSee('AVAILABLE DAYS');
+        $response->assertSee('AVAILABLE DATA DAYS');
         $response->assertSee('RESET TO ORIGINAL');
         $response->assertSee('ceil(hourlyValue / N)');
 
