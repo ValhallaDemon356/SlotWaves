@@ -23,6 +23,12 @@ Route::post('/upload/{upload}/process',   [UploadController::class, 'process'])-
 Route::get('/templates/download/{reportType}', [\App\Http\Controllers\DauDashboardController::class, 'downloadTemplate'])->name('templates.download');
 
 // ── DAU Analytical Dashboards & Exports ────────────────────────────────────
+Route::get('/dau/{upload}', function($upload) {
+    return redirect()->route('dau.dashboard', array_merge(['upload' => $upload], request()->query()));
+});
+Route::get('/dau-10a/{upload}', function($upload) {
+    return redirect()->route('dau.dashboard', array_merge(['upload' => $upload], request()->query()));
+});
 Route::prefix('dau/{upload}')->group(function () {
     Route::get('/dashboard',    [\App\Http\Controllers\DauDashboardController::class, 'show'])->name('dau.dashboard');
     Route::match(['POST', 'PATCH'], '/operational-settings', [\App\Http\Controllers\DauDashboardController::class, 'saveOperationalSettings'])->name('dau.operational-settings.save');

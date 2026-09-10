@@ -174,6 +174,49 @@ class DauDashboardController extends Controller
         $tzAbbr       = $airport ? $airport->getTimezoneAbbreviation() : 'WIB';
         $tzOffset     = $airport ? (int) round($airport->getTimezoneOffsetMinutes() / 60) : 7;
 
+        // Extract available unique operational dates (for Average Terminal Capacity Analysis)
+        $availableDates = [];
+        if (!empty($data['available_dates'])) {
+            $availableDates = $data['available_dates'];
+        } else {
+            $dateSet = [];
+            foreach ($records as $r) {
+                $d = $r['date'] ?? null;
+                if (!empty($d) && !isset($dateSet[$d])) {
+                    $dateSet[$d] = true;
+                    $availableDates[] = (string) $d;
+                }
+            }
+        }
+        if (empty($availableDates) && !empty($meta['start_date'])) {
+            $availableDates[] = $meta['start_date'];
+        }
+        sort($availableDates);
+        $totalAvailableDays = count($availableDates);
+
+        if ($totalAvailableDays <= 1 && !empty($meta['start_date']) && !empty($meta['end_date']) && $meta['start_date'] !== $meta['end_date']) {
+            try {
+                $sDate = \Carbon\Carbon::parse($meta['start_date']);
+                $eDate = \Carbon\Carbon::parse($meta['end_date']);
+                if ($sDate->lte($eDate)) {
+                    $rangeDays = $sDate->diffInDays($eDate) + 1;
+                    if ($rangeDays > $totalAvailableDays) {
+                        $totalAvailableDays = (int) $rangeDays;
+                        $curr = $sDate->copy();
+                        $generatedDates = [];
+                        while ($curr->lte($eDate)) {
+                            $generatedDates[] = $curr->format('Y-m-d');
+                            $curr->addDay();
+                        }
+                        $availableDates = $generatedDates;
+                    }
+                }
+            } catch (\Throwable $e) {}
+        }
+        if ($totalAvailableDays === 0) {
+            $totalAvailableDays = 1;
+        }
+
         return view('dau.dashboard', compact(
             'upload',
             'reportType',
@@ -202,7 +245,9 @@ class DauDashboardController extends Controller
             'opsStartTime',
             'opsEndTime',
             'tzAbbr',
-            'tzOffset'
+            'tzOffset',
+            'availableDates',
+            'totalAvailableDays'
         ));
     }
 
@@ -470,30 +515,58 @@ class DauDashboardController extends Controller
         $isTruncatedForPdf = $totalFilteredCount > $maxPdfRows;
         $pdfRecords = $isTruncatedForPdf ? array_slice($filteredRecords, 0, $maxPdfRows) : $filteredRecords;
 
+        // Average Terminal Capacity parameters (optional analytical reference for Aircraft mode in DAU-10A)
+        $avgPeriod = $request->query('avg_period');
+        $avgCustomDays = (int) $request->query('avg_custom_days', 0);
+        $avgArr = $request->query('avg_arr') !== null ? (float) $request->query('avg_arr') : null;
+        $avgDep = $request->query('avg_dep') !== null ? (float) $request->query('avg_dep') : null;
+        $avgAdjArr = $request->query('avg_adj_arr') !== null ? (float) $request->query('avg_adj_arr') : null;
+        $avgAdjDep = $request->query('avg_adj_dep') !== null ? (float) $request->query('avg_adj_dep') : null;
+        $avgDatesRange = $request->query('avg_dates_range');
+        $avgValidDays = $request->query('avg_valid_days');
+
+        $averageTerminalCapacity = null;
+        if ($reportType === 'DAU10A' && ($avgArr !== null || $avgPeriod !== null)) {
+            $averageTerminalCapacity = [
+                'period'       => $avgPeriod ?: '1 DAY',
+                'custom_days'  => $avgCustomDays,
+                'calc_arr'     => $avgArr ?? 0,
+                'calc_dep'     => $avgDep ?? 0,
+                'adj_arr'      => $avgAdjArr,
+                'adj_dep'      => $avgAdjDep,
+                'eff_arr'      => $avgAdjArr !== null ? $avgAdjArr : ($avgArr ?? 0),
+                'eff_dep'      => $avgAdjDep !== null ? $avgAdjDep : ($avgDep ?? 0),
+                'dates_range'  => $avgDatesRange,
+                'valid_days'   => $avgValidDays,
+                'scope'        => $activeTerminalScope,
+            ];
+        }
+
         $pdf = Pdf::loadView('dau.pdf', [
-            'upload'               => $upload,
-            'reportType'           => $reportType,
-            'conf'                 => $conf,
-            'data'                 => $data,
-            'meta'                 => $meta,
-            'summary'              => $summary,
-            'records'              => $pdfRecords,
-            'totalFilteredCount'   => $totalFilteredCount,
-            'isTruncatedForPdf'    => $isTruncatedForPdf,
-            'peaks'                => $peaks,
-            'hourlyData'           => $hourlyData,
-            'terminalData'         => $terminalData,
-            'heatmapMatrix'        => $heatmapMatrix,
-            'analytics'            => $analytics,
-            'filters'              => $filters,
-            'metric'               => $filters['metric'],
-            'nac'                  => $nac,
-            'arrNac'               => $arrNac,
-            'depNac'               => $depNac,
-            'opsStart'             => $opsStart,
-            'opsEnd'               => $opsEnd,
-            'capacitySummary'      => $capacitySummary,
-            'hourlyCapacityStatus' => $hourlyCapacityStatus,
+            'upload'                  => $upload,
+            'reportType'              => $reportType,
+            'conf'                    => $conf,
+            'data'                    => $data,
+            'meta'                    => $meta,
+            'summary'                 => $summary,
+            'records'                 => $pdfRecords,
+            'totalFilteredCount'      => $totalFilteredCount,
+            'isTruncatedForPdf'       => $isTruncatedForPdf,
+            'peaks'                   => $peaks,
+            'hourlyData'              => $hourlyData,
+            'terminalData'            => $terminalData,
+            'heatmapMatrix'           => $heatmapMatrix,
+            'analytics'               => $analytics,
+            'filters'                 => $filters,
+            'metric'                  => $filters['metric'],
+            'nac'                     => $nac,
+            'arrNac'                  => $arrNac,
+            'depNac'                  => $depNac,
+            'opsStart'                => $opsStart,
+            'opsEnd'                  => $opsEnd,
+            'capacitySummary'         => $capacitySummary,
+            'hourlyCapacityStatus'    => $hourlyCapacityStatus,
+            'averageTerminalCapacity' => $averageTerminalCapacity,
         ])
         ->setPaper('a4', 'landscape')
         ->setOptions([

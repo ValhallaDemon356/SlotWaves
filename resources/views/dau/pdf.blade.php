@@ -1530,6 +1530,20 @@
 
         @else
             {{-- AIRCRAFT MODE: TWO-DIRECTION CAPACITY ENVELOPE & STATUS --}}
+            @if (!empty($averageTerminalCapacity))
+                <div style="margin-bottom: 5px; padding: 4px 8px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 4px; font-size: 6.5pt; font-family: monospace;">
+                    <span style="font-weight: bold; color: #b45309; text-transform: uppercase;">AVERAGE TERMINAL CAPACITY (ANALISIS ANALITIS):</span> &nbsp;
+                    Period: <strong>{{ strtoupper($averageTerminalCapacity['period'] ?? '') }} DAYS</strong> &nbsp;|&nbsp;
+                    Window: <strong>{{ $averageTerminalCapacity['dates_range'] ?? '—' }}</strong> &nbsp;|&nbsp;
+                    Data Used: <strong>{{ $averageTerminalCapacity['valid_days'] ?? '—' }} Days</strong> &nbsp;|&nbsp;
+                    Avg ARR: <strong style="color: #b45309;">{{ $averageTerminalCapacity['effective_arrival'] ?? '—' }} A/C</strong> &nbsp;|&nbsp;
+                    Avg DEP: <strong style="color: #0369a1;">{{ $averageTerminalCapacity['effective_departure'] ?? '—' }} A/C</strong>
+                    @if (!empty($averageTerminalCapacity['adjusted_arrival']) || !empty($averageTerminalCapacity['adjusted_departure']))
+                        &nbsp; <span style="background: #fef3c7; color: #92400e; padding: 1px 4px; border-radius: 2px; font-size: 5.5pt; font-weight: bold; border: 1px solid #f59e0b;">ADJUSTED</span>
+                    @endif
+                </div>
+            @endif
+
             <div class="chart-box">
                 <div class="chart-header" style="display: table; width: 100%;">
                     <div style="display: table-cell; text-align: left;">
@@ -1541,6 +1555,11 @@
                         <span style="display: inline-block; width: 8px; height: 8px; border: 1.5px dashed #059669; vertical-align: middle;"></span> Ops Hours &nbsp;
                         <span style="display: inline-block; width: 14px; border-top: 1.5px dashed #d97706; vertical-align: middle;"></span> +ARR Cap ({{ $arrNacVal }}) &nbsp;
                         <span style="display: inline-block; width: 14px; border-top: 1.5px dashed #0284c7; vertical-align: middle;"></span> -DEP Cap ({{ $depNacVal }})
+                        @if (!empty($averageTerminalCapacity))
+                            &nbsp;
+                            <span style="display: inline-block; width: 14px; border-top: 1.5px dashed #f59e0b; vertical-align: middle;"></span> Avg ARR ({{ $averageTerminalCapacity['effective_arrival'] ?? '—' }}) &nbsp;
+                            <span style="display: inline-block; width: 14px; border-top: 1.5px dashed #0284c7; vertical-align: middle;"></span> Avg DEP ({{ $averageTerminalCapacity['effective_departure'] ?? '—' }})
+                        @endif
                     </div>
                 </div>
 
