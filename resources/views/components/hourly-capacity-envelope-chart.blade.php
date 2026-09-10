@@ -58,9 +58,7 @@
                 const maxArr = Math.max(...list.map(d => Number(d.arr || 0)), 0);
                 const maxDep = Math.max(...list.map(d => Number(d.dep || 0)), 0);
                 const isAcft = (typeof this.selectedMetric === 'undefined' || this.selectedMetric === 'aircraft');
-                const effAvgArr = (typeof this.effectiveAverageArrival !== 'undefined') ? Number(this.effectiveAverageArrival || 0) : 0;
-                const effAvgDep = (typeof this.effectiveAverageDeparture !== 'undefined') ? Number(this.effectiveAverageDeparture || 0) : 0;
-                const maxCap = isAcft ? Math.max(Number(this.arrivalCapacity || 6), Number(this.departureCapacity || 6), effAvgArr, effAvgDep) : 0;
+                const maxCap = isAcft ? Math.max(Number(this.arrivalCapacity || 6), Number(this.departureCapacity || 6)) : 0;
                 const maxVal = Math.max(maxArr, maxDep, maxCap);
                 return Math.max(Math.ceil(maxVal * 1.15), maxVal + 2, isAcft ? 8 : 1);
             @endif
@@ -350,53 +348,38 @@
                          extra: null
                      };
                  } else {
-                     // Existing aircraft mode
-                    const actual = isArr ? Number(item.arr ?? 0) : Number(item.dep ?? 0);
-                    const cap = isArr ? Number(this.arrivalCapacity ?? 0) : Number(this.departureCapacity ?? 0);
-                    const dirStatus = isArr ? this.getArrivalStatus(item) : this.getDepartureStatus(item);
+                     // Aircraft mode (with Average By Days transformation support)
+                     const actual = isArr ? Number(item.arr ?? 0) : Number(item.dep ?? 0);
+                     const rawActual = isArr ? Number(item.rawArr ?? actual) : Number(item.rawDep ?? actual);
+                     const cap = isArr ? Number(this.arrivalCapacity ?? 0) : Number(this.departureCapacity ?? 0);
+                     const dirStatus = isArr ? this.getArrivalStatus(item) : this.getDepartureStatus(item);
 
-                    let avgCap = null;
-                    let analyticalStatus = null;
-                    let analyticalBadgeClass = '';
-                    if (typeof this.reportType !== 'undefined' && this.reportType === 'DAU10A' && (typeof this.selectedMetric === 'undefined' || this.selectedMetric === 'aircraft')) {
-                        avgCap = isArr ? (typeof this.effectiveAverageArrival !== 'undefined' ? Number(this.effectiveAverageArrival) : null)
-                                       : (typeof this.effectiveAverageDeparture !== 'undefined' ? Number(this.effectiveAverageDeparture) : null);
-                        if (avgCap !== null && avgCap > 0) {
-                            if (actual > avgCap) {
-                                analyticalStatus = 'ABOVE AVERAGE';
-                                analyticalBadgeClass = 'bg-amber-500/20 text-amber-300 border-amber-500/40';
-                            } else if (actual === avgCap) {
-                                analyticalStatus = 'AT AVERAGE';
-                                analyticalBadgeClass = 'bg-slate-700/50 text-slate-300 border-slate-600';
-                            } else {
-                                analyticalStatus = 'BELOW AVERAGE';
-                                analyticalBadgeClass = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
-                            }
-                        }
-                    }
+                     const isAvgActive = (typeof this.reportType !== 'undefined' && this.reportType === 'DAU10A' &&
+                                          (typeof this.selectedMetric === 'undefined' || this.selectedMetric === 'aircraft') &&
+                                          typeof this.averagePeriod !== 'undefined' && this.averagePeriod !== 'original' &&
+                                          this.selectedAverageDays > 1);
 
-                    this.tooltip = {
-                        visible: true,
-                        x: 0,
-                        y: 0,
-                        hourLabel: hourLabel,
-                        type: isArr ? 'arrival' : 'departure',
-                        typeLabel: isArr ? 'ARRIVAL' : 'DEPARTURE',
-                        typeColor: isArr ? 'text-amber-400' : 'text-blue-400',
-                        icon: isArr ? '🟠' : '🔵',
-                        actual: actual,
-                        capacity: cap,
-                        averageCapacity: avgCap,
-                        analyticalStatus: analyticalStatus,
-                        analyticalBadgeClass: analyticalBadgeClass,
-                        scope: scope,
-                        status: dirStatus.label,
-                        statusBadgeClass: dirStatus.statusBadgeClass,
-                        metricLabel: 'Aircraft',
-                        unitLabel: 'A/C',
-                        totalText: null,
-                        extra: null
-                    };
+                     this.tooltip = {
+                         visible: true,
+                         x: 0,
+                         y: 0,
+                         hourLabel: hourLabel,
+                         type: isArr ? 'arrival' : 'departure',
+                         typeLabel: isArr ? 'ARRIVAL' : 'DEPARTURE',
+                         typeColor: isArr ? 'text-amber-400' : 'text-blue-400',
+                         icon: isArr ? '🟠' : '🔵',
+                         actual: actual,
+                         rawActual: rawActual,
+                         capacity: cap,
+                         averagePeriodLabel: isAvgActive ? (this.selectedAverageDays + ' DAYS') : null,
+                         scope: scope,
+                         status: dirStatus.label,
+                         statusBadgeClass: dirStatus.statusBadgeClass,
+                         metricLabel: 'Aircraft',
+                         unitLabel: 'A/C',
+                         totalText: null,
+                         extra: null
+                     };
                  }
              @endif
 
@@ -489,6 +472,15 @@
                             <span class="text-slate-300 dark:text-slate-700">|</span>
                             <span class="text-emerald-600 dark:text-emerald-400 font-bold"><span x-text="opsStartTime"></span> &rarr; <span x-text="opsEndTime"></span></span>
                             <button type="button" @click="openUnifiedModal()" class="ml-1 text-[9.5px] font-black text-aviation-600 dark:text-aviation-400 hover:underline cursor-pointer">EDIT ⚙</button>
+                        </div>
+
+                        {{-- Average By Days Badge (Part 31) --}}
+                        <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10.5px] font-mono border shadow-2xs"
+                             :class="averagePeriod === 'original' ? 'bg-white dark:bg-navy-900 border-slate-200 dark:border-slate-800' : 'bg-aviation-50 dark:bg-aviation-950 border-aviation-300 dark:border-aviation-800'">
+                            <span class="text-[9.5px] font-black uppercase tracking-wider text-slate-400">AVERAGE:</span>
+                            <span class="font-bold"
+                                  :class="averagePeriod === 'original' ? 'text-slate-700 dark:text-slate-300' : 'text-aviation-600 dark:text-aviation-400'"
+                                  x-text="averagePeriod === 'original' ? 'ORIGINAL DATA' : (selectedAverageDays + ' DAYS')"></span>
                         </div>
                     </div>
                 </template>
@@ -622,32 +614,7 @@
                 </div>
             </template>
 
-            {{-- ── LAYER 7: AVERAGE TERMINAL CAPACITY REFERENCE LINES (DAU-10A AIRCRAFT ONLY) ── --}}
-            <template x-if="{{ $mode === 'dau' ? '(typeof reportType !== \'undefined\' && reportType === \'DAU10A\' && (typeof selectedMetric === \'undefined\' || selectedMetric === \'aircraft\') && typeof effectiveAverageArrival !== \'undefined\' && effectiveAverageArrival > 0)' : 'false' }}">
-                {{-- Average Arrival Reference Line: Amber dashed horizontal line with badge --}}
-                <div class="absolute left-0 right-0 z-6 pointer-events-none transition-all duration-200"
-                     :style="'top: ' + Math.max(4, Math.round(140 - ((effectiveAverageArrival / safeMaxScale) * 115))) + 'px;'"
-                     title="Average Terminal Arrival Capacity">
-                    <div class="w-full border-b-2 border-dashed border-amber-400/90 dark:border-amber-400/90"></div>
-                    <div class="absolute -top-5 right-2 sm:right-6 flex items-center gap-1 font-mono text-[8.5px] font-black bg-amber-50 dark:bg-navy-900 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded shadow-xs border border-amber-400 whitespace-nowrap z-20 pointer-events-none">
-                        <span>AVG ARR:</span>
-                        <span class="font-extrabold" x-text="formatAverageDisplay ? formatAverageDisplay(effectiveAverageArrival) : (effectiveAverageArrival + ' A/C')"></span>
-                    </div>
-                </div>
-            </template>
 
-            <template x-if="{{ $mode === 'dau' ? '(typeof reportType !== \'undefined\' && reportType === \'DAU10A\' && (typeof selectedMetric === \'undefined\' || selectedMetric === \'aircraft\') && typeof effectiveAverageDeparture !== \'undefined\' && effectiveAverageDeparture > 0)' : 'false' }}">
-                {{-- Average Departure Reference Line: Blue dashed horizontal line with badge --}}
-                <div class="absolute left-0 right-0 z-6 pointer-events-none transition-all duration-200"
-                     :style="'top: ' + Math.min(308, Math.round(172 + ((effectiveAverageDeparture / safeMaxScale) * 115))) + 'px;'"
-                     title="Average Terminal Departure Capacity">
-                    <div class="w-full border-b-2 border-dashed border-blue-400/90 dark:border-blue-400/90"></div>
-                    <div class="absolute -bottom-5 right-2 sm:right-6 flex items-center gap-1 font-mono text-[8.5px] font-black bg-blue-50 dark:bg-navy-900 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded shadow-xs border border-blue-400 whitespace-nowrap z-20 pointer-events-none">
-                        <span>AVG DEP:</span>
-                        <span class="font-extrabold" x-text="formatAverageDisplay ? formatAverageDisplay(effectiveAverageDeparture) : (effectiveAverageDeparture + ' A/C')"></span>
-                    </div>
-                </div>
-            </template>
 
             {{-- ── LAYER 10: SYNCHRONIZED COLUMNS GRID (Arrivals Above + Time Center + Departures Below) ── --}}
             <div class="relative z-10 w-full"
@@ -834,25 +801,7 @@
                     <span class="text-[10px] text-slate-400">(-<span x-text="departureCapacity"></span>)</span>
                 </span>
 
-                @if($mode === 'dau')
-                    {{-- 7. Average Terminal ARR (DAU-10A Aircraft only) --}}
-                    <template x-if="typeof reportType !== 'undefined' && reportType === 'DAU10A' && (typeof selectedMetric === 'undefined' || selectedMetric === 'aircraft') && typeof effectiveAverageArrival !== 'undefined' && effectiveAverageArrival > 0">
-                        <span class="inline-flex items-center gap-1.5 font-mono" title="Average Terminal Arrival Capacity (Analytical Reference)">
-                            <span class="w-4 border-b-2 border-dashed border-amber-400 inline-block"></span>
-                            <strong class="text-amber-600 dark:text-amber-400">Average Terminal ARR</strong>
-                            <span class="text-[10px] text-slate-500 font-bold">(<span x-text="formatAverageDisplay ? formatAverageDisplay(effectiveAverageArrival) : (effectiveAverageArrival + ' A/C')"></span>)</span>
-                        </span>
-                    </template>
 
-                    {{-- 8. Average Terminal DEP (DAU-10A Aircraft only) --}}
-                    <template x-if="typeof reportType !== 'undefined' && reportType === 'DAU10A' && (typeof selectedMetric === 'undefined' || selectedMetric === 'aircraft') && typeof effectiveAverageDeparture !== 'undefined' && effectiveAverageDeparture > 0">
-                        <span class="inline-flex items-center gap-1.5 font-mono" title="Average Terminal Departure Capacity (Analytical Reference)">
-                            <span class="w-4 border-b-2 border-dashed border-blue-400 inline-block"></span>
-                            <strong class="text-blue-600 dark:text-blue-400">Average Terminal DEP</strong>
-                            <span class="text-[10px] text-slate-500 font-bold">(<span x-text="formatAverageDisplay ? formatAverageDisplay(effectiveAverageDeparture) : (effectiveAverageDeparture + ' A/C')"></span>)</span>
-                        </span>
-                    </template>
-                @endif
             </div>
 
             {{-- Status Indicators Summary --}}
@@ -916,19 +865,20 @@
                 </div>
             </div>
 
-            {{-- Average Terminal Analytical Stat (when available) --}}
-            <template x-if="tooltip.averageCapacity !== null">
+            {{-- Average By Days Indicator (when averaging active) --}}
+            <template x-if="tooltip.averagePeriodLabel">
                 <div class="bg-slate-800/60 dark:bg-navy-900/60 rounded-lg p-2 border border-slate-700/50 mb-2">
                     <div class="flex items-center justify-between">
-                        <div class="text-[9px] font-mono font-bold uppercase tracking-wider text-amber-400">Average Terminal</div>
-                        <span class="px-1.5 py-0.2 rounded text-[8px] font-mono font-black border"
-                              :class="tooltip.analyticalBadgeClass"
-                              x-text="tooltip.analyticalStatus"></span>
+                        <div class="text-[9px] font-mono font-bold uppercase tracking-wider text-amber-400">Average Period</div>
+                        <span class="px-1.5 py-0.2 rounded text-[8.5px] font-mono font-black bg-aviation-950 text-aviation-300 border border-aviation-600"
+                              x-text="tooltip.averagePeriodLabel"></span>
                     </div>
-                    <div class="flex items-baseline gap-1 font-mono mt-0.5 text-xs text-slate-200">
-                        <span>Baseline:</span>
-                        <strong class="font-bold text-white" x-text="tooltip.averageCapacity + ' A/C'"></strong>
-                    </div>
+                    <template x-if="tooltip.rawActual !== null && tooltip.rawActual !== tooltip.actual">
+                        <div class="flex items-baseline justify-between font-mono mt-1 text-[10px] text-slate-300">
+                            <span>Original Value:</span>
+                            <strong class="text-white" x-text="tooltip.rawActual + ' A/C'"></strong>
+                        </div>
+                    </template>
                 </div>
             </template>
 

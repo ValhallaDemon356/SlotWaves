@@ -1473,30 +1473,26 @@
                         </div>
                     </div>
 
-                    {{-- AVERAGE TERMINAL CAPACITY CONTROL CARD (DAU-10A AIRCRAFT ONLY) --}}
+                    {{-- AVERAGE BY DAYS CONTROL BAR (DAU-10A AIRCRAFT ONLY) --}}
                     <div x-show="reportType === 'DAU10A' && selectedMetric === 'aircraft' && dauViewMode === 'distribution'"
-                         class="glass-card p-4 sm:p-5 shadow-md border-l-4 border-l-amber-500 space-y-3 bg-gradient-to-r from-amber-500/5 via-transparent to-transparent">
+                         class="glass-card p-4 sm:p-5 shadow-md border-l-4 border-l-aviation-500 space-y-3 bg-gradient-to-r from-aviation-500/5 via-transparent to-transparent">
                         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-2.5">
                             <div class="flex items-center gap-2">
-                                <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 font-bold text-xs shadow-2xs">
+                                <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-aviation-100 dark:bg-aviation-950/60 text-aviation-600 dark:text-aviation-400 font-bold text-xs shadow-2xs">
                                     &Sigma;
                                 </span>
                                 <div>
                                     <div class="flex items-center gap-2">
                                         <h3 class="text-xs sm:text-sm font-black tracking-wider uppercase text-slate-900 dark:text-white">
-                                            AVERAGE TERMINAL CAPACITY
+                                            AVERAGE BY DAYS
                                         </h3>
-                                        <span class="px-1.5 py-0.5 rounded text-[9.5px] font-mono font-bold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                                            ANALYTICAL
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-mono font-black"
+                                              :class="averagePeriod === 'original' ? 'bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700' : 'bg-aviation-100 dark:bg-aviation-950 text-aviation-700 dark:text-aviation-300 border border-aviation-300 dark:border-aviation-800'"
+                                              x-text="'AVERAGE: ' + (averagePeriod === 'original' ? 'ORIGINAL DATA' : (selectedAverageDays + ' DAYS'))">
                                         </span>
-                                        <template x-if="isAverageAdjusted">
-                                            <span class="px-1.5 py-0.5 rounded text-[9.5px] font-mono font-black bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-800 animate-pulse">
-                                                MANUALLY ADJUSTED
-                                            </span>
-                                        </template>
                                     </div>
                                     <p class="text-[11px] text-slate-500 mt-0.5">
-                                        Rata-rata analitis pergerakan pesawat dari data multi-hari actual OASYS (independen dari Configured NAC).
+                                        Transformasi nilai bar jam pesawat berdasarkan pembagian hari: <span class="font-mono text-aviation-600 dark:text-aviation-400 font-bold">ceil(hourlyValue / N)</span>.
                                     </p>
                                 </div>
                             </div>
@@ -1504,70 +1500,70 @@
                             {{-- Metadata & Scope Badges --}}
                             <div class="flex flex-wrap items-center gap-2 text-[10.5px] font-mono">
                                 <div class="px-2 py-1 rounded-md bg-white dark:bg-navy-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1 shadow-2xs">
-                                    <span class="text-slate-400 uppercase text-[9px]">Scope:</span>
-                                    <strong class="font-bold text-aviation-600 dark:text-aviation-400" x-text="activeTerminalScope"></strong>
-                                </div>
-                                <div class="px-2 py-1 rounded-md bg-white dark:bg-navy-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1 shadow-2xs">
-                                    <span class="text-slate-400 uppercase text-[9px]">Window:</span>
+                                    <span class="text-slate-400 uppercase text-[9px]">DATA PERIOD:</span>
                                     <strong class="font-bold" x-text="averageWindowStartDate + ' → ' + averageWindowEndDate"></strong>
                                 </div>
                                 <div class="px-2 py-1 rounded-md bg-white dark:bg-navy-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1 shadow-2xs">
-                                    <span class="text-slate-400 uppercase text-[9px]">Data:</span>
-                                    <strong class="font-bold text-emerald-600 dark:text-emerald-400" x-text="averageDataUsedDays + ' / ' + totalAvailableDays + ' Days'"></strong>
+                                    <span class="text-slate-400 uppercase text-[9px]">AVAILABLE DAYS:</span>
+                                    <strong class="font-bold text-emerald-600 dark:text-emerald-400" x-text="totalAvailableDays"></strong>
                                 </div>
                             </div>
                         </div>
 
                         <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pt-1">
-                            {{-- Left: Period Preset Buttons --}}
+                            {{-- Period Option Buttons --}}
                             <div class="space-y-1.5 w-full lg:w-auto">
-                                <div class="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
-                                    <span>ANALYSIS PERIOD</span>
-                                    <span class="text-[9px] text-slate-400" x-text="'Total Available: ' + totalAvailableDays + ' Hari'"></span>
-                                </div>
                                 <div class="flex flex-wrap items-center gap-1.5 font-mono text-xs">
-                                    <template x-for="p in ['1', '2', '5', '10', '15']" :key="p">
+                                    {{-- ORIGINAL DATA Button --}}
+                                    <button type="button"
+                                            @click="setAverageDays('original')"
+                                            :class="averagePeriod === 'original'
+                                                ? 'bg-aviation-600 text-white font-black shadow-xs ring-2 ring-aviation-400/40 border-aviation-600'
+                                                : 'bg-white dark:bg-navy-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-navy-800 font-bold'"
+                                            class="px-3 py-1.5 rounded-lg border text-[11px] transition cursor-pointer">
+                                        ORIGINAL DATA
+                                    </button>
+
+                                    {{-- Preset Days: 5, 15, 30, 60 --}}
+                                    <template x-for="p in [5, 15, 30, 60]" :key="p">
                                         <button type="button"
-                                                @click="setAveragePeriod(p)"
-                                                :disabled="parseInt(p) > totalAvailableDays"
+                                                @click="setAverageDays(String(p), p)"
+                                                :disabled="p > totalAvailableDays"
                                                 :class="[
-                                                    averagePeriod === p
-                                                        ? 'bg-amber-500 text-white font-bold shadow-xs border-amber-500 ring-2 ring-amber-400/40'
-                                                        : (parseInt(p) > totalAvailableDays
+                                                    averagePeriod === String(p)
+                                                        ? 'bg-aviation-600 text-white font-black shadow-xs ring-2 ring-aviation-400/40 border-aviation-600'
+                                                        : (p > totalAvailableDays
                                                             ? 'opacity-40 bg-slate-100 dark:bg-navy-900 text-slate-400 border-slate-200 dark:border-slate-800 cursor-not-allowed'
-                                                            : 'bg-white dark:bg-navy-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-navy-800 cursor-pointer')
+                                                            : 'bg-white dark:bg-navy-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-navy-800 font-bold cursor-pointer')
                                                 ]"
                                                 class="px-2.5 py-1.5 rounded-lg border text-[11px] transition flex items-center gap-1">
-                                            <span x-text="p + ' DAY' + (p > 1 ? 'S' : '')"></span>
+                                            <span x-text="p + ' DAYS'"></span>
                                         </button>
                                     </template>
 
+                                    {{-- CUSTOM Button --}}
                                     <button type="button"
-                                            @click="setAveragePeriod('custom')"
-                                            :class="[
-                                                averagePeriod === 'custom'
-                                                    ? 'bg-amber-500 text-white font-bold shadow-xs border-amber-500 ring-2 ring-amber-400/40'
-                                                    : 'bg-white dark:bg-navy-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-navy-800 cursor-pointer'
-                                            ]"
+                                            @click="setAverageDays('custom')"
+                                            :class="averagePeriod === 'custom'
+                                                ? 'bg-aviation-600 text-white font-black shadow-xs ring-2 ring-aviation-400/40 border-aviation-600'
+                                                : 'bg-white dark:bg-navy-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-navy-800 font-bold cursor-pointer'"
                                             class="px-2.5 py-1.5 rounded-lg border text-[11px] transition flex items-center gap-1">
-                                        <span>CUSTOM</span>
+                                        CUSTOM
                                     </button>
 
                                     {{-- Custom Days Input Form (when 'custom' selected) --}}
                                     <div x-show="averagePeriod === 'custom'" class="inline-flex items-center gap-1.5 ml-1">
-                                        <input type="number"
-                                               min="1"
-                                               :max="totalAvailableDays"
-                                               step="1"
+                                        <span class="text-[10px] font-mono text-slate-400 font-bold">CUSTOM DAYS:</span>
+                                        <input type="text"
                                                x-model="customInputDays"
                                                @keydown.enter="applyCustomAverageDays()"
                                                placeholder="Hari"
-                                               class="w-16 px-2 py-1 text-xs font-mono font-bold rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-navy-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 text-center">
+                                               class="w-16 px-2 py-1 text-xs font-mono font-bold rounded-lg border border-aviation-300 dark:border-aviation-700 bg-white dark:bg-navy-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-aviation-500 text-center">
                                         <span class="text-[10px] font-mono text-slate-400 font-bold">DAYS</span>
                                         <button type="button"
                                                 @click="applyCustomAverageDays()"
-                                                class="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-mono font-bold text-[11px] transition cursor-pointer shadow-2xs">
-                                            Apply
+                                                class="px-2.5 py-1 rounded-lg bg-aviation-600 hover:bg-aviation-700 text-white font-mono font-bold text-[11px] transition cursor-pointer shadow-2xs">
+                                            APPLY
                                         </button>
                                     </div>
                                 </div>
@@ -1579,57 +1575,17 @@
                                 </div>
                             </div>
 
-                            {{-- Right: Average Values Display & Action Buttons --}}
-                            <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-start lg:justify-end">
-                                {{-- ARR AVG Pill --}}
-                                <div class="px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center gap-2 font-mono">
-                                    <div class="flex flex-col">
-                                        <span class="text-[9px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                                            AVG ARRIVAL
-                                        </span>
-                                        <div class="flex items-baseline gap-1">
-                                            <span class="text-base font-black text-amber-600 dark:text-amber-400" x-text="formatAverageDisplay(effectiveAverageArrival)"></span>
-                                            <template x-if="isAverageAdjusted && adjustedAverageArrival !== null">
-                                                <span class="text-[9px] text-purple-600 dark:text-purple-400 font-bold" :title="'Calculated: ' + calculatedAverageArrival">(adj)</span>
-                                            </template>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {{-- DEP AVG Pill --}}
-                                <div class="px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 flex items-center gap-2 font-mono">
-                                    <div class="flex flex-col">
-                                        <span class="text-[9px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-300">
-                                            AVG DEPARTURE
-                                        </span>
-                                        <div class="flex items-baseline gap-1">
-                                            <span class="text-base font-black text-blue-600 dark:text-blue-400" x-text="formatAverageDisplay(effectiveAverageDeparture)"></span>
-                                            <template x-if="isAverageAdjusted && adjustedAverageDeparture !== null">
-                                                <span class="text-[9px] text-purple-600 dark:text-purple-400 font-bold" :title="'Calculated: ' + calculatedAverageDeparture">(adj)</span>
-                                            </template>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {{-- Buttons: Edit Average & Reset --}}
-                                <div class="flex items-center gap-1.5">
+                            {{-- Right: Reset Button --}}
+                            <div class="flex items-center gap-2">
+                                <template x-if="averagePeriod !== 'original'">
                                     <button type="button"
-                                            @click="openEditAverageModal()"
-                                            class="px-3 py-1.5 rounded-lg text-xs font-bold text-amber-800 dark:text-amber-200 bg-amber-100/80 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-700 hover:bg-amber-200 dark:hover:bg-amber-900 transition flex items-center gap-1 cursor-pointer shadow-2xs">
-                                        <span>✏</span>
-                                        <span>Edit Average</span>
+                                            @click="resetAverageDays()"
+                                            title="Kembalikan ke data asli tanpa pembagian rata-rata"
+                                            class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-navy-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-200 transition flex items-center gap-1.5 cursor-pointer shadow-2xs">
+                                        <span>↺</span>
+                                        <span>RESET TO ORIGINAL</span>
                                     </button>
-
-                                    <template x-if="isAverageAdjusted">
-                                        <button type="button"
-                                                @click="resetAverageAdjustment()"
-                                                title="Kembalikan nilai ke hasil kalkulasi rata-rata aktual"
-                                                class="px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-navy-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-200 transition flex items-center gap-1 cursor-pointer">
-                                            <span>↺</span>
-                                            <span>Reset</span>
-                                        </button>
-                                    </template>
-                                </div>
+                                </template>
                             </div>
                         </div>
                     </div>
@@ -2489,67 +2445,7 @@
         </div>
     </div>
 
-    {{-- ══ MODAL: EDIT AVERAGE TERMINAL CAPACITY (DAU-10A) ════════════════════ --}}
-    <div x-show="showEditAverageModal" x-transition class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4" style="display: none;">
-        <div @click.away="closeEditAverageModal()" class="w-full max-w-md bg-white dark:bg-navy-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                <div class="flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                    <h3 class="font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wider">EDIT AVERAGE TERMINAL CAPACITY</h3>
-                </div>
-                <button type="button" @click="closeEditAverageModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg font-bold cursor-pointer">&times;</button>
-            </div>
 
-            <div class="space-y-3 text-xs">
-                <p class="text-slate-500 dark:text-slate-400 text-[11px] leading-relaxed">
-                    Sesuaikan nilai referensi analitis rata-rata kapasitas terminal (ARR &amp; DEP) pada chart Distribusi Per Jam.
-                    <strong class="text-amber-600 dark:text-amber-400">Pengaturan ini TIDAK mengubah Configured Aircraft Capacity (NAC).</strong>
-                </p>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    {{-- Average ARR input --}}
-                    <div class="p-3.5 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border-2 border-amber-300 dark:border-amber-700/60 space-y-1.5 shadow-2xs">
-                        <label class="block font-black text-amber-900 dark:text-amber-200 text-xs">AVERAGE ARRIVAL</label>
-                        <div class="flex items-center gap-2">
-                            <input type="number" step="0.1" min="0" max="200" x-model="editAvgArrInput" class="w-full px-3 py-1.5 text-base font-mono font-bold rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-navy-950 text-amber-700 dark:text-amber-300 focus:ring-2 focus:ring-amber-500">
-                            <span class="text-xs font-bold text-amber-700 dark:text-amber-300 font-mono">A/C</span>
-                        </div>
-                        <div class="text-[9.5px] font-mono text-amber-700/80 dark:text-amber-400/80">
-                            Calculated: <strong x-text="calculatedAverageArrival"></strong> A/C
-                        </div>
-                    </div>
-
-                    {{-- Average DEP input --}}
-                    <div class="p-3.5 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border-2 border-blue-300 dark:border-blue-700/60 space-y-1.5 shadow-2xs">
-                        <label class="block font-black text-blue-900 dark:text-blue-200 text-xs">AVERAGE DEPARTURE</label>
-                        <div class="flex items-center gap-2">
-                            <input type="number" step="0.1" min="0" max="200" x-model="editAvgDepInput" class="w-full px-3 py-1.5 text-base font-mono font-bold rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-navy-950 text-blue-700 dark:text-blue-300 focus:ring-2 focus:ring-blue-500">
-                            <span class="text-xs font-bold text-blue-700 dark:text-blue-300 font-mono">A/C</span>
-                        </div>
-                        <div class="text-[9.5px] font-mono text-blue-700/80 dark:text-blue-400/80">
-                            Calculated: <strong x-text="calculatedAverageDeparture"></strong> A/C
-                        </div>
-                    </div>
-                </div>
-
-                <template x-if="editAvgModalError">
-                    <div class="p-2.5 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-600 text-xs font-semibold" x-text="editAvgModalError"></div>
-                </template>
-            </div>
-
-            <div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
-                <button type="button" @click="resetAverageAdjustment(); closeEditAverageModal();"
-                        x-show="isAverageAdjusted"
-                        class="px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer">
-                    Reset to Calculated
-                </button>
-                <div class="flex items-center gap-2 ml-auto">
-                    <button type="button" @click="closeEditAverageModal()" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-navy-800 hover:bg-slate-200 transition cursor-pointer">Batal</button>
-                    <button type="button" @click="saveAverageAdjustment()" class="px-5 py-2 rounded-lg text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 transition cursor-pointer shadow-xs">Simpan</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <div x-show="opsToastOpen" x-transition class="fixed bottom-5 right-5 z-50 p-3.5 rounded-xl bg-slate-900/95 text-white shadow-2xl border border-slate-700 text-xs font-semibold flex items-center gap-2 font-mono" style="display: none;">
         <span class="text-emerald-400">&#10003;</span>
@@ -2613,32 +2509,17 @@ function dauEnhancedDashboard() {
         opsStartTime: @json($opsStartTime ?? '06:00'),
         opsEndTime: @json($opsEndTime ?? '20:00'),
 
-        // DAU-10A Average Terminal Capacity State
+        // DAU-10A Average By Days State (Aircraft Hourly Bar Transformation)
         availableDates: @json($availableDates ?? []),
         totalAvailableDays: Number(@json($totalAvailableDays ?? 1)),
-        averagePeriod: '1',
+        averagePeriod: 'original',
+        selectedAverageDays: 1,
         customAverageDays: Math.min(30, Number(@json($totalAvailableDays ?? 1))),
-        customInputDays: Math.min(30, Number(@json($totalAvailableDays ?? 1))),
+        customInputDays: '',
         customDayError: '',
-        calculatedAverageArrival: 0,
-        calculatedAverageDeparture: 0,
-        adjustedAverageArrival: null,
-        adjustedAverageDeparture: null,
-        isAverageAdjusted: false,
-        showEditAverageModal: false,
-        editAvgArrInput: 0,
-        editAvgDepInput: 0,
-        editAvgModalError: '',
-        averageDataUsedDays: 1,
+        averageDataUsedDays: Number(@json($totalAvailableDays ?? 1)),
         averageWindowStartDate: @json($meta['start_date'] ?? date('Y-m-d')),
         averageWindowEndDate: @json($meta['end_date'] ?? date('Y-m-d')),
-
-        get effectiveAverageArrival() {
-            return this.adjustedAverageArrival !== null ? Number(this.adjustedAverageArrival) : Number(this.calculatedAverageArrival);
-        },
-        get effectiveAverageDeparture() {
-            return this.adjustedAverageDeparture !== null ? Number(this.adjustedAverageDeparture) : Number(this.calculatedAverageDeparture);
-        },
 
         // Table Pagination & Sorting
         currentPage: 1,
@@ -2690,7 +2571,6 @@ function dauEnhancedDashboard() {
             if (storedStart) this.opsStartTime = storedStart;
             if (storedEnd) this.opsEndTime = storedEnd;
 
-            this.calculateAverageTerminalCapacity();
             this.applyFilters();
             this.$nextTick(() => {
                 this.initCharts();
@@ -2763,7 +2643,7 @@ function dauEnhancedDashboard() {
             this.departureCapacity = dep;
             this.opsStartTime = this.modalOpsStart;
             this.opsEndTime = this.modalOpsEnd;
-            this.calculateAverageTerminalCapacity();
+            this.updateAverageWindow();
             this.closeUnifiedModal();
             this.opsToastMessage = `Capacity (ARR: ${arr}, DEP: ${dep}) & Ops Hours (${this.opsStartTime}-${this.opsEndTime}) berhasil disimpan`;
             this.opsToastOpen = true;
@@ -2981,7 +2861,7 @@ function dauEnhancedDashboard() {
             });
 
             this.recalculateAnalytics();
-            this.calculateAverageTerminalCapacity();
+            this.updateAverageWindow();
             this.$nextTick(() => {
                 this.updateCharts();
             });
@@ -3514,13 +3394,7 @@ function dauEnhancedDashboard() {
             p.set('ops_end', this.opsEndTime);
             if (this.reportType === 'DAU10A' && this.selectedMetric === 'aircraft') {
                 p.set('avg_period', this.averagePeriod);
-                p.set('avg_custom_days', this.customAverageDays);
-                p.set('avg_arr', this.calculatedAverageArrival);
-                p.set('avg_dep', this.calculatedAverageDeparture);
-                if (this.adjustedAverageArrival !== null) p.set('avg_adj_arr', this.adjustedAverageArrival);
-                if (this.adjustedAverageDeparture !== null) p.set('avg_adj_dep', this.adjustedAverageDeparture);
-                p.set('avg_dates_range', `${this.averageWindowStartDate} s/d ${this.averageWindowEndDate}`);
-                p.set('avg_valid_days', this.averageDataUsedDays);
+                p.set('avg_days', this.selectedAverageDays);
             }
             return p.toString();
         },
@@ -3615,9 +3489,18 @@ function dauEnhancedDashboard() {
                         status: ''
                     };
                 } else {
-                    const arr = Number(item.aircraft_arrival || 0);
-                    const dep = Number(item.aircraft_departure || 0);
+                    const rawArr = Number(item.aircraft_arrival || 0);
+                    const rawDep = Number(item.aircraft_departure || 0);
+
+                    // Average By Days Transformation (strictly ceil rounding per directional movement)
+                    let arr = rawArr;
+                    let dep = rawDep;
+                    if (this.reportType === 'DAU10A' && this.selectedMetric === 'aircraft' && this.averagePeriod !== 'original' && this.selectedAverageDays > 1) {
+                        arr = Math.ceil(rawArr / this.selectedAverageDays);
+                        dep = Math.ceil(rawDep / this.selectedAverageDays);
+                    }
                     const demand = arr + dep;
+
                     const is24h = (this.opsStartTime === '00:00' && (this.opsEndTime === '24:00' || this.opsEndTime === '23:59'));
                     let isOff = false;
                     if (!is24h) {
@@ -3667,6 +3550,8 @@ function dauEnhancedDashboard() {
                         isOps: !isOff,
                         arr: arr,
                         dep: dep,
+                        rawArr: rawArr,
+                        rawDep: rawDep,
                         arrCap: arrCap,
                         depCap: depCap,
                         arrStatus: arrSt,
@@ -3689,9 +3574,7 @@ function dauEnhancedDashboard() {
             const maxArr = Math.max(...list.map(d => Number(d.arr || 0)), 0);
             const maxDep = Math.max(...list.map(d => Number(d.dep || 0)), 0);
             if (this.selectedMetric === 'aircraft') {
-                const effAvgArr = (typeof this.effectiveAverageArrival !== 'undefined') ? Number(this.effectiveAverageArrival || 0) : 0;
-                const effAvgDep = (typeof this.effectiveAverageDeparture !== 'undefined') ? Number(this.effectiveAverageDeparture || 0) : 0;
-                const maxCap = Math.max(Number(this.arrivalCapacity || 6), Number(this.departureCapacity || 6), effAvgArr, effAvgDep);
+                const maxCap = Math.max(Number(this.arrivalCapacity || 6), Number(this.departureCapacity || 6));
                 const maxMovement = Math.max(maxArr, maxDep, maxCap);
                 return Math.max(Math.ceil(maxMovement * 1.15), maxMovement + 2, 8);
             }
@@ -3699,198 +3582,76 @@ function dauEnhancedDashboard() {
             return Math.max(Math.ceil(maxMovement * 1.15), maxMovement + 2, 8);
         },
 
-        // Average Terminal Capacity Actions
-        setAveragePeriod(p) {
-            this.averagePeriod = p;
+        // DAU-10A Average By Days Actions
+        setAverageDays(mode, days) {
             this.customDayError = '';
-            if (p !== 'custom') {
-                this.calculateAverageTerminalCapacity();
+            this.averagePeriod = mode;
+            if (mode === 'original') {
+                this.selectedAverageDays = 1;
+            } else if (mode === 'custom') {
+                if (this.customInputDays) {
+                    this.applyCustomAverageDays();
+                    return;
+                }
+            } else {
+                const n = parseInt(days || mode, 10);
+                if (!isNaN(n) && n >= 1 && n <= this.totalAvailableDays) {
+                    this.selectedAverageDays = n;
+                }
             }
+            this.updateAverageWindow();
+            this.$nextTick(() => { this.updateCharts(); });
         },
 
         applyCustomAverageDays() {
             const raw = String(this.customInputDays || '').trim();
-            if (!/^\d+$/.test(raw)) {
-                this.customDayError = `Enter a valid integer number of days between 1 and ${this.totalAvailableDays}.`;
-                return;
-            }
-            const num = parseInt(raw, 10);
-            if (isNaN(num) || num < 1 || num > this.totalAvailableDays) {
-                this.customDayError = `Enter a valid number of days between 1 and ${this.totalAvailableDays}. (Maximum available: ${this.totalAvailableDays} days)`;
-                return;
-            }
             this.customDayError = '';
+
+            if (!/^\d+$/.test(raw)) {
+                this.customDayError = 'Please enter a valid positive whole number of days.';
+                return;
+            }
+
+            const num = parseInt(raw, 10);
+            if (isNaN(num) || num < 1) {
+                this.customDayError = 'Days must be an integer greater than or equal to 1.';
+                return;
+            }
+
+            if (num > this.totalAvailableDays) {
+                this.customDayError = `Maximum available average period is ${this.totalAvailableDays} days.`;
+                return;
+            }
+
+            this.selectedAverageDays = num;
             this.customAverageDays = num;
             this.averagePeriod = 'custom';
-            this.calculateAverageTerminalCapacity();
-        },
-
-        openEditAverageModal() {
-            this.editAvgArrInput = this.effectiveAverageArrival;
-            this.editAvgDepInput = this.effectiveAverageDeparture;
-            this.editAvgModalError = '';
-            this.showEditAverageModal = true;
-        },
-
-        closeEditAverageModal() {
-            this.showEditAverageModal = false;
-        },
-
-        saveAverageAdjustment() {
-            const arr = parseFloat(this.editAvgArrInput);
-            const dep = parseFloat(this.editAvgDepInput);
-            if (isNaN(arr) || arr < 0) { this.editAvgModalError = 'Average Arrival harus berupa angka >= 0'; return; }
-            if (isNaN(dep) || dep < 0) { this.editAvgModalError = 'Average Departure harus berupa angka >= 0'; return; }
-            this.adjustedAverageArrival = Math.round(arr * 10) / 10;
-            this.adjustedAverageDeparture = Math.round(dep * 10) / 10;
-            this.isAverageAdjusted = true;
-            this.closeEditAverageModal();
-            this.opsToastMessage = `Average Capacity disesuaikan: ARR ${this.adjustedAverageArrival} A/C, DEP ${this.adjustedAverageDeparture} A/C`;
-            this.opsToastOpen = true;
-            setTimeout(() => { this.opsToastOpen = false; }, 3000);
+            this.updateAverageWindow();
             this.$nextTick(() => { this.updateCharts(); });
         },
 
-        resetAverageAdjustment() {
-            this.adjustedAverageArrival = null;
-            this.adjustedAverageDeparture = null;
-            this.isAverageAdjusted = false;
-            this.opsToastMessage = `Average Capacity dikembalikan ke kalkulasi rata-rata (ARR: ${this.calculatedAverageArrival}, DEP: ${this.calculatedAverageDeparture})`;
-            this.opsToastOpen = true;
-            setTimeout(() => { this.opsToastOpen = false; }, 3000);
+        resetAverageDays() {
+            this.averagePeriod = 'original';
+            this.selectedAverageDays = 1;
+            this.customInputDays = '';
+            this.customDayError = '';
+            this.updateAverageWindow();
             this.$nextTick(() => { this.updateCharts(); });
         },
 
-        formatAverageDisplay(val) {
-            if (val === null || val === undefined || isNaN(val)) return '0 A/C';
-            return Number(val).toFixed(1).replace(/\.0$/, '') + ' A/C';
-        },
-
-        calculateAverageTerminalCapacity() {
-            if (this.reportType !== 'DAU10A' || this.selectedMetric !== 'aircraft') return;
-
-            // 1. Determine date window N
-            let nDays = 1;
-            if (this.averagePeriod === 'custom') {
-                nDays = parseInt(this.customAverageDays, 10) || 1;
-            } else {
-                nDays = parseInt(this.averagePeriod, 10) || 1;
-            }
-            nDays = Math.max(1, Math.min(nDays, this.totalAvailableDays));
-
+        updateAverageWindow() {
             const availDates = (this.availableDates && this.availableDates.length > 0)
                 ? this.availableDates
                 : (this.meta.start_date ? [this.meta.start_date] : []);
-
+            const nDays = (this.averagePeriod === 'original' || !this.selectedAverageDays)
+                ? this.totalAvailableDays
+                : Math.min(this.selectedAverageDays, this.totalAvailableDays);
             const selectedDates = availDates.slice(0, nDays);
-            const validDaysCount = selectedDates.length > 0 ? selectedDates.length : Math.min(nDays, this.totalAvailableDays);
-
-            this.averageDataUsedDays = validDaysCount;
+            this.averageDataUsedDays = (this.averagePeriod === 'original')
+                ? this.totalAvailableDays
+                : Math.min(this.selectedAverageDays, this.totalAvailableDays);
             this.averageWindowStartDate = selectedDates[0] || (this.meta.start_date ?? '—');
             this.averageWindowEndDate = selectedDates[selectedDates.length - 1] || (this.meta.end_date ?? this.averageWindowStartDate);
-
-            // 2. Identify target terminals based on terminal filter
-            const allRecords = this.allRecords || [];
-            const distinctTerminalsInRecords = Array.from(new Set(allRecords.map(r => String(r.terminal || '').trim()).filter(Boolean)));
-            const availableTermList = (this.terminals && this.terminals.length > 0) ? this.terminals : distinctTerminalsInRecords;
-
-            let targetTerminals = [];
-            if (this.filterTerminal !== 'ALL') {
-                targetTerminals = [String(this.filterTerminal).trim()];
-            } else {
-                targetTerminals = availableTermList.length > 0 ? availableTermList : ['ALL'];
-            }
-
-            // 3. Operational hours filter
-            const is24h = (this.opsStartTime === '00:00' && (this.opsEndTime === '24:00' || this.opsEndTime === '23:59'));
-            const sNum = parseInt(String(this.opsStartTime || '00:00').split(/[.:]/)[0], 10);
-            const eNum = parseInt(String(this.opsEndTime || '24:00').split(/[.:]/)[0], 10);
-
-            const allHours = (this.hours && this.hours.length > 0) ? this.hours : (
-                this.activeHourlyDistribution && this.activeHourlyDistribution.length > 0 ? this.activeHourlyDistribution.map(h => h.hour) : []
-            );
-
-            let opsHours = allHours.filter(hStr => {
-                if (is24h) return true;
-                const hNum = parseInt(String(hStr).split(/[.:]/)[0], 10);
-                return hNum >= sNum && hNum < eNum;
-            });
-            if (opsHours.length === 0) opsHours = allHours.length > 0 ? allHours : ['ALL'];
-
-            // 4. Index records: Terminal filtering happens BEFORE averaging!
-            const terminalAverages = [];
-
-            for (const term of targetTerminals) {
-                const tKey = term.toLowerCase();
-                let termTotalArr = 0;
-                let termTotalDep = 0;
-
-                if (selectedDates.length > 0 && selectedDates.some(d => allRecords.some(r => r.date === d))) {
-                    // Explicit multi-date dataset
-                    for (const d of selectedDates) {
-                        for (const h of opsHours) {
-                            const cleanH = String(h).replace(/[^0-9]/g, '');
-                            const rec = allRecords.find(r => {
-                                if (r.date && r.date !== d) return false;
-                                if (term !== 'ALL' && String(r.terminal || '').trim().toLowerCase() !== tKey) return false;
-                                const rH = String(r.hour || r.period || '').replace(/[^0-9]/g, '');
-                                if (cleanH && rH && rH !== cleanH) return false;
-                                if (this.filterFlightType === 'DOM' && r.category && String(r.category).toUpperCase().includes('INT')) return false;
-                                if (this.filterFlightType === 'INT' && r.category && String(r.category).toUpperCase().includes('DOM')) return false;
-                                return true;
-                            });
-
-                            if (rec) {
-                                termTotalArr += Number(rec.aircraft_arrival || 0);
-                                termTotalDep += Number(rec.aircraft_departure || 0);
-                            }
-                        }
-                    }
-                    const denom = Math.max(1, selectedDates.length * opsHours.length);
-                    terminalAverages.push({
-                        terminal: term,
-                        avgArr: termTotalArr / denom,
-                        avgDep: termTotalDep / denom
-                    });
-                } else {
-                    // Single-table / aggregate season dataset: sum across operational hours
-                    for (const h of opsHours) {
-                        const cleanH = String(h).replace(/[^0-9]/g, '');
-                        const rec = allRecords.find(r => {
-                            if (term !== 'ALL' && String(r.terminal || '').trim().toLowerCase() !== tKey) return false;
-                            const rH = String(r.hour || r.period || '').replace(/[^0-9]/g, '');
-                            if (cleanH && rH && rH !== cleanH) return false;
-                            if (this.filterFlightType === 'DOM' && r.category && String(r.category).toUpperCase().includes('INT')) return false;
-                            if (this.filterFlightType === 'INT' && r.category && String(r.category).toUpperCase().includes('DOM')) return false;
-                            return true;
-                        });
-
-                        if (rec) {
-                            termTotalArr += Number(rec.aircraft_arrival || 0);
-                            termTotalDep += Number(rec.aircraft_departure || 0);
-                        }
-                    }
-                    const denom = Math.max(1, opsHours.length);
-                    terminalAverages.push({
-                        terminal: term,
-                        avgArr: termTotalArr / denom,
-                        avgDep: termTotalDep / denom
-                    });
-                }
-            }
-
-            // Overall average across target terminals
-            if (terminalAverages.length > 0) {
-                const sumArr = terminalAverages.reduce((acc, t) => acc + t.avgArr, 0);
-                const sumDep = terminalAverages.reduce((acc, t) => acc + t.avgDep, 0);
-                this.calculatedAverageArrival = Math.round((sumArr / terminalAverages.length) * 10) / 10;
-                this.calculatedAverageDeparture = Math.round((sumDep / terminalAverages.length) * 10) / 10;
-            } else {
-                this.calculatedAverageArrival = 0;
-                this.calculatedAverageDeparture = 0;
-            }
-
-            this.$nextTick(() => { this.updateCharts(); });
         },
 
         get gridArrNacOffsetPx() {

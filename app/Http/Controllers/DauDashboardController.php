@@ -426,9 +426,16 @@ class DauDashboardController extends Controller
         ];
 
         $hourlyCapacityStatus = [];
+        $averagePeriodLabel = null;
         if ($reportType === 'DAU10A') {
             $metricMode = strtolower($filters['metric'] ?? 'aircraft');
-            foreach ($hourlyData as $hd) {
+            $avgPeriod = $request->query('avg_period');
+            $avgDays = (int) $request->query('avg_days', 1);
+            if ($metricMode === 'aircraft' && $avgPeriod && $avgPeriod !== 'original' && $avgDays > 1) {
+                $averagePeriodLabel = "{$avgDays} DAYS";
+            }
+
+            foreach ($hourlyData as &$hd) {
                 if ($metricMode === 'passenger') {
                     $arr = (int)($hd['passenger_arrival'] ?? 0);
                     $dep = (int)($hd['passenger_departure'] ?? 0);
@@ -470,8 +477,19 @@ class DauDashboardController extends Controller
                         'is_ops'      => true,
                     ];
                 } else {
-                    $arr = (int)($hd['aircraft_arrival'] ?? 0);
-                    $dep = (int)($hd['aircraft_departure'] ?? 0);
+                    $rawArr = (int)($hd['aircraft_arrival'] ?? 0);
+                    $rawDep = (int)($hd['aircraft_departure'] ?? 0);
+
+                    if ($averagePeriodLabel !== null && $avgDays > 1) {
+                        $arr = (int) ceil($rawArr / $avgDays);
+                        $dep = (int) ceil($rawDep / $avgDays);
+                        $hd['aircraft_arrival'] = $arr;
+                        $hd['aircraft_departure'] = $dep;
+                        $hd['aircraft_total'] = $arr + $dep;
+                    } else {
+                        $arr = $rawArr;
+                        $dep = $rawDep;
+                    }
                     $demand = $arr + $dep;
                     $util = $nac > 0 ? round(($demand / $nac) * 100) : 0;
 
@@ -508,39 +526,13 @@ class DauDashboardController extends Controller
                     ];
                 }
             }
+            unset($hd);
         }
 
         $maxPdfRows = 150;
         $totalFilteredCount = count($filteredRecords);
         $isTruncatedForPdf = $totalFilteredCount > $maxPdfRows;
         $pdfRecords = $isTruncatedForPdf ? array_slice($filteredRecords, 0, $maxPdfRows) : $filteredRecords;
-
-        // Average Terminal Capacity parameters (optional analytical reference for Aircraft mode in DAU-10A)
-        $avgPeriod = $request->query('avg_period');
-        $avgCustomDays = (int) $request->query('avg_custom_days', 0);
-        $avgArr = $request->query('avg_arr') !== null ? (float) $request->query('avg_arr') : null;
-        $avgDep = $request->query('avg_dep') !== null ? (float) $request->query('avg_dep') : null;
-        $avgAdjArr = $request->query('avg_adj_arr') !== null ? (float) $request->query('avg_adj_arr') : null;
-        $avgAdjDep = $request->query('avg_adj_dep') !== null ? (float) $request->query('avg_adj_dep') : null;
-        $avgDatesRange = $request->query('avg_dates_range');
-        $avgValidDays = $request->query('avg_valid_days');
-
-        $averageTerminalCapacity = null;
-        if ($reportType === 'DAU10A' && ($avgArr !== null || $avgPeriod !== null)) {
-            $averageTerminalCapacity = [
-                'period'       => $avgPeriod ?: '1 DAY',
-                'custom_days'  => $avgCustomDays,
-                'calc_arr'     => $avgArr ?? 0,
-                'calc_dep'     => $avgDep ?? 0,
-                'adj_arr'      => $avgAdjArr,
-                'adj_dep'      => $avgAdjDep,
-                'eff_arr'      => $avgAdjArr !== null ? $avgAdjArr : ($avgArr ?? 0),
-                'eff_dep'      => $avgAdjDep !== null ? $avgAdjDep : ($avgDep ?? 0),
-                'dates_range'  => $avgDatesRange,
-                'valid_days'   => $avgValidDays,
-                'scope'        => $activeTerminalScope,
-            ];
-        }
 
         $pdf = Pdf::loadView('dau.pdf', [
             'upload'                  => $upload,
@@ -566,7 +558,7 @@ class DauDashboardController extends Controller
             'opsEnd'                  => $opsEnd,
             'capacitySummary'         => $capacitySummary,
             'hourlyCapacityStatus'    => $hourlyCapacityStatus,
-            'averageTerminalCapacity' => $averageTerminalCapacity,
+            'averagePeriodLabel'      => $averagePeriodLabel,
         ])
         ->setPaper('a4', 'landscape')
         ->setOptions([
