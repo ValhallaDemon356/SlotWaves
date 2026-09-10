@@ -1544,9 +1544,12 @@
                                     {{-- CUSTOM Button --}}
                                     <button type="button"
                                             @click="setAverageDays('custom')"
+                                            :disabled="totalAvailableDays <= 1"
                                             :class="averagePeriod === 'custom'
                                                 ? 'bg-aviation-600 text-white font-black shadow-xs ring-2 ring-aviation-400/40 border-aviation-600'
-                                                : 'bg-white dark:bg-navy-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-navy-800 font-bold cursor-pointer'"
+                                                : (totalAvailableDays <= 1
+                                                    ? 'opacity-40 bg-slate-100 dark:bg-navy-900 text-slate-400 border-slate-200 dark:border-slate-800 cursor-not-allowed'
+                                                    : 'bg-white dark:bg-navy-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-navy-800 font-bold cursor-pointer')"
                                             class="px-2.5 py-1.5 rounded-lg border text-[11px] transition flex items-center gap-1">
                                         CUSTOM
                                     </button>
@@ -1554,12 +1557,15 @@
                                     {{-- Custom Days Input Form (when 'custom' selected) --}}
                                     <div x-show="averagePeriod === 'custom'" class="inline-flex items-center gap-1.5 ml-1">
                                         <span class="text-[10px] font-mono text-slate-400 font-bold">CUSTOM DAYS:</span>
-                                        <input type="text"
+                                        <input type="number"
                                                x-model="customInputDays"
                                                @keydown.enter="applyCustomAverageDays()"
-                                               placeholder="Hari"
+                                               placeholder="30"
+                                               min="1"
+                                               :max="totalAvailableDays"
                                                class="w-16 px-2 py-1 text-xs font-mono font-bold rounded-lg border border-aviation-300 dark:border-aviation-700 bg-white dark:bg-navy-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-aviation-500 text-center">
                                         <span class="text-[10px] font-mono text-slate-400 font-bold">DAYS</span>
+                                        <span class="text-[9px] font-mono text-slate-400">(max: <span class="text-aviation-600 dark:text-aviation-400 font-bold" x-text="totalAvailableDays"></span>)</span>
                                         <button type="button"
                                                 @click="applyCustomAverageDays()"
                                                 class="px-2.5 py-1 rounded-lg bg-aviation-600 hover:bg-aviation-700 text-white font-mono font-bold text-[11px] transition cursor-pointer shadow-2xs">
@@ -1573,6 +1579,14 @@
                                     <span>⚠️</span>
                                     <span x-text="customDayError"></span>
                                 </div>
+
+                                {{-- Single-Day Data Notice (shown when report only contains 1 operational date) --}}
+                                <template x-if="totalAvailableDays <= 1">
+                                    <div class="flex items-center gap-1.5 pt-1 text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                                        <span class="text-amber-500">ⓘ</span>
+                                        <span>Report ini hanya memiliki <strong class="text-slate-700 dark:text-slate-200">1 hari data</strong>. Preset 5/15/30/60 DAYS dinonaktifkan. Upload laporan multi-hari untuk mengaktifkan fitur Average.</span>
+                                    </div>
+                                </template>
                             </div>
 
                             {{-- Right: Reset Button --}}
