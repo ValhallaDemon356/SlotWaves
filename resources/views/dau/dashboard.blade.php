@@ -204,7 +204,7 @@
                     </div>
                 @endif
 
-                @if (in_array($reportType, ['DAU1', 'DAU3', 'DAU4', 'DAU5', 'DAU5A', 'DAU6', 'DAU10', 'DAU10B', 'DAU11', 'DAU12']))
+                @if (in_array($reportType, ['DAU1', 'DAU3', 'DAU4', 'DAU5', 'DAU5A', 'DAU5C', 'DAU6', 'DAU10', 'DAU10B', 'DAU11', 'DAU12']))
                     <div>
                         <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Direction</label>
                         <select x-model="filterDirection" @change="applyFilters()"
@@ -1164,20 +1164,23 @@
             </div>
         @endif
 
-        {{-- DAU-5C: AIRLINE PROFILES (SEAT CAP OMITTED) --}}
+        {{-- DAU-5C: AIRLINE PROFILES — METRIC-AWARE (Pesawat / Penumpang / Bagasi / Kargo / POS) --}}
         @if ($reportType === 'DAU5C')
             <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
                 <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
                     <div>
                         <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Airline Comparative Profiles</div>
-                        <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">TOP AIRLINE OPERATOR COMPARISON</h2>
+                        <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white"
+                            x-text="'TOP AIRLINE: ' + dau5cChartLabel">TOP AIRLINE OPERATOR COMPARISON</h2>
                     </div>
-                    <div class="text-xs font-mono text-slate-400">Seat Capacity omitted as not available in source</div>
+                    <div class="text-xs font-mono text-slate-400"
+                         x-text="'Ranked by ' + dau5cChartLabel + (filterDirection !== \'ALL\' ? \' • \' + filterDirection : \' • ARR + DEP\')">Ranked by selected metric</div>
                 </div>
                 <div x-show="dau5cNoData" class="flex flex-col items-center justify-center h-48 text-slate-400 dark:text-slate-500 gap-2">
                     <svg class="w-10 h-10 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                     <div class="text-xs font-bold uppercase tracking-widest">NO AIRLINE DATA AVAILABLE</div>
-                    <div class="text-[11px] text-slate-400">No airline activity found for selected filters</div>
+                    <div class="text-[11px] text-slate-400"
+                         x-text="'No airline activity found for metric: ' + dau5cChartLabel + (filterDirection !== \'ALL\' ? \' (\' + filterDirection + \')\' : \'\')">No airline activity found for selected filters</div>
                 </div>
                 <div x-show="!dau5cNoData" class="relative h-72 sm:h-80 w-full">
                     <canvas id="dau5cBarChart" class="w-full h-full"></canvas>
@@ -2611,6 +2614,7 @@ function dauEnhancedDashboard() {
         dau5aCrewNoData: false,
         dau5bTermNoData: false,
         dau5cNoData: false,
+        dau5cChartLabel: 'Aircraft Movements',
 
         get dau2ActiveMetricLabel() {
             const map = {
@@ -4383,23 +4387,63 @@ function dauEnhancedDashboard() {
                 this.chartInstances.dau5c = null;
             }
 
-            // Build aggregation from filteredRecords directly (no shared dau4aOperators)
+            const m   = this.selectedMetric;   // aircraft | passenger | baggage | cargo | pos
+            const dir = this.filterDirection;  // ALL | ARRIVAL | DEPARTURE
+
+            // ── Metric label & unit for axis / tooltip ──
+            const mLabel = m === 'passenger' ? 'Passengers'
+                         : m === 'baggage'   ? 'Bagasi (Kg)'
+                         : m === 'cargo'     ? 'Kargo (Kg)'
+                         : m === 'pos'       ? 'POS / Surat (Kg)'
+                         :                    'Aircraft Movements';
+            this.dau5cChartLabel = mLabel;
+
+            // ── Bar color per metric ──
+            const barColor   = m === 'passenger' ? 'rgba(16, 185, 129, 0.85)'
+                             : m === 'baggage'   ? 'rgba(245, 158, 11, 0.85)'
+                             : m === 'cargo'     ? 'rgba(139, 92, 246, 0.85)'
+                             : m === 'pos'       ? 'rgba(236, 72, 153, 0.85)'
+                             :                    'rgba(2, 132, 199, 0.85)';
+            const borderColor = m === 'passenger' ? '#10b981'
+                              : m === 'baggage'   ? '#f59e0b'
+                              : m === 'cargo'     ? '#8b5cf6'
+                              : m === 'pos'       ? '#ec4899'
+                              :                    '#0284c7';
+
+            // ── Aggregate per-airline using the active metric + direction ──
             const airlineMap5c = {};
             this.filteredRecords.forEach(r => {
                 const al = r.airline || r.operator_name;
                 if (!al) return;
-                if (!airlineMap5c[al]) airlineMap5c[al] = { name: al, total: 0, pax: 0, arr: 0, dep: 0 };
-                const acArr = Number(r.aircraft_arrival || 0);
-                const acDep = Number(r.aircraft_departure || 0);
-                airlineMap5c[al].total += Number(r.aircraft_total || (acArr + acDep));
-                airlineMap5c[al].pax   += Number(r.passenger_total || 0);
-                airlineMap5c[al].arr   += acArr;
-                airlineMap5c[al].dep   += acDep;
+                if (!airlineMap5c[al]) airlineMap5c[al] = { name: al, val: 0 };
+
+                let v = 0;
+                if (m === 'passenger') {
+                    v = dir === 'ARRIVAL'   ? Number(r.passenger_arrival || 0)
+                      : dir === 'DEPARTURE' ? Number(r.passenger_departure || 0)
+                      :                       Number(r.passenger_total || 0);
+                } else if (m === 'baggage') {
+                    v = Number(r.baggage || 0);
+                } else if (m === 'cargo') {
+                    v = Number(r.cargo || 0);
+                } else if (m === 'pos') {
+                    v = Number(r.pos || 0);
+                } else {
+                    // aircraft — respect direction
+                    const acArr = Number(r.aircraft_arrival || 0);
+                    const acDep = Number(r.aircraft_departure || 0);
+                    const acTot = Number(r.aircraft_total || (acArr + acDep));
+                    v = dir === 'ARRIVAL'   ? acArr
+                      : dir === 'DEPARTURE' ? acDep
+                      :                       acTot;
+                }
+                airlineMap5c[al].val += v;
             });
 
+            // Sort descending by the selected metric value, take top 10
             const top5c = Object.values(airlineMap5c)
-                .filter(o => o.total > 0 || o.pax > 0)
-                .sort((a, b) => b.total - a.total)
+                .filter(o => o.val > 0)
+                .sort((a, b) => b.val - a.val)
                 .slice(0, 10);
 
             // Empty state
@@ -4409,23 +4453,18 @@ function dauEnhancedDashboard() {
             }
             this.dau5cNoData = false;
 
+            const total5c = top5c.reduce((acc, o) => acc + o.val, 0);
+
             this.chartInstances.dau5c = new Chart(ctx5c, {
                 type: 'bar',
                 data: {
                     labels: top5c.map(o => o.name),
                     datasets: [
                         {
-                            label: 'Aircraft Movements',
-                            data: top5c.map(o => o.total),
-                            backgroundColor: 'rgba(2, 132, 199, 0.85)',
-                            borderColor: '#0284c7',
-                            borderWidth: 1
-                        },
-                        {
-                            label: 'Passengers (÷10)',
-                            data: top5c.map(o => Math.round(o.pax / 10)),
-                            backgroundColor: 'rgba(16, 185, 129, 0.85)',
-                            borderColor: '#10b981',
+                            label: mLabel,
+                            data: top5c.map(o => o.val),
+                            backgroundColor: barColor,
+                            borderColor: borderColor,
                             borderWidth: 1
                         }
                     ]
@@ -4440,15 +4479,23 @@ function dauEnhancedDashboard() {
                             callbacks: {
                                 label: (ctx) => {
                                     const o = top5c[ctx.dataIndex];
-                                    if (ctx.datasetIndex === 0) return `Aircraft Movements: ${o.total.toLocaleString()}`;
-                                    return `Passengers: ${o.pax.toLocaleString()} (shown ÷10)`;
+                                    const share = total5c > 0
+                                        ? (o.val / total5c * 100).toFixed(2)
+                                        : '0.00';
+                                    return [
+                                        `${mLabel}: ${o.val.toLocaleString()}`,
+                                        `Share: ${share}%`
+                                    ];
                                 }
                             }
                         }
                     },
                     scales: {
                         x: { ticks: { maxRotation: 45, font: { size: 10 } } },
-                        y: { beginAtZero: true, title: { display: true, text: 'Count', font: { size: 10 } } }
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: mLabel, font: { size: 10 } }
+                        }
                     }
                 }
             });
