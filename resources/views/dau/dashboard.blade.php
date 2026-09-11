@@ -1079,10 +1079,42 @@
                     <div class="flex items-center gap-3 text-xs font-mono">
                         <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-aviation-600"></span> Volume Bars</span>
                         <span class="flex items-center gap-1"><span class="w-3 h-1 rounded bg-amber-500"></span> Cumulative %</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-0.5 bg-red-500" style="border-top:2px dashed #ef4444;display:inline-block"></span> 80% Line</span>
                     </div>
                 </div>
-                <div class="relative h-72 sm:h-84 w-full">
-                    <canvas id="dau5ParetoChart"></canvas>
+
+                {{-- No-data banner --}}
+                <div x-show="dau5ParetoNoData" class="flex flex-col items-center justify-center h-48 text-slate-400 dark:text-slate-500 gap-2">
+                    <svg class="w-10 h-10 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                    <div class="text-xs font-bold uppercase tracking-widest" x-text="'NO ' + selectedMetric.toUpperCase() + ' DATA AVAILABLE'"></div>
+                    <div class="text-[11px] text-slate-400">No airline activity recorded for the selected metric and filters</div>
+                </div>
+
+                <div x-show="!dau5ParetoNoData" class="relative h-72 sm:h-84 w-full">
+                    <canvas id="dau5ParetoChart" class="w-full h-full"></canvas>
+                </div>
+
+                {{-- Pareto Insight Card --}}
+                <div x-show="!dau5ParetoNoData && dau5ParetoInsight.total > 0"
+                     class="grid grid-cols-3 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <div class="text-center">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">80% Coverage</div>
+                        <div class="text-lg font-black text-aviation-600 dark:text-aviation-400"
+                             x-text="dau5ParetoInsight.airlinesAt80 + ' / ' + dau5ParetoInsight.total"></div>
+                        <div class="text-[10px] text-slate-400">Airlines needed</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Cumulative at 80</div>
+                        <div class="text-lg font-black text-amber-600"
+                             x-text="dau5ParetoInsight.cumAt80.toFixed(1) + '%'"></div>
+                        <div class="text-[10px] text-slate-400">Actual coverage</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Concentration</div>
+                        <div class="text-lg font-black text-slate-700 dark:text-white"
+                             x-text="dau5ParetoInsight.total > 0 ? Math.round((dau5ParetoInsight.airlinesAt80 / dau5ParetoInsight.total) * 100) + '%' : '—'"></div>
+                        <div class="text-[10px] text-slate-400">Of airlines = 80%</div>
+                    </div>
                 </div>
             </div>
         @endif
@@ -1100,8 +1132,13 @@
                         <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-purple-600"></span> Extra Crew</span>
                     </div>
                 </div>
-                <div class="relative h-72 sm:h-84 w-full">
-                    <canvas id="dau5aCrewChart"></canvas>
+                <div x-show="dau5aCrewNoData" class="flex flex-col items-center justify-center h-48 text-slate-400 dark:text-slate-500 gap-2">
+                    <svg class="w-10 h-10 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" /></svg>
+                    <div class="text-xs font-bold uppercase tracking-widest">NO CREW DATA AVAILABLE</div>
+                    <div class="text-[11px] text-slate-400">No crew activity found for selected filters</div>
+                </div>
+                <div x-show="!dau5aCrewNoData" class="relative h-72 sm:h-84 w-full">
+                    <canvas id="dau5aCrewChart" class="w-full h-full"></canvas>
                 </div>
             </div>
         @endif
@@ -1116,8 +1153,13 @@
                     </div>
                     <div class="text-xs font-mono text-slate-400">Stacked by Airline • Select Terminal filter to isolate</div>
                 </div>
-                <div class="relative h-72 sm:h-84 w-full">
-                    <canvas id="dau5bTerminalChart"></canvas>
+                <div x-show="dau5bTermNoData" class="flex flex-col items-center justify-center h-48 text-slate-400 dark:text-slate-500 gap-2">
+                    <svg class="w-10 h-10 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M3 14h18M10 4v16M14 4v16" /></svg>
+                    <div class="text-xs font-bold uppercase tracking-widest">NO TERMINAL DATA AVAILABLE</div>
+                    <div class="text-[11px] text-slate-400">No terminal-airline combinations found for selected filters</div>
+                </div>
+                <div x-show="!dau5bTermNoData" class="relative h-72 sm:h-84 w-full">
+                    <canvas id="dau5bTerminalChart" class="w-full h-full"></canvas>
                 </div>
             </div>
         @endif
@@ -1132,8 +1174,13 @@
                     </div>
                     <div class="text-xs font-mono text-slate-400">Seat Capacity omitted as not available in source</div>
                 </div>
-                <div class="relative h-72 sm:h-80 w-full">
-                    <canvas id="dau5cBarChart"></canvas>
+                <div x-show="dau5cNoData" class="flex flex-col items-center justify-center h-48 text-slate-400 dark:text-slate-500 gap-2">
+                    <svg class="w-10 h-10 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                    <div class="text-xs font-bold uppercase tracking-widest">NO AIRLINE DATA AVAILABLE</div>
+                    <div class="text-[11px] text-slate-400">No airline activity found for selected filters</div>
+                </div>
+                <div x-show="!dau5cNoData" class="relative h-72 sm:h-80 w-full">
+                    <canvas id="dau5cBarChart" class="w-full h-full"></canvas>
                 </div>
             </div>
         @endif
@@ -2558,6 +2605,12 @@ function dauEnhancedDashboard() {
         dau4aOperators: [],
         dau4bMatrixData: { cities: [], airlines: [], grid: {} },
         dau5aMetrics: { operatingCrew: 0, extraCrew: 0, arrExtraCrew: 0, depExtraCrew: 0 },
+        dau5ParetoNoData: false,
+        dau5ParetoInsight: { airlinesAt80: 0, cumAt80: 0.0, total: 0 },
+        dau5ParetoData: [],
+        dau5aCrewNoData: false,
+        dau5bTermNoData: false,
+        dau5cNoData: false,
 
         get dau2ActiveMetricLabel() {
             const map = {
@@ -3978,113 +4031,427 @@ function dauEnhancedDashboard() {
         renderDau5Charts() {
             if (!window.Chart) return;
             const ctxPareto = document.getElementById('dau5ParetoChart')?.getContext('2d');
-            if (ctxPareto) {
-                if (this.chartInstances.dau5Pareto) this.chartInstances.dau5Pareto.destroy();
-                const m = this.selectedMetric;
-                const mKey = (m === 'passenger') ? 'pax' : (m === 'baggage') ? 'baggage' : (m === 'cargo') ? 'cargo' : (m === 'pos') ? 'pos' : 'total';
-                const mLabel = (m === 'passenger') ? 'Passengers' : (m === 'baggage') ? 'Baggage (Kg)' : (m === 'cargo') ? 'Cargo (Kg)' : (m === 'pos') ? 'POS (Kg)' : 'Aircraft Movements';
-                const topAirlines = this.dau4aOperators.slice(0, 15);
-                let cum = 0;
-                const tot = topAirlines.reduce((acc, o) => acc + (o[mKey] || 0), 0) || 1;
-                const seriesData = topAirlines.map(o => (o[mKey] || 0));
-                const cumData = topAirlines.map(o => { cum += (o[mKey] || 0); return Math.round((cum / tot) * 100); });
+            if (!ctxPareto) return;
+            if (this.chartInstances.dau5Pareto) {
+                this.chartInstances.dau5Pareto.stop();
+                this.chartInstances.dau5Pareto.destroy();
+                this.chartInstances.dau5Pareto = null;
+            }
 
-                this.chartInstances.dau5Pareto = new Chart(ctxPareto, {
-                    type: 'bar',
-                    data: {
-                        labels: topAirlines.map(o => o.name),
-                        datasets: [
-                            { label: mLabel, data: seriesData, backgroundColor: '#0284c7', yAxisID: 'y' },
-                            { label: 'Cumulative %', data: cumData, type: 'line', borderColor: '#f59e0b', backgroundColor: '#f59e0b', yAxisID: 'y1', tension: 0.2 }
-                        ]
+            const m = this.selectedMetric;
+            const dir = this.filterDirection;
+
+            // Aggregate per-airline from filteredRecords — respects metric AND direction filter
+            const airlineData = {};
+            this.filteredRecords.forEach(r => {
+                const al = r.airline || r.operator_name;
+                if (!al) return;
+                if (!airlineData[al]) airlineData[al] = { name: al, val: 0, acArr: 0, acDep: 0 };
+
+                let v = 0;
+                if (m === 'passenger') {
+                    v = dir === 'ARRIVAL'   ? Number(r.passenger_arrival || 0)
+                      : dir === 'DEPARTURE' ? Number(r.passenger_departure || 0)
+                      :                       Number(r.passenger_total || 0);
+                } else if (m === 'baggage') {
+                    v = Number(r.baggage || 0);
+                } else if (m === 'cargo') {
+                    v = Number(r.cargo || 0);
+                } else if (m === 'pos') {
+                    v = Number(r.pos || 0);
+                } else {
+                    // aircraft
+                    const acArr = Number(r.aircraft_arrival || 0);
+                    const acDep = Number(r.aircraft_departure || 0);
+                    const acTot = Number(r.aircraft_total || (acArr + acDep));
+                    v = dir === 'ARRIVAL'   ? acArr
+                      : dir === 'DEPARTURE' ? acDep
+                      :                       acTot;
+                }
+                airlineData[al].val    += v;
+                airlineData[al].acArr  += Number(r.aircraft_arrival || 0);
+                airlineData[al].acDep  += Number(r.aircraft_departure || 0);
+            });
+
+            // Sort descending by selected metric value
+            const sorted = Object.values(airlineData)
+                .filter(o => o.val > 0)
+                .sort((a, b) => b.val - a.val);
+
+            const total = sorted.reduce((acc, o) => acc + o.val, 0);
+
+            // Empty state — legitimately no data for this metric
+            if (sorted.length === 0 || total === 0) {
+                this.dau5ParetoNoData = true;
+                this.dau5ParetoInsight = { airlinesAt80: 0, cumAt80: 0, total: 0 };
+                this.dau5ParetoData = [];
+                return;
+            }
+            this.dau5ParetoNoData = false;
+
+            // Calculate cumulative % (running sum / total * 100)
+            let cumAcc = 0;
+            const cumData = sorted.map(o => {
+                cumAcc += o.val;
+                return Math.round((cumAcc / total) * 10000) / 100; // 2 decimals
+            });
+
+            // 80% threshold dataset (horizontal reference line)
+            const threshold80Data = sorted.map(() => 80);
+
+            // Pareto insight: how many airlines reach 80%
+            let airlinesAt80 = sorted.length;
+            let cumAt80 = cumData[cumData.length - 1] || 0;
+            for (let i = 0; i < cumData.length; i++) {
+                if (cumData[i] >= 80) {
+                    airlinesAt80 = i + 1;
+                    cumAt80 = cumData[i];
+                    break;
+                }
+            }
+            this.dau5ParetoInsight = { airlinesAt80, cumAt80, total: sorted.length };
+            this.dau5ParetoData = sorted.map((o, i) => ({
+                rank: i + 1,
+                name: o.name,
+                val: o.val,
+                share: total > 0 ? Math.round((o.val / total) * 10000) / 100 : 0,
+                cumulative: cumData[i]
+            }));
+
+            const mLabel = m === 'passenger' ? 'Passengers'
+                         : m === 'baggage'   ? 'Baggage (Kg)'
+                         : m === 'cargo'     ? 'Cargo (Kg)'
+                         : m === 'pos'       ? 'POS (Kg)'
+                         :                    'Aircraft Movements';
+
+            const labels = sorted.map(o => o.name);
+            const seriesData = sorted.map(o => o.val);
+
+            this.chartInstances.dau5Pareto = new Chart(ctxPareto, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: mLabel,
+                            data: seriesData,
+                            backgroundColor: 'rgba(2, 132, 199, 0.85)',
+                            borderColor: '#0284c7',
+                            borderWidth: 1,
+                            yAxisID: 'y',
+                            order: 3
+                        },
+                        {
+                            label: 'Cumulative %',
+                            data: cumData,
+                            type: 'line',
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2.5,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#f59e0b',
+                            tension: 0.2,
+                            yAxisID: 'y1',
+                            order: 1
+                        },
+                        {
+                            label: '80% Threshold',
+                            data: threshold80Data,
+                            type: 'line',
+                            borderColor: '#ef4444',
+                            backgroundColor: 'transparent',
+                            borderWidth: 1.5,
+                            borderDash: [6, 4],
+                            pointRadius: 0,
+                            tension: 0,
+                            yAxisID: 'y1',
+                            order: 2
+                        }
+                    ]
+                },
+                options: {
+                    animation: false,
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => {
+                                    if (ctx.datasetIndex === 0) {
+                                        const share = total > 0
+                                            ? (ctx.parsed.y / total * 100).toFixed(2)
+                                            : '0.00';
+                                        return [
+                                            `${mLabel}: ${ctx.parsed.y.toLocaleString()}`,
+                                            `Share: ${share}%`,
+                                            `Cumulative: ${cumData[ctx.dataIndex]}%`
+                                        ];
+                                    }
+                                    if (ctx.datasetIndex === 2) return '80% Threshold';
+                                    return `Cumulative: ${ctx.parsed.y}%`;
+                                }
+                            }
+                        }
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: { type: 'linear', position: 'left', beginAtZero: true },
-                            y1: { type: 'linear', position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false } }
+                    scales: {
+                        x: { ticks: { maxRotation: 45, font: { size: 10 } } },
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            beginAtZero: true,
+                            title: { display: true, text: mLabel, font: { size: 10 } }
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            min: 0,
+                            max: 100,
+                            grid: { drawOnChartArea: false },
+                            title: { display: true, text: 'Cumulative %', font: { size: 10 } },
+                            ticks: { callback: v => v + '%' }
                         }
                     }
-                });
-            }
+                }
+            });
         },
 
         renderDau5aCharts() {
             if (!window.Chart) return;
             const ctxCrew = document.getElementById('dau5aCrewChart')?.getContext('2d');
-            if (ctxCrew) {
-                if (this.chartInstances.dau5aCrew) this.chartInstances.dau5aCrew.destroy();
-                const alMap5a = {};
-                this.filteredRecords.forEach(r => {
-                    const al = r.airline || 'Unknown';
-                    if (!alMap5a[al]) alMap5a[al] = { name: al, opCrew: 0, exCrew: 0, totalCrew: 0 };
-                    const op = Number(r.crew || 0);
-                    const ex = Number(r.extra_crew || (Number(r.arr_extra_crew || 0) + Number(r.dep_extra_crew || 0)));
-                    alMap5a[al].opCrew += op;
-                    alMap5a[al].exCrew += ex;
-                    alMap5a[al].totalCrew += (op + ex);
-                });
-                const list5a = Object.values(alMap5a).sort((a, b) => b.totalCrew - a.totalCrew).slice(0, 12);
-                this.chartInstances.dau5aCrew = new Chart(ctxCrew, {
-                    type: 'bar',
-                    data: {
-                        labels: list5a.map(o => o.name),
-                        datasets: [
-                            { label: 'Operating Crew', data: list5a.map(o => o.opCrew), backgroundColor: '#2563eb' },
-                            { label: 'Extra Crew', data: list5a.map(o => o.exCrew), backgroundColor: '#9333ea' }
-                        ]
-                    },
-                    options: { responsive: true, maintainAspectRatio: false }
-                });
+            if (!ctxCrew) return;
+            if (this.chartInstances.dau5aCrew) {
+                this.chartInstances.dau5aCrew.stop();
+                this.chartInstances.dau5aCrew.destroy();
+                this.chartInstances.dau5aCrew = null;
             }
+
+            const alMap5a = {};
+            this.filteredRecords.forEach(r => {
+                const al = r.airline || r.operator_name;
+                if (!al) return;
+                if (!alMap5a[al]) alMap5a[al] = { name: al, opCrew: 0, exCrew: 0, totalCrew: 0 };
+                const op = Number(r.crew || 0);
+                const ex = Number(r.extra_crew || (Number(r.arr_extra_crew || 0) + Number(r.dep_extra_crew || 0)));
+                alMap5a[al].opCrew    += op;
+                alMap5a[al].exCrew    += ex;
+                alMap5a[al].totalCrew += (op + ex);
+            });
+
+            const list5a = Object.values(alMap5a)
+                .filter(o => o.totalCrew > 0)
+                .sort((a, b) => b.totalCrew - a.totalCrew)
+                .slice(0, 12);
+
+            // Empty state
+            if (list5a.length === 0) {
+                this.dau5aCrewNoData = true;
+                return;
+            }
+            this.dau5aCrewNoData = false;
+
+            this.chartInstances.dau5aCrew = new Chart(ctxCrew, {
+                type: 'bar',
+                data: {
+                    labels: list5a.map(o => o.name),
+                    datasets: [
+                        {
+                            label: 'Operating Crew',
+                            data: list5a.map(o => o.opCrew),
+                            backgroundColor: 'rgba(37, 99, 235, 0.85)',
+                            borderColor: '#2563eb',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Extra Crew',
+                            data: list5a.map(o => o.exCrew),
+                            backgroundColor: 'rgba(147, 51, 234, 0.85)',
+                            borderColor: '#9333ea',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    animation: false,
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => {
+                                    const o = list5a[ctx.dataIndex];
+                                    if (ctx.datasetIndex === 0) return [`Operating Crew: ${o.opCrew}`, `Total Crew: ${o.totalCrew}`];
+                                    return [`Extra Crew: ${o.exCrew}`, `Total Crew: ${o.totalCrew}`];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { ticks: { maxRotation: 45, font: { size: 10 } } },
+                        y: { beginAtZero: true, title: { display: true, text: 'Crew Count', font: { size: 10 } } }
+                    }
+                }
+            });
         },
 
         renderDau5bCharts() {
             if (!window.Chart) return;
             const ctxTerm = document.getElementById('dau5bTerminalChart')?.getContext('2d');
-            if (ctxTerm) {
-                if (this.chartInstances.dau5bTerm) this.chartInstances.dau5bTerm.destroy();
-                const topTerminals = [...new Set(this.filteredRecords.map(r => r.terminal))].filter(Boolean);
-                const topAirlines5b = [...new Set(this.filteredRecords.map(r => r.airline))].filter(Boolean).slice(0, 5);
-                const colors5b = ['#0284c7', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'];
-                const datasets5b = topAirlines5b.map((al, idx) => {
-                    const data = topTerminals.map(term => {
-                        return this.filteredRecords
-                            .filter(r => r.terminal === term && r.airline === al)
-                            .reduce((acc, r) => acc + (this.selectedMetric === 'passenger' ? Number(r.passenger_total || 0) : Number(r.aircraft_total || 0)), 0);
-                    });
-                    return { label: al, data: data, backgroundColor: colors5b[idx % colors5b.length] };
-                });
-                this.chartInstances.dau5bTerm = new Chart(ctxTerm, {
-                    type: 'bar',
-                    data: {
-                        labels: topTerminals.map(t => 'T' + t),
-                        datasets: datasets5b
-                    },
-                    options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } }
-                });
+            if (!ctxTerm) return;
+            if (this.chartInstances.dau5bTerm) {
+                this.chartInstances.dau5bTerm.stop();
+                this.chartInstances.dau5bTerm.destroy();
+                this.chartInstances.dau5bTerm = null;
             }
+
+            const topTerminals = [...new Set(this.filteredRecords.map(r => r.terminal))].filter(Boolean);
+            const topAirlines5b = [...new Set(this.filteredRecords.map(r => r.airline || r.operator_name))].filter(Boolean);
+
+            // Sort airlines by total metric value descending, pick top 8
+            const airlineTotals = {};
+            this.filteredRecords.forEach(r => {
+                const al = r.airline || r.operator_name;
+                if (!al) return;
+                const v = this.selectedMetric === 'passenger'
+                    ? Number(r.passenger_total || 0)
+                    : Number(r.aircraft_total || (Number(r.aircraft_arrival||0) + Number(r.aircraft_departure||0)));
+                airlineTotals[al] = (airlineTotals[al] || 0) + v;
+            });
+            const sortedAirlines5b = topAirlines5b
+                .sort((a, b) => (airlineTotals[b] || 0) - (airlineTotals[a] || 0))
+                .slice(0, 8);
+
+            // Empty state
+            if (topTerminals.length === 0 || sortedAirlines5b.length === 0) {
+                this.dau5bTermNoData = true;
+                return;
+            }
+            this.dau5bTermNoData = false;
+
+            const colors5b = ['#0284c7','#ef4444','#10b981','#f59e0b','#8b5cf6','#06b6d4','#f97316','#84cc16'];
+
+            const datasets5b = sortedAirlines5b.map((al, idx) => {
+                const data = topTerminals.map(term => {
+                    return this.filteredRecords
+                        .filter(r => String(r.terminal) === String(term) && (r.airline || r.operator_name) === al)
+                        .reduce((acc, r) => acc + (
+                            this.selectedMetric === 'passenger'
+                                ? Number(r.passenger_total || 0)
+                                : Number(r.aircraft_total || (Number(r.aircraft_arrival||0) + Number(r.aircraft_departure||0)))
+                        ), 0);
+                });
+                return { label: al, data, backgroundColor: colors5b[idx % colors5b.length] };
+            });
+
+            const mLabelB = this.selectedMetric === 'passenger' ? 'Passengers' : 'Aircraft Movements';
+
+            this.chartInstances.dau5bTerm = new Chart(ctxTerm, {
+                type: 'bar',
+                data: {
+                    labels: topTerminals.map(t => 'Terminal ' + t),
+                    datasets: datasets5b
+                },
+                options: {
+                    animation: false,
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { font: { size: 10 } } },
+                        tooltip: { mode: 'index', intersect: false }
+                    },
+                    scales: {
+                        x: { stacked: true, ticks: { font: { size: 10 } } },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true,
+                            title: { display: true, text: mLabelB, font: { size: 10 } }
+                        }
+                    }
+                }
+            });
         },
 
         renderDau5cCharts() {
             if (!window.Chart) return;
             const ctx5c = document.getElementById('dau5cBarChart')?.getContext('2d');
-            if (ctx5c) {
-                if (this.chartInstances.dau5c) this.chartInstances.dau5c.destroy();
-                const topAirlines = this.dau4aOperators.slice(0, 10);
-                this.chartInstances.dau5c = new Chart(ctx5c, {
-                    type: 'bar',
-                    data: {
-                        labels: topAirlines.map(o => o.name),
-                        datasets: [
-                            { label: 'Movements (A/C)', data: topAirlines.map(o => o.total), backgroundColor: '#0284c7' },
-                            { label: 'Passengers (Pax/10)', data: topAirlines.map(o => Math.round(o.pax / 10)), backgroundColor: '#10b981' }
-                        ]
-                    },
-                    options: { responsive: true, maintainAspectRatio: false }
-                });
+            if (!ctx5c) return;
+            if (this.chartInstances.dau5c) {
+                this.chartInstances.dau5c.stop();
+                this.chartInstances.dau5c.destroy();
+                this.chartInstances.dau5c = null;
             }
+
+            // Build aggregation from filteredRecords directly (no shared dau4aOperators)
+            const airlineMap5c = {};
+            this.filteredRecords.forEach(r => {
+                const al = r.airline || r.operator_name;
+                if (!al) return;
+                if (!airlineMap5c[al]) airlineMap5c[al] = { name: al, total: 0, pax: 0, arr: 0, dep: 0 };
+                const acArr = Number(r.aircraft_arrival || 0);
+                const acDep = Number(r.aircraft_departure || 0);
+                airlineMap5c[al].total += Number(r.aircraft_total || (acArr + acDep));
+                airlineMap5c[al].pax   += Number(r.passenger_total || 0);
+                airlineMap5c[al].arr   += acArr;
+                airlineMap5c[al].dep   += acDep;
+            });
+
+            const top5c = Object.values(airlineMap5c)
+                .filter(o => o.total > 0 || o.pax > 0)
+                .sort((a, b) => b.total - a.total)
+                .slice(0, 10);
+
+            // Empty state
+            if (top5c.length === 0) {
+                this.dau5cNoData = true;
+                return;
+            }
+            this.dau5cNoData = false;
+
+            this.chartInstances.dau5c = new Chart(ctx5c, {
+                type: 'bar',
+                data: {
+                    labels: top5c.map(o => o.name),
+                    datasets: [
+                        {
+                            label: 'Aircraft Movements',
+                            data: top5c.map(o => o.total),
+                            backgroundColor: 'rgba(2, 132, 199, 0.85)',
+                            borderColor: '#0284c7',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Passengers (÷10)',
+                            data: top5c.map(o => Math.round(o.pax / 10)),
+                            backgroundColor: 'rgba(16, 185, 129, 0.85)',
+                            borderColor: '#10b981',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    animation: false,
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => {
+                                    const o = top5c[ctx.dataIndex];
+                                    if (ctx.datasetIndex === 0) return `Aircraft Movements: ${o.total.toLocaleString()}`;
+                                    return `Passengers: ${o.pax.toLocaleString()} (shown ÷10)`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { ticks: { maxRotation: 45, font: { size: 10 } } },
+                        y: { beginAtZero: true, title: { display: true, text: 'Count', font: { size: 10 } } }
+                    }
+                }
+            });
         },
 
         renderDau6Charts() {
@@ -4283,12 +4650,27 @@ function dauEnhancedDashboard() {
             this.updateCharts();
         },
 
+        _chartsUpdatePending: false,
         updateCharts() {
             if (!window.Chart) {
                 // Chart.js may not be loaded yet — retry after a short delay
                 setTimeout(() => this.updateCharts(), 200);
                 return;
             }
+            if (this._chartsUpdatePending) return;
+            this._chartsUpdatePending = true;
+            const run = () => {
+                this._chartsUpdatePending = false;
+                this._doUpdateCharts();
+            };
+            if (typeof requestAnimationFrame !== 'undefined') {
+                requestAnimationFrame(run);
+            } else {
+                run();
+            }
+        },
+
+        _doUpdateCharts() {
             if (this.reportType === 'DAU1') this.renderDau1Charts();
             else if (this.reportType === 'DAU2') this.renderDau2Charts();
             else if (this.reportType === 'DAU3') this.renderDau3Charts();
