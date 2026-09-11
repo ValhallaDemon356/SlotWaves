@@ -1838,11 +1838,11 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
                     <div class="text-sm font-bold tracking-wide"
-                         x-text="selectedMetric === 'passenger' && !isPassengerDataAvailable ? 'PASSENGER ANALYSIS UNAVAILABLE' : 'NO DATA AVAILABLE'">
+                         x-text="filteredRecords.length === 0 ? 'NO MATCHING DATA' : (selectedMetric === 'passenger' && !isPassengerDataAvailable ? 'PASSENGER ANALYSIS UNAVAILABLE' : 'NO DATA AVAILABLE')">
                         NO DATA AVAILABLE
                     </div>
                     <div class="text-xs font-mono max-w-md"
-                         x-text="selectedMetric === 'passenger' && !isPassengerDataAvailable ? 'DAU-10B source does not provide passenger values at Block On / Block Off event level.' : ('No ' + (selectedMetric === 'passenger' ? 'passenger' : 'aircraft') + ' operations found for selected filters')">
+                         x-text="filteredRecords.length === 0 ? 'No flight operations match the active filter criteria. Try resetting or selecting another filter.' : (selectedMetric === 'passenger' && !isPassengerDataAvailable ? 'DAU-10B source does not provide passenger values at Block On / Block Off event level.' : ('No ' + (selectedMetric === 'passenger' ? 'passenger' : 'aircraft') + ' operations found for selected filters'))">
                     </div>
                 </div>
 
@@ -2765,6 +2765,11 @@ function dauEnhancedDashboard() {
         dau5cNoData: false,
         dau5cChartLabel: 'Aircraft Movements',
         dau10bNoData: false,
+        dau10bFilterVersion: 0,
+        dau10bIsUpdating: false,
+        dau10bErrorMessage: '',
+        _dau10bCachedChartData: null,
+        _dau10bCachedSnapshot: null,
 
         get isPassengerDataAvailable() {
             if (this.reportType !== 'DAU10B') return true;
@@ -2931,8 +2936,506 @@ function dauEnhancedDashboard() {
             this.applyFilters();
         },
 
+        createDau10bSnapshot() {
+            return {
+                version: ++this.dau10bFilterVersion,
+                metric: this.selectedMetric || 'aircraft',
+                direction: this.filterDirection || 'ALL',
+                terminal: this.filterTerminal || 'ALL',
+                hour: this.filterHour || 'ALL',
+                operation: this.filterOperation || 'ALL',
+                flightType: this.filterFlightType || 'ALL',
+                search: (this.searchQuery || '').toLowerCase().trim(),
+            };
+        },
+
+        filterDau10bRecords(rawRecords, snapshot) {
+            if (!Array.isArray(rawRecords)) return [];
+            const ft = snapshot.flightType;
+            const term = snapshot.terminal;
+            const hr = snapshot.hour;
+            const dir = snapshot.direction;
+            const op = snapshot.operation;
+            const sq = snapshot.search;
+            const metric = snapshot.metric;
+
+            const intTerminals = ['2E', '2F', '3U', 'T2E', 'T2F', 'T3U', '3'];
+            const isIntTerminal = (t) => intTerminals.some(x => String(t || '').toUpperCase().replace(/\s/g, '') === x);
+
+            return rawRecords.filter(r => {
+                if (!r) return false;
+
+                // Flight Scope
+                if (ft === 'DOM') {
+                    if (r.category && String(r.category).toUpperCase().includes('INT')) return false;
+                    if (!r.category && isIntTerminal(r.terminal)) return false;
+                } else if (ft === 'INT') {
+                    if (r.category && String(r.category).toUpperCase().includes('DOM')) return false;
+                    if (!r.category && !isIntTerminal(r.terminal)) return false;
+                }
+
+                // Terminal
+                if (term !== 'ALL') {
+                    const rTerm = String(r.terminal || '').trim().toLowerCase();
+                    const filterTerm = term.trim().toLowerCase();
+                    if (rTerm !== filterTerm) return false;
+                }
+
+                // Hour
+                if (hr !== 'ALL') {
+                    const rHour = String(r.hour || r.period || '');
+                    const cleanHr = hr.replace(/[^0-9]/g, '');
+                    const cleanRHour = rHour.replace(/[^0-9]/g, '');
+                    if (cleanHr && cleanRHour !== cleanHr && rHour !== hr) return false;
+                }
+
+                // Direction
+                if (dir !== 'ALL') {
+                    if (dir === 'ARRIVAL') {
+                        const hasArr = (Number(r.aircraft_arrival || 0) > 0)
+                                    || (Number(r.passenger_arrival || 0) > 0)
+                                    || (Number(r.block_on_aircraft || 0) > 0)
+                                    || (Number(r.block_on_passenger || 0) > 0);
+                        if (!hasArr) return false;
+                    } else if (dir === 'DEPARTURE') {
+                        const hasDep = (Number(r.aircraft_departure || 0) > 0)
+                                    || (Number(r.passenger_departure || 0) > 0)
+                                    || (Number(r.block_off_aircraft || 0) > 0)
+                                    || (Number(r.block_off_passenger || 0) > 0);
+                        if (!hasDep) return false;
+                    }
+                }
+
+                // Operation
+                if (op !== 'ALL') {
+                    if (metric === 'passenger') {
+                        if (op === 'BLOCK_ON' && Number(r.passenger_arrival || r.block_on_passenger || 0) === 0) return false;
+                        if (op === 'BLOCK_OFF' && Number(r.passenger_departure || r.block_off_passenger || 0) === 0) return false;
+                    } else {
+                        if (op === 'BLOCK_ON' && Number(r.aircraft_arrival || r.block_on_aircraft || 0) === 0) return false;
+                        if (op === 'BLOCK_OFF' && Number(r.aircraft_departure || r.block_off_aircraft || 0) === 0) return false;
+                    }
+                }
+
+                // Search Query
+                if (sq !== '') {
+                    const haystack = JSON.stringify(r).toLowerCase();
+                    if (!haystack.includes(sq)) return false;
+                }
+
+                return true;
+            });
+        },
+
+        aggregateDau10b(filteredRecords, snapshot, hoursList) {
+            const sum = {
+                total_movements: 0,
+                aircraft_arrival: 0,
+                aircraft_departure: 0,
+                passenger_arrival: 0,
+                passenger_departure: 0,
+                passenger_transit: 0,
+                passenger_transfer: 0,
+                passenger_total: 0,
+                crew_total: 0,
+                baggage_total: 0,
+                cargo_total: 0,
+                pos_total: 0,
+            };
+
+            const hourlyMap = {};
+            const termMap = {};
+            (hoursList || []).forEach(h => {
+                hourlyMap[h] = {
+                    hour: h,
+                    aircraft_arrival: 0,
+                    aircraft_departure: 0,
+                    aircraft_total: 0,
+                    passenger_arrival: 0,
+                    passenger_departure: 0,
+                    passenger_transit: 0,
+                    passenger_transfer: 0,
+                    passenger_total: 0,
+                    crew: 0,
+                    extra_crew: 0,
+                    crew_total: 0,
+                };
+            });
+
+            const dir = snapshot.direction;
+            const op = snapshot.operation;
+            const isPax = snapshot.metric === 'passenger';
+
+            const sanitize = (val) => {
+                const n = Number(val);
+                return Number.isFinite(n) ? n : 0;
+            };
+
+            filteredRecords.forEach(r => {
+                const acArr = sanitize(r.aircraft_arrival || r.block_on_aircraft || 0);
+                const acDep = sanitize(r.aircraft_departure || r.block_off_aircraft || 0);
+                const acTot = sanitize(r.aircraft_total || (acArr + acDep));
+
+                const pxArr = sanitize(r.passenger_arrival || r.block_on_passenger || 0);
+                const pxDep = sanitize(r.passenger_departure || r.block_off_passenger || 0);
+                const pxTrn = sanitize(r.passenger_transit || 0);
+                const pxTrf = sanitize(r.passenger_transfer || 0);
+                const pxTot = sanitize(r.passenger_total || (pxArr + pxDep + pxTrn + pxTrf));
+
+                const crw = sanitize(r.crew || 0);
+                const exCrw = sanitize(r.extra_crew || 0);
+                const crwTot = sanitize(r.crew_total || (crw + exCrw));
+                const bag = sanitize(r.baggage || 0);
+                const cgo = sanitize(r.cargo || 0);
+                const pos = sanitize(r.pos || 0);
+
+                let effAcArr = (dir === 'DEPARTURE') ? 0 : acArr;
+                let effAcDep = (dir === 'ARRIVAL') ? 0 : acDep;
+                let effAcTot = (dir === 'ARRIVAL') ? acArr : ((dir === 'DEPARTURE') ? acDep : acTot);
+
+                let effPxArr = (dir === 'DEPARTURE') ? 0 : pxArr;
+                let effPxDep = (dir === 'ARRIVAL') ? 0 : pxDep;
+                let effPxTrn = (dir === 'ARRIVAL' || dir === 'DEPARTURE') ? 0 : pxTrn;
+                let effPxTrf = (dir === 'ARRIVAL' || dir === 'DEPARTURE') ? 0 : pxTrf;
+                let effPxTot = (dir === 'ARRIVAL') ? pxArr : ((dir === 'DEPARTURE') ? pxDep : pxTot);
+
+                if (op === 'BLOCK_ON') {
+                    effAcDep = 0;
+                    effPxDep = 0;
+                    effAcTot = effAcArr;
+                    effPxTot = effPxArr;
+                } else if (op === 'BLOCK_OFF') {
+                    effAcArr = 0;
+                    effPxArr = 0;
+                    effAcTot = effAcDep;
+                    effPxTot = effPxDep;
+                }
+
+                sum.total_movements += effAcTot;
+                sum.aircraft_arrival += effAcArr;
+                sum.aircraft_departure += effAcDep;
+                sum.passenger_arrival += effPxArr;
+                sum.passenger_departure += effPxDep;
+                sum.passenger_transit += effPxTrn;
+                sum.passenger_transfer += effPxTrf;
+                sum.passenger_total += effPxTot;
+                sum.crew_total += crwTot;
+                sum.baggage_total += bag;
+                sum.cargo_total += cgo;
+                sum.pos_total += pos;
+
+                const h = r.hour || r.period;
+                if (h) {
+                    if (!hourlyMap[h]) {
+                        hourlyMap[h] = {
+                            hour: h,
+                            aircraft_arrival: 0,
+                            aircraft_departure: 0,
+                            aircraft_total: 0,
+                            passenger_arrival: 0,
+                            passenger_departure: 0,
+                            passenger_transit: 0,
+                            passenger_transfer: 0,
+                            passenger_total: 0,
+                            crew: 0,
+                            extra_crew: 0,
+                            crew_total: 0,
+                        };
+                    }
+                    hourlyMap[h].aircraft_arrival += effAcArr;
+                    hourlyMap[h].aircraft_departure += effAcDep;
+                    hourlyMap[h].aircraft_total += effAcTot;
+                    hourlyMap[h].passenger_arrival += effPxArr;
+                    hourlyMap[h].passenger_departure += effPxDep;
+                    hourlyMap[h].passenger_transit += effPxTrn;
+                    hourlyMap[h].passenger_transfer += effPxTrf;
+                    hourlyMap[h].passenger_total += effPxTot;
+                    hourlyMap[h].crew += crw;
+                    hourlyMap[h].extra_crew += exCrw;
+                    hourlyMap[h].crew_total += crwTot;
+                }
+
+                const t = r.terminal;
+                if (t) {
+                    if (!termMap[t]) termMap[t] = { terminal: t, aircraft_total: 0, passenger_total: 0, crew_total: 0 };
+                    termMap[t].aircraft_total += effAcTot;
+                    termMap[t].passenger_total += effPxTot;
+                    termMap[t].crew_total += crwTot;
+                }
+            });
+
+            const hourlyDist = Object.values(hourlyMap);
+            const termComp = Object.values(termMap);
+
+            let peakAc = 0, peakAcH = '—';
+            let peakPx = 0, peakPxH = '—';
+            let peakBlkOn = 0, peakBlkOnH = '—';
+            let peakBlkOff = 0, peakBlkOffH = '—';
+
+            hourlyDist.forEach(hb => {
+                if (hb.aircraft_total > peakAc) { peakAc = hb.aircraft_total; peakAcH = hb.hour; }
+                if (hb.passenger_total > peakPx) { peakPx = hb.passenger_total; peakPxH = hb.hour; }
+                const onVal = isPax ? hb.passenger_arrival : hb.aircraft_arrival;
+                const offVal = isPax ? hb.passenger_departure : hb.aircraft_departure;
+                if (onVal > peakBlkOn) { peakBlkOn = onVal; peakBlkOnH = hb.hour; }
+                if (offVal > peakBlkOff) { peakBlkOff = offVal; peakBlkOffH = hb.hour; }
+            });
+
+            let peakT = '—', peakTV = 0;
+            termComp.forEach(tb => {
+                const val = isPax ? tb.passenger_total : tb.aircraft_total;
+                if (val > peakTV) { peakTV = val; peakT = tb.terminal; }
+            });
+
+            const peaks = {
+                peak_aircraft_hour: peakAcH,
+                peak_aircraft: peakAc,
+                peak_passenger_hour: peakPxH,
+                peak_passenger: peakPx,
+                peak_hour: isPax ? peakPxH : peakAcH,
+                peak_terminal: peakT,
+                peak_terminal_val: peakTV,
+                peak_block_on_hour: peakBlkOnH,
+                peak_block_on: peakBlkOn,
+                peak_block_off_hour: peakBlkOffH,
+                peak_block_off: peakBlkOff,
+            };
+
+            const labels = hourlyDist.map(h => (h.hour ? String(h.hour).split(' - ')[0] : '—'));
+            const onData = hourlyDist.map(h => isPax ? sanitize(h.passenger_arrival) : sanitize(h.aircraft_arrival));
+            const offData = hourlyDist.map(h => isPax ? sanitize(h.passenger_departure) : sanitize(h.aircraft_departure));
+
+            const showOn = (op !== 'BLOCK_OFF' && dir !== 'DEPARTURE');
+            const showOff = (op !== 'BLOCK_ON' && dir !== 'ARRIVAL');
+
+            const datasets = [];
+            if (showOn) {
+                datasets.push({
+                    label: isPax ? 'Block On (DTG) — Passenger' : 'Block On (DTG)',
+                    data: onData,
+                    backgroundColor: '#7c3aed',
+                    borderColor: '#6d28d9',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                });
+            }
+            if (showOff) {
+                datasets.push({
+                    label: isPax ? 'Block Off (BRK) — Passenger' : 'Block Off (BRK)',
+                    data: offData,
+                    backgroundColor: '#f59e0b',
+                    borderColor: '#d97706',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                });
+            }
+
+            const allVals = datasets.flatMap(ds => ds.data);
+            const maxVal = allVals.length > 0 ? Math.max(...allVals, 10) : 10;
+
+            return {
+                summary: sum,
+                hourlyDistribution: hourlyDist,
+                terminalComparison: termComp,
+                peaks: peaks,
+                chartData: {
+                    labels: labels,
+                    datasets: datasets,
+                    maxVal: maxVal,
+                    hoursList: hourlyDist.map(h => h.hour)
+                }
+            };
+        },
+
+        applyDau10bFilters() {
+            this.currentPage = 1;
+            this.dau10bIsUpdating = true;
+            this.dau10bErrorMessage = '';
+
+            try {
+                const snapshot = this.createDau10bSnapshot();
+                const nextFiltered = this.filterDau10bRecords(this.allRecords, snapshot);
+                const nextAgg = this.aggregateDau10b(nextFiltered, snapshot, this.hours || []);
+
+                // Stale check (Part 5)
+                if (snapshot.version !== this.dau10bFilterVersion) {
+                    return;
+                }
+
+                // Atomic commit (Part 21)
+                this.filteredRecords = nextFiltered;
+                this.activeSummary = nextAgg.summary;
+                this.peaks = nextAgg.peaks;
+                this.activeHourlyDistribution = nextAgg.hourlyDistribution;
+                this.activeTerminalComparison = nextAgg.terminalComparison;
+                this._dau10bCachedChartData = nextAgg.chartData;
+                this._dau10bCachedSnapshot = snapshot;
+
+                const totalChartVal = (nextAgg.chartData.datasets || []).reduce((acc, ds) => acc + ds.data.reduce((a, b) => a + b, 0), 0);
+                this.dau10bNoData = (nextFiltered.length === 0 || totalChartVal === 0);
+
+                this.renderDau10bChartAtomic(nextAgg.chartData, snapshot);
+            } catch (err) {
+                console.error('[SlotWaves DAU-10B] Filter error:', err);
+                this.dau10bErrorMessage = 'Unable to update analysis.';
+            } finally {
+                this.dau10bIsUpdating = false;
+            }
+        },
+
+        renderDau10bChartAtomic(chartData, snapshot) {
+            if (snapshot && snapshot.version !== this.dau10bFilterVersion) {
+                return;
+            }
+
+            if (!window.Chart) {
+                setTimeout(() => {
+                    if (!snapshot || snapshot.version === this.dau10bFilterVersion) {
+                        this.renderDau10bChartAtomic(chartData, snapshot);
+                    }
+                }, 100);
+                return;
+            }
+
+            if (this.dau10bNoData) {
+                if (this.chartInstances.dau10b) {
+                    try { this.chartInstances.dau10b.stop(); } catch(_) {}
+                }
+                return;
+            }
+
+            const canvas = document.getElementById('dau10bBlockChart');
+            if (!canvas) return;
+
+            if (canvas.offsetParent === null || canvas.clientWidth === 0) {
+                this.$nextTick(() => {
+                    if (!snapshot || snapshot.version === this.dau10bFilterVersion) {
+                        this.renderDau10bChartAtomic(chartData, snapshot);
+                    }
+                });
+                return;
+            }
+
+            const isPax = (snapshot ? snapshot.metric : this.selectedMetric) === 'passenger';
+            const unit = isPax ? 'PAX' : 'A/C';
+            const op = snapshot ? snapshot.operation : this.filterOperation;
+            const term = snapshot ? snapshot.terminal : this.filterTerminal;
+            const ft = snapshot ? snapshot.flightType : this.filterFlightType;
+            const hoursList = (chartData && chartData.hoursList) ? chartData.hoursList : [];
+
+            // Single Chart Instance Reuse (Part 14)
+            const existingChart = this.chartInstances.dau10b;
+            if (existingChart && existingChart.ctx && !existingChart.destroyed) {
+                try {
+                    existingChart.data.labels = chartData.labels;
+                    existingChart.data.datasets = chartData.datasets;
+                    if (existingChart.options && existingChart.options.scales && existingChart.options.scales.y) {
+                        existingChart.options.scales.y.suggestedMax = Math.ceil(chartData.maxVal * 1.1);
+                        existingChart.options.scales.y.ticks.callback = (val) => Number(val).toLocaleString('id-ID') + ' ' + unit;
+                    }
+                    if (existingChart.options && existingChart.options.plugins && existingChart.options.plugins.tooltip) {
+                        existingChart.options.plugins.tooltip.callbacks.title = (items) => {
+                            const idx = items[0]?.dataIndex;
+                            const h = hoursList[idx] || items[0]?.label;
+                            return 'Hour: ' + (h || items[0]?.label);
+                        };
+                        existingChart.options.plugins.tooltip.callbacks.label = (item) => `${item.dataset.label}: ${Number(item.raw || 0).toLocaleString('id-ID')} ${unit}`;
+                        existingChart.options.plugins.tooltip.callbacks.afterBody = () => {
+                            const lines = [];
+                            lines.push('Metric: ' + (isPax ? 'Passenger' : 'Aircraft'));
+                            lines.push('Terminal: ' + (term !== 'ALL' ? term : 'ALL'));
+                            lines.push('Scope: ' + (ft !== 'ALL' ? ft : 'ALL'));
+                            if (op !== 'ALL') {
+                                lines.push('Operation: ' + (op === 'BLOCK_ON' ? 'Block On (DTG)' : 'Block Off (BRK)'));
+                            }
+                            return lines;
+                        };
+                    }
+                    existingChart.update('none');
+                    return;
+                } catch (err) {
+                    console.warn('[SlotWaves DAU-10B] In-place chart update warning, recreating:', err);
+                    try { existingChart.destroy(); } catch (_) {}
+                    this.chartInstances.dau10b = null;
+                }
+            }
+
+            const ctxBlk = canvas.getContext('2d');
+            if (!ctxBlk) return;
+
+            try {
+                this.chartInstances.dau10b = new Chart(ctxBlk, {
+                    type: 'bar',
+                    data: {
+                        labels: chartData.labels,
+                        datasets: chartData.datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    boxWidth: 12,
+                                    boxHeight: 12,
+                                    font: { size: 11, family: 'ui-monospace, monospace' }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    title: (items) => {
+                                        const idx = items[0]?.dataIndex;
+                                        const h = hoursList[idx] || items[0]?.label;
+                                        return 'Hour: ' + (h || items[0]?.label);
+                                    },
+                                    label: (item) => `${item.dataset.label}: ${Number(item.raw || 0).toLocaleString('id-ID')} ${unit}`,
+                                    afterBody: () => {
+                                        const lines = [];
+                                        lines.push('Metric: ' + (isPax ? 'Passenger' : 'Aircraft'));
+                                        lines.push('Terminal: ' + (term !== 'ALL' ? term : 'ALL'));
+                                        lines.push('Scope: ' + (ft !== 'ALL' ? ft : 'ALL'));
+                                        if (op !== 'ALL') {
+                                            lines.push('Operation: ' + (op === 'BLOCK_ON' ? 'Block On (DTG)' : 'Block Off (BRK)'));
+                                        }
+                                        return lines;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: { font: { size: 10, family: 'ui-monospace, monospace' } }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                suggestedMax: Math.ceil(chartData.maxVal * 1.1),
+                                ticks: {
+                                    font: { size: 10, family: 'ui-monospace, monospace' },
+                                    callback: (val) => Number(val).toLocaleString('id-ID') + ' ' + unit
+                                }
+                            }
+                        }
+                    }
+                });
+            } catch (createErr) {
+                console.error('[SlotWaves DAU-10B] Failed to create Chart instance:', createErr);
+            }
+        },
+
         applyFilters() {
             this.currentPage = 1;
+            if (this.reportType === 'DAU10B') {
+                this.applyDau10bFilters();
+                return;
+            }
             const ft = this.filterFlightType;
             const term = this.filterTerminal;
             const hr = this.filterHour;
@@ -4766,130 +5269,16 @@ function dauEnhancedDashboard() {
         },
 
         renderDau10bCharts() {
-            if (!window.Chart) return;
-            const canvas = document.getElementById('dau10bBlockChart');
-            if (!canvas) return;
-            const ctxBlk = canvas.getContext('2d');
-            if (!ctxBlk) return;
-
-            if (this.chartInstances.dau10b) {
-                this.chartInstances.dau10b.stop();
-                this.chartInstances.dau10b.destroy();
-                this.chartInstances.dau10b = null;
+            if (this._dau10bCachedChartData && this._dau10bCachedSnapshot) {
+                this.renderDau10bChartAtomic(this._dau10bCachedChartData, this._dau10bCachedSnapshot);
+            } else {
+                const snapshot = this.createDau10bSnapshot();
+                const nextFiltered = this.filterDau10bRecords(this.allRecords, snapshot);
+                const nextAgg = this.aggregateDau10b(nextFiltered, snapshot, this.hours || []);
+                this._dau10bCachedChartData = nextAgg.chartData;
+                this._dau10bCachedSnapshot = snapshot;
+                this.renderDau10bChartAtomic(nextAgg.chartData, snapshot);
             }
-
-            const isPax = this.selectedMetric === 'passenger';
-            const unit = isPax ? 'PAX' : 'A/C';
-            const op = this.filterOperation;
-            const dir = this.filterDirection;
-
-            const labels = this.activeHourlyDistribution.map(h => (h.hour ? String(h.hour).split(' - ')[0] : '—'));
-
-            const onData = this.activeHourlyDistribution.map(h => Number(isPax ? (h.passenger_arrival || 0) : (h.aircraft_arrival || 0)));
-            const offData = this.activeHourlyDistribution.map(h => Number(isPax ? (h.passenger_departure || 0) : (h.aircraft_departure || 0)));
-
-            const showOn = (op !== 'BLOCK_OFF' && dir !== 'DEPARTURE');
-            const showOff = (op !== 'BLOCK_ON' && dir !== 'ARRIVAL');
-
-            const datasets = [];
-            if (showOn) {
-                datasets.push({
-                    label: isPax ? 'Block On (DTG) — Passenger' : 'Block On (DTG)',
-                    data: onData,
-                    backgroundColor: '#7c3aed',
-                    borderColor: '#6d28d9',
-                    borderWidth: 1,
-                    borderRadius: 4,
-                });
-            }
-            if (showOff) {
-                datasets.push({
-                    label: isPax ? 'Block Off (BRK) — Passenger' : 'Block Off (BRK)',
-                    data: offData,
-                    backgroundColor: '#f59e0b',
-                    borderColor: '#d97706',
-                    borderWidth: 1,
-                    borderRadius: 4,
-                });
-            }
-
-            // Empty state check
-            const totalValues = datasets.reduce((sum, ds) => sum + ds.data.reduce((a, b) => a + b, 0), 0);
-            if (this.activeHourlyDistribution.length === 0 || totalValues === 0) {
-                this.dau10bNoData = true;
-                return;
-            }
-            this.dau10bNoData = false;
-
-            const maxVal = Math.max(
-                ...datasets.flatMap(ds => ds.data),
-                10
-            );
-
-            this.chartInstances.dau10b = new Chart(ctxBlk, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: datasets
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top',
-                            labels: {
-                                boxWidth: 12,
-                                boxHeight: 12,
-                                font: { size: 11, family: 'ui-monospace, monospace' }
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                title: (items) => {
-                                    const idx = items[0]?.dataIndex;
-                                    const h = this.activeHourlyDistribution[idx];
-                                    return 'Hour: ' + (h ? h.hour : items[0]?.label);
-                                },
-                                label: (item) => {
-                                    return `${item.dataset.label}: ${Number(item.raw || 0).toLocaleString()} ${unit}`;
-                                },
-                                afterBody: () => {
-                                    const lines = [];
-                                    lines.push('Metric: ' + (isPax ? 'Passenger' : 'Aircraft'));
-                                    lines.push('Terminal: ' + (this.filterTerminal !== 'ALL' ? this.filterTerminal : 'ALL'));
-                                    lines.push('Scope: ' + (this.filterFlightType !== 'ALL' ? this.filterFlightType : 'ALL'));
-                                    if (op !== 'ALL') {
-                                        lines.push('Operation: ' + (op === 'BLOCK_ON' ? 'Block On (DTG)' : 'Block Off (BRK)'));
-                                    }
-                                    return lines;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            grid: { display: false },
-                            ticks: {
-                                font: { size: 10, family: 'ui-monospace, monospace' }
-                            }
-                        },
-                        y: {
-                            beginAtZero: true,
-                            suggestedMax: Math.ceil(maxVal * 1.1),
-                            ticks: {
-                                font: { size: 10, family: 'ui-monospace, monospace' },
-                                callback: (val) => Number(val).toLocaleString() + ' ' + unit
-                            }
-                        }
-                    }
-                }
-            });
         },
 
         renderDau11Charts() {
@@ -4993,17 +5382,25 @@ function dauEnhancedDashboard() {
         },
 
         _chartsUpdatePending: false,
+        _chartsRerunRequested: false,
         updateCharts() {
             if (!window.Chart) {
                 // Chart.js may not be loaded yet — retry after a short delay
                 setTimeout(() => this.updateCharts(), 200);
                 return;
             }
-            if (this._chartsUpdatePending) return;
+            if (this._chartsUpdatePending) {
+                this._chartsRerunRequested = true;
+                return;
+            }
             this._chartsUpdatePending = true;
             const run = () => {
                 this._chartsUpdatePending = false;
                 this._doUpdateCharts();
+                if (this._chartsRerunRequested) {
+                    this._chartsRerunRequested = false;
+                    this.updateCharts();
+                }
             };
             if (typeof requestAnimationFrame !== 'undefined') {
                 requestAnimationFrame(run);
