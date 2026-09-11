@@ -613,11 +613,16 @@
 
             @if (in_array($reportType, ['DAU10', 'DAU10A', 'DAU10B']))
                 <div class="glass-card p-4 shadow-sm border-t-2 border-t-amber-500">
-                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Peak Hour</div>
-                    <div class="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 mt-1" x-text="peaks.peak_hour">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400"
+                         x-text="reportType === 'DAU10B' ? (selectedMetric === 'passenger' ? 'Peak Passenger Hour' : 'Peak Aircraft Hour') : 'Peak Hour'">Peak Hour</div>
+                    <div class="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 mt-1"
+                         x-text="reportType === 'DAU10B' ? (selectedMetric === 'passenger' ? (peaks.peak_passenger_hour || '—') : (peaks.peak_aircraft_hour || '—')) : peaks.peak_hour">
                         {{ $peaks['peak_hour'] ?? '—' }}
                     </div>
-                    <div class="text-[10px] text-slate-500 mt-1 font-mono">Highest Traffic Period</div>
+                    <div class="text-[10px] text-slate-500 mt-1 font-mono"
+                         x-text="reportType === 'DAU10B' ? (selectedMetric === 'passenger' ? formatNumber(peaks.peak_passenger) + ' PAX' : formatNumber(peaks.peak_aircraft) + ' A/C') : 'Highest Traffic Period'">
+                        Highest Traffic Period
+                    </div>
                 </div>
 
                 <div class="glass-card p-4 shadow-sm border-t-2 border-t-purple-600">
@@ -625,7 +630,8 @@
                     <div class="text-xl sm:text-2xl font-black text-purple-600 dark:text-purple-400 mt-1" x-text="'T' + (peaks.peak_terminal || '—')">
                         T{{ $peaks['peak_terminal'] ?? '—' }}
                     </div>
-                    <div class="text-[10px] text-slate-500 mt-1 font-mono" x-text="formatNumber(peaks.peak_terminal_val) + ' mov'">
+                    <div class="text-[10px] text-slate-500 mt-1 font-mono"
+                         x-text="reportType === 'DAU10B' ? (formatNumber(peaks.peak_terminal_val) + (selectedMetric === 'passenger' ? ' PAX' : ' A/C')) : (formatNumber(peaks.peak_terminal_val) + ' mov')">
                         {{ number_format($peaks['peak_terminal_val'] ?? 0) }} mov
                     </div>
                 </div>
@@ -1800,15 +1806,92 @@
                 <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
                     <div>
                         <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Gate Operations Timeline</div>
-                        <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">BLOCK ON (DTG) VS BLOCK OFF (BRK) HOURLY COMPARISON</h2>
+                        <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white"
+                            x-text="selectedMetric === 'passenger' ? 'BLOCK ON (DTG) VS BLOCK OFF (BRK) HOURLY PASSENGER COMPARISON' : 'BLOCK ON (DTG) VS BLOCK OFF (BRK) HOURLY AIRCRAFT COMPARISON'">
+                            BLOCK ON (DTG) VS BLOCK OFF (BRK) HOURLY COMPARISON
+                        </h2>
                     </div>
                     <div class="flex items-center gap-3 text-xs font-mono">
-                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-purple-600"></span> Block On (DTG)</span>
-                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-amber-500"></span> Block Off (BRK)</span>
+                        <span x-show="filterOperation !== 'BLOCK_OFF' && filterDirection !== 'DEPARTURE'" class="flex items-center gap-1">
+                            <span class="w-3 h-3 rounded bg-purple-600"></span>
+                            <span x-text="selectedMetric === 'passenger' ? 'Block On (DTG) — Passenger' : 'Block On (DTG)'">Block On (DTG)</span>
+                        </span>
+                        <span x-show="filterOperation !== 'BLOCK_ON' && filterDirection !== 'ARRIVAL'" class="flex items-center gap-1">
+                            <span class="w-3 h-3 rounded bg-amber-500"></span>
+                            <span x-text="selectedMetric === 'passenger' ? 'Block Off (BRK) — Passenger' : 'Block Off (BRK)'">Block Off (BRK)</span>
+                        </span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
+                              x-show="filterOperation !== 'BLOCK_OFF' && filterDirection !== 'DEPARTURE' && peaks.peak_block_on_hour && peaks.peak_block_on_hour !== '—'">
+                            Peak On: <span x-text="(peaks.peak_block_on_hour || '—') + ' (' + formatNumber(peaks.peak_block_on) + (selectedMetric === 'passenger' ? ' PAX' : ' A/C') + ')'"></span>
+                        </span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                              x-show="filterOperation !== 'BLOCK_ON' && filterDirection !== 'ARRIVAL' && peaks.peak_block_off_hour && peaks.peak_block_off_hour !== '—'">
+                            Peak Off: <span x-text="(peaks.peak_block_off_hour || '—') + ' (' + formatNumber(peaks.peak_block_off) + (selectedMetric === 'passenger' ? ' PAX' : ' A/C') + ')'"></span>
+                        </span>
                     </div>
                 </div>
-                <div class="relative h-72 sm:h-84 w-full">
-                    <canvas id="dau10bBlockChart"></canvas>
+
+                {{-- No data banner --}}
+                <div x-show="dau10bNoData" class="flex flex-col items-center justify-center h-64 text-slate-400 dark:text-slate-500 gap-2">
+                    <svg class="w-10 h-10 stroke-current text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <div class="text-sm font-bold">NO DATA AVAILABLE</div>
+                    <div class="text-xs font-mono" x-text="'No ' + (selectedMetric === 'passenger' ? 'passenger' : 'aircraft') + ' operations found for selected filters'"></div>
+                </div>
+
+                {{-- Chart container --}}
+                <div x-show="!dau10bNoData" class="relative h-72 sm:h-84 w-full">
+                    <canvas id="dau10bBlockChart" class="w-full h-full"></canvas>
+                </div>
+
+                {{-- Hourly Summary Table (Part 38) --}}
+                <div x-show="!dau10bNoData && activeHourlyDistribution.length > 0" class="border-t border-slate-100 dark:border-slate-800 pt-4 mt-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                             x-text="selectedMetric === 'passenger' ? 'Hourly Passenger Summary (DTG vs BRK)' : 'Hourly Aircraft Summary (DTG vs BRK)'">
+                            Hourly Summary (DTG vs BRK)
+                        </div>
+                        <div class="text-[10px] font-mono text-slate-400">
+                            Unit: <span class="font-bold text-aviation-600 dark:text-aviation-400" x-text="selectedMetric === 'passenger' ? 'PAX' : 'A/C'"></span>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto max-h-60 border border-slate-100 dark:border-slate-800 rounded-lg">
+                        <table class="w-full text-left border-collapse text-xs font-mono">
+                            <thead class="bg-slate-50 dark:bg-navy-800 sticky top-0 text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">
+                                <tr>
+                                    <th class="px-3 py-2">Hour</th>
+                                    <th class="px-3 py-2 text-right" x-text="selectedMetric === 'passenger' ? 'Block On (DTG) Pax' : 'Block On (DTG)'">Block On (DTG)</th>
+                                    <th class="px-3 py-2 text-right" x-text="selectedMetric === 'passenger' ? 'Block Off (BRK) Pax' : 'Block Off (BRK)'">Block Off (BRK)</th>
+                                    <th class="px-3 py-2 text-right font-black" x-text="selectedMetric === 'passenger' ? 'Total Pax' : 'Total Acft'">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 dark:divide-slate-800/80">
+                                <template x-for="(h, hIdx) in activeHourlyDistribution" :key="hIdx">
+                                    <tr class="hover:bg-slate-50/50 dark:hover:bg-navy-800/40">
+                                        <td class="px-3 py-1.5 font-bold text-slate-700 dark:text-slate-300" x-text="h.hour"></td>
+                                        <td class="px-3 py-1.5 text-right text-purple-600 dark:text-purple-400 font-bold"
+                                            x-text="formatNumber(selectedMetric === 'passenger' ? h.passenger_arrival : h.aircraft_arrival)"></td>
+                                        <td class="px-3 py-1.5 text-right text-amber-600 dark:text-amber-400 font-bold"
+                                            x-text="formatNumber(selectedMetric === 'passenger' ? h.passenger_departure : h.aircraft_departure)"></td>
+                                        <td class="px-3 py-1.5 text-right font-black text-slate-900 dark:text-white"
+                                            x-text="formatNumber(selectedMetric === 'passenger' ? (Number(h.passenger_arrival || 0) + Number(h.passenger_departure || 0)) : (Number(h.aircraft_arrival || 0) + Number(h.aircraft_departure || 0)))"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                            <tfoot class="bg-slate-50/80 dark:bg-navy-800/80 border-t border-slate-200 dark:border-slate-700 font-bold text-[11px]">
+                                <tr>
+                                    <td class="px-3 py-2">TOTAL</td>
+                                    <td class="px-3 py-2 text-right text-purple-600 dark:text-purple-400 font-black"
+                                        x-text="formatNumber(selectedMetric === 'passenger' ? activeHourlyDistribution.reduce((s, h) => s + Number(h.passenger_arrival || 0), 0) : activeHourlyDistribution.reduce((s, h) => s + Number(h.aircraft_arrival || 0), 0))"></td>
+                                    <td class="px-3 py-2 text-right text-amber-600 dark:text-amber-400 font-black"
+                                        x-text="formatNumber(selectedMetric === 'passenger' ? activeHourlyDistribution.reduce((s, h) => s + Number(h.passenger_departure || 0), 0) : activeHourlyDistribution.reduce((s, h) => s + Number(h.aircraft_departure || 0), 0))"></td>
+                                    <td class="px-3 py-2 text-right font-black text-slate-900 dark:text-white"
+                                        x-text="formatNumber(selectedMetric === 'passenger' ? activeHourlyDistribution.reduce((s, h) => s + Number(h.passenger_arrival || 0) + Number(h.passenger_departure || 0), 0) : activeHourlyDistribution.reduce((s, h) => s + Number(h.aircraft_arrival || 0) + Number(h.aircraft_departure || 0), 0))"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
                 </div>
             </div>
         @endif
@@ -2615,6 +2698,7 @@ function dauEnhancedDashboard() {
         dau5bTermNoData: false,
         dau5cNoData: false,
         dau5cChartLabel: 'Aircraft Movements',
+        dau10bNoData: false,
 
         get dau2ActiveMetricLabel() {
             const map = {
@@ -2662,8 +2746,7 @@ function dauEnhancedDashboard() {
                    this.filterWtc !== 'ALL' ||
                    this.filterPassengerType !== 'ALL' ||
                    this.displayMode !== 'absolute' ||
-                   (this.reportType === 'DAU1' && this.selectedMetric !== 'aircraft') ||
-                   (this.reportType === 'DAU2' && this.selectedMetric !== 'aircraft') ||
+                   (['DAU1', 'DAU2', 'DAU5', 'DAU5C', 'DAU6', 'DAU10B', 'DAU11', 'DAU12'].includes(this.reportType) && this.selectedMetric !== 'aircraft') ||
                    this.searchQuery !== '';
         },
 
@@ -2762,7 +2845,7 @@ function dauEnhancedDashboard() {
             this.filterAircraftType = 'ALL';
             this.filterPassengerType = 'ALL';
             this.displayMode = 'absolute';
-            if (this.reportType === 'DAU1' || this.reportType === 'DAU2') {
+            if (['DAU1', 'DAU2', 'DAU5', 'DAU5C', 'DAU6', 'DAU10B', 'DAU11', 'DAU12'].includes(this.reportType)) {
                 this.selectedMetric = 'aircraft';
             }
             this.filterOperation = 'ALL';
@@ -2892,8 +2975,13 @@ function dauEnhancedDashboard() {
 
                 // DAU10B Operation
                 if (this.reportType === 'DAU10B' && op !== 'ALL') {
-                    if (op === 'BLOCK_ON' && Number(r.aircraft_arrival || 0) === 0 && Number(r.passenger_arrival || 0) === 0) return false;
-                    if (op === 'BLOCK_OFF' && Number(r.aircraft_departure || 0) === 0 && Number(r.passenger_departure || 0) === 0) return false;
+                    if (this.selectedMetric === 'passenger') {
+                        if (op === 'BLOCK_ON' && Number(r.passenger_arrival || 0) === 0) return false;
+                        if (op === 'BLOCK_OFF' && Number(r.passenger_departure || 0) === 0) return false;
+                    } else {
+                        if (op === 'BLOCK_ON' && Number(r.aircraft_arrival || 0) === 0) return false;
+                        if (op === 'BLOCK_OFF' && Number(r.aircraft_departure || 0) === 0) return false;
+                    }
                 }
 
                 // Schedule Type
@@ -3059,6 +3147,21 @@ function dauEnhancedDashboard() {
                     effAd = 0; effCh = 0;
                 }
 
+                // For DAU10B, Operation filter restricts active movement direction to Block On or Block Off
+                if (this.reportType === 'DAU10B' && op !== 'ALL') {
+                    if (op === 'BLOCK_ON') {
+                        effAcDep = 0;
+                        effPxDep = 0;
+                        effAcTot = effAcArr;
+                        effPxTot = effPxArr;
+                    } else if (op === 'BLOCK_OFF') {
+                        effAcArr = 0;
+                        effPxArr = 0;
+                        effAcTot = effAcDep;
+                        effPxTot = effPxDep;
+                    }
+                }
+
                 sum.total_movements += effAcTot;
                 sum.aircraft_arrival += effAcArr;
                 sum.aircraft_departure += effAcDep;
@@ -3180,10 +3283,18 @@ function dauEnhancedDashboard() {
             let peakAc = 0, peakAcH = '—';
             let peakPx = 0, peakPxH = '—';
             let peakCrw = 0, peakCrwH = '—';
+            let peakBlkOn = 0, peakBlkOnH = '—';
+            let peakBlkOff = 0, peakBlkOffH = '—';
+            const isPax = this.selectedMetric === 'passenger';
             this.activeHourlyDistribution.forEach(hb => {
                 if (hb.aircraft_total > peakAc) { peakAc = hb.aircraft_total; peakAcH = hb.hour; }
                 if (hb.passenger_total > peakPx) { peakPx = hb.passenger_total; peakPxH = hb.hour; }
                 if ((hb.crew_total || 0) > peakCrw) { peakCrw = hb.crew_total; peakCrwH = hb.hour; }
+
+                const onVal = isPax ? Number(hb.passenger_arrival || 0) : Number(hb.aircraft_arrival || 0);
+                const offVal = isPax ? Number(hb.passenger_departure || 0) : Number(hb.aircraft_departure || 0);
+                if (onVal > peakBlkOn) { peakBlkOn = onVal; peakBlkOnH = hb.hour; }
+                if (offVal > peakBlkOff) { peakBlkOff = offVal; peakBlkOffH = hb.hour; }
             });
 
             let peakT = '—', peakTV = 0;
@@ -3205,7 +3316,11 @@ function dauEnhancedDashboard() {
                 peak_crew: peakCrw,
                 peak_hour: peakHour,
                 peak_terminal: peakT,
-                peak_terminal_val: peakTV
+                peak_terminal_val: peakTV,
+                peak_block_on_hour: peakBlkOnH,
+                peak_block_on: peakBlkOn,
+                peak_block_off_hour: peakBlkOffH,
+                peak_block_off: peakBlkOff
             };
 
             // Secondary metrics & DAU-02 Comparative Matrix
@@ -3265,7 +3380,7 @@ function dauEnhancedDashboard() {
             // DAU4 Diverging / DAU1 Route Ranking
             const topN = this.filterTopN === 'ALL' ? 50 : Number(this.filterTopN);
             const allAp = Object.values(airportMap);
-            const isPax = this.selectedMetric === 'passenger';
+            // isPax already declared above (line ~3288) — reuse it here
             const paxType = this.filterPassengerType;
 
             const arrSorted = [...allAp].sort((a, b) => {
@@ -4580,21 +4695,129 @@ function dauEnhancedDashboard() {
 
         renderDau10bCharts() {
             if (!window.Chart) return;
-            const ctxBlk = document.getElementById('dau10bBlockChart')?.getContext('2d');
-            if (ctxBlk) {
-                if (this.chartInstances.dau10b) this.chartInstances.dau10b.destroy();
-                this.chartInstances.dau10b = new Chart(ctxBlk, {
-                    type: 'bar',
-                    data: {
-                        labels: this.activeHourlyDistribution.map(h => (h.hour ? String(h.hour).split(' - ')[0] : '—')),
-                        datasets: [
-                            { label: 'Block On (DTG)', data: this.activeHourlyDistribution.map(h => h.aircraft_arrival), backgroundColor: '#7c3aed' },
-                            { label: 'Block Off (BRK)', data: this.activeHourlyDistribution.map(h => h.aircraft_departure), backgroundColor: '#f59e0b' }
-                        ]
-                    },
-                    options: { responsive: true, maintainAspectRatio: false }
+            const canvas = document.getElementById('dau10bBlockChart');
+            if (!canvas) return;
+            const ctxBlk = canvas.getContext('2d');
+            if (!ctxBlk) return;
+
+            if (this.chartInstances.dau10b) {
+                this.chartInstances.dau10b.stop();
+                this.chartInstances.dau10b.destroy();
+                this.chartInstances.dau10b = null;
+            }
+
+            const isPax = this.selectedMetric === 'passenger';
+            const unit = isPax ? 'PAX' : 'A/C';
+            const op = this.filterOperation;
+            const dir = this.filterDirection;
+
+            const labels = this.activeHourlyDistribution.map(h => (h.hour ? String(h.hour).split(' - ')[0] : '—'));
+
+            const onData = this.activeHourlyDistribution.map(h => Number(isPax ? (h.passenger_arrival || 0) : (h.aircraft_arrival || 0)));
+            const offData = this.activeHourlyDistribution.map(h => Number(isPax ? (h.passenger_departure || 0) : (h.aircraft_departure || 0)));
+
+            const showOn = (op !== 'BLOCK_OFF' && dir !== 'DEPARTURE');
+            const showOff = (op !== 'BLOCK_ON' && dir !== 'ARRIVAL');
+
+            const datasets = [];
+            if (showOn) {
+                datasets.push({
+                    label: isPax ? 'Block On (DTG) — Passenger' : 'Block On (DTG)',
+                    data: onData,
+                    backgroundColor: '#7c3aed',
+                    borderColor: '#6d28d9',
+                    borderWidth: 1,
+                    borderRadius: 4,
                 });
             }
+            if (showOff) {
+                datasets.push({
+                    label: isPax ? 'Block Off (BRK) — Passenger' : 'Block Off (BRK)',
+                    data: offData,
+                    backgroundColor: '#f59e0b',
+                    borderColor: '#d97706',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                });
+            }
+
+            // Empty state check
+            const totalValues = datasets.reduce((sum, ds) => sum + ds.data.reduce((a, b) => a + b, 0), 0);
+            if (this.activeHourlyDistribution.length === 0 || totalValues === 0) {
+                this.dau10bNoData = true;
+                return;
+            }
+            this.dau10bNoData = false;
+
+            const maxVal = Math.max(
+                ...datasets.flatMap(ds => ds.data),
+                10
+            );
+
+            this.chartInstances.dau10b = new Chart(ctxBlk, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                boxWidth: 12,
+                                boxHeight: 12,
+                                font: { size: 11, family: 'ui-monospace, monospace' }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: (items) => {
+                                    const idx = items[0]?.dataIndex;
+                                    const h = this.activeHourlyDistribution[idx];
+                                    return 'Hour: ' + (h ? h.hour : items[0]?.label);
+                                },
+                                label: (item) => {
+                                    return `${item.dataset.label}: ${Number(item.raw || 0).toLocaleString()} ${unit}`;
+                                },
+                                afterBody: () => {
+                                    const lines = [];
+                                    lines.push('Metric: ' + (isPax ? 'Passenger' : 'Aircraft'));
+                                    lines.push('Terminal: ' + (this.filterTerminal !== 'ALL' ? this.filterTerminal : 'ALL'));
+                                    lines.push('Scope: ' + (this.filterFlightType !== 'ALL' ? this.filterFlightType : 'ALL'));
+                                    if (op !== 'ALL') {
+                                        lines.push('Operation: ' + (op === 'BLOCK_ON' ? 'Block On (DTG)' : 'Block Off (BRK)'));
+                                    }
+                                    return lines;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: {
+                                font: { size: 10, family: 'ui-monospace, monospace' }
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            suggestedMax: Math.ceil(maxVal * 1.1),
+                            ticks: {
+                                font: { size: 10, family: 'ui-monospace, monospace' },
+                                callback: (val) => Number(val).toLocaleString() + ' ' + unit
+                            }
+                        }
+                    }
+                }
+            });
         },
 
         renderDau11Charts() {

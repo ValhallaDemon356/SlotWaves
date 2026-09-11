@@ -1745,31 +1745,36 @@
     @elseif ($reportType === 'DAU10B')
         {{-- DAU-10B Block On vs Block Off Comparative Distribution --}}
         @php
+            $isPax = ($filters['metric'] ?? 'aircraft') === 'passenger';
             $maxBlock = 1;
             foreach ($hourlyData as $hd) {
-                $maxBlock = max($maxBlock, $hd['aircraft_arrival'], $hd['aircraft_departure']);
+                $onV = $isPax ? ($hd['passenger_arrival'] ?? 0) : ($hd['aircraft_arrival'] ?? 0);
+                $offV = $isPax ? ($hd['passenger_departure'] ?? 0) : ($hd['aircraft_departure'] ?? 0);
+                $maxBlock = max($maxBlock, $onV, $offV);
             }
         @endphp
         <div class="chart-box">
             <div class="chart-header" style="display: table; width: 100%;">
                 <div style="display: table-cell; text-align: left;">
-                    Block On (Inbound Gates / DTG) vs Block Off (Outbound Gates / BRK) Hourly Distribution
+                    Block On (Inbound Gates / DTG) vs Block Off (Outbound Gates / BRK) Hourly {{ $isPax ? 'Passenger' : 'Aircraft' }} Distribution
                 </div>
                 <div style="display: table-cell; text-align: right; font-size: 5.5pt; color: #64748b;">
-                    <span style="display: inline-block; width: 8px; height: 8px; background: #7c3aed; vertical-align: middle;"></span> Block On (DTG) &nbsp;&nbsp;
-                    <span style="display: inline-block; width: 8px; height: 8px; background: #f59e0b; vertical-align: middle;"></span> Block Off (BRK)
+                    <span style="display: inline-block; width: 8px; height: 8px; background: #7c3aed; vertical-align: middle;"></span> Block On (DTG){{ $isPax ? ' — Pax' : '' }} &nbsp;&nbsp;
+                    <span style="display: inline-block; width: 8px; height: 8px; background: #f59e0b; vertical-align: middle;"></span> Block Off (BRK){{ $isPax ? ' — Pax' : '' }}
                 </div>
             </div>
             <table class="chart-table">
                 <tr>
                     @foreach ($hourlyData as $hd)
                         @php
-                            $onH = max(2, round(($hd['aircraft_arrival'] / max(1, $maxBlock)) * 44));
-                            $offH = max(2, round(($hd['aircraft_departure'] / max(1, $maxBlock)) * 44));
+                            $onVal = $isPax ? ($hd['passenger_arrival'] ?? 0) : ($hd['aircraft_arrival'] ?? 0);
+                            $offVal = $isPax ? ($hd['passenger_departure'] ?? 0) : ($hd['aircraft_departure'] ?? 0);
+                            $onH = max(2, round(($onVal / max(1, $maxBlock)) * 44));
+                            $offH = max(2, round(($offVal / max(1, $maxBlock)) * 44));
                         @endphp
                         <td style="width: {{ 100 / max(1, count($hourlyData)) }}%;">
-                            <div style="font-size: 5pt; font-weight: bold; margin-bottom: 1px;">
-                                <span style="color: #7c3aed;">{{ $hd['aircraft_arrival'] }}</span>/<span style="color: #d97706;">{{ $hd['aircraft_departure'] }}</span>
+                            <div style="font-size: 4.5pt; font-weight: bold; margin-bottom: 1px;">
+                                <span style="color: #7c3aed;">{{ number_format($onVal) }}</span>/<span style="color: #d97706;">{{ number_format($offVal) }}</span>
                             </div>
                             <table style="width: 100%; border-collapse: collapse;">
                                 <tr>

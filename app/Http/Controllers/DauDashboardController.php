@@ -790,6 +790,16 @@ class DauDashboardController extends Controller
                         $r['passenger_dep_domestic'] ?? 0, $r['passenger_dep_int'] ?? 0, $r['passenger_departure_tot'] ?? 0, $r['passenger_total'] ?? 0
                     ]);
                 }
+            } elseif ($reportType === 'DAU10B') {
+                $cols = ['Hour', 'Terminal', 'Block On Acft (DTG)', 'Block Off Acft (BRK)', 'Total Acft', 'Block On Pax (DTG)', 'Block Off Pax (BRK)', 'Transit', 'Transfer', 'Total Pax', 'Crew', 'Extra Crew', 'Total Crew', 'Baggage (Kg)', 'Cargo (Kg)', 'POS (Kg)'];
+                fputcsv($handle, $cols);
+                foreach ($records as $r) {
+                    fputcsv($handle, [
+                        $r['hour'] ?? $r['period'] ?? '', $r['terminal'] ?? '', $r['aircraft_arrival'] ?? 0, $r['aircraft_departure'] ?? 0, $r['aircraft_total'] ?? 0,
+                        $r['passenger_arrival'] ?? 0, $r['passenger_departure'] ?? 0, $r['passenger_transit'] ?? 0, $r['passenger_transfer'] ?? 0, $r['passenger_total'] ?? 0,
+                        $r['crew'] ?? 0, $r['extra_crew'] ?? 0, $r['crew_total'] ?? 0, $r['baggage'] ?? 0, $r['cargo'] ?? 0, $r['pos'] ?? 0,
+                    ]);
+                }
             } else {
                 $cols = ['Hour', 'Terminal', 'Aircraft ARR', 'Aircraft DEP', 'Aircraft Total', 'Passenger ARR', 'Passenger DEP', 'Transit', 'Transfer', 'Passenger Total', 'Crew', 'Extra Crew', 'Total Crew', 'Baggage (Kg)', 'Cargo (Kg)', 'POS (Kg)'];
                 fputcsv($handle, $cols);
@@ -1020,12 +1030,16 @@ class DauDashboardController extends Controller
 
             // 11. Operation Filter for DAU10B (BLOCK ON vs BLOCK OFF)
             if ($reportType === 'DAU10B' && $operationFilter !== 'ALL') {
-                if ($operationFilter === 'BLOCK_ON') {
-                    if (($r['aircraft_arrival'] ?? 0) === 0 && ($r['passenger_arrival'] ?? 0) === 0) {
+                if ($metric === 'passenger') {
+                    if ($operationFilter === 'BLOCK_ON' && (int)($r['passenger_arrival'] ?? 0) === 0) {
+                        continue;
+                    } elseif ($operationFilter === 'BLOCK_OFF' && (int)($r['passenger_departure'] ?? 0) === 0) {
                         continue;
                     }
-                } elseif ($operationFilter === 'BLOCK_OFF') {
-                    if (($r['aircraft_departure'] ?? 0) === 0 && ($r['passenger_departure'] ?? 0) === 0) {
+                } else {
+                    if ($operationFilter === 'BLOCK_ON' && (int)($r['aircraft_arrival'] ?? 0) === 0) {
+                        continue;
+                    } elseif ($operationFilter === 'BLOCK_OFF' && (int)($r['aircraft_departure'] ?? 0) === 0) {
                         continue;
                     }
                 }
@@ -1161,6 +1175,21 @@ class DauDashboardController extends Controller
                 $pAdult = 0; $pChild = 0; $pArrAdult = 0; $pArrChild = 0; $pDepAdult = 0; $pDepChild = 0;
             } else {
                 $effPxTot = ($directionFilter === 'ARRIVAL') ? $pxArr : (($directionFilter === 'DEPARTURE') ? $pxDep : $pxTot);
+            }
+
+            // For DAU10B, Operation filter restricts active movement direction to Block On or Block Off
+            if ($reportType === 'DAU10B' && $operationFilter !== 'ALL') {
+                if ($operationFilter === 'BLOCK_ON') {
+                    $effAcDep = 0;
+                    $effPxDep = 0;
+                    $effAcTot = $effAcArr;
+                    $effPxTot = $effPxArr;
+                } elseif ($operationFilter === 'BLOCK_OFF') {
+                    $effAcArr = 0;
+                    $effPxArr = 0;
+                    $effAcTot = $effAcDep;
+                    $effPxTot = $effPxDep;
+                }
             }
 
             $summary['total_movements']    += $effAcTot;
@@ -1352,12 +1381,14 @@ class DauDashboardController extends Controller
                 $peakPaxVal = $hb['passenger_total'];
                 $peakPaxHour = $h;
             }
-            if ($hb['aircraft_arrival'] > $peakBlockOnVal) {
-                $peakBlockOnVal = $hb['aircraft_arrival'];
+            $onVal = ($metric === 'passenger') ? $hb['passenger_arrival'] : $hb['aircraft_arrival'];
+            $offVal = ($metric === 'passenger') ? $hb['passenger_departure'] : $hb['aircraft_departure'];
+            if ($onVal > $peakBlockOnVal) {
+                $peakBlockOnVal = $onVal;
                 $peakBlockOnHour = $h;
             }
-            if ($hb['aircraft_departure'] > $peakBlockOffVal) {
-                $peakBlockOffVal = $hb['aircraft_departure'];
+            if ($offVal > $peakBlockOffVal) {
+                $peakBlockOffVal = $offVal;
                 $peakBlockOffHour = $h;
             }
         }
