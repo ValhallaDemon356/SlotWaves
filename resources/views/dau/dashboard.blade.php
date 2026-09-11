@@ -1940,15 +1940,81 @@
                 <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
                     <div>
                         <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Directional Matrix</div>
-                        <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">ARRIVAL &amp; DEPARTURE BY DOMESTIC VS INTERNATIONAL</h2>
+                        <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white"
+                            x-text="'ARRIVAL & DEPARTURE BY DOMESTIC VS INTERNATIONAL — ' + (selectedMetric === 'passenger' ? 'PASSENGER' : 'AIRCRAFT')">
+                            ARRIVAL &amp; DEPARTURE BY DOMESTIC VS INTERNATIONAL — AIRCRAFT
+                        </h2>
                     </div>
                     <div class="flex items-center gap-3 text-xs font-mono">
-                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-blue-600"></span> Domestic</span>
-                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-indigo-600"></span> International</span>
+                        <span class="flex items-center gap-1" x-show="filterFlightType !== 'INT'"><span class="w-3 h-3 rounded bg-blue-600"></span> Domestic</span>
+                        <span class="flex items-center gap-1" x-show="filterFlightType !== 'DOM'"><span class="w-3 h-3 rounded bg-indigo-600"></span> International</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300">
+                            Unit: <span class="text-aviation-600 dark:text-aviation-400" x-text="selectedMetric === 'passenger' ? 'PAX' : 'A/C'"></span>
+                        </span>
                     </div>
                 </div>
-                <div class="relative h-72 sm:h-84 w-full">
-                    <canvas id="dau12GroupedChart"></canvas>
+
+                {{-- Empty state banner --}}
+                <div x-show="dau12NoData" class="flex flex-col items-center justify-center h-64 text-slate-400 dark:text-slate-500 gap-2 text-center px-4">
+                    <svg class="w-10 h-10 stroke-current text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <div class="text-sm font-bold tracking-wide"
+                         x-text="filteredRecords.length === 0 ? 'NO MATCHING DATA' : 'NO DATA AVAILABLE'">
+                        NO DATA AVAILABLE
+                    </div>
+                    <div class="text-xs font-mono max-w-md">
+                        No flight operations match the active filter criteria. Try resetting or selecting another filter.
+                    </div>
+                </div>
+
+                {{-- Chart container --}}
+                <div x-show="!dau12NoData" class="relative h-72 sm:h-84 w-full">
+                    <canvas id="dau12GroupedChart" class="w-full h-full"></canvas>
+                </div>
+
+                {{-- Directional Matrix Analytical Summary Table (Part 37) --}}
+                <div x-show="!dau12NoData" class="border-t border-slate-100 dark:border-slate-800 pt-4 mt-4 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            Directional Matrix Summary (<span x-text="selectedMetric === 'passenger' ? 'Passenger Traffic' : 'Aircraft Movements'"></span>)
+                        </div>
+                        <div class="text-[10px] font-mono text-slate-400">
+                            Unit: <span class="font-bold text-aviation-600 dark:text-aviation-400" x-text="selectedMetric === 'passenger' ? 'PAX' : 'A/C'"></span>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-lg">
+                        <table class="w-full text-left border-collapse text-xs font-mono">
+                            <thead class="bg-slate-50 dark:bg-navy-800 text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">
+                                <tr>
+                                    <th class="px-3 py-2">Direction</th>
+                                    <th class="px-3 py-2 text-right" x-show="filterFlightType !== 'INT'">Domestic</th>
+                                    <th class="px-3 py-2 text-right" x-show="filterFlightType !== 'DOM'">International</th>
+                                    <th class="px-3 py-2 text-right font-black">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                                <tr x-show="filterDirection !== 'DEPARTURE'" class="hover:bg-slate-50/50 dark:hover:bg-navy-800/50">
+                                    <td class="px-3 py-2 font-bold text-slate-700 dark:text-slate-300">ARRIVAL</td>
+                                    <td class="px-3 py-2 text-right text-blue-600 dark:text-blue-400" x-show="filterFlightType !== 'INT'" x-text="formatNumber(dau12MatrixSummary.arr_dom)"></td>
+                                    <td class="px-3 py-2 text-right text-indigo-600 dark:text-indigo-400" x-show="filterFlightType !== 'DOM'" x-text="formatNumber(dau12MatrixSummary.arr_int)"></td>
+                                    <td class="px-3 py-2 text-right font-bold text-slate-900 dark:text-white" x-text="formatNumber(dau12MatrixSummary.arr_tot)"></td>
+                                </tr>
+                                <tr x-show="filterDirection !== 'ARRIVAL'" class="hover:bg-slate-50/50 dark:hover:bg-navy-800/50">
+                                    <td class="px-3 py-2 font-bold text-slate-700 dark:text-slate-300">DEPARTURE</td>
+                                    <td class="px-3 py-2 text-right text-blue-600 dark:text-blue-400" x-show="filterFlightType !== 'INT'" x-text="formatNumber(dau12MatrixSummary.dep_dom)"></td>
+                                    <td class="px-3 py-2 text-right text-indigo-600 dark:text-indigo-400" x-show="filterFlightType !== 'DOM'" x-text="formatNumber(dau12MatrixSummary.dep_int)"></td>
+                                    <td class="px-3 py-2 text-right font-bold text-slate-900 dark:text-white" x-text="formatNumber(dau12MatrixSummary.dep_tot)"></td>
+                                </tr>
+                                <tr class="bg-slate-50/60 dark:bg-navy-800/60 font-black">
+                                    <td class="px-3 py-2 text-slate-900 dark:text-white">TOTAL</td>
+                                    <td class="px-3 py-2 text-right text-blue-600 dark:text-blue-400" x-show="filterFlightType !== 'INT'" x-text="formatNumber(dau12MatrixSummary.tot_dom)"></td>
+                                    <td class="px-3 py-2 text-right text-indigo-600 dark:text-indigo-400" x-show="filterFlightType !== 'DOM'" x-text="formatNumber(dau12MatrixSummary.tot_int)"></td>
+                                    <td class="px-3 py-2 text-right text-emerald-600 dark:text-emerald-400" x-text="formatNumber(dau12MatrixSummary.grand_tot)"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         @endif
@@ -2771,6 +2837,19 @@ function dauEnhancedDashboard() {
         _dau10bCachedChartData: null,
         _dau10bCachedSnapshot: null,
 
+        // DAU-12 State
+        dau12NoData: false,
+        dau12FilterVersion: 0,
+        dau12IsUpdating: false,
+        dau12ErrorMessage: '',
+        _dau12CachedChartData: null,
+        _dau12CachedSnapshot: null,
+        dau12MatrixSummary: {
+            arr_dom: 0, arr_int: 0, arr_tot: 0,
+            dep_dom: 0, dep_int: 0, dep_tot: 0,
+            tot_dom: 0, tot_int: 0, grand_tot: 0
+        },
+
         get isPassengerDataAvailable() {
             if (this.reportType !== 'DAU10B') return true;
             return this.allRecords.some(r => Number(r.passenger_total || r.passenger_arrival || r.passenger_departure || 0) > 0);
@@ -3430,10 +3509,404 @@ function dauEnhancedDashboard() {
             }
         },
 
+        // ══ DAU-12 ATOMIC STATE PIPELINE ═════════════════════════════════════
+        createDau12Snapshot() {
+            return {
+                version: ++this.dau12FilterVersion,
+                metric: this.selectedMetric || 'aircraft',
+                direction: this.filterDirection || 'ALL',
+                flightType: this.filterFlightType || 'ALL',
+                search: (this.searchQuery || '').toLowerCase().trim(),
+                startDate: this.filterStartDate,
+                endDate: this.filterEndDate
+            };
+        },
+
+        filterDau12Records(rawRecords, snapshot) {
+            if (!Array.isArray(rawRecords)) return [];
+            const dir = snapshot.direction;
+            const ft = snapshot.flightType;
+            const sq = snapshot.search;
+
+            return rawRecords.filter(r => {
+                // Search query
+                if (sq !== '') {
+                    const haystack = JSON.stringify(r).toLowerCase();
+                    if (!haystack.includes(sq)) return false;
+                }
+
+                // Direction filter at record level
+                if (dir === 'ARRIVAL') {
+                    const hasArr = (Number(r.aircraft_arrival || 0) > 0)
+                                || (Number(r.passenger_arrival || 0) > 0)
+                                || (Number(r.aircraft_arr_domestic || 0) > 0)
+                                || (Number(r.aircraft_arr_int || 0) > 0)
+                                || (Number(r.passenger_arr_domestic || 0) > 0)
+                                || (Number(r.passenger_arr_int || 0) > 0);
+                    if (!hasArr) return false;
+                } else if (dir === 'DEPARTURE') {
+                    const hasDep = (Number(r.aircraft_departure || 0) > 0)
+                                || (Number(r.passenger_departure || 0) > 0)
+                                || (Number(r.aircraft_dep_domestic || 0) > 0)
+                                || (Number(r.aircraft_dep_int || 0) > 0)
+                                || (Number(r.passenger_dep_domestic || 0) > 0)
+                                || (Number(r.passenger_dep_int || 0) > 0);
+                    if (!hasDep) return false;
+                }
+
+                // Scope filter at record level
+                if (ft === 'DOM') {
+                    const hasDom = (Number(r.aircraft_arr_domestic || 0) > 0)
+                                || (Number(r.aircraft_dep_domestic || 0) > 0)
+                                || (Number(r.passenger_arr_domestic || 0) > 0)
+                                || (Number(r.passenger_dep_domestic || 0) > 0);
+                    if (!hasDom) return false;
+                } else if (ft === 'INT') {
+                    const hasInt = (Number(r.aircraft_arr_int || 0) > 0)
+                                || (Number(r.aircraft_dep_int || 0) > 0)
+                                || (Number(r.passenger_arr_int || 0) > 0)
+                                || (Number(r.passenger_dep_int || 0) > 0);
+                    if (!hasInt) return false;
+                }
+
+                return true;
+            });
+        },
+
+        aggregateDau12(records, snapshot) {
+            const isPax = snapshot.metric === 'passenger';
+            const unit = isPax ? 'PAX' : 'A/C';
+            const dir = snapshot.direction;
+            const scope = snapshot.flightType;
+
+            let arrDom = 0, arrInt = 0, depDom = 0, depInt = 0;
+            let sumTotalMov = 0, sumPaxTot = 0;
+            let sumAcArr = 0, sumAcDep = 0, sumPxArr = 0, sumPxDep = 0;
+
+            records.forEach(r => {
+                const acArrD = Number(r.aircraft_arr_domestic || 0);
+                const acArrI = Number(r.aircraft_arr_int || 0);
+                const acDepD = Number(r.aircraft_dep_domestic || 0);
+                const acDepI = Number(r.aircraft_dep_int || 0);
+                const acTot  = Number(r.aircraft_total || (acArrD + acArrI + acDepD + acDepI));
+
+                const pxArrD = Number(r.passenger_arr_domestic || 0);
+                const pxArrI = Number(r.passenger_arr_int || 0);
+                const pxDepD = Number(r.passenger_dep_domestic || 0);
+                const pxDepI = Number(r.passenger_dep_int || 0);
+                const pxTot  = Number(r.passenger_total || (pxArrD + pxArrI + pxDepD + pxDepI));
+
+                sumTotalMov += acTot;
+                sumPaxTot += pxTot;
+                sumAcArr += (acArrD + acArrI);
+                sumAcDep += (acDepD + acDepI);
+                sumPxArr += (pxArrD + pxArrI);
+                sumPxDep += (pxDepD + pxDepI);
+
+                if (isPax) {
+                    arrDom += pxArrD;
+                    arrInt += pxArrI;
+                    depDom += pxDepD;
+                    depInt += pxDepI;
+                } else {
+                    arrDom += acArrD;
+                    arrInt += acArrI;
+                    depDom += acDepD;
+                    depInt += acDepI;
+                }
+            });
+
+            // Adjust directional / scope matrix totals according to active filters
+            const matrixSummary = {
+                arr_dom: (dir === 'DEPARTURE' || scope === 'INT') ? 0 : arrDom,
+                arr_int: (dir === 'DEPARTURE' || scope === 'DOM') ? 0 : arrInt,
+                arr_tot: (dir === 'DEPARTURE') ? 0 : ((scope === 'DOM') ? arrDom : ((scope === 'INT') ? arrInt : (arrDom + arrInt))),
+                dep_dom: (dir === 'ARRIVAL' || scope === 'INT') ? 0 : depDom,
+                dep_int: (dir === 'ARRIVAL' || scope === 'DOM') ? 0 : depInt,
+                dep_tot: (dir === 'ARRIVAL') ? 0 : ((scope === 'DOM') ? depDom : ((scope === 'INT') ? depInt : (depDom + depInt))),
+                tot_dom: (scope === 'INT') ? 0 : ((dir === 'ARRIVAL') ? arrDom : ((dir === 'DEPARTURE') ? depDom : (arrDom + depDom))),
+                tot_int: (scope === 'DOM') ? 0 : ((dir === 'ARRIVAL') ? arrInt : ((dir === 'DEPARTURE') ? depInt : (arrInt + depInt))),
+                grand_tot: 0
+            };
+            matrixSummary.grand_tot = matrixSummary.arr_tot + matrixSummary.dep_tot;
+
+            // Summary KPI
+            let effMov = sumTotalMov;
+            let effPax = sumPaxTot;
+            if (dir === 'ARRIVAL') {
+                effMov = sumAcArr;
+                effPax = sumPxArr;
+            } else if (dir === 'DEPARTURE') {
+                effMov = sumAcDep;
+                effPax = sumPxDep;
+            }
+
+            const summary = {
+                total_movements: effMov,
+                passenger_total: effPax,
+                aircraft_arrival: (dir === 'DEPARTURE') ? 0 : sumAcArr,
+                aircraft_departure: (dir === 'ARRIVAL') ? 0 : sumAcDep,
+                passenger_arrival: (dir === 'DEPARTURE') ? 0 : sumPxArr,
+                passenger_departure: (dir === 'ARRIVAL') ? 0 : sumPxDep,
+            };
+
+            // Determine X-axis categories based on Direction Filter (Part 16)
+            let categories = [];
+            let domData = [];
+            let intData = [];
+
+            if (dir === 'ARRIVAL') {
+                categories = ['ARRIVAL'];
+                domData = [arrDom];
+                intData = [arrInt];
+            } else if (dir === 'DEPARTURE') {
+                categories = ['DEPARTURE'];
+                domData = [depDom];
+                intData = [depInt];
+            } else {
+                categories = ['ARRIVAL', 'DEPARTURE'];
+                domData = [arrDom, depDom];
+                intData = [arrInt, depInt];
+            }
+
+            // Determine Datasets based on Scope Filter (Part 17)
+            const datasets = [];
+            if (scope !== 'INT') {
+                datasets.push({
+                    label: 'Domestic',
+                    data: domData,
+                    backgroundColor: '#2563eb',
+                    borderColor: '#1d4ed8',
+                    borderWidth: 1,
+                    borderRadius: 4
+                });
+            }
+            if (scope !== 'DOM') {
+                datasets.push({
+                    label: 'International',
+                    data: intData,
+                    backgroundColor: '#4f46e5',
+                    borderColor: '#4338ca',
+                    borderWidth: 1,
+                    borderRadius: 4
+                });
+            }
+
+            const allVals = datasets.flatMap(ds => ds.data);
+            const maxVal = allVals.length > 0 ? Math.max(...allVals, 10) : 10;
+            const totalVisualVal = allVals.reduce((a, b) => a + Number(b || 0), 0);
+
+            return {
+                summary,
+                matrixSummary,
+                chartData: {
+                    labels: categories,
+                    datasets: datasets,
+                    maxVal: maxVal,
+                    totalVal: totalVisualVal,
+                    unit: unit,
+                    metric: isPax ? 'Passenger' : 'Aircraft'
+                }
+            };
+        },
+
+        applyDau12Filters() {
+            this.currentPage = 1;
+            this.dau12IsUpdating = true;
+            this.dau12ErrorMessage = '';
+
+            try {
+                const snapshot = this.createDau12Snapshot();
+                const nextFiltered = this.filterDau12Records(this.allRecords, snapshot);
+                const nextAgg = this.aggregateDau12(nextFiltered, snapshot);
+
+                // Discard stale calculation (Part 51)
+                if (snapshot.version !== this.dau12FilterVersion) {
+                    return;
+                }
+
+                // Atomic commit
+                this.filteredRecords = nextFiltered;
+                this.activeSummary = nextAgg.summary;
+                this.dau12MatrixSummary = nextAgg.matrixSummary;
+                this._dau12CachedChartData = nextAgg.chartData;
+                this._dau12CachedSnapshot = snapshot;
+
+                this.dau12NoData = (nextFiltered.length === 0 || nextAgg.chartData.totalVal === 0);
+
+                this.renderDau12ChartAtomic(nextAgg.chartData, snapshot);
+            } catch (err) {
+                console.error('[SlotWaves DAU-12] Filter error:', err);
+                this.dau12ErrorMessage = 'Unable to update analysis.';
+            } finally {
+                this.dau12IsUpdating = false;
+            }
+        },
+
+        renderDau12ChartAtomic(chartData, snapshot) {
+            if (snapshot && snapshot.version !== this.dau12FilterVersion) {
+                return;
+            }
+
+            if (!window.Chart) {
+                setTimeout(() => {
+                    if (!snapshot || snapshot.version === this.dau12FilterVersion) {
+                        this.renderDau12ChartAtomic(chartData, snapshot);
+                    }
+                }, 100);
+                return;
+            }
+
+            if (this.dau12NoData) {
+                if (this.chartInstances.dau12) {
+                    try { this.chartInstances.dau12.stop(); } catch(_) {}
+                }
+                return;
+            }
+
+            const canvas = document.getElementById('dau12GroupedChart');
+            if (!canvas) return;
+
+            if (canvas.offsetParent === null || canvas.clientWidth === 0) {
+                this.$nextTick(() => {
+                    if (!snapshot || snapshot.version === this.dau12FilterVersion) {
+                        this.renderDau12ChartAtomic(chartData, snapshot);
+                    }
+                });
+                return;
+            }
+
+            const isPax = (snapshot ? snapshot.metric : this.selectedMetric) === 'passenger';
+            const unit = isPax ? 'PAX' : 'A/C';
+            const dir = snapshot ? snapshot.direction : this.filterDirection;
+            const scope = snapshot ? snapshot.flightType : this.filterFlightType;
+
+            // Pure non-reactive payload for Chart.js to prevent Alpine proxy loops
+            const cleanLabels = [...chartData.labels];
+            const cleanDatasets = (chartData.datasets || []).map(ds => ({
+                label: ds.label,
+                data: [...ds.data],
+                backgroundColor: ds.backgroundColor,
+                borderColor: ds.borderColor,
+                borderWidth: ds.borderWidth,
+                borderRadius: ds.borderRadius
+            }));
+
+            // In-place chart reuse (Part 52)
+            const existingChart = this.chartInstances.dau12;
+            if (existingChart && existingChart.ctx && !existingChart.destroyed) {
+                try {
+                    existingChart.data.labels = cleanLabels;
+                    existingChart.data.datasets = cleanDatasets;
+                    if (existingChart.options && existingChart.options.scales && existingChart.options.scales.y) {
+                        existingChart.options.scales.y.suggestedMax = Math.ceil(chartData.maxVal * 1.15);
+                        existingChart.options.scales.y.ticks.callback = (val) => Number(val).toLocaleString('id-ID') + ' ' + unit;
+                    }
+                    if (existingChart.options && existingChart.options.plugins && existingChart.options.plugins.tooltip) {
+                        existingChart.options.plugins.tooltip.callbacks.title = (items) => {
+                            const cat = items[0]?.label || '';
+                            return 'Direction: ' + cat;
+                        };
+                        existingChart.options.plugins.tooltip.callbacks.label = (item) => {
+                            return `${item.dataset.label}: ${Number(item.raw || 0).toLocaleString('id-ID')} ${unit}`;
+                        };
+                        existingChart.options.plugins.tooltip.callbacks.afterBody = () => {
+                            const lines = [];
+                            lines.push('Metric: ' + (isPax ? 'Passenger' : 'Aircraft'));
+                            if (scope !== 'ALL') lines.push('Scope: ' + (scope === 'DOM' ? 'Domestic Only' : 'International Only'));
+                            if (dir !== 'ALL') lines.push('Direction: ' + dir);
+                            return lines;
+                        };
+                    }
+                    existingChart.update('none');
+                    return;
+                } catch (err) {
+                    console.warn('[SlotWaves DAU-12] In-place chart update warning, recreating:', err);
+                    try { existingChart.destroy(); } catch (_) {}
+                    this.chartInstances.dau12 = null;
+                }
+            }
+
+            // Clean up any untracked chart on this canvas
+            const untracked = window.Chart.getChart(canvas);
+            if (untracked) {
+                try { untracked.destroy(); } catch (_) {}
+            }
+
+            const ctx12 = canvas.getContext('2d');
+            if (!ctx12) return;
+
+            try {
+                this.chartInstances.dau12 = new Chart(ctx12, {
+                    type: 'bar',
+                    data: {
+                        labels: cleanLabels,
+                        datasets: cleanDatasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    boxWidth: 12,
+                                    boxHeight: 12,
+                                    font: { size: 11, family: 'ui-monospace, monospace' }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    title: (items) => {
+                                        const cat = items[0]?.label || '';
+                                        return 'Direction: ' + cat;
+                                    },
+                                    label: (item) => `${item.dataset.label}: ${Number(item.raw || 0).toLocaleString('id-ID')} ${unit}`,
+                                    afterBody: () => {
+                                        const lines = [];
+                                        lines.push('Metric: ' + (isPax ? 'Passenger' : 'Aircraft'));
+                                        if (scope !== 'ALL') lines.push('Scope: ' + (scope === 'DOM' ? 'Domestic Only' : 'International Only'));
+                                        if (dir !== 'ALL') lines.push('Direction: ' + dir);
+                                        return lines;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: { font: { weight: 'bold', family: 'ui-monospace, monospace' } }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                suggestedMax: Math.ceil(chartData.maxVal * 1.15),
+                                ticks: {
+                                    callback: (val) => Number(val).toLocaleString('id-ID') + ' ' + unit,
+                                    font: { family: 'ui-monospace, monospace' }
+                                }
+                            }
+                        }
+                    }
+                });
+            } catch (createErr) {
+                console.error('[SlotWaves DAU-12] Failed to create Chart instance:', createErr);
+            }
+        },
+
         applyFilters() {
             this.currentPage = 1;
             if (this.reportType === 'DAU10B') {
                 this.applyDau10bFilters();
+                return;
+            }
+            if (this.reportType === 'DAU12') {
+                this.applyDau12Filters();
                 return;
             }
             const ft = this.filterFlightType;
@@ -5345,35 +5818,15 @@ function dauEnhancedDashboard() {
         },
 
         renderDau12Charts() {
-            if (!window.Chart) return;
-            const ctx12 = document.getElementById('dau12GroupedChart')?.getContext('2d');
-            if (ctx12) {
-                if (this.chartInstances.dau12) this.chartInstances.dau12.destroy();
-                let domArr = 0, intArr = 0, domDep = 0, intDep = 0;
-                this.filteredRecords.forEach(r => {
-                    if (this.selectedMetric === 'passenger') {
-                        domArr += Number(r.passenger_arr_domestic || 0);
-                        intArr += Number(r.passenger_arr_int || 0);
-                        domDep += Number(r.passenger_dep_domestic || 0);
-                        intDep += Number(r.passenger_dep_int || 0);
-                    } else {
-                        domArr += Number(r.aircraft_arr_domestic || 0);
-                        intArr += Number(r.aircraft_arr_int || 0);
-                        domDep += Number(r.aircraft_dep_domestic || 0);
-                        intDep += Number(r.aircraft_dep_int || 0);
-                    }
-                });
-                this.chartInstances.dau12 = new Chart(ctx12, {
-                    type: 'bar',
-                    data: {
-                        labels: ['ARRIVAL', 'DEPARTURE'],
-                        datasets: [
-                            { label: 'Domestic', data: [domArr, domDep], backgroundColor: '#2563eb' },
-                            { label: 'International', data: [intArr, intDep], backgroundColor: '#4f46e5' }
-                        ]
-                    },
-                    options: { responsive: true, maintainAspectRatio: false }
-                });
+            if (this._dau12CachedChartData && this._dau12CachedSnapshot) {
+                this.renderDau12ChartAtomic(this._dau12CachedChartData, this._dau12CachedSnapshot);
+            } else {
+                const snapshot = this.createDau12Snapshot();
+                const nextFiltered = this.filterDau12Records(this.allRecords, snapshot);
+                const nextAgg = this.aggregateDau12(nextFiltered, snapshot);
+                this._dau12CachedChartData = nextAgg.chartData;
+                this._dau12CachedSnapshot = snapshot;
+                this.renderDau12ChartAtomic(nextAgg.chartData, snapshot);
             }
         },
 
