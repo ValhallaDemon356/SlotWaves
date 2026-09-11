@@ -627,8 +627,9 @@
 
                 <div class="glass-card p-4 shadow-sm border-t-2 border-t-purple-600">
                     <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Peak Terminal</div>
-                    <div class="text-xl sm:text-2xl font-black text-purple-600 dark:text-purple-400 mt-1" x-text="'T' + (peaks.peak_terminal || '—')">
-                        T{{ $peaks['peak_terminal'] ?? '—' }}
+                    <div class="text-xl sm:text-2xl font-black text-purple-600 dark:text-purple-400 mt-1"
+                         x-text="!peaks.peak_terminal || ['—', '-', 'T-', 'T—'].includes(String(peaks.peak_terminal).trim()) ? '—' : ((String(peaks.peak_terminal).toUpperCase().startsWith('T') ? '' : 'T') + peaks.peak_terminal)">
+                        {{ empty($peaks['peak_terminal']) || in_array(trim($peaks['peak_terminal'] ?? ''), ['—', '-', 'T-', 'T—']) ? '—' : ((str_starts_with(strtoupper($peaks['peak_terminal']), 'T') ? '' : 'T') . $peaks['peak_terminal']) }}
                     </div>
                     <div class="text-[10px] text-slate-500 mt-1 font-mono"
                          x-text="reportType === 'DAU10B' ? (formatNumber(peaks.peak_terminal_val) + (selectedMetric === 'passenger' ? ' PAX' : ' A/C')) : (formatNumber(peaks.peak_terminal_val) + ' mov')">
@@ -1832,12 +1833,17 @@
                 </div>
 
                 {{-- No data banner --}}
-                <div x-show="dau10bNoData" class="flex flex-col items-center justify-center h-64 text-slate-400 dark:text-slate-500 gap-2">
+                <div x-show="dau10bNoData" class="flex flex-col items-center justify-center h-64 text-slate-400 dark:text-slate-500 gap-2 text-center px-4">
                     <svg class="w-10 h-10 stroke-current text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
-                    <div class="text-sm font-bold">NO DATA AVAILABLE</div>
-                    <div class="text-xs font-mono" x-text="'No ' + (selectedMetric === 'passenger' ? 'passenger' : 'aircraft') + ' operations found for selected filters'"></div>
+                    <div class="text-sm font-bold tracking-wide"
+                         x-text="selectedMetric === 'passenger' && !isPassengerDataAvailable ? 'PASSENGER ANALYSIS UNAVAILABLE' : 'NO DATA AVAILABLE'">
+                        NO DATA AVAILABLE
+                    </div>
+                    <div class="text-xs font-mono max-w-md"
+                         x-text="selectedMetric === 'passenger' && !isPassengerDataAvailable ? 'DAU-10B source does not provide passenger values at Block On / Block Off event level.' : ('No ' + (selectedMetric === 'passenger' ? 'passenger' : 'aircraft') + ' operations found for selected filters')">
+                    </div>
                 </div>
 
                 {{-- Chart container --}}
@@ -2200,20 +2206,50 @@
                                     <template x-if="selectedMetric === 'crew'">
                                         <th class="px-2.5 py-2.5 text-right font-bold">Total Crew</th>
                                     </template>
-                                @elseif ($reportType === 'DAU10' || $reportType === 'DAU10B')
+                                @elseif ($reportType === 'DAU10B')
                                     <th @click="sortBy('hour')" class="px-3 py-2.5 cursor-pointer">Hour</th>
                                     <th class="px-2.5 py-2.5">Terminal</th>
-                                    <th class="px-2.5 py-2.5 text-right">@if ($reportType === 'DAU10B') Acft On (DTG) @else Acft ARR @endif</th>
-                                    <th class="px-2.5 py-2.5 text-right">@if ($reportType === 'DAU10B') Acft Off (BRK) @else Acft DEP @endif</th>
+                                    <template x-if="selectedMetric === 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right text-purple-600 font-bold">Pax On (DTG)</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right text-amber-500 font-bold">Pax Off (BRK)</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right text-slate-500">Transit</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right text-slate-500">Transfer</th>
+                                    </template>
+                                    <template x-if="selectedMetric === 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right text-emerald-600 font-bold">Total Pax</th>
+                                    </template>
+                                    <template x-if="selectedMetric !== 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right text-purple-600 font-bold">Acft On (DTG)</th>
+                                    </template>
+                                    <template x-if="selectedMetric !== 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right text-amber-500 font-bold">Acft Off (BRK)</th>
+                                    </template>
+                                    <template x-if="selectedMetric !== 'passenger'">
+                                        <th class="px-2.5 py-2.5 text-right font-bold">Total Acft</th>
+                                    </template>
+                                    <template x-if="selectedMetric !== 'passenger'">
+                                        <th class="px-2 py-2.5 text-right">Awak</th>
+                                    </template>
+                                    <th class="px-2.5 py-2.5 text-right">Bagasi</th>
+                                    <th class="px-2.5 py-2.5 text-right">Kargo</th>
+                                @elseif ($reportType === 'DAU10')
+                                    <th @click="sortBy('hour')" class="px-3 py-2.5 cursor-pointer">Hour</th>
+                                    <th class="px-2.5 py-2.5">Terminal</th>
+                                    <th class="px-2.5 py-2.5 text-right">Acft ARR</th>
+                                    <th class="px-2.5 py-2.5 text-right">Acft DEP</th>
                                     <th class="px-2.5 py-2.5 text-right font-bold">Total Acft</th>
-                                    <th class="px-2.5 py-2.5 text-right">@if ($reportType === 'DAU10B') Pax On (DTG) @else Pax ARR @endif</th>
-                                    <th class="px-2.5 py-2.5 text-right">@if ($reportType === 'DAU10B') Pax Off (BRK) @else Pax DEP @endif</th>
+                                    <th class="px-2.5 py-2.5 text-right">Pax ARR</th>
+                                    <th class="px-2.5 py-2.5 text-right">Pax DEP</th>
                                     <th class="px-2.5 py-2.5 text-right text-emerald-600 font-bold">Total Pax</th>
                                     <th class="px-2 py-2.5 text-right">Awak</th>
-                                    @if ($reportType !== 'DAU10A')
-                                        <th class="px-2.5 py-2.5 text-right">Bagasi</th>
-                                        <th class="px-2.5 py-2.5 text-right">Kargo</th>
-                                    @endif
+                                    <th class="px-2.5 py-2.5 text-right">Bagasi</th>
+                                    <th class="px-2.5 py-2.5 text-right">Kargo</th>
                                 @elseif ($reportType === 'DAU11')
                                     <th class="px-3 py-2.5">Tanggal</th>
                                     <th class="px-2.5 py-2.5 text-right" x-text="selectedMetric === 'passenger' ? 'INT ARR (Pax)' : 'INT ARR'"></th>
@@ -2457,7 +2493,39 @@
                                         <template x-if="selectedMetric === 'crew'">
                                             <td class="px-2.5 py-2 text-right font-bold text-slate-900 dark:text-white" x-text="formatNumber(row.crew_total)"></td>
                                         </template>
-                                    @elseif ($reportType === 'DAU10' || $reportType === 'DAU10B')
+                                    @elseif ($reportType === 'DAU10B')
+                                        <td class="px-3 py-2 font-bold text-aviation-600 dark:text-aviation-400" x-text="row.hour || row.period || '—'"></td>
+                                        <td class="px-2.5 py-2 font-sans font-bold text-slate-800 dark:text-slate-200" x-text="row.terminal || '—'"></td>
+                                        <template x-if="selectedMetric === 'passenger'">
+                                            <td class="px-2.5 py-2 text-right text-purple-600 font-mono font-bold" x-text="formatNumber(row.passenger_arrival)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'passenger'">
+                                            <td class="px-2.5 py-2 text-right text-amber-500 font-mono font-bold" x-text="formatNumber(row.passenger_departure)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'passenger'">
+                                            <td class="px-2.5 py-2 text-right text-slate-500 font-mono" x-text="formatNumber(row.passenger_transit)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'passenger'">
+                                            <td class="px-2.5 py-2 text-right text-slate-500 font-mono" x-text="formatNumber(row.passenger_transfer)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric === 'passenger'">
+                                            <td class="px-2.5 py-2 text-right font-bold text-emerald-600 font-mono" x-text="formatNumber(row.passenger_total)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric !== 'passenger'">
+                                            <td class="px-2.5 py-2 text-right text-purple-600 font-mono font-bold" x-text="formatNumber(row.aircraft_arrival)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric !== 'passenger'">
+                                            <td class="px-2.5 py-2 text-right text-amber-500 font-mono font-bold" x-text="formatNumber(row.aircraft_departure)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric !== 'passenger'">
+                                            <td class="px-2.5 py-2 text-right font-bold text-slate-900 dark:text-white font-mono" x-text="formatNumber(row.aircraft_total)"></td>
+                                        </template>
+                                        <template x-if="selectedMetric !== 'passenger'">
+                                            <td class="px-2 py-2 text-right text-slate-500 font-mono" x-text="formatNumber(row.crew)"></td>
+                                        </template>
+                                        <td class="px-2.5 py-2 text-right text-slate-500 font-mono" x-text="formatNumber(row.baggage)"></td>
+                                        <td class="px-2.5 py-2 text-right text-slate-500 font-mono" x-text="formatNumber(row.cargo)"></td>
+                                    @elseif ($reportType === 'DAU10')
                                         <td class="px-3 py-2 font-bold text-aviation-600 dark:text-aviation-400" x-text="row.hour || row.period || '—'"></td>
                                         <td class="px-2.5 py-2 font-sans font-bold text-slate-800 dark:text-slate-200" x-text="row.terminal || '—'"></td>
                                         <td class="px-2.5 py-2 text-right" x-text="formatNumber(row.aircraft_arrival)"></td>
@@ -2467,10 +2535,8 @@
                                         <td class="px-2.5 py-2 text-right" x-text="formatNumber(row.passenger_departure)"></td>
                                         <td class="px-2.5 py-2 text-right font-bold text-emerald-600" x-text="formatNumber(row.passenger_total)"></td>
                                         <td class="px-2 py-2 text-right text-slate-500" x-text="formatNumber(row.crew)"></td>
-                                        @if ($reportType !== 'DAU10A')
-                                            <td class="px-2.5 py-2 text-right text-slate-500" x-text="formatNumber(row.baggage)"></td>
-                                            <td class="px-2.5 py-2 text-right text-slate-500" x-text="formatNumber(row.cargo)"></td>
-                                        @endif
+                                        <td class="px-2.5 py-2 text-right text-slate-500" x-text="formatNumber(row.baggage)"></td>
+                                        <td class="px-2.5 py-2 text-right text-slate-500" x-text="formatNumber(row.cargo)"></td>
                                     @elseif ($reportType === 'DAU11')
                                         <td class="px-3 py-2 font-bold text-slate-800 dark:text-slate-200" x-text="row.date || '—'"></td>
                                         <td class="px-2.5 py-2 text-right" x-text="formatNumber(selectedMetric === 'passenger' ? (row.passenger_int_arrival ?? 0) : row.aircraft_int_arrival)"></td>
@@ -2699,6 +2765,11 @@ function dauEnhancedDashboard() {
         dau5cNoData: false,
         dau5cChartLabel: 'Aircraft Movements',
         dau10bNoData: false,
+
+        get isPassengerDataAvailable() {
+            if (this.reportType !== 'DAU10B') return true;
+            return this.allRecords.some(r => Number(r.passenger_total || r.passenger_arrival || r.passenger_departure || 0) > 0);
+        },
 
         get dau2ActiveMetricLabel() {
             const map = {
@@ -3082,6 +3153,7 @@ function dauEnhancedDashboard() {
             this.filteredRecords.forEach(r => {
                 const dir = this.filterDirection;
                 const pType = this.filterPassengerType;
+                const op = this.filterOperation;
 
                 const acArr = Number(r.aircraft_arrival || (Number(r.aircraft_arr_domestic || 0) + Number(r.aircraft_arr_int || 0)) || (Number(r.aircraft_dom_arrival || 0) + Number(r.aircraft_int_arrival || 0)));
                 const acDep = Number(r.aircraft_departure || (Number(r.aircraft_dep_domestic || 0) + Number(r.aircraft_dep_int || 0)) || (Number(r.aircraft_dom_departure || 0) + Number(r.aircraft_int_departure || 0)));
@@ -3113,9 +3185,9 @@ function dauEnhancedDashboard() {
                 const pos = Number(r.pos || 0);
 
                 // Effective directional values
-                const effAcArr = (dir === 'DEPARTURE') ? 0 : acArr;
-                const effAcDep = (dir === 'ARRIVAL') ? 0 : acDep;
-                const effAcTot = (dir === 'ARRIVAL') ? acArr : ((dir === 'DEPARTURE') ? acDep : acTot);
+                let effAcArr = (dir === 'DEPARTURE') ? 0 : acArr;
+                let effAcDep = (dir === 'ARRIVAL') ? 0 : acDep;
+                let effAcTot = (dir === 'ARRIVAL') ? acArr : ((dir === 'DEPARTURE') ? acDep : acTot);
 
                 let effPxArr = (dir === 'DEPARTURE') ? 0 : pxArr;
                 let effPxDep = (dir === 'ARRIVAL') ? 0 : pxDep;

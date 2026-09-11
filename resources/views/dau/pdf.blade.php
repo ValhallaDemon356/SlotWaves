@@ -667,8 +667,8 @@
                 @if ($reportType === 'DAU10A' || $reportType === 'DAU10B')
                     <td class="kpi-cell" style="width: 12.5%;">
                         <div class="kpi-label">Peak Terminal</div>
-                        <div class="kpi-value" style="color: #9333ea;">T{{ $peaks['peak_terminal'] ?? '—' }}</div>
-                        <div class="kpi-sub">{{ number_format($peaks['peak_terminal_val'] ?? 0) }} mov</div>
+                        <div class="kpi-value" style="color: #9333ea;">{{ empty($peaks['peak_terminal']) || in_array(trim($peaks['peak_terminal']), ['—', '-', 'T-', 'T—']) ? '—' : ((str_starts_with(strtoupper($peaks['peak_terminal']), 'T') ? '' : 'T') . $peaks['peak_terminal']) }}</div>
+                        <div class="kpi-sub">{{ number_format($peaks['peak_terminal_val'] ?? 0) }} {{ ($filters['metric'] ?? '') === 'passenger' ? 'PAX' : 'mov' }}</div>
                     </td>
                 @endif
 

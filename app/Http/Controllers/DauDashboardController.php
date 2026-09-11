@@ -790,16 +790,6 @@ class DauDashboardController extends Controller
                         $r['passenger_dep_domestic'] ?? 0, $r['passenger_dep_int'] ?? 0, $r['passenger_departure_tot'] ?? 0, $r['passenger_total'] ?? 0
                     ]);
                 }
-            } elseif ($reportType === 'DAU10B') {
-                $cols = ['Hour', 'Terminal', 'Block On Acft (DTG)', 'Block Off Acft (BRK)', 'Total Acft', 'Block On Pax (DTG)', 'Block Off Pax (BRK)', 'Transit', 'Transfer', 'Total Pax', 'Crew', 'Extra Crew', 'Total Crew', 'Baggage (Kg)', 'Cargo (Kg)', 'POS (Kg)'];
-                fputcsv($handle, $cols);
-                foreach ($records as $r) {
-                    fputcsv($handle, [
-                        $r['hour'] ?? $r['period'] ?? '', $r['terminal'] ?? '', $r['aircraft_arrival'] ?? 0, $r['aircraft_departure'] ?? 0, $r['aircraft_total'] ?? 0,
-                        $r['passenger_arrival'] ?? 0, $r['passenger_departure'] ?? 0, $r['passenger_transit'] ?? 0, $r['passenger_transfer'] ?? 0, $r['passenger_total'] ?? 0,
-                        $r['crew'] ?? 0, $r['extra_crew'] ?? 0, $r['crew_total'] ?? 0, $r['baggage'] ?? 0, $r['cargo'] ?? 0, $r['pos'] ?? 0,
-                    ]);
-                }
             } else {
                 $cols = ['Hour', 'Terminal', 'Aircraft ARR', 'Aircraft DEP', 'Aircraft Total', 'Passenger ARR', 'Passenger DEP', 'Transit', 'Transfer', 'Passenger Total', 'Crew', 'Extra Crew', 'Total Crew', 'Baggage (Kg)', 'Cargo (Kg)', 'POS (Kg)'];
                 fputcsv($handle, $cols);
