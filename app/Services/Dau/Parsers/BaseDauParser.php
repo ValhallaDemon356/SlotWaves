@@ -43,47 +43,56 @@ abstract class BaseDauParser
     /**
      * Extract full cell matrix from HTML taking into account colspan and rowspan.
      */
+    /**
+     * Extract full cell matrix from HTML taking into account colspan and rowspan.
+     * High-performance scanner handling OASYS tables in milliseconds with zero DOMDocument overhead.
+     */
     protected function extractFromHtml(string $html): array
     {
-        $dom = new DOMDocument();
-        libxml_use_internal_errors(true);
-        // Ensure UTF-8 handling
-        $dom->loadHTML('<?xml encoding="UTF-8">' . $html);
-        libxml_clear_errors();
-
-        $tables = $dom->getElementsByTagName('table');
-        if ($tables->length === 0) {
+        if (stripos($html, '<table') === false) {
             return [];
         }
 
-        $table = $tables->item(0);
-        $rows = $table->getElementsByTagName('tr');
+        // Match all <tr> elements
+        preg_match_all('/<tr[^>]*>(.*?)<\/tr>/is', $html, $trMatches);
+        if (empty($trMatches[1])) {
+            return [];
+        }
 
         $grid = [];
         $rIdx = 0;
 
-        foreach ($rows as $tr) {
+        foreach ($trMatches[1] as $trHtml) {
+            // Find all <td> and <th> in this row
+            preg_match_all('/<(td|th)([^>]*)>(.*?)<\/\1>/is', $trHtml, $cellMatches, PREG_SET_ORDER);
+            
             $cIdx = 0;
-            foreach ($tr->childNodes as $node) {
-                if (!($node instanceof DOMElement) || ($node->nodeName !== 'td' && $node->nodeName !== 'th')) {
-                    continue;
-                }
-
+            foreach ($cellMatches as $cell) {
                 // Advance over already filled cells from previous rowspans
                 while (isset($grid[$rIdx][$cIdx])) {
                     $cIdx++;
                 }
 
-                $text = trim(preg_replace('/\s+/', ' ', $node->textContent));
-                $colspan = (int) $node->getAttribute('colspan') ?: 1;
-                $rowspan = (int) $node->getAttribute('rowspan') ?: 1;
+                $attrs = $cell[2];
+                $innerHtml = $cell[3];
+                $text = trim(html_entity_decode(strip_tags($innerHtml), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+                $text = preg_replace('/\s+/', ' ', $text);
+
+                $colspan = 1;
+                if (preg_match('/colspan\s*=\s*["\']?(\d+)/i', $attrs, $m)) {
+                    $colspan = max(1, (int)$m[1]);
+                }
+
+                $rowspan = 1;
+                if (preg_match('/rowspan\s*=\s*["\']?(\d+)/i', $attrs, $m)) {
+                    $rowspan = max(1, (int)$m[1]);
+                }
 
                 for ($r = 0; $r < $rowspan; $r++) {
                     for ($c = 0; $c < $colspan; $c++) {
                         $targetR = $rIdx + $r;
                         $targetC = $cIdx + $c;
-                        // Put full text in the top-left cell, and in spans propagate or mark
-                        $grid[$targetR][$targetC] = ($r === 0 && $c === 0) ? $text : $text;
+                        $grid[$targetR][$targetC] = $text;
                     }
                 }
 

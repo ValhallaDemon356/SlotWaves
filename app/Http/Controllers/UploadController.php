@@ -82,23 +82,236 @@ class UploadController extends Controller
     public function validateTemplate(Request $request)
     {
         $reportType = $request->input('report_type', 'slot_schedule');
-        $file = $request->file('file') ?? $request->file('schedule_pdf') ?? $request->file('uploaded_file');
+        $isProbe    = filter_var($request->input('is_probe', false), FILTER_VALIDATE_BOOLEAN);
+        $file       = $request->file('file') ?? $request->file('schedule_pdf') ?? $request->file('uploaded_file');
 
         if (!$file) {
             return response()->json([
                 'valid'            => false,
+                'category'         => 'CORRUPTED_FILE',
+                'category_title'   => 'NO FILE RECEIVED',
                 'detectedTemplate' => 'None',
                 'expectedTemplate' => $reportType,
                 'errors'           => ['No file provided for template validation.'],
+                'error'            => 'No file provided for template validation.',
                 'warnings'         => [],
             ], 422);
         }
 
+        // File size check: if a non-probe file exceeds 25 MB, prompt to use chunked pipeline
+        $fileSize = $file->getSize();
+        if (!$isProbe && $fileSize > 25 * 1024 * 1024) {
+            return response()->json([
+                'valid'            => false,
+                'category'         => 'FILE_TOO_LARGE',
+                'category_title'   => 'FILE TOO LARGE FOR CURRENT UPLOAD PATH',
+                'detectedTemplate' => 'Oversized File',
+                'expectedTemplate' => $reportType,
+                'errors'           => [
+                    "File size (" . round($fileSize / 1048576, 2) . " MB) exceeds single payload limit.",
+                    "Multi-month datasets are automatically uploaded via chunked transfer."
+                ],
+                'error'            => "File size (" . round($fileSize / 1048576, 2) . " MB) exceeds single payload limit.",
+                'warnings'         => [],
+            ], 413);
+        }
+
         $validator = new TemplateValidator();
-        $result = $validator->validate($reportType, $file);
+        $result = $validator->validate($reportType, $file, $isProbe);
 
         $status = $result['valid'] ? 200 : 422;
         return response()->json($result, $status);
+    }
+
+    /**
+     * Chunked upload endpoint to support large multi-month files under Vercel's 4.5 MB payload limit.
+     */
+    public function uploadChunk(Request $request)
+    {
+        $reportType  = $request->input('report_type', 'DAU1');
+        $uploadToken = $request->input('upload_token');
+        $chunkIndex  = (int) $request->input('chunk_index', 0);
+        $totalChunks = (int) $request->input('total_chunks', 1);
+        $filename    = $request->input('filename', 'dataset.xls');
+
+        if (!$uploadToken || !preg_match('/^[a-zA-Z0-9_\-]+$/', $uploadToken)) {
+            return response()->json([
+                'success'        => false,
+                'category'       => 'UPLOAD_FAILED',
+                'category_title' => 'UPLOAD FAILED',
+                'error'          => 'Invalid or missing upload token.',
+            ], 422);
+        }
+
+        $chunkFile = $request->file('chunk') ?? $request->file('file');
+        if (!$chunkFile) {
+            return response()->json([
+                'success'        => false,
+                'category'       => 'UPLOAD_FAILED',
+                'category_title' => 'UPLOAD FAILED',
+                'error'          => 'No chunk payload received.',
+            ], 422);
+        }
+
+        $conf = ReportTemplateRegistry::find($reportType);
+        if (!$conf) {
+            return response()->json([
+                'success'        => false,
+                'category'       => 'UNSUPPORTED_DAU_TYPE',
+                'category_title' => 'UNSUPPORTED REPORT TYPE',
+                'error'          => "Unsupported report type: {$reportType}",
+            ], 422);
+        }
+
+        // Store chunk on local storage disk
+        $chunkDir = "chunks/{$uploadToken}";
+        $chunkFilename = "chunk_{$chunkIndex}";
+        Storage::disk('local')->putFileAs($chunkDir, $chunkFile, $chunkFilename);
+
+        // Also store in upload_chunks table if table exists
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('upload_chunks')) {
+                \Illuminate\Support\Facades\DB::table('upload_chunks')->updateOrInsert(
+                    ['upload_token' => $uploadToken, 'chunk_index' => $chunkIndex],
+                    [
+                        'total_chunks' => $totalChunks,
+                        'chunk_size'   => $chunkFile->getSize(),
+                        'chunk_data'   => file_get_contents($chunkFile->getRealPath()),
+                        'created_at'   => now(),
+                    ]
+                );
+            }
+        } catch (\Throwable $e) {}
+
+        // Check if all chunks have been received
+        $allPresent = true;
+        for ($i = 0; $i < $totalChunks; $i++) {
+            if (!Storage::disk('local')->exists("{$chunkDir}/chunk_{$i}")) {
+                $inDb = false;
+                try {
+                    if (\Illuminate\Support\Facades\Schema::hasTable('upload_chunks')) {
+                        $inDb = \Illuminate\Support\Facades\DB::table('upload_chunks')
+                            ->where('upload_token', $uploadToken)
+                            ->where('chunk_index', $i)
+                            ->exists();
+                    }
+                } catch (\Throwable $e) {}
+
+                if (!$inDb) {
+                    $allPresent = false;
+                    break;
+                }
+            }
+        }
+
+        if (!$allPresent) {
+            return response()->json([
+                'success'     => true,
+                'completed'   => false,
+                'chunk_index' => $chunkIndex,
+                'total_chunks'=> $totalChunks,
+                'message'     => "Chunk {$chunkIndex} of {$totalChunks} received.",
+            ]);
+        }
+
+        // ── ALL CHUNKS RECEIVED: Reassemble file ───────────────────────────────
+        $ext = pathinfo($filename, PATHINFO_EXTENSION) ?: 'xls';
+        $assembledRelativePath = "uploads/{$uploadToken}.{$ext}";
+        $assembledAbsolutePath = Storage::disk('local')->path($assembledRelativePath);
+
+        $parentDir = dirname($assembledAbsolutePath);
+        if (!is_dir($parentDir)) {
+            mkdir($parentDir, 0755, true);
+        }
+
+        $outHandle = fopen($assembledAbsolutePath, 'wb');
+        if (!$outHandle) {
+            return response()->json([
+                'success'        => false,
+                'category'       => 'PROCESSING_FAILED',
+                'category_title' => 'PROCESSING FAILED',
+                'error'          => 'Failed to create destination file for assembled chunks.',
+            ], 500);
+        }
+
+        for ($i = 0; $i < $totalChunks; $i++) {
+            $chunkPath = "{$chunkDir}/chunk_{$i}";
+            if (Storage::disk('local')->exists($chunkPath)) {
+                $cStream = fopen(Storage::disk('local')->path($chunkPath), 'rb');
+                stream_copy_to_stream($cStream, $outHandle);
+                fclose($cStream);
+            } else {
+                $row = null;
+                try {
+                    if (\Illuminate\Support\Facades\Schema::hasTable('upload_chunks')) {
+                        $row = \Illuminate\Support\Facades\DB::table('upload_chunks')
+                            ->where('upload_token', $uploadToken)
+                            ->where('chunk_index', $i)
+                            ->first();
+                    }
+                } catch (\Throwable $e) {}
+
+                if ($row && $row->chunk_data) {
+                    fwrite($outHandle, $row->chunk_data);
+                }
+            }
+        }
+        fclose($outHandle);
+
+        // Clean up temporary chunk files and database records
+        Storage::disk('local')->deleteDirectory($chunkDir);
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('upload_chunks')) {
+                \Illuminate\Support\Facades\DB::table('upload_chunks')
+                    ->where('upload_token', $uploadToken)
+                    ->delete();
+            }
+        } catch (\Throwable $e) {}
+
+        // ── Validate Assembled Template ───────────────────────────────────────
+        $validator = new TemplateValidator();
+        $validationResult = $validator->validate($reportType, $assembledAbsolutePath);
+
+        if (!$validationResult['valid']) {
+            Storage::disk('local')->delete($assembledRelativePath);
+            return response()->json([
+                'success'        => false,
+                'category'       => $validationResult['category'] ?? 'INVALID_TEMPLATE',
+                'category_title' => $validationResult['category_title'] ?? 'INVALID TEMPLATE',
+                'error'          => $validationResult['error'] ?? implode('; ', $validationResult['errors']),
+                'errors'         => $validationResult['errors'] ?? [],
+                'validation'     => $validationResult,
+            ], 422);
+        }
+
+        // ── Create Upload Record ──────────────────────────────────────────────
+        $airportCode = $validationResult['meta']['airport_code'] ?? 'CGK';
+        $airport = \App\Models\Airport::findByIata($airportCode) ?? \App\Models\Airport::findByIata('CGK');
+
+        $upload = Upload::create([
+            'original_filename' => $filename,
+            'stored_path'       => $assembledRelativePath,
+            'report_type'       => $reportType,
+            'status'            => 'pending',
+            'season'            => 'summer',
+            'airport_id'        => $airport?->id,
+        ]);
+
+        // Immediate processing with optimized parser
+        $this->executeDauProcessing($upload);
+        session(['active_upload_id' => $upload->id]);
+
+        return response()->json([
+            'success'      => true,
+            'completed'    => true,
+            'upload_id'    => $upload->id,
+            'report_type'  => $reportType,
+            'status'       => 'completed',
+            'total_rows'   => $upload->total_rows,
+            'valid_rows'   => $upload->valid_rows,
+            'redirect_url' => route('dau.dashboard', $upload->id),
+            'message'      => "{$conf['name']} uploaded and processed successfully ({$upload->valid_rows} records).",
+        ]);
     }
 
     /**
@@ -192,17 +405,32 @@ class UploadController extends Controller
         $conf = ReportTemplateRegistry::find($reportType);
         if (!$conf) {
             return response()->json([
-                'success' => false,
-                'error'   => "Unsupported report type: {$reportType}",
+                'success'        => false,
+                'category'       => 'UNSUPPORTED_DAU_TYPE',
+                'category_title' => 'UNSUPPORTED REPORT TYPE',
+                'error'          => "Unsupported report type: {$reportType}",
             ], 422);
         }
 
         $file = $request->file('dau_file') ?? $request->file('uploaded_file') ?? $request->file('file') ?? $request->file('schedule_pdf');
         if (!$file) {
             return response()->json([
-                'success' => false,
-                'error'   => 'No file provided for upload.',
+                'success'        => false,
+                'category'       => 'CORRUPTED_FILE',
+                'category_title' => 'NO FILE RECEIVED',
+                'error'          => 'No file provided for upload.',
             ], 422);
+        }
+
+        // Check if direct file upload exceeds single-request payload capacity
+        $fileSize = $file->getSize();
+        if ($fileSize > 20 * 1024 * 1024) {
+            return response()->json([
+                'success'        => false,
+                'category'       => 'FILE_TOO_LARGE',
+                'category_title' => 'FILE TOO LARGE FOR CURRENT UPLOAD PATH',
+                'error'          => 'FILE TOO LARGE FOR CURRENT UPLOAD PATH: File exceeds single payload limit. Please upload via the unified upload portal.',
+            ], 413);
         }
 
         // Strict template validation by content
@@ -212,13 +440,16 @@ class UploadController extends Controller
         if (!$validationResult['valid']) {
             if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
                 return response()->json([
-                    'success'    => false,
-                    'error'      => implode('; ', $validationResult['errors']),
-                    'validation' => $validationResult,
+                    'success'        => false,
+                    'category'       => $validationResult['category'] ?? 'INVALID_TEMPLATE',
+                    'category_title' => $validationResult['category_title'] ?? 'INVALID TEMPLATE',
+                    'error'          => $validationResult['error'] ?? implode('; ', $validationResult['errors']),
+                    'errors'         => $validationResult['errors'] ?? [],
+                    'validation'     => $validationResult,
                 ], 422);
             }
             return redirect()->route('home')->withErrors([
-                'dau' => implode('; ', $validationResult['errors'])
+                'dau' => $validationResult['error'] ?? implode('; ', $validationResult['errors'])
             ]);
         }
 
@@ -238,20 +469,26 @@ class UploadController extends Controller
             'airport_id'        => $airport?->id,
         ]);
 
+        // Process immediately with optimized parser
+        $this->executeDauProcessing($upload);
+        session(['active_upload_id' => $upload->id]);
+
         if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success'      => true,
                 'upload_id'    => $upload->id,
                 'report_type'  => $reportType,
-                'status'       => 'pending',
+                'status'       => 'completed',
+                'total_rows'   => $upload->total_rows,
+                'valid_rows'   => $upload->valid_rows,
                 'process_url'  => route('upload.process', $upload->id),
                 'status_url'   => route('upload.status', $upload->id),
                 'redirect_url' => route('dau.dashboard', $upload->id),
-                'message'      => "{$conf['name']} template uploaded and validated. Ready for generation.",
+                'message'      => "{$conf['name']} template uploaded and processed successfully ({$upload->valid_rows} records).",
             ]);
         }
 
-        return $this->executeDauProcessing($upload);
+        return redirect()->route('dau.dashboard', $upload->id);
     }
 
     /**
@@ -418,11 +655,20 @@ class UploadController extends Controller
         $storedPath = $upload->stored_path;
 
         try {
-            if (!Storage::disk('local')->exists($storedPath)) {
-                throw new \RuntimeException("Uploaded report file could not be located on storage disk.");
+            $absolutePath = null;
+            if (Storage::disk('local')->exists($storedPath)) {
+                $absolutePath = Storage::disk('local')->path($storedPath);
+            } elseif (file_exists(storage_path('app/private/' . $storedPath))) {
+                $absolutePath = storage_path('app/private/' . $storedPath);
+            } elseif (file_exists(storage_path('app/' . $storedPath))) {
+                $absolutePath = storage_path('app/' . $storedPath);
+            } elseif (file_exists($storedPath)) {
+                $absolutePath = $storedPath;
             }
 
-            $absolutePath = Storage::disk('local')->path($storedPath);
+            if (!$absolutePath || !file_exists($absolutePath)) {
+                throw new \RuntimeException("Uploaded report file could not be located on storage disk.");
+            }
             $conf = ReportTemplateRegistry::find($upload->report_type);
             if (!$conf) {
                 throw new \RuntimeException("Unknown report type: {$upload->report_type}");

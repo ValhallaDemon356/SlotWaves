@@ -14,15 +14,18 @@ class TemplateValidator
      * @param UploadedFile|string $file Uploaded file instance or absolute file path
      * @return array
      */
-    public function validate(string $selectedReportType, $file): array
+    public function validate(string $selectedReportType, $file, bool $isProbe = false): array
     {
         $conf = ReportTemplateRegistry::find($selectedReportType);
         if (!$conf) {
             return [
                 'valid'            => false,
+                'category'         => 'UNSUPPORTED_DAU_TYPE',
+                'category_title'   => 'UNSUPPORTED REPORT TYPE',
                 'detectedTemplate' => 'Unknown',
                 'expectedTemplate' => 'Valid Report Type',
                 'errors'           => ["Unknown or unsupported report type: {$selectedReportType}"],
+                'error'            => "Unknown or unsupported report type: {$selectedReportType}",
                 'warnings'         => [],
             ];
         }
@@ -33,9 +36,12 @@ class TemplateValidator
         if (!file_exists($filePath)) {
             return [
                 'valid'            => false,
+                'category'         => 'CORRUPTED_FILE',
+                'category_title'   => 'FILE NOT FOUND OR UNREADABLE',
                 'detectedTemplate' => 'None',
                 'expectedTemplate' => $conf['template_label'],
                 'errors'           => ["Uploaded file does not exist on disk."],
+                'error'            => "Uploaded file does not exist on disk.",
                 'warnings'         => [],
             ];
         }
@@ -44,9 +50,12 @@ class TemplateValidator
         if ($fileSize === 0) {
             return [
                 'valid'            => false,
+                'category'         => 'CORRUPTED_FILE',
+                'category_title'   => 'EMPTY FILE (0 BYTES)',
                 'detectedTemplate' => 'Empty File',
                 'expectedTemplate' => $conf['template_label'],
                 'errors'           => ["Uploaded file is empty (0 bytes)."],
+                'error'            => "Uploaded file is empty (0 bytes).",
                 'warnings'         => [],
             ];
         }
@@ -60,11 +69,14 @@ class TemplateValidator
                 $detected = $this->detectDauTemplateType($filePath) ?: 'Excel / Spreadsheet';
                 return [
                     'valid'            => false,
+                    'category'         => 'INVALID_EXTENSION',
+                    'category_title'   => 'INVALID FILE FORMAT',
                     'detectedTemplate' => $detected,
                     'expectedTemplate' => 'Airport Slot Schedule PDF',
                     'errors'           => [
                         "INVALID FILE FORMAT: Airport Slot Schedule requires Airport Slot Schedule PDF (.pdf). Uploaded file is {$detected}."
                     ],
+                    'error'            => "INVALID FILE FORMAT: Airport Slot Schedule requires Airport Slot Schedule PDF (.pdf). Uploaded file is {$detected}.",
                     'warnings'         => [],
                 ];
             }
@@ -74,15 +86,20 @@ class TemplateValidator
             if (!$pdfValidation['valid']) {
                 return [
                     'valid'            => false,
+                    'category'         => 'INVALID_TEMPLATE',
+                    'category_title'   => 'INVALID SLOT SCHEDULE TEMPLATE',
                     'detectedTemplate' => 'Generic PDF',
                     'expectedTemplate' => 'Airport Slot Schedule PDF',
                     'errors'           => $pdfValidation['errors'],
+                    'error'            => implode('; ', $pdfValidation['errors']),
                     'warnings'         => [],
                 ];
             }
 
             return [
                 'valid'            => true,
+                'category'         => null,
+                'category_title'   => null,
                 'detectedTemplate' => 'slot_schedule',
                 'expectedTemplate' => 'Airport Slot Schedule PDF',
                 'records_count'    => $pdfValidation['estimated_records'] ?? 0,
@@ -96,11 +113,14 @@ class TemplateValidator
         if ($isPdf) {
             return [
                 'valid'            => false,
+                'category'         => 'INVALID_EXTENSION',
+                'category_title'   => 'INVALID FILE FORMAT (PDF DETECTED)',
                 'detectedTemplate' => 'PDF Document',
                 'expectedTemplate' => $conf['template_filename'],
                 'errors'           => [
-                    "INVALID FILE FORMAT: {$conf['name']} requires Excel (.xls). Expected template: {$conf['template_filename']}."
+                    "INVALID FILE FORMAT: {$conf['name']} requires Excel (.xls/.xlsx). Expected template: {$conf['template_filename']}."
                 ],
+                'error'            => "INVALID FILE FORMAT: {$conf['name']} requires Excel (.xls/.xlsx). Expected template: {$conf['template_filename']}.",
                 'warnings'         => [],
             ];
         }
@@ -111,12 +131,15 @@ class TemplateValidator
         if (!$detectedDau) {
             return [
                 'valid'            => false,
+                'category'         => 'INVALID_TEMPLATE',
+                'category_title'   => "INVALID {$conf['code']} TEMPLATE",
                 'detectedTemplate' => 'Unknown Document',
                 'expectedTemplate' => $conf['template_label'],
                 'errors'           => [
                     "INVALID FILE TEMPLATE: Could not recognize a valid OASYS DAU structure in the uploaded file.",
                     "Expected template: {$conf['template_filename']}."
                 ],
+                'error'            => "INVALID FILE TEMPLATE: Could not recognize a valid OASYS DAU structure. Expected template: {$conf['template_filename']}.",
                 'warnings'         => [],
             ];
         }
@@ -132,6 +155,8 @@ class TemplateValidator
 
             return [
                 'valid'            => false,
+                'category'         => 'INVALID_TEMPLATE',
+                'category_title'   => "INVALID {$conf['code']} TEMPLATE",
                 'detectedTemplate' => $detectedDau,
                 'expectedTemplate' => $selectedReportType,
                 'errors'           => [
@@ -141,32 +166,62 @@ class TemplateValidator
                     "Expected: {$conf['template_filename']} structure",
                     "Please upload the correct {$conf['name']} source file."
                 ],
+                'error'            => "Template mismatch: Uploaded file matches {$detectedLabel}, but selected report is {$conf['name']}.",
                 'warnings'         => [],
             ];
         }
 
-        // ── Check 4: Deep Parse & Record Verification ─────────────────────────
+        // ── Check 4: Deep Parse or Probe Verification ─────────────────────────
         try {
             $parserClass = $conf['parser_class'];
             /** @var \App\Services\Dau\Parsers\BaseDauParser $parser */
             $parser = new $parserClass();
+
+            // Probe mode: extract structural metadata without requiring full dataset parsing
+            if ($isProbe) {
+                $meta = (new class extends \App\Services\Dau\Parsers\BaseDauParser {
+                    public function parse(string $p): array { return []; }
+                    public function getMeta(string $p): array { return $this->extractMetadata($p, []); }
+                })->getMeta($filePath);
+
+                return [
+                    'valid'            => true,
+                    'category'         => null,
+                    'category_title'   => null,
+                    'is_probe'         => true,
+                    'detectedTemplate' => $selectedReportType,
+                    'expectedTemplate' => $conf['template_filename'],
+                    'records_count'    => 'Verified (Ready to Ingest)',
+                    'detected_columns' => $conf['detected_columns'],
+                    'summary'          => [],
+                    'meta'             => $meta,
+                    'errors'           => [],
+                    'warnings'         => [],
+                ];
+            }
+
             $parsedData = $parser->parse($filePath);
 
             $recordCount = $parsedData['records_count'] ?? 0;
             if ($recordCount === 0) {
                 return [
                     'valid'            => false,
+                    'category'         => 'INVALID_TEMPLATE',
+                    'category_title'   => "INVALID {$conf['code']} TEMPLATE",
                     'detectedTemplate' => $detectedDau,
                     'expectedTemplate' => $conf['template_filename'],
                     'errors'           => [
                         "File matches {$conf['name']} structure but contains no data rows."
                     ],
+                    'error'            => "File matches {$conf['name']} structure but contains no data rows.",
                     'warnings'         => [],
                 ];
             }
 
             return [
                 'valid'            => true,
+                'category'         => null,
+                'category_title'   => null,
                 'detectedTemplate' => $selectedReportType,
                 'expectedTemplate' => $conf['template_filename'],
                 'records_count'    => $recordCount,
@@ -179,11 +234,14 @@ class TemplateValidator
         } catch (\Throwable $e) {
             return [
                 'valid'            => false,
+                'category'         => 'CORRUPTED_FILE',
+                'category_title'   => 'CORRUPTED / UNREADABLE EXCEL',
                 'detectedTemplate' => $detectedDau,
                 'expectedTemplate' => $conf['template_filename'],
                 'errors'           => [
                     "Error parsing {$conf['name']} content: " . $e->getMessage()
                 ],
+                'error'            => "Error parsing {$conf['name']} content: " . $e->getMessage(),
                 'warnings'         => [],
             ];
         }
@@ -246,7 +304,8 @@ class TemplateValidator
      */
     public function detectDauTemplateType(string $filePath): ?string
     {
-        $content = file_get_contents($filePath);
+        // Read header section (first 256 KB) — all OASYS template titles and columns are within the first 64 KB
+        $content = file_get_contents($filePath, false, null, 0, 262144);
         $upper = strtoupper($content);
 
         // 1. Exact OASYS report titles in <title> or <CENTER><B>

@@ -16,6 +16,7 @@ Route::get('/reset',                      [UploadController::class, 'resetSessio
 Route::get('/new-schedule',               [UploadController::class, 'resetSession'])->name('schedule.new');
 Route::post('/upload',                    [UploadController::class, 'store'])->name('upload.store');
 Route::post('/upload/validate-template',  [UploadController::class, 'validateTemplate'])->name('upload.validate-template');
+Route::post('/upload/chunk',              [UploadController::class, 'uploadChunk'])->name('upload.chunk');
 Route::get('/upload/{upload}/status',     [UploadController::class, 'status'])->name('upload.status');
 Route::post('/upload/{upload}/process',   [UploadController::class, 'process'])->name('upload.process');
 

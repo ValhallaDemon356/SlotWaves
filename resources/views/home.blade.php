@@ -197,7 +197,7 @@
                                     </p>
                                     <div class="mt-2 flex items-center gap-2 text-[10px] text-slate-400 font-mono">
                                         <span class="px-2 py-0.5 rounded bg-slate-200/70 dark:bg-navy-800" x-text="selectedReportConfig ? selectedReportConfig.extensions.map(e => '.' + e.toUpperCase()).join(' / ') : ''"></span>
-                                        <span>MAX 20 MB</span>
+                                        <span>MAX 50 MB (Multi-Month Supported)</span>
                                     </div>
                                 </div>
                             </template>
@@ -245,7 +245,7 @@
                                 </div>
                                 <div class="p-2 rounded-lg bg-white/80 dark:bg-navy-900/80 border border-emerald-100 dark:border-emerald-900/40">
                                     <div class="text-[10px] text-slate-400 font-sans">Records Detected:</div>
-                                    <div class="font-bold text-emerald-600 dark:text-emerald-400" x-text="validationResult.records_count ? validationResult.records_count + ' records' : 'Verified'"></div>
+                                    <div class="font-bold text-emerald-600 dark:text-emerald-400" x-text="validationResult.records_count ? (typeof validationResult.records_count === 'number' ? validationResult.records_count + ' records' : validationResult.records_count) : 'Verified'"></div>
                                 </div>
                                 <div class="p-2 rounded-lg bg-white/80 dark:bg-navy-900/80 border border-emerald-100 dark:border-emerald-900/40 col-span-2 sm:col-span-1">
                                     <div class="text-[10px] text-slate-400 font-sans">Template Check:</div>
@@ -274,15 +274,15 @@
                             <div class="flex items-center justify-between">
                                 <div class="font-bold flex items-center gap-1.5 uppercase tracking-wider text-[11px] text-red-800 dark:text-red-300">
                                     <svg class="w-4 h-4 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                                    <span>INVALID FILE TEMPLATE</span>
+                                    <span x-text="errorCategoryTitle"></span>
                                 </div>
-                                <span class="px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/60 text-red-700 dark:text-red-300 font-bold font-mono text-[10px]">
+                                <span class="px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/60 text-red-700 dark:text-red-300 font-bold font-mono text-[10px]" x-text="errorBadge">
                                     REJECTED
                                 </span>
                             </div>
 
                             <div class="space-y-1 font-sans text-xs">
-                                <template x-for="err in validationErrors" :key="err">
+                                <template x-for="(err, idx) in validationErrors" :key="idx">
                                     <div class="flex items-start gap-1.5">
                                         <span class="text-red-500">•</span>
                                         <span x-text="err"></span>
@@ -291,8 +291,8 @@
                             </div>
 
                             <div class="pt-2 flex items-center justify-between border-t border-red-200 dark:border-red-800/60 text-[11px]">
-                                <span>Please upload the exact source template required.</span>
-                                <button type="button" @click="resetFile()" class="font-bold underline text-red-800 dark:text-red-300 hover:text-red-900">
+                                <span>Please verify your file matches the required template or size path.</span>
+                                <button type="button" @click="resetFile()" class="font-bold underline text-red-800 dark:text-red-300 hover:text-red-900 cursor-pointer">
                                     Replace File
                                 </button>
                             </div>
@@ -393,9 +393,11 @@ function unifiedReportPortal() {
         selectedFileSize: '',
         
         isValidating: false,
-        validationStatus: 'idle', // 'idle' | 'valid' | 'invalid'
+        validationStatus: 'idle', // 'idle' | 'valid' | 'invalid' | 'validating'
         validationResult: {},
         validationErrors: [],
+        errorCategoryTitle: 'INVALID FILE TEMPLATE',
+        errorBadge: 'REJECTED',
 
         isProcessing: false,
         progressPercent: 0,
@@ -436,8 +438,47 @@ function unifiedReportPortal() {
             this.validationStatus = 'idle';
             this.validationResult = {};
             this.validationErrors = [];
+            this.errorCategoryTitle = 'INVALID FILE TEMPLATE';
+            this.errorBadge = 'REJECTED';
             const input = document.getElementById('source_file');
             if (input) input.value = '';
+        },
+
+        formatErrors(data) {
+            if (!data) return ['An unknown error occurred during validation.'];
+            if (typeof data === 'string') return [data];
+            
+            const errors = [];
+            if (data.errors) {
+                if (Array.isArray(data.errors)) {
+                    data.errors.forEach(e => {
+                        if (typeof e === 'object' && e !== null) {
+                            errors.push(e.message || JSON.stringify(e));
+                        } else {
+                            errors.push(String(e));
+                        }
+                    });
+                } else if (typeof data.errors === 'object') {
+                    Object.entries(data.errors).forEach(([field, val]) => {
+                        if (Array.isArray(val)) {
+                            val.forEach(item => errors.push(String(item)));
+                        } else if (typeof val === 'object' && val !== null) {
+                            errors.push(val.message || JSON.stringify(val));
+                        } else {
+                            errors.push(String(val));
+                        }
+                    });
+                }
+            }
+            if (errors.length > 0) return errors;
+
+            if (data.error && typeof data.error === 'string') {
+                return [data.error];
+            }
+            if (data.message && typeof data.message === 'string') {
+                return [data.message];
+            }
+            return ['Validation failed. Please verify the template structure.'];
         },
 
         handleFileSelect(ev) {
@@ -463,14 +504,35 @@ function unifiedReportPortal() {
             this.isValidating = true;
             this.validationStatus = 'validating';
             this.validationErrors = [];
+            this.errorCategoryTitle = 'INVALID FILE TEMPLATE';
+            this.errorBadge = 'REJECTED';
+
+            // Absolute maximum threshold
+            if (file.size > 50 * 1024 * 1024) {
+                this.isValidating = false;
+                this.validationStatus = 'invalid';
+                this.errorCategoryTitle = 'FILE TOO LARGE FOR CURRENT UPLOAD PATH';
+                this.errorBadge = 'OVERSIZED';
+                this.validationErrors = ['The selected file (' + (file.size / 1048576).toFixed(1) + ' MB) exceeds the maximum supported limit (50 MB).'];
+                return;
+            }
 
             const csrfToken = document.querySelector('input[name="_token"]')?.value ||
                               document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
             const formData = new FormData();
             formData.append('report_type', this.selectedReport);
-            formData.append('file', file);
             formData.append('_token', csrfToken);
+
+            // Probe mode for large files: slice first 256 KB for instant structural inspection
+            const isLargeFile = file.size > 2 * 1024 * 1024 && this.selectedReport !== 'slot_schedule';
+            if (isLargeFile) {
+                const probeSlice = file.slice(0, 262144);
+                formData.append('file', probeSlice, file.name);
+                formData.append('is_probe', '1');
+            } else {
+                formData.append('file', file);
+            }
 
             try {
                 const res = await fetch('{{ route("upload.validate-template") }}', {
@@ -483,21 +545,41 @@ function unifiedReportPortal() {
                     body: formData
                 });
 
-                const data = await res.json();
+                let data = null;
+                try {
+                    data = await res.json();
+                } catch (jsonErr) {
+                    data = null;
+                }
+
                 this.isValidating = false;
 
-                if (res.ok && data.valid) {
+                if (res.status === 413) {
+                    this.validationStatus = 'invalid';
+                    this.errorCategoryTitle = 'FILE TOO LARGE FOR CURRENT UPLOAD PATH';
+                    this.errorBadge = '413 OVERSIZED';
+                    this.validationErrors = ['The serverless upload path cannot accept a single payload larger than 4.5 MB. Multi-month datasets will be processed via chunked transfer upon generation.'];
+                    return;
+                }
+
+                if (res.ok && data && data.valid) {
                     this.validationStatus = 'valid';
                     this.validationResult = data;
                 } else {
                     this.validationStatus = 'invalid';
-                    this.validationErrors = data.errors || [data.error || 'Template structure does not match the selected report type.'];
-                    this.validationResult = data;
+                    this.errorCategoryTitle = (data && data.category_title) 
+                        ? data.category_title 
+                        : ((data && data.category === 'FILE_TOO_LARGE') ? 'FILE TOO LARGE FOR CURRENT UPLOAD PATH' : 'INVALID FILE TEMPLATE');
+                    this.errorBadge = (data && data.category === 'FILE_TOO_LARGE') ? 'OVERSIZED' : 'REJECTED';
+                    this.validationErrors = this.formatErrors(data);
+                    this.validationResult = data || {};
                 }
             } catch (err) {
                 this.isValidating = false;
                 this.validationStatus = 'invalid';
-                this.validationErrors = ['Network or server error validating template. Please try again.'];
+                this.errorCategoryTitle = 'UPLOAD FAILED';
+                this.errorBadge = 'ERROR';
+                this.validationErrors = ['Network or server error validating template. Please check your connection and try again.'];
             }
         },
 
@@ -507,24 +589,84 @@ function unifiedReportPortal() {
             }
 
             this.isProcessing = true;
-            this.progressPercent = 15;
-            this.progressText = '1/5 Staging source file...';
+            this.progressPercent = 10;
+            this.progressText = '1/5 Preparing source document...';
 
             const csrfToken = document.querySelector('input[name="_token"]')?.value ||
                               document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
-            const formData = new FormData();
-            formData.append('report_type', this.selectedReport);
-            if (this.selectedReport === 'slot_schedule') {
-                formData.append('schedule_pdf', this.selectedFile);
-            } else {
-                formData.append('dau_file', this.selectedFile);
-                formData.append('file', this.selectedFile);
-            }
-            formData.append('_token', csrfToken);
-
             try {
-                // Step 1: Upload and Stage
+                // ── PIPELINE A: CHUNKED UPLOAD FOR LARGE MULTI-MONTH FILES (> 3.5 MB) ──
+                if (this.selectedFile.size > 3.5 * 1024 * 1024) {
+                    const chunkSize = 2.5 * 1024 * 1024; // 2.5 MB chunks (safe for Vercel 4.5 MB payload limit)
+                    const totalChunks = Math.ceil(this.selectedFile.size / chunkSize);
+                    const uploadToken = 'upl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+
+                    for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
+                        const start = chunkIdx * chunkSize;
+                        const end = Math.min(this.selectedFile.size, start + chunkSize);
+                        const chunkBlob = this.selectedFile.slice(start, end);
+
+                        this.progressPercent = Math.round(15 + ((chunkIdx) / totalChunks) * 55);
+                        this.progressText = `Uploading chunk ${chunkIdx + 1} of ${totalChunks} (${(this.selectedFile.size / 1048576).toFixed(1)} MB)...`;
+
+                        const chunkForm = new FormData();
+                        chunkForm.append('report_type', this.selectedReport);
+                        chunkForm.append('upload_token', uploadToken);
+                        chunkForm.append('chunk_index', chunkIdx);
+                        chunkForm.append('total_chunks', totalChunks);
+                        chunkForm.append('filename', this.selectedFile.name);
+                        chunkForm.append('chunk', chunkBlob, this.selectedFile.name);
+                        chunkForm.append('_token', csrfToken);
+
+                        const chunkRes = await fetch('{{ route("upload.chunk") }}', {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': csrfToken
+                            },
+                            body: chunkForm
+                        });
+
+                        let chunkData = null;
+                        try {
+                            chunkData = await chunkRes.json();
+                        } catch (e) {
+                            throw new Error(`Server returned non-JSON response during chunk ${chunkIdx + 1} upload.`);
+                        }
+
+                        if (!chunkRes.ok || !chunkData.success) {
+                            const errMsgs = this.formatErrors(chunkData);
+                            throw new Error(errMsgs.join('; '));
+                        }
+
+                        if (chunkData.completed) {
+                            this.progressPercent = 100;
+                            this.progressText = 'Complete! Loading Dashboard...';
+                            setTimeout(() => {
+                                window.location.href = chunkData.redirect_url;
+                            }, 250);
+                            return;
+                        }
+                    }
+                    return;
+                }
+
+                // ── PIPELINE B: STANDARD DIRECT UPLOAD (<= 3.5 MB) ─────────────────────
+                this.progressPercent = 25;
+                this.progressText = '1/5 Staging source file...';
+
+                const formData = new FormData();
+                formData.append('report_type', this.selectedReport);
+                if (this.selectedReport === 'slot_schedule') {
+                    formData.append('schedule_pdf', this.selectedFile);
+                } else {
+                    formData.append('dau_file', this.selectedFile);
+                    formData.append('file', this.selectedFile);
+                }
+                formData.append('_token', csrfToken);
+
                 const uploadRes = await fetch('{{ route("upload.store") }}', {
                     method: 'POST',
                     headers: {
@@ -535,24 +677,33 @@ function unifiedReportPortal() {
                     body: formData
                 });
 
-                const uploadData = await uploadRes.json();
+                let uploadData = null;
+                try {
+                    uploadData = await uploadRes.json();
+                } catch (e) {
+                    throw new Error('Server returned invalid response during upload.');
+                }
+
                 if (!uploadRes.ok || !uploadData.success) {
-                    throw new Error(uploadData.error || uploadData.message || 'Failed to stage source document.');
+                    const errMsgs = this.formatErrors(uploadData);
+                    throw new Error(errMsgs.join('; '));
                 }
 
                 const uploadId = uploadData.upload_id;
                 const processUrl = uploadData.process_url || `/upload/${uploadId}/process`;
 
-                // If already completed (e.g. idempotent recent upload)
+                // If already completed immediately during store
                 if (uploadData.status === 'completed') {
                     this.progressPercent = 100;
                     this.progressText = 'Report ready! Redirecting...';
-                    window.location.href = uploadData.redirect_url;
+                    setTimeout(() => {
+                        window.location.href = uploadData.redirect_url;
+                    }, 250);
                     return;
                 }
 
-                // Step 2: Trigger Centralized Processing Stage
-                this.progressPercent = 45;
+                // Trigger Processing Stage if staged as pending
+                this.progressPercent = 60;
                 this.progressText = this.selectedReport === 'slot_schedule'
                     ? '2/5 Extracting & Validating Flights...'
                     : '2/5 Extracting & Normalizing Template Rows...';
@@ -568,18 +719,20 @@ function unifiedReportPortal() {
                     body: JSON.stringify({ _token: csrfToken })
                 });
 
-                this.progressPercent = 85;
-                this.progressText = this.selectedReport === 'slot_schedule'
-                    ? '3/5 Calculating 24-Hour Timelines & Capacity...'
-                    : '3/5 Aggregating Statistics & Preparing Dashboard...';
+                let procData = null;
+                try {
+                    procData = await procRes.json();
+                } catch (e) {
+                    throw new Error('Processing failed with an unexpected server response.');
+                }
 
-                const procData = await procRes.json();
                 if (!procRes.ok || !procData.success) {
-                    throw new Error(procData.error || procData.message || 'Processing encountered an error.');
+                    const errMsgs = this.formatErrors(procData);
+                    throw new Error(errMsgs.join('; '));
                 }
 
                 this.progressPercent = 100;
-                this.progressText = '4/5 Complete! Loading Dashboard...';
+                this.progressText = 'Complete! Loading Dashboard...';
 
                 setTimeout(() => {
                     window.location.href = procData.redirect_url || (this.selectedReport === 'slot_schedule'
@@ -590,6 +743,8 @@ function unifiedReportPortal() {
             } catch (err) {
                 this.isProcessing = false;
                 this.validationStatus = 'invalid';
+                this.errorCategoryTitle = 'PROCESSING FAILED';
+                this.errorBadge = 'FAILED';
                 this.validationErrors = [err.message || 'Processing failed. Please check the file and try again.'];
             }
         }
