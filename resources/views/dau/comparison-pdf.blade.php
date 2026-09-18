@@ -5,7 +5,7 @@
     <title>DAU-02 Comparison Report — {{ $comparison['airport_name'] }} ({{ $comparison['airport_code'] }})</title>
     <style>
         @page {
-            margin: 15mm 12mm 15mm 12mm;
+            margin: 12mm 12mm 12mm 12mm;
             size: a4 portrait;
         }
         body {
@@ -13,18 +13,21 @@
             color: #1e293b;
             margin: 0;
             padding: 0;
-            font-size: 11px;
-            line-height: 1.4;
+            font-size: 10px;
+            line-height: 1.35;
+        }
+        .page-break {
+            page-break-before: always;
         }
         .header-table {
             width: 100%;
             border-collapse: collapse;
             border-bottom: 2px solid #0284c7;
-            padding-bottom: 8px;
-            margin-bottom: 12px;
+            padding-bottom: 6px;
+            margin-bottom: 10px;
         }
         .brand-title {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 900;
             color: #0f172a;
             margin: 0;
@@ -32,57 +35,81 @@
             letter-spacing: 0.5px;
         }
         .brand-sub {
-            font-size: 10px;
+            font-size: 9.5px;
             color: #64748b;
             margin: 2px 0 0 0;
         }
         .badge {
             background-color: #f1f5f9;
             color: #0284c7;
-            padding: 3px 8px;
+            padding: 2.5px 7px;
             border-radius: 4px;
             font-weight: bold;
-            font-size: 9px;
+            font-size: 8.5px;
             text-transform: uppercase;
             border: 1px solid #cbd5e1;
+        }
+        .filter-banner {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-left: 3px solid #0284c7;
+            padding: 5px 8px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 9.5px;
         }
         .period-card-table {
             width: 100%;
             border-collapse: separate;
-            border-spacing: 6px;
-            margin-bottom: 14px;
+            border-spacing: 5px;
+            margin-bottom: 12px;
         }
         .period-card-cell {
             background-color: #f8fafc;
             border: 1px solid #e2e8f0;
-            border-left: 4px solid #0284c7;
-            padding: 8px;
+            border-left: 3px solid #0284c7;
+            padding: 6px;
             border-radius: 4px;
+            vertical-align: top;
+        }
+        .section-header {
+            margin-top: 12px;
+            margin-bottom: 8px;
+            border-bottom: 1.5px solid #0284c7;
+            padding-bottom: 4px;
+        }
+        .section-tag {
+            font-size: 8.5px;
+            font-weight: bold;
+            color: #0284c7;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         .section-title {
-            font-size: 12px;
-            font-weight: bold;
+            font-size: 13px;
+            font-weight: 900;
             color: #0f172a;
             text-transform: uppercase;
-            margin-top: 14px;
-            margin-bottom: 6px;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 3px;
+            margin: 1px 0 2px 0;
+        }
+        .section-desc {
+            font-size: 9px;
+            color: #64748b;
         }
         .table-data {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 6px;
-            margin-bottom: 12px;
+            margin-top: 5px;
+            margin-bottom: 10px;
         }
         .table-data th {
             background-color: #f1f5f9;
             color: #475569;
-            font-size: 9px;
+            font-size: 8.5px;
             font-weight: bold;
             text-transform: uppercase;
             border: 1px solid #cbd5e1;
-            padding: 6px 8px;
+            padding: 5px 6px;
             text-align: right;
         }
         .table-data th:first-child {
@@ -90,21 +117,39 @@
         }
         .table-data td {
             border: 1px solid #e2e8f0;
-            padding: 6px 8px;
+            padding: 5px 6px;
             text-align: right;
-            font-size: 10px;
+            font-size: 9px;
         }
         .table-data td:first-child {
             text-align: left;
             font-weight: bold;
         }
+        .chart-container {
+            margin-bottom: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 6px;
+            background: #ffffff;
+        }
+        .chart-title-bar {
+            font-size: 9px;
+            font-weight: bold;
+            color: #0f172a;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+            padding-bottom: 3px;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            justify-content: space-between;
+        }
         .text-green { color: #059669; font-weight: bold; }
         .text-red { color: #dc2626; font-weight: bold; }
         .footer {
-            margin-top: 20px;
+            margin-top: 15px;
             border-top: 1px solid #e2e8f0;
-            padding-top: 6px;
-            font-size: 9px;
+            padding-top: 5px;
+            font-size: 8.5px;
             color: #94a3b8;
             text-align: center;
         }
@@ -112,145 +157,298 @@
 </head>
 <body>
 
+    {{-- ═══════════════════════════════════════════════════════════════════════
+         PAGE 1: OVERVIEW & BASELINE COMPARISON
+         ═══════════════════════════════════════════════════════════════════════ --}}
+
     {{-- Header --}}
     <table class="header-table">
         <tr>
             <td style="vertical-align: middle;">
-                <h1 class="brand-title">KINERJA OPERASIONAL BANDARA</h1>
-                <p class="brand-sub">{{ $comparison['airport_name'] }} ({{ $comparison['airport_code'] }}) &bull; SlotWaves DAU-02 Historical Comparison</p>
+                <h1 class="brand-title">SLOTWAVES &bull; DAU-02 HISTORICAL COMPARISON</h1>
+                <p class="brand-sub">{{ $comparison['airport_name'] }} ({{ $comparison['airport_code'] }}) &bull; {{ $comparison['period_count'] }} Reporting Periods Evaluated</p>
             </td>
             <td style="text-align: right; vertical-align: middle;">
-                <span class="badge">DAU-02 Comparison Report</span>
-                <div style="font-size: 9px; color: #64748b; margin-top: 4px;">Generated: {{ now()->format('d-m-Y H:i') }} WIB</div>
+                <span class="badge">Official Comparison Report</span>
+                <div style="font-size: 8.5px; color: #64748b; margin-top: 3px;">Generated: {{ now()->format('d-m-Y H:i') }} WIB</div>
             </td>
         </tr>
     </table>
 
     {{-- Filter state banner --}}
-    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 6px 10px; border-radius: 4px; margin-bottom: 12px; font-size: 10px;">
-        <strong>Active Filters:</strong> Scope: <strong>{{ $filters['flight_type'] }}</strong> &bull; Direction: <strong>{{ $filters['direction'] }}</strong> &bull; Baseline: <strong>{{ $comparison['periods'][$comparison['baseline_period_key']]['label'] ?? 'P1' }}</strong>
+    <div class="filter-banner">
+        <strong>Baseline Period:</strong> <span style="color:#0284c7; font-weight:bold;">{{ $comparison['periods'][$comparison['baseline_period_key']]['label'] ?? 'P1' }} ({{ $comparison['periods'][$comparison['baseline_period_key']]['short_label'] ?? '' }})</span> &bull;
+        <strong>Historical Scope:</strong> <strong>{{ $filters['hist_scope'] ?? 'ALL' }}</strong> &bull;
+        <strong>Historical Direction:</strong> <strong>{{ $filters['hist_direction'] ?? 'ALL' }}</strong>
     </div>
 
     {{-- Period Overview Cards --}}
+    <div style="font-size: 9px; font-weight: bold; text-transform: uppercase; color: #475569; margin-bottom: 4px;">Evaluated Operational Periods</div>
     <table class="period-card-table">
         <tr>
             @foreach ($comparison['periods'] as $pKey => $p)
                 <td class="period-card-cell" style="width: {{ round(100 / count($comparison['periods'])) }}%;">
-                    <div style="font-size: 9px; font-weight: bold; color: #0284c7; text-transform: uppercase;">{{ $p['label'] }}</div>
-                    <div style="font-size: 11px; font-weight: bold; color: #0f172a; margin: 2px 0;">{{ $p['display_range'] }}</div>
-                    <div style="font-size: 9px; color: #64748b;">{{ $p['data_days'] }} Data Days &bull; {{ $p['airport_code'] }}</div>
+                    <div style="font-size: 8.5px; font-weight: bold; color: #0284c7; text-transform: uppercase;">
+                        {{ $p['label'] }} ({{ $p['short_label'] }})
+                    </div>
+                    <div style="font-size: 10px; font-weight: bold; color: #0f172a; margin: 2px 0;">
+                        {{ $p['display_range'] }}
+                    </div>
+                    <div style="font-size: 8px; color: #64748b;">
+                        {{ $p['data_days'] }} Data Days &bull; {{ $p['airport_code'] }}
+                    </div>
                 </td>
             @endforeach
         </tr>
     </table>
 
-    {{-- Section 1: Three Primary Metrics --}}
-    <div class="section-title">1. Operational Performance Highlights</div>
+    {{-- Baseline Comparison Section --}}
+    <div class="section-header">
+        <div class="section-tag">BASELINE ANALYSIS</div>
+        <div class="section-title">BASELINE OPERATIONAL COMPARISON</div>
+        <div class="section-desc">
+            Baseline: <strong>{{ $comparison['periods'][$comparison['baseline_period_key']]['label'] ?? 'P1' }} ({{ $comparison['periods'][$comparison['baseline_period_key']]['short_label'] ?? '' }})</strong> compared independently against all {{ count($comparison['baseline_comparison']['comparisons']) }} other periods
+        </div>
+    </div>
+
     <table class="table-data">
+        <thead>
+            <tr>
+                <th style="width: 22%;">Target Period</th>
+                <th style="width: 26%;">Pergerakan Penumpang (Pax)</th>
+                <th style="width: 26%;">Pergerakan Pesawat (A/C)</th>
+                <th style="width: 26%;">Pergerakan Kargo ({{ $comparison['cargo_unit'] }})</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach ($comparison['baseline_comparison']['comparisons'] as $comp)
+                @php
+                    $t = $comp['target_period'];
+                    $pax = $comp['passenger'];
+                    $ac  = $comp['aircraft'];
+                    $cg  = $comp['cargo'];
+                @endphp
+                <tr>
+                    <td>
+                        <div style="font-weight: bold; color: #0f172a;">{{ $t['label'] }} ({{ $t['short_label'] }})</div>
+                        <div style="font-size: 8px; color: #64748b; font-weight: normal;">{{ $t['display_range'] }}</div>
+                    </td>
+                    <td>
+                        <div style="font-weight: bold;">{{ number_format($pax['current']) }} Pax</div>
+                        <div style="font-size: 8px;">
+                            <span class="{{ $pax['is_positive'] ? 'text-green' : 'text-red' }}">{{ $pax['percentage_fmt'] }}</span>
+                            <span style="color: #64748b;">({{ $pax['change_fmt'] }})</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="font-weight: bold;">{{ number_format($ac['current']) }} Movements</div>
+                        <div style="font-size: 8px;">
+                            <span class="{{ $ac['is_positive'] ? 'text-green' : 'text-red' }}">{{ $ac['percentage_fmt'] }}</span>
+                            <span style="color: #64748b;">({{ $ac['change_fmt'] }})</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="font-weight: bold;">{{ number_format($cg['current']) }} {{ $comparison['cargo_unit'] }}</div>
+                        <div style="font-size: 8px;">
+                            <span class="{{ $cg['is_positive'] ? 'text-green' : 'text-red' }}">{{ $cg['percentage_fmt'] }}</span>
+                            <span style="color: #64748b;">({{ $cg['change_fmt'] }})</span>
+                        </div>
+                    </td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
+
+    <div style="font-size: 8.5px; color: #64748b; margin-top: 4px; font-style: italic;">
+        * Baseline values: Passenger: {{ number_format($comparison['baseline_comparison']['baseline_period']['raw_totals']['passenger'] ?? 0) }} Pax &bull;
+        Aircraft: {{ number_format($comparison['baseline_comparison']['baseline_period']['raw_totals']['aircraft'] ?? 0) }} Movements &bull;
+        Cargo: {{ number_format($comparison['baseline_comparison']['baseline_period']['raw_totals']['cargo'] ?? 0) }} {{ $comparison['cargo_unit'] }}.
+    </div>
+
+    <div class="footer">
+        Page 1 of 3 &bull; SlotWaves DAU-02 Comparative Analytics Engine &bull; Official Report
+    </div>
+
+    {{-- ═══════════════════════════════════════════════════════════════════════
+         PAGE 2: SECTION 1 — KINERJA OPERASIONAL BANDARA (TREND LINES + POINTS)
+         ═══════════════════════════════════════════════════════════════════════ --}}
+    <div class="page-break"></div>
+
+    <table class="header-table">
+        <tr>
+            <td style="vertical-align: middle;">
+                <div class="section-tag">SECTION 1 &bull; OPERATIONAL PERFORMANCE</div>
+                <h2 class="brand-title">KINERJA OPERASIONAL BANDARA — TREND ANALYSIS</h2>
+                <p class="brand-sub">Continuous operational trend across uploaded periods (Line + Data Points &bull; Independent Scales)</p>
+            </td>
+            <td style="text-align: right; vertical-align: middle;">
+                <span class="badge">Trend Analysis</span>
+            </td>
+        </tr>
+    </table>
+
+    {{-- Chart 1: Passenger Trend --}}
+    <div class="chart-container">
+        <div class="chart-title-bar">
+            <span>1. Pergerakan Penumpang — Trend</span>
+            <span style="color: #2563eb;">Unit: Pax</span>
+        </div>
+        <div>
+            <img src="{{ $charts['trend_passenger'] }}" style="width: 100%; height: auto; display: block;" />
+        </div>
+    </div>
+
+    {{-- Chart 2: Aircraft Trend --}}
+    <div class="chart-container">
+        <div class="chart-title-bar">
+            <span>2. Pergerakan Pesawat — Trend</span>
+            <span style="color: #059669;">Unit: Movements / A/C</span>
+        </div>
+        <div>
+            <img src="{{ $charts['trend_aircraft'] }}" style="width: 100%; height: auto; display: block;" />
+        </div>
+    </div>
+
+    {{-- Chart 3: Cargo Trend --}}
+    <div class="chart-container">
+        <div class="chart-title-bar">
+            <span>3. Pergerakan Kargo — Trend</span>
+            <span style="color: #d97706;">Unit: {{ $comparison['cargo_unit'] }}</span>
+        </div>
+        <div>
+            <img src="{{ $charts['trend_cargo'] }}" style="width: 100%; height: auto; display: block;" />
+        </div>
+    </div>
+
+    {{-- Operational Trend Values Table --}}
+    <table class="table-data" style="margin-top: 6px;">
         <thead>
             <tr>
                 <th>Metrik Operasional</th>
                 <th>Unit</th>
-                @foreach ($comparison['periods'] as $pKey => $p)
-                    <th>{{ $p['label'] }}<br><span style="font-weight: normal; font-size: 8px;">{{ $p['short_label'] }}</span></th>
+                @foreach ($comparison['periods'] as $p)
+                    <th>{{ $p['label'] }}<br><span style="font-weight: normal; font-size: 7.5px;">{{ $p['short_label'] }}</span></th>
                 @endforeach
-                <th>Difference (&Delta;)</th>
-                <th>Growth %</th>
-                <th>Recovery %</th>
             </tr>
         </thead>
         <tbody>
-            {{-- Passenger --}}
             <tr>
                 <td>Pergerakan Penumpang</td>
                 <td style="text-align: center; color: #64748b;">Pax</td>
-                @foreach ($comparison['analysis']['passenger']['series'] as $pKey => $row)
-                    <td>{{ number_format($row['value']) }}</td>
+                @foreach ($comparison['operational_trend']['passenger'] as $pt)
+                    <td>{{ number_format($pt['value']) }}</td>
                 @endforeach
-                @php
-                    $pSeries = array_values($comparison['analysis']['passenger']['series']);
-                    $lastRowP = end($pSeries);
-                @endphp
-                <td class="{{ $lastRowP['difference'] >= 0 ? 'text-green' : 'text-red' }}">{{ $lastRowP['difference_fmt'] }}</td>
-                <td class="{{ ($lastRowP['growth_pct'] ?? 0) >= 0 ? 'text-green' : 'text-red' }}">{{ $lastRowP['growth_fmt'] }}</td>
-                <td>{{ $lastRowP['recovery_fmt'] }}</td>
             </tr>
-
-            {{-- Aircraft --}}
             <tr>
                 <td>Pergerakan Pesawat</td>
                 <td style="text-align: center; color: #64748b;">Movements</td>
-                @foreach ($comparison['analysis']['aircraft']['series'] as $pKey => $row)
-                    <td>{{ number_format($row['value']) }}</td>
+                @foreach ($comparison['operational_trend']['aircraft'] as $pt)
+                    <td>{{ number_format($pt['value']) }}</td>
                 @endforeach
-                @php
-                    $aSeries = array_values($comparison['analysis']['aircraft']['series']);
-                    $lastRowA = end($aSeries);
-                @endphp
-                <td class="{{ $lastRowA['difference'] >= 0 ? 'text-green' : 'text-red' }}">{{ $lastRowA['difference_fmt'] }}</td>
-                <td class="{{ ($lastRowA['growth_pct'] ?? 0) >= 0 ? 'text-green' : 'text-red' }}">{{ $lastRowA['growth_fmt'] }}</td>
-                <td>{{ $lastRowA['recovery_fmt'] }}</td>
             </tr>
-
-            {{-- Cargo --}}
             <tr>
                 <td>Pergerakan Kargo</td>
                 <td style="text-align: center; color: #64748b;">{{ $comparison['cargo_unit'] }}</td>
-                @foreach ($comparison['analysis']['cargo']['series'] as $pKey => $row)
-                    <td>{{ number_format($row['value']) }}</td>
+                @foreach ($comparison['operational_trend']['cargo'] as $pt)
+                    <td>{{ number_format($pt['value']) }}</td>
                 @endforeach
-                @php
-                    $cSeries = array_values($comparison['analysis']['cargo']['series']);
-                    $lastRowC = end($cSeries);
-                @endphp
-                <td class="{{ $lastRowC['difference'] >= 0 ? 'text-green' : 'text-red' }}">{{ $lastRowC['difference_fmt'] }}</td>
-                <td class="{{ ($lastRowC['growth_pct'] ?? 0) >= 0 ? 'text-green' : 'text-red' }}">{{ $lastRowC['growth_fmt'] }}</td>
-                <td>{{ $lastRowC['recovery_fmt'] }}</td>
             </tr>
-        </tbody>
-    </table>
-
-    {{-- Section 2: Sequential Breakdown Table --}}
-    <div class="section-title">2. Sequential Period Growth Analysis</div>
-    <table class="table-data">
-        <thead>
-            <tr>
-                <th>Period Transition</th>
-                <th>Passenger Growth</th>
-                <th>Aircraft Growth</th>
-                <th>Cargo Growth</th>
-            </tr>
-        </thead>
-        <tbody>
-            @php
-                $periodsArr = array_values($comparison['periods']);
-                $n = count($periodsArr);
-            @endphp
-            @for ($i = 1; $i < $n; $i++)
-                @php
-                    $prev = $periodsArr[$i - 1];
-                    $curr = $periodsArr[$i];
-                    $p1 = $prev['metrics']['passenger']; $p2 = $curr['metrics']['passenger'];
-                    $pGrowth = $p1 > 0 ? round((($p2 - $p1) / $p1) * 100, 2) . '%' : 'N/A';
-
-                    $a1 = $prev['metrics']['aircraft']; $a2 = $curr['metrics']['aircraft'];
-                    $aGrowth = $a1 > 0 ? round((($a2 - $a1) / $a1) * 100, 2) . '%' : 'N/A';
-
-                    $c1 = $prev['metrics']['cargo']; $c2 = $curr['metrics']['cargo'];
-                    $cGrowth = $c1 > 0 ? round((($c2 - $c1) / $c1) * 100, 2) . '%' : 'N/A';
-                @endphp
-                <tr>
-                    <td>{{ $prev['label'] }} ({{ $prev['short_label'] }}) &rarr; {{ $curr['label'] }} ({{ $curr['short_label'] }})</td>
-                    <td class="{{ str_starts_with($pGrowth, '-') ? 'text-red' : 'text-green' }}">{{ $pGrowth }}</td>
-                    <td class="{{ str_starts_with($aGrowth, '-') ? 'text-red' : 'text-green' }}">{{ $aGrowth }}</td>
-                    <td class="{{ str_starts_with($cGrowth, '-') ? 'text-red' : 'text-green' }}">{{ $cGrowth }}</td>
-                </tr>
-            @endfor
         </tbody>
     </table>
 
     <div class="footer">
-        SlotWaves Airport Operational Slot &amp; Flight Intelligence &bull; DAU-02 Comparative Analytics Engine &bull; Official Report
+        Page 2 of 3 &bull; SlotWaves DAU-02 Comparative Analytics Engine &bull; Official Report
+    </div>
+
+    {{-- ═══════════════════════════════════════════════════════════════════════
+         PAGE 3: SECTION 2 — DATA PERGERAKAN HISTORIS (BAR CHARTS)
+         ═══════════════════════════════════════════════════════════════════════ --}}
+    <div class="page-break"></div>
+
+    <table class="header-table">
+        <tr>
+            <td style="vertical-align: middle;">
+                <div class="section-tag">SECTION 2 &bull; HISTORICAL TRAFFIC DISTRIBUTION</div>
+                <h2 class="brand-title">DATA PERGERAKAN HISTORIS — PERIOD DISTRIBUTION</h2>
+                <p class="brand-sub">Period-by-period bar comparison &bull; Filter: <strong>{{ $comparison['historical_model']['subtitle'] }}</strong> (Scope: {{ $filters['hist_scope'] ?? 'ALL' }}, Direction: {{ $filters['hist_direction'] ?? 'ALL' }})</p>
+            </td>
+            <td style="text-align: right; vertical-align: middle;">
+                <span class="badge">Period Distribution</span>
+            </td>
+        </tr>
+    </table>
+
+    {{-- Historical Bar Chart 1: Passenger --}}
+    <div class="chart-container">
+        <div class="chart-title-bar">
+            <span>1. Pergerakan Penumpang — Bar Chart</span>
+            <span style="color: #2563eb;">Unit: Pax</span>
+        </div>
+        <div>
+            <img src="{{ $charts['bar_passenger'] }}" style="width: 100%; height: auto; display: block;" />
+        </div>
+    </div>
+
+    {{-- Historical Bar Chart 2: Aircraft --}}
+    <div class="chart-container">
+        <div class="chart-title-bar">
+            <span>2. Pergerakan Pesawat — Bar Chart</span>
+            <span style="color: #059669;">Unit: Movements / A/C</span>
+        </div>
+        <div>
+            <img src="{{ $charts['bar_aircraft'] }}" style="width: 100%; height: auto; display: block;" />
+        </div>
+    </div>
+
+    {{-- Historical Bar Chart 3: Cargo --}}
+    <div class="chart-container">
+        <div class="chart-title-bar">
+            <span>3. Pergerakan Kargo — Bar Chart</span>
+            <span style="color: #d97706;">Unit: {{ $comparison['cargo_unit'] }}</span>
+        </div>
+        <div>
+            <img src="{{ $charts['bar_cargo'] }}" style="width: 100%; height: auto; display: block;" />
+        </div>
+    </div>
+
+    {{-- Historical Breakdown Table --}}
+    <table class="table-data" style="margin-top: 6px;">
+        <thead>
+            <tr>
+                <th>Metrik Operasional (Filtered)</th>
+                <th>Unit</th>
+                @foreach ($comparison['periods'] as $p)
+                    <th>{{ $p['label'] }}<br><span style="font-weight: normal; font-size: 7.5px;">{{ $p['short_label'] }}</span></th>
+                @endforeach
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Pergerakan Penumpang</td>
+                <td style="text-align: center; color: #64748b;">Pax</td>
+                @foreach ($comparison['historical_model']['metrics']['passenger']['total_series'] as $v)
+                    <td>{{ number_format($v) }}</td>
+                @endforeach
+            </tr>
+            <tr>
+                <td>Pergerakan Pesawat</td>
+                <td style="text-align: center; color: #64748b;">Movements</td>
+                @foreach ($comparison['historical_model']['metrics']['aircraft']['total_series'] as $v)
+                    <td>{{ number_format($v) }}</td>
+                @endforeach
+            </tr>
+            <tr>
+                <td>Pergerakan Kargo</td>
+                <td style="text-align: center; color: #64748b;">{{ $comparison['cargo_unit'] }}</td>
+                @foreach ($comparison['historical_model']['metrics']['cargo']['total_series'] as $v)
+                    <td>{{ number_format($v) }}</td>
+                @endforeach
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="footer">
+        Page 3 of 3 &bull; SlotWaves DAU-02 Comparative Analytics Engine &bull; Official Report
     </div>
 
 </body>

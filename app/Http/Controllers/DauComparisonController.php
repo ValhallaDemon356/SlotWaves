@@ -101,8 +101,10 @@ class DauComparisonController extends Controller
         }
 
         $filters = [
-            'flight_type' => strtoupper(trim($request->query('flight_type', 'ALL'))),
-            'direction'   => strtoupper(trim($request->query('direction', 'ALL'))),
+            'flight_type'    => strtoupper(trim($request->query('hist_scope', $request->query('flight_type', 'ALL')))),
+            'direction'      => strtoupper(trim($request->query('hist_direction', $request->query('direction', 'ALL')))),
+            'hist_scope'     => strtoupper(trim($request->query('hist_scope', $request->query('flight_type', 'ALL')))),
+            'hist_direction' => strtoupper(trim($request->query('hist_direction', $request->query('direction', 'ALL')))),
         ];
 
         $baselinePeriodKey = trim($request->query('baseline', ''));
@@ -160,13 +162,70 @@ class DauComparisonController extends Controller
         }
 
         $filters = [
-            'flight_type' => strtoupper(trim($request->query('flight_type', 'ALL'))),
-            'direction'   => strtoupper(trim($request->query('direction', 'ALL'))),
+            'flight_type'    => strtoupper(trim($request->query('hist_scope', $request->query('flight_type', 'ALL')))),
+            'direction'      => strtoupper(trim($request->query('hist_direction', $request->query('direction', 'ALL')))),
+            'hist_scope'     => strtoupper(trim($request->query('hist_scope', $request->query('flight_type', 'ALL')))),
+            'hist_direction' => strtoupper(trim($request->query('hist_direction', $request->query('direction', 'ALL')))),
         ];
 
         $baselinePeriodKey = trim($request->query('baseline', ''));
 
         $comparison = DauComparisonService::buildComparisonModel($reportsData, $filters, $baselinePeriodKey ?: null);
+
+        // Pre-render high resolution vector SVG charts for PDF
+        $charts = [
+            'trend_passenger' => \App\Services\Dau\DauComparisonChartRenderer::renderTrendLineSvg(
+                $comparison['operational_trend']['passenger'],
+                'Pax',
+                '#2563eb',
+                $comparison['baseline_period_key'],
+                'Pergerakan Penumpang',
+                680,
+                140
+            ),
+            'trend_aircraft' => \App\Services\Dau\DauComparisonChartRenderer::renderTrendLineSvg(
+                $comparison['operational_trend']['aircraft'],
+                'Movements',
+                '#059669',
+                $comparison['baseline_period_key'],
+                'Pergerakan Pesawat',
+                680,
+                140
+            ),
+            'trend_cargo' => \App\Services\Dau\DauComparisonChartRenderer::renderTrendLineSvg(
+                $comparison['operational_trend']['cargo'],
+                $comparison['cargo_unit'],
+                '#d97706',
+                $comparison['baseline_period_key'],
+                'Pergerakan Kargo',
+                680,
+                140
+            ),
+            'bar_passenger' => \App\Services\Dau\DauComparisonChartRenderer::renderHistoricalBarSvg(
+                array_values($comparison['periods']),
+                $comparison['historical_model']['metrics']['passenger']['datasets'],
+                'Pax',
+                'Pergerakan Penumpang',
+                680,
+                140
+            ),
+            'bar_aircraft' => \App\Services\Dau\DauComparisonChartRenderer::renderHistoricalBarSvg(
+                array_values($comparison['periods']),
+                $comparison['historical_model']['metrics']['aircraft']['datasets'],
+                'Movements',
+                'Pergerakan Pesawat',
+                680,
+                140
+            ),
+            'bar_cargo' => \App\Services\Dau\DauComparisonChartRenderer::renderHistoricalBarSvg(
+                array_values($comparison['periods']),
+                $comparison['historical_model']['metrics']['cargo']['datasets'],
+                $comparison['cargo_unit'],
+                'Pergerakan Kargo',
+                680,
+                140
+            ),
+        ];
 
         $airportCode = $comparison['airport_code'] ?: 'CGK';
         $timestamp = now()->format('Ymd_His');
@@ -175,6 +234,7 @@ class DauComparisonController extends Controller
         $pdf = Pdf::loadView('dau.comparison-pdf', [
             'comparison' => $comparison,
             'filters'    => $filters,
+            'charts'     => $charts,
         ]);
 
         $pdf->setPaper('a4', 'portrait');

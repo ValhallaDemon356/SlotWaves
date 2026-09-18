@@ -353,11 +353,356 @@ class DauComparisonService
     }
 
     /**
+     * Extract detailed metric breakdowns (Domestic vs International, Arrival vs Departure)
+     * for period distribution bar charts.
+     */
+    public static function extractPeriodBreakdown(array $reportData): array
+    {
+        $records = $reportData['records'] ?? [];
+        $meta    = $reportData['meta'] ?? [];
+        $cargoUnit = $reportData['cargo_unit'] ?? ($meta['cargo_unit'] ?? 'Kg');
+
+        $bd = [
+            'passenger' => [
+                'dom_arr' => 0, 'dom_dep' => 0, 'dom_tot' => 0,
+                'int_arr' => 0, 'int_dep' => 0, 'int_tot' => 0,
+                'tot_arr' => 0, 'tot_dep' => 0, 'total'   => 0,
+            ],
+            'aircraft' => [
+                'dom_arr' => 0, 'dom_dep' => 0, 'dom_tot' => 0,
+                'int_arr' => 0, 'int_dep' => 0, 'int_tot' => 0,
+                'tot_arr' => 0, 'tot_dep' => 0, 'total'   => 0,
+            ],
+            'cargo' => [
+                'dom_arr' => 0, 'dom_dep' => 0, 'dom_tot' => 0,
+                'int_arr' => 0, 'int_dep' => 0, 'int_tot' => 0,
+                'tot_arr' => 0, 'tot_dep' => 0, 'total'   => 0,
+            ],
+            'cargo_unit' => $cargoUnit,
+        ];
+
+        foreach ($records as $r) {
+            $cat = strtoupper(trim($r['category'] ?? ''));
+            $isDom = (stripos($cat, 'DOM') !== false);
+            $isInt = (stripos($cat, 'INT') !== false);
+
+            $acArr = (int)($r['aircraft_arrival'] ?? 0);
+            $acDep = (int)($r['aircraft_departure'] ?? 0);
+            $acTot = (int)($r['aircraft_total'] ?? ($acArr + $acDep));
+
+            $pxArr = (int)($r['passenger_arrival'] ?? 0);
+            $pxDep = (int)($r['passenger_departure'] ?? 0);
+            $pxTra = (int)($r['passenger_transit'] ?? 0);
+            $pxTrf = (int)($r['passenger_transfer'] ?? 0);
+            $pxTot = (int)($r['passenger_total'] ?? ($pxArr + $pxDep + $pxTra + $pxTrf));
+
+            $cgArr = (int)($r['cargo_arrival'] ?? 0);
+            $cgDep = (int)($r['cargo_departure'] ?? 0);
+            $cgTot = (int)($r['cargo'] ?? ($cgArr + $cgDep));
+
+            if ($isInt) {
+                $bd['passenger']['int_arr'] += $pxArr;
+                $bd['passenger']['int_dep'] += $pxDep;
+                $bd['passenger']['int_tot'] += $pxTot;
+
+                $bd['aircraft']['int_arr']  += $acArr;
+                $bd['aircraft']['int_dep']  += $acDep;
+                $bd['aircraft']['int_tot']  += $acTot;
+
+                $bd['cargo']['int_arr']     += $cgArr;
+                $bd['cargo']['int_dep']     += $cgDep;
+                $bd['cargo']['int_tot']     += $cgTot;
+            } else {
+                // Domestik or default
+                $bd['passenger']['dom_arr'] += $pxArr;
+                $bd['passenger']['dom_dep'] += $pxDep;
+                $bd['passenger']['dom_tot'] += $pxTot;
+
+                $bd['aircraft']['dom_arr']  += $acArr;
+                $bd['aircraft']['dom_dep']  += $acDep;
+                $bd['aircraft']['dom_tot']  += $acTot;
+
+                $bd['cargo']['dom_arr']     += $cgArr;
+                $bd['cargo']['dom_dep']     += $cgDep;
+                $bd['cargo']['dom_tot']     += $cgTot;
+            }
+        }
+
+        foreach (['passenger', 'aircraft', 'cargo'] as $mKey) {
+            $bd[$mKey]['tot_arr'] = $bd[$mKey]['dom_arr'] + $bd[$mKey]['int_arr'];
+            $bd[$mKey]['tot_dep'] = $bd[$mKey]['dom_dep'] + $bd[$mKey]['int_dep'];
+            $bd[$mKey]['total']   = $bd[$mKey]['dom_tot'] + $bd[$mKey]['int_tot'];
+        }
+
+        return $bd;
+    }
+
+    /**
+     * Dedicated Baseline Comparison Data Model.
+     * Compares selected Baseline Period against ALL other uploaded periods.
+     * Guaranteed N-1 comparisons (no self-comparison).
+     */
+    public static function buildBaselineComparison(array $periods, ?string $baselinePeriodKey = null): array
+    {
+        $periodKeys = array_keys($periods);
+        if (!$baselinePeriodKey || !isset($periods[$baselinePeriodKey])) {
+            $baselinePeriodKey = $periodKeys[0] ?? null;
+        }
+
+        $baselinePeriod = $periods[$baselinePeriodKey] ?? null;
+        $comparisons = [];
+        $metricKeys = ['passenger', 'aircraft', 'cargo'];
+
+        if ($baselinePeriod) {
+            foreach ($periods as $pKey => $targetPeriod) {
+                // Critical: no self-comparison
+                if ($pKey === $baselinePeriodKey) {
+                    continue;
+                }
+
+                $compItem = [
+                    'target_key'    => $pKey,
+                    'target_period' => $targetPeriod,
+                ];
+
+                foreach ($metricKeys as $mKey) {
+                    $baseVal = (float)($baselinePeriod['raw_totals'][$mKey] ?? ($baselinePeriod['metrics'][$mKey] ?? 0));
+                    $currVal = (float)($targetPeriod['raw_totals'][$mKey] ?? ($targetPeriod['metrics'][$mKey] ?? 0));
+                    $diff = $currVal - $baseVal;
+
+                    $pct = null;
+                    $pctFmt = '—';
+
+                    if ($baseVal > 0) {
+                        $pct = round((($currVal - $baseVal) / $baseVal) * 100, 2);
+                        $pctFmt = ($pct > 0 ? '+' : '') . number_format($pct, 2) . '%';
+                    } elseif ($currVal > 0) {
+                        $pct = null;
+                        $pctFmt = 'N/A';
+                    } else {
+                        $pct = 0.0;
+                        $pctFmt = '0.00%';
+                    }
+
+                    $diffFmt = ($diff > 0 ? '+' : '') . number_format($diff);
+                    $unit = ($mKey === 'passenger') ? 'Pax' : (($mKey === 'aircraft') ? 'A/C' : ($targetPeriod['metrics']['cargo_unit'] ?? 'Kg'));
+
+                    $compItem[$mKey] = [
+                        'baseline'       => $baseVal,
+                        'current'        => $currVal,
+                        'change'         => $diff,
+                        'change_fmt'     => $diffFmt . ' ' . $unit,
+                        'percentage'     => $pct,
+                        'percentage_fmt' => $pctFmt,
+                        'is_positive'    => $diff >= 0,
+                    ];
+                }
+
+                $comparisons[] = $compItem;
+            }
+        }
+
+        return [
+            'baseline_key'    => $baselinePeriodKey,
+            'baseline_period' => $baselinePeriod,
+            'comparisons'     => $comparisons,
+            'comparison_count'=> count($comparisons),
+        ];
+    }
+
+    /**
+     * Dedicated Kinerja Operasional Bandara Trend Model.
+     * Connects all period values using trend lines with points, independent of historical filters.
+     */
+    public static function buildOperationalTrend(array $periods, ?string $baselinePeriodKey = null): array
+    {
+        $trend = [
+            'passenger' => [],
+            'aircraft'  => [],
+            'cargo'     => [],
+        ];
+
+        $firstKey = array_key_first($periods);
+        $cargoUnit = $firstKey ? ($periods[$firstKey]['metrics']['cargo_unit'] ?? 'Kg') : 'Kg';
+
+        foreach ($periods as $pKey => $p) {
+            $isBase = ($pKey === $baselinePeriodKey);
+
+            $trend['passenger'][] = [
+                'key'         => $pKey,
+                'label'       => $p['label'],
+                'short_label' => $p['short_label'],
+                'value'       => (float)($p['raw_totals']['passenger'] ?? ($p['metrics']['passenger_total'] ?? ($p['metrics']['passenger'] ?? 0))),
+                'unit'        => 'Pax',
+                'is_baseline' => $isBase,
+            ];
+
+            $trend['aircraft'][] = [
+                'key'         => $pKey,
+                'label'       => $p['label'],
+                'short_label' => $p['short_label'],
+                'value'       => (float)($p['raw_totals']['aircraft'] ?? ($p['metrics']['aircraft_total'] ?? ($p['metrics']['aircraft'] ?? 0))),
+                'unit'        => 'Movements',
+                'is_baseline' => $isBase,
+            ];
+
+            $trend['cargo'][] = [
+                'key'         => $pKey,
+                'label'       => $p['label'],
+                'short_label' => $p['short_label'],
+                'value'       => (float)($p['raw_totals']['cargo'] ?? ($p['metrics']['cargo_total'] ?? ($p['metrics']['cargo'] ?? 0))),
+                'unit'        => $cargoUnit,
+                'is_baseline' => $isBase,
+            ];
+        }
+
+        return [
+            'passenger' => $trend['passenger'],
+            'aircraft'  => $trend['aircraft'],
+            'cargo'     => $trend['cargo'],
+            'cargo_unit'=> $cargoUnit,
+        ];
+    }
+
+    /**
+     * Dedicated Data Pergerakan Historis Bar Model with independent Scope and Direction filters.
+     */
+    public static function buildHistoricalBarModel(array $periods, string $scope = 'ALL', string $direction = 'ALL'): array
+    {
+        $scope = strtoupper(trim($scope));
+        if (!in_array($scope, ['ALL', 'DOM', 'DOMESTIC', 'DOMESTIK', 'INT', 'INTERNATIONAL', 'INTERNASIONAL'])) {
+            $scope = 'ALL';
+        }
+        if ($scope === 'DOMESTIK' || $scope === 'DOMESTIC') $scope = 'DOM';
+        if ($scope === 'INTERNASIONAL' || $scope === 'INTERNATIONAL') $scope = 'INT';
+
+        $direction = strtoupper(trim($direction));
+        if (!in_array($direction, ['ALL', 'ARRIVAL', 'DEPARTURE'])) {
+            $direction = 'ALL';
+        }
+
+        // Dynamic subtitle reflecting active filter
+        $subtitle = 'All traffic movements';
+        if ($scope === 'DOM') {
+            $subtitle = ($direction === 'ARRIVAL') ? 'Domestic arrival movements'
+                : (($direction === 'DEPARTURE') ? 'Domestic departure movements' : 'Domestic movements (Arrival & Departure)');
+        } elseif ($scope === 'INT') {
+            $subtitle = ($direction === 'ARRIVAL') ? 'International arrival movements'
+                : (($direction === 'DEPARTURE') ? 'International departure movements' : 'International movements (Arrival & Departure)');
+        } else {
+            if ($direction === 'ARRIVAL') $subtitle = 'All traffic arrival movements';
+            elseif ($direction === 'DEPARTURE') $subtitle = 'All traffic departure movements';
+        }
+
+        $metrics = ['passenger', 'aircraft', 'cargo'];
+        $data = [];
+
+        foreach ($metrics as $mKey) {
+            if ($scope === 'ALL') {
+                $domValues = [];
+                $intValues = [];
+                $totValues = [];
+
+                foreach ($periods as $pKey => $p) {
+                    $bd = $p['breakdown'][$mKey] ?? [];
+
+                    if ($direction === 'ARRIVAL') {
+                        $dVal = (float)($bd['dom_arr'] ?? 0);
+                        $iVal = (float)($bd['int_arr'] ?? 0);
+                    } elseif ($direction === 'DEPARTURE') {
+                        $dVal = (float)($bd['dom_dep'] ?? 0);
+                        $iVal = (float)($bd['int_dep'] ?? 0);
+                    } else {
+                        $dVal = (float)($bd['dom_tot'] ?? 0);
+                        $iVal = (float)($bd['int_tot'] ?? 0);
+                    }
+
+                    $domValues[] = $dVal;
+                    $intValues[] = $iVal;
+                    $totValues[] = $dVal + $iVal;
+                }
+
+                $datasets = [
+                    [
+                        'label' => 'Domestic',
+                        'color' => '#2563eb', // Aviation Blue
+                        'values'=> $domValues,
+                    ],
+                    [
+                        'label' => 'International',
+                        'color' => '#7c3aed', // Purple / Violet
+                        'values'=> $intValues,
+                    ],
+                ];
+                $totalSeries = $totValues;
+            } elseif ($scope === 'DOM') {
+                $domValues = [];
+                foreach ($periods as $pKey => $p) {
+                    $bd = $p['breakdown'][$mKey] ?? [];
+                    if ($direction === 'ARRIVAL') {
+                        $dVal = (float)($bd['dom_arr'] ?? 0);
+                    } elseif ($direction === 'DEPARTURE') {
+                        $dVal = (float)($bd['dom_dep'] ?? 0);
+                    } else {
+                        $dVal = (float)($bd['dom_tot'] ?? 0);
+                    }
+                    $domValues[] = $dVal;
+                }
+                $datasets = [
+                    [
+                        'label' => 'Domestic',
+                        'color' => '#2563eb',
+                        'values'=> $domValues,
+                    ]
+                ];
+                $totalSeries = $domValues;
+            } else {
+                $intValues = [];
+                foreach ($periods as $pKey => $p) {
+                    $bd = $p['breakdown'][$mKey] ?? [];
+                    if ($direction === 'ARRIVAL') {
+                        $iVal = (float)($bd['int_arr'] ?? 0);
+                    } elseif ($direction === 'DEPARTURE') {
+                        $iVal = (float)($bd['int_dep'] ?? 0);
+                    } else {
+                        $iVal = (float)($bd['int_tot'] ?? 0);
+                    }
+                    $intValues[] = $iVal;
+                }
+                $datasets = [
+                    [
+                        'label' => 'International',
+                        'color' => '#7c3aed',
+                        'values'=> $intValues,
+                    ]
+                ];
+                $totalSeries = $intValues;
+            }
+
+            $unit = ($mKey === 'passenger') ? 'Pax' : (($mKey === 'aircraft') ? 'Movements' : ($periods[array_key_first($periods)]['metrics']['cargo_unit'] ?? 'Kg'));
+
+            $data[$mKey] = [
+                'metric'       => $mKey,
+                'unit'         => $unit,
+                'datasets'     => $datasets,
+                'total_series' => $totalSeries,
+            ];
+        }
+
+        return [
+            'scope'     => $scope,
+            'direction' => $direction,
+            'subtitle'  => $subtitle,
+            'metrics'   => $data,
+        ];
+    }
+
+    /**
      * Compute full comparative historical model for a set of uploaded reports.
      *
      * @param array $rawReports Array of report entries (from Upload models)
-     * @param array $filters Active filters (flight_type, direction)
-     * @param string|null $baselinePeriodKey Period key for Recovery Rate
+     * @param array $filters Active filters (flight_type, direction, hist_scope, hist_direction)
+     * @param string|null $baselinePeriodKey Period key for Recovery Rate & Baseline Comparison
      * @return array
      */
     public static function buildComparisonModel(array $rawReports, array $filters = [], ?string $baselinePeriodKey = null): array
@@ -392,6 +737,28 @@ class DauComparisonService
 
             $reportData = $rep['report_data'] ?? $rep;
             $aggregated = self::aggregatePeriod($reportData, $filters);
+            $breakdown  = self::extractPeriodBreakdown($reportData);
+
+            // Raw totals unadulterated by any direction or flight type filter
+            $rawTotals = [
+                'passenger' => max($breakdown['passenger']['total'], (int)($aggregated['passenger_total'] ?? 0)),
+                'aircraft'  => max($breakdown['aircraft']['total'], (int)($aggregated['aircraft_total'] ?? 0)),
+                'cargo'     => max($breakdown['cargo']['total'], (int)($aggregated['cargo_total'] ?? 0)),
+            ];
+
+            // If breakdown had no category data but aggregated has values, populate breakdown default
+            if ($breakdown['passenger']['total'] === 0 && $rawTotals['passenger'] > 0) {
+                $breakdown['passenger']['dom_tot'] = $rawTotals['passenger'];
+                $breakdown['passenger']['total']   = $rawTotals['passenger'];
+            }
+            if ($breakdown['aircraft']['total'] === 0 && $rawTotals['aircraft'] > 0) {
+                $breakdown['aircraft']['dom_tot'] = $rawTotals['aircraft'];
+                $breakdown['aircraft']['total']   = $rawTotals['aircraft'];
+            }
+            if ($breakdown['cargo']['total'] === 0 && $rawTotals['cargo'] > 0) {
+                $breakdown['cargo']['dom_tot'] = $rawTotals['cargo'];
+                $breakdown['cargo']['total']   = $rawTotals['cargo'];
+            }
 
             $periodKey = "P" . ($idx + 1);
 
@@ -406,18 +773,28 @@ class DauComparisonService
                 'display_range' => $displayRange,
                 'data_days'     => $dataDays,
                 'metrics'       => $aggregated,
+                'raw_totals'    => $rawTotals,
+                'breakdown'     => $breakdown,
                 'airport_name'  => $rep['airport_name'] ?? ($rep['meta']['airport_name'] ?? 'Soekarno Hatta'),
                 'airport_code'  => strtoupper($rep['airport_code'] ?? ($rep['meta']['airport_code'] ?? 'CGK')),
             ];
         }
 
-        // 3. Resolve baseline period for Recovery Rate (default: first period)
+        // 3. Resolve baseline period (default: first period P1)
         $periodKeys = array_keys($periods);
         if (!$baselinePeriodKey || !isset($periods[$baselinePeriodKey])) {
             $baselinePeriodKey = $periodKeys[0] ?? null;
         }
 
-        // 4. Calculate Sequential Growth and Baseline Recovery Rate for each metric
+        // 4. Dedicated Models
+        $baselineComparison = self::buildBaselineComparison($periods, $baselinePeriodKey);
+        $operationalTrend   = self::buildOperationalTrend($periods, $baselinePeriodKey);
+
+        $historicalScope     = $filters['hist_scope'] ?? ($filters['flight_type'] ?? 'ALL');
+        $historicalDirection = $filters['hist_direction'] ?? ($filters['direction'] ?? 'ALL');
+        $historicalModel     = self::buildHistoricalBarModel($periods, $historicalScope, $historicalDirection);
+
+        // 5. Backwards-compatible sequential analysis & recovery rates
         $metricKeys = ['passenger', 'aircraft', 'cargo'];
         $analysis = [];
 
@@ -428,11 +805,8 @@ class DauComparisonService
 
             foreach ($periods as $pKey => $pData) {
                 $currVal = $pData['metrics'][$mKey] ?? 0;
-
-                // Difference: Current - Previous
                 $diff = ($prevVal !== null) ? ($currVal - $prevVal) : 0;
 
-                // Sequential Growth %: ((Current - Previous) / Previous) * 100
                 $growthPct = null;
                 $growthFormatted = '—';
                 if ($prevVal !== null) {
@@ -441,14 +815,13 @@ class DauComparisonService
                         $growthFormatted = ($growthPct > 0 ? '+' : '') . number_format($growthPct, 2) . '%';
                     } elseif ($currVal > 0) {
                         $growthPct = null;
-                        $growthFormatted = 'N/A'; // Handled safely without NaN or Infinity
+                        $growthFormatted = 'N/A';
                     } else {
                         $growthPct = 0.0;
                         $growthFormatted = '0.00%';
                     }
                 }
 
-                // Recovery Rate vs Baseline: (Current / Baseline) * 100
                 $recoveryRate = null;
                 $recoveryFormatted = '—';
                 if ($baselineVal > 0) {
@@ -480,7 +853,7 @@ class DauComparisonService
             ];
         }
 
-        // 5. Extract Key Highlights (Growth from P1 to last period, or consecutive)
+        // 6. Highlights
         $firstKey = reset($periodKeys);
         $lastKey  = end($periodKeys);
 
@@ -518,6 +891,13 @@ class DauComparisonService
             'periods'             => $periods,
             'period_count'        => count($periods),
             'baseline_period_key' => $baselinePeriodKey,
+            'baseline_comparison' => $baselineComparison,
+            'operational_trend'   => $operationalTrend,
+            'historical_model'    => $historicalModel,
+            'historical_filters'  => [
+                'scope'     => $historicalModel['scope'],
+                'direction' => $historicalModel['direction'],
+            ],
             'analysis'            => $analysis,
             'highlights'          => $highlights,
             'cargo_unit'          => $periods[$firstKey]['metrics']['cargo_unit'] ?? 'Kg',
@@ -525,3 +905,4 @@ class DauComparisonService
         ];
     }
 }
+
