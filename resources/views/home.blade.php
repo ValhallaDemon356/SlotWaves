@@ -359,6 +359,396 @@
 
             </div>
 
+            {{-- ═══════════════════════════════════════════════════════════════════
+                 STEP 1.5: DAU-02 SELECT GENERATION MODE
+                 ═══════════════════════════════════════════════════════════════════ --}}
+            <div x-show="currentStep === 'dau_mode'" x-transition class="glass-card p-6 sm:p-8 shadow-xl">
+                {{-- Step navigation & selected badge --}}
+                <div class="flex items-center justify-between mb-5 pb-4 border-b border-slate-200 dark:border-slate-800">
+                    <button type="button" @click="backToSelection()"
+                            class="text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white inline-flex items-center gap-1.5 transition cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
+                        <span>Change Report Type</span>
+                    </button>
+
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-aviation-50 dark:bg-aviation-950 border border-aviation-200 dark:border-aviation-800 text-aviation-700 dark:text-aviation-300 text-xs font-bold font-mono">
+                        <span>#3 DAU-02 (Secara Total)</span>
+                    </div>
+                </div>
+
+                <div class="text-center mb-6">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-aviation-50 dark:bg-aviation-950/80 border border-aviation-200 dark:border-aviation-800 text-aviation-700 dark:text-aviation-300 text-xs font-semibold mb-2.5">
+                        <span class="w-2 h-2 rounded-full bg-aviation-600 dark:bg-aviation-400 animate-pulse"></span>
+                        <span>DAU-02 Pipeline Configuration</span>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+                        SELECT GENERATION MODE
+                    </h1>
+                    <p class="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-1 max-w-xl mx-auto">
+                        Choose whether to generate a standalone DAU-02 operational dashboard or compare historical reporting periods.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                    {{-- Mode 1: Single DAU-02 --}}
+                    <div @click="selectDauMode('single')"
+                         class="p-5 sm:p-6 rounded-2xl border-2 border-slate-200 dark:border-slate-800 hover:border-aviation-600 dark:hover:border-aviation-500 hover:bg-aviation-50/30 dark:hover:bg-aviation-950/30 transition-all duration-200 cursor-pointer flex flex-col justify-between group shadow-sm">
+                        <div>
+                            <div class="flex items-center justify-between gap-2 mb-3">
+                                <span class="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-navy-800 dark:text-slate-300">
+                                    MODE 1
+                                </span>
+                                <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 dark:bg-navy-800 dark:text-slate-400">
+                                    Standard
+                                </span>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-aviation-50 dark:bg-navy-800 border border-aviation-200 dark:border-navy-700 flex items-center justify-center text-aviation-600 dark:text-aviation-400 mb-3 group-hover:scale-105 transition">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-base font-black text-slate-900 dark:text-white group-hover:text-aviation-600 dark:group-hover:text-aviation-400 transition">
+                                1. Generate Single DAU-02
+                            </h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+                                Upload 1 DAU-02 Excel file to validate template structure and generate the standalone operational overview and comparative matrix dashboard.
+                            </p>
+                        </div>
+                        <div class="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs font-bold text-aviation-600 dark:text-aviation-400">
+                            <span>Upload 1 File</span>
+                            <svg class="w-4 h-4 group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+                        </div>
+                    </div>
+
+                    {{-- Mode 2: Compare DAU-02 Historical Reports --}}
+                    <div @click="selectDauMode('compare')"
+                         class="p-5 sm:p-6 rounded-2xl border-2 border-slate-200 dark:border-slate-800 hover:border-aviation-600 dark:hover:border-aviation-500 hover:bg-aviation-50/30 dark:hover:bg-aviation-950/30 transition-all duration-200 cursor-pointer flex flex-col justify-between group shadow-sm relative overflow-hidden">
+                        <div class="absolute -top-10 -right-10 w-28 h-28 bg-aviation-500/10 rounded-full blur-xl pointer-events-none"></div>
+                        <div>
+                            <div class="flex items-center justify-between gap-2 mb-3">
+                                <span class="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-aviation-100 text-aviation-700 dark:bg-aviation-950 dark:text-aviation-300">
+                                    MODE 2
+                                </span>
+                                <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                                    ★ NEW FEATURE
+                                </span>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-aviation-600 text-white shadow-md shadow-aviation-600/25 flex items-center justify-center mb-3 group-hover:scale-105 transition">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-base font-black text-slate-900 dark:text-white group-hover:text-aviation-600 dark:group-hover:text-aviation-400 transition">
+                                2. Compare DAU-02 Historical Reports
+                            </h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+                                Upload 2 or more DAU-02 Excel files for the same airport covering equivalent durations to generate grouped historical analytics, differences, and growth rates.
+                            </p>
+                        </div>
+                        <div class="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs font-bold text-aviation-600 dark:text-aviation-400">
+                            <span>Minimum 2 Files Required</span>
+                            <svg class="w-4 h-4 group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- ═══════════════════════════════════════════════════════════════════
+                 STEP 2.5: DAU-02 HISTORICAL COMPARISON MULTI-FILE UPLOAD
+                 ═══════════════════════════════════════════════════════════════════ --}}
+            <div x-show="currentStep === 'dau_compare_upload'" x-transition class="glass-card p-6 sm:p-8 shadow-xl space-y-6">
+
+                {{-- Navigation Header --}}
+                <div class="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+                    <button type="button" @click="currentStep = 'dau_mode'"
+                            class="text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white inline-flex items-center gap-1.5 transition cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
+                        <span>Back to Mode Selection</span>
+                    </button>
+
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-aviation-50 dark:bg-aviation-950 border border-aviation-200 dark:border-aviation-800 text-aviation-700 dark:text-aviation-300 text-xs font-bold font-mono">
+                        <span>#3 DAU-02 Historical Comparison</span>
+                    </div>
+                </div>
+
+                {{-- Header title & explanation --}}
+                <div>
+                    <h2 class="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                        COMPARISON REPORTS
+                    </h2>
+                    <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                        Upload minimum 2 DAU-02 reports for the same airport covering equivalent durations (e.g. 6 months vs 6 months).
+                    </p>
+                </div>
+
+                {{-- Comparison Rules Checklist Callout --}}
+                <div class="p-4 rounded-xl bg-aviation-50/60 dark:bg-aviation-950/40 border border-aviation-200 dark:border-aviation-800/60 text-xs space-y-2">
+                    <div class="font-bold text-aviation-800 dark:text-aviation-300 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>Critical Comparison Validation Criteria</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono">
+                        <div class="p-2 rounded-lg bg-white/80 dark:bg-navy-900/80 border border-aviation-100 dark:border-aviation-900/40">
+                            <span class="text-slate-400 block text-[10px] font-sans">Report Type:</span>
+                            <span class="font-bold text-slate-800 dark:text-slate-200">DAU-02 Only</span>
+                        </div>
+                        <div class="p-2 rounded-lg bg-white/80 dark:bg-navy-900/80 border border-aviation-100 dark:border-aviation-900/40">
+                            <span class="text-slate-400 block text-[10px] font-sans">Airport Match:</span>
+                            <span class="font-bold text-slate-800 dark:text-slate-200">Same Airport</span>
+                        </div>
+                        <div class="p-2 rounded-lg bg-white/80 dark:bg-navy-900/80 border border-aviation-100 dark:border-aviation-900/40">
+                            <span class="text-slate-400 block text-[10px] font-sans">Duration:</span>
+                            <span class="font-bold text-slate-800 dark:text-slate-200">Equal Period Length</span>
+                        </div>
+                        <div class="p-2 rounded-lg bg-white/80 dark:bg-navy-900/80 border border-aviation-100 dark:border-aviation-900/40">
+                            <span class="text-slate-400 block text-[10px] font-sans">Dates:</span>
+                            <span class="font-bold text-slate-800 dark:text-slate-200">Different Ranges</span>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Dynamic Report Cards Grid --}}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <template x-for="(card, idx) in compareReports" :key="card.id">
+                        <div class="rounded-xl border p-4 transition-all duration-200 relative flex flex-col justify-between"
+                             :class="card.status === 'valid'
+                                ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800'
+                                : (card.status === 'invalid'
+                                    ? 'bg-red-50/40 dark:bg-red-950/20 border-red-300 dark:border-red-800'
+                                    : 'bg-white dark:bg-navy-900/70 border-slate-200 dark:border-slate-800')">
+
+                            {{-- Card Top Header --}}
+                            <div class="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-800/60 mb-3">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-6 h-6 rounded-full bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300 font-mono font-bold text-xs flex items-center justify-center"
+                                          x-text="idx + 1"></span>
+                                    <span class="font-bold text-xs text-slate-900 dark:text-white" x-text="'Report #' + (idx + 1)"></span>
+                                    <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-navy-800 text-slate-500">DAU-02</span>
+                                </div>
+
+                                <div class="flex items-center gap-2">
+                                    <template x-if="card.status === 'valid'">
+                                        <span class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold font-mono">
+                                            ✓ VALID
+                                        </span>
+                                    </template>
+                                    <template x-if="card.status === 'invalid'">
+                                        <span class="px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/60 text-red-700 dark:text-red-300 text-[10px] font-bold font-mono">
+                                            ✕ REJECTED
+                                        </span>
+                                    </template>
+
+                                    {{-- Remove Button (Available if more than 2 cards exist or card is not empty) --}}
+                                    <template x-if="compareReports.length > 2 || card.status !== 'idle'">
+                                        <button type="button" @click="removeCompareReportCard(idx)"
+                                                class="text-slate-400 hover:text-red-600 dark:hover:text-red-400 text-xs font-bold px-1.5 py-0.5 rounded hover:bg-red-50 dark:hover:bg-navy-800 transition cursor-pointer"
+                                                title="Remove this report card">
+                                            Remove
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+
+                            {{-- Card Body: Idle / Drop Zone --}}
+                            <template x-if="card.status === 'idle'">
+                                <div>
+                                    <label :for="'compare_file_' + card.id"
+                                           @dragover.prevent="card.isDragging = true"
+                                           @dragleave.prevent="card.isDragging = false"
+                                           @drop.prevent="handleCompareFileDrop($event, idx)"
+                                           :class="card.isDragging ? 'border-aviation-500 bg-aviation-50/50 dark:bg-aviation-950/40' : 'border-slate-300 dark:border-slate-700 hover:border-aviation-400 hover:bg-slate-50/60 dark:hover:bg-navy-800/40'"
+                                           class="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed rounded-xl cursor-pointer transition p-4 text-center group">
+                                        <div class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-navy-800 flex items-center justify-center text-aviation-600 dark:text-aviation-400 group-hover:scale-105 transition mb-2">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
+                                            </svg>
+                                        </div>
+                                        <div class="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                            Drag &amp; Drop DAU-02 Excel
+                                        </div>
+                                        <p class="text-[11px] text-slate-400 mt-0.5 font-mono">
+                                            .xls, .xlsx (OASYS DAU-02)
+                                        </p>
+                                        <input :id="'compare_file_' + card.id" type="file" accept=".xls,.xlsx" class="hidden" @change="handleCompareFileSelect($event, idx)"/>
+                                    </label>
+                                </div>
+                            </template>
+
+                            {{-- Card Body: Uploading Spinner --}}
+                            <template x-if="card.status === 'uploading'">
+                                <div class="flex flex-col items-center justify-center h-36 p-4 text-center space-y-2">
+                                    <svg class="w-7 h-7 animate-spin text-aviation-600 dark:text-aviation-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                    <div class="text-xs font-bold text-slate-700 dark:text-slate-300">Validating DAU-02 &amp; Extracting Metadata...</div>
+                                    <div class="text-[10px] text-slate-400 font-mono truncate max-w-xs" x-text="card.fileName"></div>
+                                </div>
+                            </template>
+
+                            {{-- Card Body: Valid Card Details --}}
+                            <template x-if="card.status === 'valid' && card.data">
+                                <div class="space-y-2.5 text-xs py-1">
+                                    <div class="flex items-start justify-between gap-2">
+                                        <div>
+                                            <span class="text-[10px] font-mono text-slate-400 block">Airport:</span>
+                                            <span class="font-black text-slate-900 dark:text-white" x-text="card.data.airport"></span>
+                                        </div>
+                                        <span class="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-white dark:bg-navy-900 text-aviation-700 dark:text-aviation-300 border border-emerald-200 dark:border-emerald-800" x-text="card.data.airport_code"></span>
+                                    </div>
+
+                                    <div class="p-2.5 rounded-lg bg-white/90 dark:bg-navy-900/90 border border-emerald-100 dark:border-emerald-900/40 space-y-1 font-mono text-[11px]">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-slate-400 font-sans text-[10px]">Period:</span>
+                                            <span class="font-bold text-slate-800 dark:text-slate-200" x-text="card.data.display_date_range"></span>
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-slate-400 font-sans text-[10px]">Duration:</span>
+                                            <span class="font-bold text-emerald-600 dark:text-emerald-400" x-text="card.data.data_days + ' data days'"></span>
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-slate-400 font-sans text-[10px]">Records:</span>
+                                            <span class="text-slate-600 dark:text-slate-300" x-text="card.data.records_count + ' categories'"></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="pt-1 flex items-center justify-between">
+                                        <span class="text-[10px] text-slate-400 font-mono truncate max-w-[180px]" x-text="card.fileName"></span>
+                                        <button type="button" @click="resetCompareReportCard(idx)" class="text-[11px] font-bold underline text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white cursor-pointer">
+                                            Replace File
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
+
+                            {{-- Card Body: Invalid Card --}}
+                            <template x-if="card.status === 'invalid'">
+                                <div class="space-y-2 text-xs py-1 text-red-700 dark:text-red-300">
+                                    <div class="font-bold text-[11px] flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                        <span>Invalid Report File</span>
+                                    </div>
+                                    <div class="text-[11px] bg-white/80 dark:bg-navy-900/80 p-2 rounded-lg border border-red-200 dark:border-red-900/40 font-mono" x-text="card.error"></div>
+                                    <div class="flex justify-end pt-1">
+                                        <button type="button" @click="resetCompareReportCard(idx)" class="text-xs font-bold underline text-red-800 dark:text-red-300 hover:text-red-900 cursor-pointer">
+                                            Try Another File
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+
+                {{-- Add Another Report Button --}}
+                <div class="flex items-center justify-between pt-1">
+                    <button type="button" @click="addCompareReportCard()"
+                            class="px-4 py-2 rounded-xl text-xs font-bold border border-dashed border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-aviation-500 hover:text-aviation-600 dark:hover:text-aviation-400 hover:bg-slate-50 dark:hover:bg-navy-900 transition flex items-center gap-2 cursor-pointer shadow-2xs">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                        <span>+ Add Another Report</span>
+                    </button>
+                    <span class="text-[11px] text-slate-400 font-mono">2 files minimum (3+ supported)</span>
+                </div>
+
+                {{-- ══ COMPARISON VALIDATION SUMMARY BOX ═══════════════════════════ --}}
+                <div class="p-4 rounded-xl border space-y-3"
+                     :class="comparisonValidation.valid
+                        ? 'bg-emerald-50/50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800'
+                        : (comparisonValidation.errors && comparisonValidation.errors.length
+                            ? 'bg-red-50/50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
+                            : 'bg-slate-50 dark:bg-navy-950 border-slate-200 dark:border-slate-800')">
+
+                    <div class="flex items-center justify-between text-xs font-bold">
+                        <span class="uppercase tracking-wider text-[11px] flex items-center gap-2"
+                              :class="comparisonValidation.valid ? 'text-emerald-800 dark:text-emerald-300' : 'text-slate-700 dark:text-slate-300'">
+                            <span class="w-2 h-2 rounded-full" :class="comparisonValidation.valid ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'"></span>
+                            <span>COMPARISON VALIDATION CHECKLIST</span>
+                        </span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold"
+                              :class="comparisonValidation.valid ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300' : 'bg-slate-200 dark:bg-navy-800 text-slate-600 dark:text-slate-400'">
+                            <span x-text="comparisonValidation.valid ? '✓ READY TO COMPARE' : 'PENDING REQUIREMENTS'"></span>
+                        </span>
+                    </div>
+
+                    {{-- 5 Validation Pillars --}}
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px] font-mono">
+                        <div class="p-2 rounded-lg bg-white/90 dark:bg-navy-900/90 border border-slate-200 dark:border-slate-800 flex items-center gap-1.5">
+                            <span :class="comparisonValidation.checks && comparisonValidation.checks.same_dau_type ? 'text-emerald-600 font-black' : 'text-slate-400'">
+                                <span x-text="comparisonValidation.checks && comparisonValidation.checks.same_dau_type ? '✓' : '•'"></span>
+                            </span>
+                            <span class="truncate">Same DAU Type</span>
+                        </div>
+                        <div class="p-2 rounded-lg bg-white/90 dark:bg-navy-900/90 border border-slate-200 dark:border-slate-800 flex items-center gap-1.5">
+                            <span :class="comparisonValidation.checks && comparisonValidation.checks.same_airport ? 'text-emerald-600 font-black' : 'text-slate-400'">
+                                <span x-text="comparisonValidation.checks && comparisonValidation.checks.same_airport ? '✓' : '•'"></span>
+                            </span>
+                            <span class="truncate">Same Airport</span>
+                        </div>
+                        <div class="p-2 rounded-lg bg-white/90 dark:bg-navy-900/90 border border-slate-200 dark:border-slate-800 flex items-center gap-1.5">
+                            <span :class="comparisonValidation.checks && comparisonValidation.checks.different_period ? 'text-emerald-600 font-black' : 'text-slate-400'">
+                                <span x-text="comparisonValidation.checks && comparisonValidation.checks.different_period ? '✓' : '•'"></span>
+                            </span>
+                            <span class="truncate">Different Period</span>
+                        </div>
+                        <div class="p-2 rounded-lg bg-white/90 dark:bg-navy-900/90 border border-slate-200 dark:border-slate-800 flex items-center gap-1.5">
+                            <span :class="comparisonValidation.checks && comparisonValidation.checks.same_period_length ? 'text-emerald-600 font-black' : 'text-slate-400'">
+                                <span x-text="comparisonValidation.checks && comparisonValidation.checks.same_period_length ? '✓' : '•'"></span>
+                            </span>
+                            <span class="truncate">Same Duration</span>
+                        </div>
+                        <div class="p-2 rounded-lg bg-white/90 dark:bg-navy-900/90 border border-slate-200 dark:border-slate-800 flex items-center gap-1.5">
+                            <span :class="comparisonValidation.checks && comparisonValidation.checks.compatible_template ? 'text-emerald-600 font-black' : 'text-slate-400'">
+                                <span x-text="comparisonValidation.checks && comparisonValidation.checks.compatible_template ? '✓' : '•'"></span>
+                            </span>
+                            <span class="truncate">Template Match</span>
+                        </div>
+                    </div>
+
+                    {{-- Warning message for overlapping periods --}}
+                    <template x-if="comparisonValidation.warnings && comparisonValidation.warnings.length">
+                        <div class="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-xs text-amber-800 dark:text-amber-300 space-y-1">
+                            <template x-for="(w, wIdx) in comparisonValidation.warnings" :key="wIdx">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-amber-600 font-bold">⚠</span>
+                                    <span x-text="w"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
+                    {{-- Errors list --}}
+                    <template x-if="comparisonValidation.errors && comparisonValidation.errors.length">
+                        <div class="p-2.5 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 text-xs text-red-700 dark:text-red-300 space-y-1">
+                            <template x-for="(err, eIdx) in comparisonValidation.errors" :key="eIdx">
+                                <div class="flex items-start gap-1.5">
+                                    <span class="text-red-500 font-bold">✕</span>
+                                    <span x-text="err"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+
+                {{-- ══ GENERATE BUTTON ═════════════════════════════════════════════ --}}
+                <button type="button" @click="generateComparison()"
+                        :disabled="!comparisonValidation.valid || isGeneratingComparison"
+                        :class="!comparisonValidation.valid || isGeneratingComparison
+                            ? 'opacity-50 cursor-not-allowed bg-slate-400 dark:bg-slate-700'
+                            : 'btn-aviation-primary shadow-lg shadow-aviation-600/25 cursor-pointer'"
+                        class="w-full py-3 px-5 rounded-xl font-bold text-xs sm:text-sm text-white flex items-center justify-center gap-2 transition duration-200">
+                    <template x-if="!isGeneratingComparison">
+                        <span class="flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg>
+                            <span>Generate Historical Comparison</span>
+                        </span>
+                    </template>
+                    <template x-if="isGeneratingComparison">
+                        <span class="flex items-center gap-2">
+                            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            <span>Loading Comparison Dashboard...</span>
+                        </span>
+                    </template>
+                </button>
+
+            </div>
+
         </div>
     </main>
 
@@ -383,9 +773,29 @@
 function unifiedReportPortal() {
     return {
         theme: localStorage.getItem('slotwaves-theme') || 'light',
-        currentStep: 'select', // 'select' | 'upload'
+        currentStep: 'select', // 'select' | 'dau_mode' | 'upload' | 'dau_compare_upload'
         selectedReport: 'slot_schedule',
         reportRegistry: @json($allReportTypes),
+
+        // DAU-02 Generation Mode: 'single' | 'compare'
+        dauMode: 'single',
+        compareReports: [
+            { id: 1, status: 'idle', isDragging: false, file: null, fileName: '', error: null, data: null },
+            { id: 2, status: 'idle', isDragging: false, file: null, fileName: '', error: null, data: null }
+        ],
+        comparisonValidation: {
+            valid: false,
+            checks: {
+                same_dau_type: false,
+                same_airport: false,
+                different_period: false,
+                same_period_length: false,
+                compatible_template: false,
+            },
+            errors: [],
+            warnings: []
+        },
+        isGeneratingComparison: false,
 
         isDragging: false,
         selectedFile: null,
@@ -422,8 +832,191 @@ function unifiedReportPortal() {
 
         proceedToUpload() {
             if (!this.selectedReport) return;
+            if (this.selectedReport === 'DAU2') {
+                this.currentStep = 'dau_mode';
+                return;
+            }
             this.currentStep = 'upload';
             this.resetFile();
+        },
+
+        selectDauMode(mode) {
+            this.dauMode = mode;
+            if (mode === 'single') {
+                this.currentStep = 'upload';
+                this.resetFile();
+            } else if (mode === 'compare') {
+                this.currentStep = 'dau_compare_upload';
+                if (!this.compareReports || this.compareReports.length < 2) {
+                    this.initCompareReports();
+                } else {
+                    this.evaluateComparison();
+                }
+            }
+        },
+
+        initCompareReports() {
+            this.compareReports = [
+                { id: 1, status: 'idle', isDragging: false, file: null, fileName: '', error: null, data: null },
+                { id: 2, status: 'idle', isDragging: false, file: null, fileName: '', error: null, data: null }
+            ];
+            this.evaluateComparison();
+        },
+
+        addCompareReportCard() {
+            this.compareReports.push({
+                id: Date.now() + Math.random(),
+                status: 'idle',
+                isDragging: false,
+                file: null,
+                fileName: '',
+                error: null,
+                data: null
+            });
+            this.evaluateComparison();
+        },
+
+        removeCompareReportCard(idx) {
+            this.compareReports.splice(idx, 1);
+            if (this.compareReports.length < 2) {
+                this.addCompareReportCard();
+            }
+            this.evaluateComparison();
+        },
+
+        resetCompareReportCard(idx) {
+            if (this.compareReports[idx]) {
+                this.compareReports[idx].status = 'idle';
+                this.compareReports[idx].file = null;
+                this.compareReports[idx].fileName = '';
+                this.compareReports[idx].error = null;
+                this.compareReports[idx].data = null;
+            }
+            this.evaluateComparison();
+        },
+
+        handleCompareFileSelect(ev, idx) {
+            if (ev.target.files && ev.target.files.length) {
+                this.uploadCompareReportFile(ev.target.files[0], idx);
+            }
+        },
+
+        handleCompareFileDrop(ev, idx) {
+            if (this.compareReports[idx]) {
+                this.compareReports[idx].isDragging = false;
+            }
+            if (ev.dataTransfer.files && ev.dataTransfer.files.length) {
+                this.uploadCompareReportFile(ev.dataTransfer.files[0], idx);
+            }
+        },
+
+        async uploadCompareReportFile(file, idx) {
+            if (!this.compareReports[idx]) return;
+            const card = this.compareReports[idx];
+            card.status = 'uploading';
+            card.fileName = file.name;
+            card.error = null;
+
+            const csrfToken = document.querySelector('input[name="_token"]')?.value ||
+                              document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('report_type', 'DAU2');
+            formData.append('_token', csrfToken);
+
+            try {
+                const res = await fetch('{{ route("upload.compare-file") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    body: formData
+                });
+
+                let data = null;
+                try {
+                    data = await res.json();
+                } catch (jsonErr) {
+                    data = null;
+                }
+
+                if (res.ok && data && data.success) {
+                    card.status = 'valid';
+                    card.data = data;
+                    card.error = null;
+                } else {
+                    card.status = 'invalid';
+                    card.data = null;
+                    const errs = this.formatErrors(data);
+                    card.error = errs.join('; ');
+                }
+            } catch (err) {
+                card.status = 'invalid';
+                card.data = null;
+                card.error = 'Network error during upload. Please try again.';
+            }
+
+            this.evaluateComparison();
+        },
+
+        async evaluateComparison() {
+            const validCards = this.compareReports.filter(c => c.status === 'valid' && c.data && c.data.upload_id);
+
+            if (validCards.length < 2) {
+                this.comparisonValidation = {
+                    valid: false,
+                    checks: {
+                        same_dau_type: validCards.length > 0,
+                        same_airport: false,
+                        different_period: false,
+                        same_period_length: false,
+                        compatible_template: validCards.length > 0,
+                    },
+                    errors: validCards.length === 1 ? ['At least 2 DAU-02 reports must be uploaded to evaluate comparison.'] : [],
+                    warnings: []
+                };
+                return;
+            }
+
+            const csrfToken = document.querySelector('input[name="_token"]')?.value ||
+                              document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+            try {
+                const res = await fetch('{{ route("dau.compare.validate") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    body: JSON.stringify({
+                        report_ids: validCards.map(c => c.data.upload_id),
+                        _token: csrfToken
+                    })
+                });
+
+                const data = await res.json();
+                this.comparisonValidation = data;
+            } catch (err) {
+                this.comparisonValidation = {
+                    valid: false,
+                    checks: {},
+                    errors: ['Failed to validate comparison requirements.'],
+                    warnings: []
+                };
+            }
+        },
+
+        generateComparison() {
+            if (!this.comparisonValidation.valid || this.isGeneratingComparison) return;
+            this.isGeneratingComparison = true;
+            const validCards = this.compareReports.filter(c => c.status === 'valid' && c.data && c.data.upload_id);
+            const reportIds = validCards.map(c => c.data.upload_id).join(',');
+            window.location.href = `{{ route("dau.compare") }}?reports=${reportIds}`;
         },
 
         backToSelection() {

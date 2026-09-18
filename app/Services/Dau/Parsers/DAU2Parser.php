@@ -52,8 +52,14 @@ class DAU2Parser extends BaseDauParser
                     'crew'                => $this->toInt($row[$offset+8] ?? 0),
                     'extra_crew'          => $this->toInt($row[$offset+9] ?? 0),
                     'crew_total'          => $this->toInt($row[$offset+10] ?? 0),
+                    'baggage_arrival'     => $this->toInt($row[$offset+11] ?? 0),
+                    'baggage_departure'   => $this->toInt($row[$offset+12] ?? 0),
                     'baggage'             => $this->toInt($row[$offset+13] ?? 0),
+                    'cargo_arrival'       => $this->toInt($row[$offset+14] ?? 0),
+                    'cargo_departure'     => $this->toInt($row[$offset+15] ?? 0),
                     'cargo'               => $this->toInt($row[$offset+16] ?? 0),
+                    'pos_arrival'         => $this->toInt($row[$offset+17] ?? 0),
+                    'pos_departure'       => $this->toInt($row[$offset+18] ?? 0),
                     'pos'                 => $this->toInt($row[$offset+19] ?? 0),
                 ];
                 $records[] = $rec;
@@ -73,6 +79,14 @@ class DAU2Parser extends BaseDauParser
             }
         }
 
+        // Determine cargo unit from source text/headers
+        $cargoUnit = 'Kg';
+        $content = file_exists($filePath) ? @file_get_contents($filePath) : '';
+        if ($content && preg_match('/(?:KARGO|CARGO)\s*\((TONS?|KG|KGS?|LBS?)\)/i', $content, $m)) {
+            $cargoUnit = strtoupper(trim($m[1])) === 'TON' ? 'TON' : 'Kg';
+        }
+        $meta['cargo_unit'] = $cargoUnit;
+
         return [
             'report_type'      => 'DAU2',
             'report_title'     => 'Data Angkutan Udara Secara Total (DAU-02)',
@@ -81,9 +95,10 @@ class DAU2Parser extends BaseDauParser
             'summary'          => $summary,
             'records_count'    => count($records),
             'records'          => $records,
+            'cargo_unit'       => $cargoUnit,
             'columns'          => [
                 'Jenis Penerbangan', 'Pesawat (DTG/BRK/TOT)', 'Penumpang (DTG/BRK/Transit/Transfer/TOT)',
-                'Awak (Crew/Ex Crew/TOT)', 'Bagasi (Kg)', 'Kargo (Kg)', 'POS (Kg)'
+                'Awak (Crew/Ex Crew/TOT)', 'Bagasi (Kg)', "Kargo ({$cargoUnit})", 'POS (Kg)'
             ],
         ];
     }

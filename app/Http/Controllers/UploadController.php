@@ -8,6 +8,8 @@ use App\Services\FlightScheduleValidator;
 use App\Services\TimelineEngine;
 use App\Services\Dau\TemplateValidator;
 use App\Services\Dau\ReportTemplateRegistry;
+use App\Services\Dau\Parsers\BaseDauParser;
+use App\Services\Dau\DauComparisonService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
@@ -121,6 +123,81 @@ class UploadController extends Controller
 
         $status = $result['valid'] ? 200 : 422;
         return response()->json($result, $status);
+    }
+
+    /**
+     * Upload and parse a single DAU-02 file for the historical comparison pipeline.
+     */
+    public function uploadCompareFile(Request $request)
+    {
+        $file = $request->file('file') ?? $request->file('dau_file');
+        if (!$file) {
+            return response()->json([
+                'success'        => false,
+                'category'       => 'CORRUPTED_FILE',
+                'category_title' => 'NO FILE RECEIVED',
+                'error'          => 'No file provided for comparison upload.',
+                'errors'         => ['No file provided for comparison upload.'],
+            ], 422);
+        }
+
+        $validator = new TemplateValidator();
+        $validationResult = $validator->validate('DAU2', $file);
+
+        if (!$validationResult['valid']) {
+            return response()->json([
+                'success'        => false,
+                'category'       => $validationResult['category'] ?? 'INVALID_TEMPLATE',
+                'category_title' => $validationResult['category_title'] ?? 'INVALID TEMPLATE',
+                'error'          => $validationResult['error'] ?? implode('; ', $validationResult['errors']),
+                'errors'         => $validationResult['errors'] ?? [],
+                'validation'     => $validationResult,
+            ], 422);
+        }
+
+        $filename = $file->getClientOriginalName();
+        $storedPath = $file->store('uploads', 'local');
+
+        $airportCode = $validationResult['meta']['airport_code'] ?? 'CGK';
+        $airport = \App\Models\Airport::findByIata($airportCode) ?? \App\Models\Airport::findByIata('CGK');
+
+        $upload = Upload::create([
+            'original_filename' => $filename,
+            'stored_path'       => $storedPath,
+            'report_type'       => 'DAU2',
+            'status'            => 'pending',
+            'season'            => 'summer',
+            'airport_id'        => $airport?->id,
+        ]);
+
+        $this->executeDauProcessing($upload);
+
+        $startDate = BaseDauParser::normalizeOperationalDate($upload->report_data['meta']['start_date'] ?? null);
+        $endDate   = BaseDauParser::normalizeOperationalDate($upload->report_data['meta']['end_date'] ?? null);
+        $dataDays  = DauComparisonService::calculatePeriodDurationDays($startDate, $endDate);
+
+        $displayRange = ($startDate && $endDate)
+            ? (BaseDauParser::formatDisplayDate($startDate) . ' - ' . BaseDauParser::formatDisplayDate($endDate))
+            : ($upload->report_data['meta']['date_range'] ?? 'Unknown');
+
+        return response()->json([
+            'success'            => true,
+            'upload_id'          => $upload->id,
+            'filename'           => $filename,
+            'airport'            => $upload->report_data['meta']['airport'] ?? $airportCode,
+            'airport_code'       => $airportCode,
+            'airport_name'       => $upload->report_data['meta']['airport_name'] ?? 'Soekarno Hatta',
+            'start_date'         => $startDate,
+            'end_date'           => $endDate,
+            'date_range'         => $upload->report_data['meta']['date_range'] ?? null,
+            'display_date_range' => $displayRange,
+            'data_days'          => $dataDays,
+            'records_count'      => $upload->valid_rows,
+            'cargo_unit'         => $upload->report_data['cargo_unit'] ?? 'Kg',
+            'dau_type'           => 'DAU-02',
+            'report_type'        => 'DAU2',
+            'status'             => 'valid',
+        ]);
     }
 
     /**

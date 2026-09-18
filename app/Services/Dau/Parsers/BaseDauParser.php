@@ -53,8 +53,14 @@ abstract class BaseDauParser
             return [];
         }
 
-        // Match all <tr> elements
-        preg_match_all('/<tr[^>]*>(.*?)<\/tr>/is', $html, $trMatches);
+        // Match the first <table> element, matching original DOMDocument item(0) behavior
+        $tableHtml = $html;
+        if (preg_match('/<table[^>]*>(.*?)<\/table>/is', $html, $tableMatch)) {
+            $tableHtml = $tableMatch[1];
+        }
+
+        // Match all <tr> elements within the first table
+        preg_match_all('/<tr[^>]*>(.*?)<\/tr>/is', $tableHtml, $trMatches);
         if (empty($trMatches[1])) {
             return [];
         }

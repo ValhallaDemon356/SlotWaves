@@ -4,6 +4,7 @@ use App\Http\Controllers\UploadController;
 use App\Http\Controllers\TimelineController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MasterDataViewController;
+use App\Http\Controllers\DauComparisonController;
 use App\Http\Controllers\Api\MasterDataController;
 use Illuminate\Support\Facades\Route;
 
@@ -16,9 +17,16 @@ Route::get('/reset',                      [UploadController::class, 'resetSessio
 Route::get('/new-schedule',               [UploadController::class, 'resetSession'])->name('schedule.new');
 Route::post('/upload',                    [UploadController::class, 'store'])->name('upload.store');
 Route::post('/upload/validate-template',  [UploadController::class, 'validateTemplate'])->name('upload.validate-template');
+Route::post('/upload/compare-file',       [UploadController::class, 'uploadCompareFile'])->name('upload.compare-file');
 Route::post('/upload/chunk',              [UploadController::class, 'uploadChunk'])->name('upload.chunk');
 Route::get('/upload/{upload}/status',     [UploadController::class, 'status'])->name('upload.status');
 Route::post('/upload/{upload}/process',   [UploadController::class, 'process'])->name('upload.process');
+
+// ── DAU-02 Historical Comparison ───────────────────────────────────────────
+Route::post('/dau/compare/validate',      [DauComparisonController::class, 'validateComparison'])->name('dau.compare.validate');
+Route::get('/dau/compare',                [DauComparisonController::class, 'show'])->name('dau.compare');
+Route::get('/dau/compare/export/pdf',     [DauComparisonController::class, 'exportPdf'])->name('dau.compare.export.pdf');
+Route::get('/dau/compare/export/csv',     [DauComparisonController::class, 'exportCsv'])->name('dau.compare.export.csv');
 
 // ── DAU Reference Templates Download ───────────────────────────────────────
 Route::get('/templates/download/{reportType}', [\App\Http\Controllers\DauDashboardController::class, 'downloadTemplate'])->name('templates.download');
