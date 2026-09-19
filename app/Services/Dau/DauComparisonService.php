@@ -525,35 +525,60 @@ class DauComparisonService
         $firstKey = array_key_first($periods);
         $cargoUnit = $firstKey ? ($periods[$firstKey]['metrics']['cargo_unit'] ?? 'Kg') : 'Kg';
 
-        foreach ($periods as $pKey => $p) {
-            $isBase = ($pKey === $baselinePeriodKey);
+        $metricConfigs = [
+            'passenger' => ['unit' => 'Pax', 'field' => 'passenger'],
+            'aircraft'  => ['unit' => 'Movements', 'field' => 'aircraft'],
+            'cargo'     => ['unit' => $cargoUnit, 'field' => 'cargo'],
+        ];
 
-            $trend['passenger'][] = [
-                'key'         => $pKey,
-                'label'       => $p['label'],
-                'short_label' => $p['short_label'],
-                'value'       => (float)($p['raw_totals']['passenger'] ?? ($p['metrics']['passenger_total'] ?? ($p['metrics']['passenger'] ?? 0))),
-                'unit'        => 'Pax',
-                'is_baseline' => $isBase,
-            ];
+        foreach ($metricConfigs as $mKey => $cfg) {
+            $prevVal = null;
+            $prevLabel = null;
+            $unit = $cfg['unit'];
+            $field = $cfg['field'];
 
-            $trend['aircraft'][] = [
-                'key'         => $pKey,
-                'label'       => $p['label'],
-                'short_label' => $p['short_label'],
-                'value'       => (float)($p['raw_totals']['aircraft'] ?? ($p['metrics']['aircraft_total'] ?? ($p['metrics']['aircraft'] ?? 0))),
-                'unit'        => 'Movements',
-                'is_baseline' => $isBase,
-            ];
+            foreach ($periods as $pKey => $p) {
+                $isBase = ($pKey === $baselinePeriodKey);
+                $currVal = (float)($p['raw_totals'][$field] ?? ($p['metrics'][$field . '_total'] ?? ($p['metrics'][$field] ?? 0)));
 
-            $trend['cargo'][] = [
-                'key'         => $pKey,
-                'label'       => $p['label'],
-                'short_label' => $p['short_label'],
-                'value'       => (float)($p['raw_totals']['cargo'] ?? ($p['metrics']['cargo_total'] ?? ($p['metrics']['cargo'] ?? 0))),
-                'unit'        => $cargoUnit,
-                'is_baseline' => $isBase,
-            ];
+                $growthPct = null;
+                $growthFmt = 'N/A';
+
+                if ($prevVal !== null) {
+                    if ($prevVal > 0) {
+                        $growthPct = round((($currVal - $prevVal) / $prevVal) * 100, 2);
+                        $growthFmt = ($growthPct > 0 ? '+' : '') . number_format($growthPct, 2) . '%';
+                    } elseif ($prevVal == 0) {
+                        if ($currVal == 0) {
+                            $growthPct = 0.0;
+                            $growthFmt = '0.00%';
+                        } else {
+                            $growthPct = null;
+                            $growthFmt = 'N/A';
+                        }
+                    } else {
+                        // In case previous value is negative
+                        $growthPct = round((($currVal - $prevVal) / abs($prevVal)) * 100, 2);
+                        $growthFmt = ($growthPct > 0 ? '+' : '') . number_format($growthPct, 2) . '%';
+                    }
+                }
+
+                $trend[$mKey][] = [
+                    'key'            => $pKey,
+                    'label'          => $p['label'],
+                    'short_label'    => $p['short_label'],
+                    'value'          => $currVal,
+                    'unit'           => $unit,
+                    'is_baseline'    => $isBase,
+                    'previous_value' => $prevVal,
+                    'previous_label' => $prevLabel,
+                    'growth_pct'     => $growthPct,
+                    'growth_fmt'     => $growthFmt,
+                ];
+
+                $prevVal = $currVal;
+                $prevLabel = $p['short_label'] ?? $p['label'];
+            }
         }
 
         return [

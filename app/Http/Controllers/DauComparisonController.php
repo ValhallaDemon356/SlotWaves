@@ -172,34 +172,37 @@ class DauComparisonController extends Controller
 
         $comparison = DauComparisonService::buildComparisonModel($reportsData, $filters, $baselinePeriodKey ?: null);
 
-        // Pre-render high resolution vector SVG charts for PDF
+        // Pre-render high resolution retina combo charts for PDF
         $charts = [
-            'trend_passenger' => \App\Services\Dau\DauComparisonChartRenderer::renderTrendLineSvg(
+            'trend_passenger' => \App\Services\Dau\DauComparisonChartRenderer::renderOperationalComboChartPng(
                 $comparison['operational_trend']['passenger'],
                 'Pax',
                 '#2563eb',
+                '#f59e0b',
                 $comparison['baseline_period_key'],
                 'Pergerakan Penumpang',
                 680,
-                140
+                145
             ),
-            'trend_aircraft' => \App\Services\Dau\DauComparisonChartRenderer::renderTrendLineSvg(
+            'trend_aircraft' => \App\Services\Dau\DauComparisonChartRenderer::renderOperationalComboChartPng(
                 $comparison['operational_trend']['aircraft'],
                 'Movements',
                 '#059669',
+                '#d97706',
                 $comparison['baseline_period_key'],
                 'Pergerakan Pesawat',
                 680,
-                140
+                145
             ),
-            'trend_cargo' => \App\Services\Dau\DauComparisonChartRenderer::renderTrendLineSvg(
+            'trend_cargo' => \App\Services\Dau\DauComparisonChartRenderer::renderOperationalComboChartPng(
                 $comparison['operational_trend']['cargo'],
                 $comparison['cargo_unit'],
                 '#d97706',
+                '#2563eb',
                 $comparison['baseline_period_key'],
                 'Pergerakan Kargo',
                 680,
-                140
+                145
             ),
             'bar_passenger' => \App\Services\Dau\DauComparisonChartRenderer::renderHistoricalBarSvg(
                 array_values($comparison['periods']),

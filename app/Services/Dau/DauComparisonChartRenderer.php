@@ -66,26 +66,28 @@ class DauComparisonChartRenderer
     }
 
     /**
-     * Render a high-resolution retina raster PNG chart for trend line with data points and baseline marker.
+     * Render a high-resolution retina raster PNG dual-axis combo chart (Bar actuals + Line growth %).
      * Generates a 2x scaled image for razor-sharp rendering inside PDF.
      *
-     * @param array $points Array of points ['short_label' => ..., 'value' => ..., 'is_baseline' => ...]
+     * @param array $points Array of points ['short_label' => ..., 'value' => ..., 'growth_pct' => ..., 'growth_fmt' => ..., 'is_baseline' => ...]
      * @param string $unit Metric unit (Pax, Movements, Kg)
-     * @param string $strokeHex Hex color code
+     * @param string $barHex Hex color code for Actual Volume bars
+     * @param string $lineHex Hex color code for Period Growth line
      * @param string|null $baselineKey Baseline key identifier
      * @param string $title Metric title
      * @param int $w Display width in px
      * @param int $h Display height in px
      * @return string Data URI (data:image/png;base64,...)
      */
-    public static function renderTrendLineSvg(
+    public static function renderOperationalComboChartPng(
         array $points,
         string $unit,
-        string $strokeHex = '#2563eb',
+        string $barHex = '#2563eb',
+        string $lineHex = '#f59e0b',
         ?string $baselineKey = null,
         string $title = '',
         int $w = 680,
-        int $h = 145
+        int $h = 150
     ): string {
         $scale = 2; // 2x Retina resolution
         $width = $w * $scale;
@@ -99,91 +101,191 @@ class DauComparisonChartRenderer
         $white = imagecolorallocate($im, 255, 255, 255);
         imagefilledrectangle($im, 0, 0, $width, $height, $white);
 
-        $padL = 65 * $scale;
-        $padR = 40 * $scale;
-        $padT = 25 * $scale;
+        $padL = 70 * $scale; // Left Y-axis (Actuals)
+        $padR = 55 * $scale; // Right Y-axis (Growth %)
+        $padT = 28 * $scale;
         $padB = 30 * $scale;
 
         $chartW = $width - $padL - $padR;
         $chartH = $height - $padT - $padB;
 
+        // 1. Left Y-Axis Scale (Actual Metric Value)
         $vals = array_map(fn($p) => (float)($p['value'] ?? 0), $points);
         $maxVal = count($vals) ? max($vals) : 1;
         if ($maxVal <= 0) $maxVal = 1;
-
         $maxTick = self::getNiceCeiling($maxVal);
+
+        // 2. Right Y-Axis Scale (Period-over-period Growth %)
+        $growths = [];
+        foreach ($points as $p) {
+            if (isset($p['growth_pct']) && $p['growth_pct'] !== null && is_numeric($p['growth_pct'])) {
+                $growths[] = (float)$p['growth_pct'];
+            }
+        }
+
+        if (empty($growths)) {
+            $growthMin = -20.0;
+            $growthMax = 100.0;
+        } else {
+            $minG = min($growths);
+            $maxG = max($growths);
+            $bottom = ($minG < 0) ? floor($minG / 20.0) * 20.0 : 0.0;
+            $top = ($maxG > 0) ? ceil($maxG / 20.0) * 20.0 : 20.0;
+            if ($top - $bottom < 40.0) {
+                $top = $bottom + 40.0;
+            }
+            $growthMin = $bottom;
+            $growthMax = $top;
+        }
+        $growthRange = ($growthMax - $growthMin) ?: 1.0;
 
         $gridColor = imagecolorallocate($im, 226, 232, 240);
         $textDark = imagecolorallocate($im, 15, 23, 42);
         $textMuted = imagecolorallocate($im, 100, 116, 139);
 
-        // Y-axis grid lines and labels
-        for ($i = 0; $i <= 4; $i++) {
-            $y = $padT + $chartH - ($i / 4) * $chartH;
-            $tv = ($maxTick / 4) * $i;
-            $lbl = self::formatShortNumber($tv);
+        [$br, $bg, $bb] = self::hexToRgb($barHex);
+        $barColor = imagecolorallocate($im, $br, $bg, $bb);
 
-            // Subtle dashed line
-            for ($gx = $padL; $gx < $padL + $chartW; $gx += 8 * $scale) {
-                imageline($im, (int)$gx, (int)$y, (int)min($gx + 4 * $scale, $padL + $chartW), (int)$y, $gridColor);
-            }
-            $lblX = (int)($padL - (strlen($lbl) * 7 * $scale) - 4 * $scale);
-            $lblY = (int)($y - 6 * $scale);
-            imagestring($im, 2, max(2, $lblX), max(0, $lblY), $lbl, $textMuted);
-        }
+        [$lr, $lg, $lb] = self::hexToRgb($lineHex);
+        $lineColor = imagecolorallocate($im, $lr, $lg, $lb);
 
-        $n = count($points);
-        $coords = [];
-        for ($i = 0; $i < $n; $i++) {
-            $p = $points[$i];
-            $v = (float)($p['value'] ?? 0);
-            $x = $n === 1 ? ($padL + $chartW / 2) : ($padL + ($i / ($n - 1)) * $chartW);
-            $y = $padT + $chartH - ($v / $maxTick) * $chartH;
-            $coords[] = ['x' => (int)$x, 'y' => (int)$y, 'p' => $p, 'v' => $v];
-        }
-
-        // Connecting trend line
-        [$sr, $sg, $sb] = self::hexToRgb($strokeHex);
-        $lineColor = imagecolorallocate($im, $sr, $sg, $sb);
-        imagesetthickness($im, 3 * $scale);
-        for ($i = 0; $i < count($coords) - 1; $i++) {
-            imageline($im, $coords[$i]['x'], $coords[$i]['y'], $coords[$i+1]['x'], $coords[$i+1]['y'], $lineColor);
-        }
-
-        // Distinct data points and baseline marker
         $amber = imagecolorallocate($im, 245, 158, 11);
         $amberLight = imagecolorallocate($im, 254, 243, 199);
 
-        foreach ($coords as $c) {
-            $x = $c['x'];
-            $y = $c['y'];
-            $p = $c['p'];
-            $isBase = !empty($p['is_baseline']) || ($baselineKey && (($p['key'] ?? '') === $baselineKey || ($p['short_label'] ?? '') === $baselineKey));
+        // Y-axis grid lines and Dual Axis Ticks
+        for ($i = 0; $i <= 4; $i++) {
+            $y = $padT + $chartH - ($i / 4) * $chartH;
 
-            if ($isBase) {
-                // Outer gold halo
-                imagefilledellipse($im, $x, $y, 16 * $scale, 16 * $scale, $amberLight);
-                imagesetthickness($im, 2 * $scale);
-                imageellipse($im, $x, $y, 16 * $scale, 16 * $scale, $amber);
-                imagefilledellipse($im, $x, $y, 8 * $scale, 8 * $scale, $amber);
-            } else {
-                imagefilledellipse($im, $x, $y, 10 * $scale, 10 * $scale, $white);
-                imagesetthickness($im, 2 * $scale);
-                imageellipse($im, $x, $y, 10 * $scale, 10 * $scale, $lineColor);
-                imagefilledellipse($im, $x, $y, 6 * $scale, 6 * $scale, $lineColor);
+            // Horizontal dashed grid line
+            for ($gx = $padL; $gx < $padL + $chartW; $gx += 8 * $scale) {
+                imageline($im, (int)$gx, (int)$y, (int)min($gx + 4 * $scale, $padL + $chartW), (int)$y, $gridColor);
             }
 
-            // Numeric value label above point
-            $valFmt = number_format($c['v']);
-            $valX = (int)($x - (strlen($valFmt) * 3.5 * $scale));
-            $valY = (int)($y - 16 * $scale);
-            imagestring($im, 2, max(2, $valX), max(0, $valY), $valFmt, $textDark);
+            // Left Y-Axis Tick (Actual value)
+            $tv = ($maxTick / 4) * $i;
+            $lblLeft = self::formatShortNumber($tv);
+            $lblLeftX = (int)($padL - (strlen($lblLeft) * 7 * $scale) - 4 * $scale);
+            $lblLeftY = (int)($y - 6 * $scale);
+            imagestring($im, 2, max(2, $lblLeftX), max(0, $lblLeftY), $lblLeft, $textMuted);
+
+            // Right Y-Axis Tick (Growth %)
+            $gv = $growthMin + ($growthRange / 4) * $i;
+            $lblRight = ($gv > 0 ? '+' : '') . round($gv) . '%';
+            $lblRightX = (int)($padL + $chartW + 6 * $scale);
+            $lblRightY = (int)($y - 6 * $scale);
+            imagestring($im, 2, $lblRightX, max(0, $lblRightY), $lblRight, $lineColor);
+        }
+
+        // Axis Titles
+        imagestring($im, 2, (int)(10 * $scale), (int)(10 * $scale), $unit, $textMuted);
+        $rightTitle = 'Growth %';
+        $rtX = (int)($width - (strlen($rightTitle) * 7 * $scale) - 10 * $scale);
+        imagestring($im, 2, $rtX, (int)(10 * $scale), $rightTitle, $lineColor);
+
+        // Legend at top center-right
+        $legActual = 'Actual ' . ($unit === 'Pax' ? 'Passenger' : ($unit === 'Movements' ? 'Aircraft' : 'Cargo'));
+        $legGrowth = 'Period Growth %';
+        $legX = (int)($padL + $chartW / 2 - 40 * $scale);
+        $legY = (int)(10 * $scale);
+
+        // Actual movement box
+        imagefilledrectangle($im, $legX, $legY + 2 * $scale, $legX + 8 * $scale, $legY + 8 * $scale, $barColor);
+        imagestring($im, 2, $legX + 11 * $scale, $legY, $legActual, $textDark);
+
+        // Growth line dot
+        $legX2 = $legX + strlen($legActual) * 7 * $scale + 24 * $scale;
+        imageline($im, $legX2, $legY + 5 * $scale, $legX2 + 12 * $scale, $legY + 5 * $scale, $lineColor);
+        imagefilledellipse($im, $legX2 + 6 * $scale, $legY + 5 * $scale, 6 * $scale, 6 * $scale, $lineColor);
+        imagestring($im, 2, $legX2 + 16 * $scale, $legY, $legGrowth, $textDark);
+
+        $n = max(1, count($points));
+        $slotW = $chartW / $n;
+        $barMaxW = 34 * $scale;
+        $barW = min($barMaxW, $slotW * 0.42);
+
+        $lineCoords = [];
+
+        // 3. Draw Bar Layer & collect Growth Line points
+        for ($i = 0; $i < $n; $i++) {
+            $p = $points[$i];
+            $slotCenterX = $padL + ($i + 0.5) * $slotW;
+            $v = (float)($p['value'] ?? 0);
+            $isBase = !empty($p['is_baseline']) || ($baselineKey && (($p['key'] ?? '') === $baselineKey || ($p['short_label'] ?? '') === $baselineKey));
+
+            // Bar dimensions
+            $barH = ($v / $maxTick) * $chartH;
+            if ($barH < 0) $barH = 0;
+            $bx1 = (int)($slotCenterX - $barW / 2);
+            $bx2 = (int)($slotCenterX + $barW / 2);
+            $by2 = (int)($padT + $chartH);
+            $by1 = (int)($by2 - $barH);
+
+            if ($barH > 0) {
+                imagefilledrectangle($im, $bx1, $by1, $bx2, $by2, $barColor);
+                if ($isBase) {
+                    // Subtle baseline golden halo around bar
+                    imagesetthickness($im, 2 * $scale);
+                    imagerectangle($im, $bx1 - 2 * $scale, $by1 - 2 * $scale, $bx2 + 2 * $scale, $by2, $amber);
+                }
+
+                // Short value label above bar
+                $valLbl = self::formatShortNumber($v);
+                $valLblX = (int)($slotCenterX - (strlen($valLbl) * 3 * $scale));
+                $valLblY = (int)($by1 - 12 * $scale);
+                imagestring($im, 1, max(2, $valLblX), max(0, $valLblY), $valLbl, $textDark);
+            } else {
+                // Zero baseline notch
+                $gray = imagecolorallocate($im, 203, 213, 225);
+                imagefilledrectangle($im, $bx1, $by2 - 2 * $scale, $bx2, $by2, $gray);
+            }
 
             // X-axis period label
             $xl = $p['short_label'] ?? $p['label'] ?? '';
-            $xlX = (int)($x - (strlen($xl) * 4 * $scale));
+            if ($isBase) {
+                $xl .= ' [Base]';
+            }
+            $xlX = (int)($slotCenterX - (strlen($xl) * 3.5 * $scale));
             $xlY = (int)($height - 18 * $scale);
-            imagestring($im, 3, max(2, $xlX), max(0, $xlY), $xl, $textDark);
+            imagestring($im, 2, max(2, $xlX), max(0, $xlY), $xl, $textDark);
+
+            // Record growth line coordinate if available
+            if (isset($p['growth_pct']) && $p['growth_pct'] !== null && is_numeric($p['growth_pct'])) {
+                $gp = (float)$p['growth_pct'];
+                $gy = $padT + $chartH - (($gp - $growthMin) / $growthRange) * $chartH;
+                $gy = max($padT, min($padT + $chartH, $gy));
+                $lineCoords[] = [
+                    'x'   => (int)$slotCenterX,
+                    'y'   => (int)$gy,
+                    'gp'  => $gp,
+                    'fmt' => $p['growth_fmt'] ?? (($gp > 0 ? '+' : '') . number_format($gp, 1) . '%'),
+                    'is_base' => $isBase,
+                ];
+            }
+        }
+
+        // 4. Draw Growth Line + Points Layer
+        if (count($lineCoords) > 1) {
+            imagesetthickness($im, 3 * $scale);
+            for ($i = 0; $i < count($lineCoords) - 1; $i++) {
+                imageline($im, $lineCoords[$i]['x'], $lineCoords[$i]['y'], $lineCoords[$i+1]['x'], $lineCoords[$i+1]['y'], $lineColor);
+            }
+        }
+
+        foreach ($lineCoords as $lc) {
+            $lx = $lc['x'];
+            $ly = $lc['y'];
+
+            // Distinct circular point
+            imagefilledellipse($im, $lx, $ly, 10 * $scale, 10 * $scale, $white);
+            imagesetthickness($im, 2 * $scale);
+            imageellipse($im, $lx, $ly, 10 * $scale, 10 * $scale, $lineColor);
+            imagefilledellipse($im, $lx, $ly, 6 * $scale, 6 * $scale, $lineColor);
+
+            // Growth % label near point
+            $gFmt = $lc['fmt'];
+            $gX = (int)($lx - (strlen($gFmt) * 3 * $scale));
+            $gY = (int)($ly - 14 * $scale);
+            imagestring($im, 1, max(2, $gX), max(0, $gY), $gFmt, $lineColor);
         }
 
         ob_start();
@@ -192,6 +294,22 @@ class DauComparisonChartRenderer
         imagedestroy($im);
 
         return 'data:image/png;base64,' . base64_encode($png);
+    }
+
+    /**
+     * Backwards-compatible alias for operational trend combo chart.
+     */
+    public static function renderTrendLineSvg(
+        array $points,
+        string $unit,
+        string $strokeHex = '#2563eb',
+        ?string $baselineKey = null,
+        string $title = '',
+        int $w = 680,
+        int $h = 145
+    ): string {
+        $lineHex = ($strokeHex === '#d97706') ? '#2563eb' : '#f59e0b';
+        return self::renderOperationalComboChartPng($points, $unit, $strokeHex, $lineHex, $baselineKey, $title, $w, $h);
     }
 
     /**

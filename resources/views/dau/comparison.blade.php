@@ -252,7 +252,7 @@
         </section>
 
         {{-- ═══════════════════════════════════════════════════════════════════
-             SECTION 1: KINERJA OPERASIONAL BANDARA (TREND LINES + POINTS)
+             SECTION 1: KINERJA OPERASIONAL BANDARA (COMBO CHARTS: BAR + LINE)
              ═══════════════════════════════════════════════════════════════════ --}}
         <section class="space-y-4">
             <div class="border-b border-slate-200/80 dark:border-slate-800/80 pb-3">
@@ -261,39 +261,39 @@
                         SECTION 1 &bull; OPERATIONAL PERFORMANCE
                     </span>
                     <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900">
-                        Trend Analysis (Lines + Points)
+                        Operational Combo Analysis (Bar + Line Growth)
                     </span>
                 </div>
                 <h2 class="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-0.5">
                     KINERJA OPERASIONAL BANDARA
                 </h2>
                 <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
-                    {{ $comparison['airport_name'] }} ({{ $comparison['airport_code'] }}) &mdash; Progression across uploaded periods on independent scales.
+                    {{ $comparison['airport_name'] }} ({{ $comparison['airport_code'] }}) &mdash; Actual movement volumes (Bar) with period-over-period growth % (Line) on independent dual scales.
                     <span class="text-amber-600 dark:text-amber-400 font-bold">&bull; Subtle marker denotes Baseline period.</span>
                 </p>
             </div>
 
-            {{-- 3 Major Trend Line Cards --}}
+            {{-- 3 Major Combo Chart Cards --}}
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
                 {{-- Trend Metric 1: Pergerakan Penumpang --}}
                 <div class="glass-card p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md flex flex-col justify-between">
                     <div>
-                        <div class="flex items-center justify-between gap-2 mb-2">
+                        <div class="flex items-center justify-between gap-2 mb-1">
                             <span class="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 font-mono flex items-center gap-1.5">
                                 <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
                                 <span>1. PERGERAKAN PENUMPANG</span>
                             </span>
                             <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold">
-                                Pax Scale
+                                Pax &bull; Growth %
                             </span>
                         </div>
-                        <div class="text-[11px] text-slate-400 font-medium mb-3">
-                            Trend line connected across all uploaded periods
+                        <div class="text-[11px] text-slate-500 dark:text-slate-400 font-medium mb-3">
+                            Actual Pax + Period Growth
                         </div>
 
-                        {{-- Line Chart Canvas --}}
-                        <div class="h-48 relative">
+                        {{-- Combo Chart Canvas --}}
+                        <div class="h-56 relative">
                             <canvas id="chart-trend-passenger"></canvas>
                         </div>
                     </div>
@@ -302,21 +302,21 @@
                 {{-- Trend Metric 2: Pergerakan Pesawat --}}
                 <div class="glass-card p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md flex flex-col justify-between">
                     <div>
-                        <div class="flex items-center justify-between gap-2 mb-2">
+                        <div class="flex items-center justify-between gap-2 mb-1">
                             <span class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-mono flex items-center gap-1.5">
                                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
                                 <span>2. PERGERAKAN PESAWAT</span>
                             </span>
                             <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold">
-                                Movements Scale
+                                Movements &bull; Growth %
                             </span>
                         </div>
-                        <div class="text-[11px] text-slate-400 font-medium mb-3">
-                            Trend line connected across all uploaded periods
+                        <div class="text-[11px] text-slate-500 dark:text-slate-400 font-medium mb-3">
+                            Actual Movements + Period Growth
                         </div>
 
-                        {{-- Line Chart Canvas --}}
-                        <div class="h-48 relative">
+                        {{-- Combo Chart Canvas --}}
+                        <div class="h-56 relative">
                             <canvas id="chart-trend-aircraft"></canvas>
                         </div>
                     </div>
@@ -325,21 +325,21 @@
                 {{-- Trend Metric 3: Pergerakan Kargo --}}
                 <div class="glass-card p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md flex flex-col justify-between">
                     <div>
-                        <div class="flex items-center justify-between gap-2 mb-2">
+                        <div class="flex items-center justify-between gap-2 mb-1">
                             <span class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 font-mono flex items-center gap-1.5">
                                 <span class="w-2.5 h-2.5 rounded-full bg-amber-600"></span>
                                 <span>3. PERGERAKAN KARGO</span>
                             </span>
                             <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-bold"
-                                  x-text="comparisonData.cargo_unit + ' Scale'">
+                                  x-text="comparisonData.cargo_unit + ' &bull; Growth %'">
                             </span>
                         </div>
-                        <div class="text-[11px] text-slate-400 font-medium mb-3">
-                            Trend line connected across all uploaded periods
+                        <div class="text-[11px] text-slate-500 dark:text-slate-400 font-medium mb-3">
+                            Actual Cargo + Period Growth
                         </div>
 
-                        {{-- Line Chart Canvas --}}
-                        <div class="h-48 relative">
+                        {{-- Combo Chart Canvas --}}
+                        <div class="h-56 relative">
                             <canvas id="chart-trend-cargo"></canvas>
                         </div>
                     </div>
@@ -574,6 +574,20 @@
 
 @push('scripts')
 <script>
+const _dauCharts = { trend: {}, historical: {} };
+
+function deepFreeze(obj) {
+    if (obj && typeof obj === 'object' && !Object.isFrozen(obj)) {
+        Object.freeze(obj);
+        for (const key of Object.keys(obj)) {
+            deepFreeze(obj[key]);
+        }
+    }
+    return obj;
+}
+
+const _comparisonData = deepFreeze(@json($comparison));
+
 function dauComparisonDashboard() {
     return {
         theme: localStorage.getItem('slotwaves-theme') || 'light',
@@ -582,10 +596,7 @@ function dauComparisonDashboard() {
         activeTargetKey: '',
         historicalScope: @json($filters['hist_scope'] ?? 'ALL'),
         historicalDirection: @json($filters['hist_direction'] ?? 'ALL'),
-        comparisonData: @json($comparison),
-
-        trendCharts: {},
-        historicalCharts: {},
+        comparisonData: _comparisonData,
 
         get periodsList() {
             return Object.values(this.comparisonData.periods || {});
@@ -750,56 +761,121 @@ function dauComparisonDashboard() {
             const periods = this.periodsList;
             const labels = periods.map(p => p.short_label || p.label);
 
-            const buildLineChart = (canvasId, metricKey, label, strokeColor, unit) => {
+            const buildComboChart = (canvasId, metricKey, metricLabel, barColor, lineColor, unit) => {
                 const ctx = document.getElementById(canvasId);
                 if (!ctx) return;
-                if (this.trendCharts[canvasId]) {
-                    this.trendCharts[canvasId].destroy();
+                const existing = Chart.getChart(canvasId) || _dauCharts.trend[canvasId];
+                if (existing) {
+                    existing.destroy();
                 }
 
                 const trendPts = this.comparisonData.operational_trend[metricKey] || [];
                 const values = trendPts.map(pt => pt.value);
+                const growths = trendPts.map(pt => pt.growth_pct);
                 const baselineIdx = periods.findIndex(p => p.key === this.baselinePeriodKey);
 
-                const pointRadii = values.map((_, i) => (i === baselineIdx ? 8 : 5));
-                const pointBorderColors = values.map((_, i) => (i === baselineIdx ? '#f59e0b' : strokeColor));
-                const pointBgColors = values.map((_, i) => (i === baselineIdx ? '#fef3c7' : '#ffffff'));
-                const pointBorderWidths = values.map((_, i) => (i === baselineIdx ? 3 : 2));
+                // Bar styling per point (highlight baseline)
+                const barBgColors = values.map((_, i) => i === baselineIdx ? (isDark ? 'rgba(245, 158, 11, 0.75)' : 'rgba(217, 119, 6, 0.85)') : (isDark ? barColor + 'bb' : barColor));
+                const barBorderColors = values.map((_, i) => i === baselineIdx ? '#f59e0b' : barColor);
+                const barBorderWidths = values.map((_, i) => i === baselineIdx ? 2 : 1);
 
-                this.trendCharts[canvasId] = new Chart(ctx, {
-                    type: 'line',
+                // Line point styling (gold ring for baseline)
+                const pointRadii = growths.map((g, i) => g === null ? 0 : (i === baselineIdx ? 7 : 5));
+                const pointBorderColors = growths.map((_, i) => i === baselineIdx ? '#f59e0b' : lineColor);
+                const pointBgColors = growths.map((_, i) => i === baselineIdx ? '#fef3c7' : '#ffffff');
+                const pointBorderWidths = growths.map((_, i) => i === baselineIdx ? 3 : 2);
+
+                _dauCharts.trend[canvasId] = new Chart(ctx, {
+                    type: 'bar',
                     data: {
                         labels: labels,
-                        datasets: [{
-                            label: label,
-                            data: values,
-                            borderColor: strokeColor,
-                            backgroundColor: strokeColor,
-                            borderWidth: 2.5,
-                            fill: false,
-                            tension: 0.2,
-                            pointRadius: pointRadii,
-                            pointHoverRadius: 9,
-                            pointBackgroundColor: pointBgColors,
-                            pointBorderColor: pointBorderColors,
-                            pointBorderWidth: pointBorderWidths,
-                        }]
+                        datasets: [
+                            {
+                                type: 'bar',
+                                label: 'Actual ' + metricLabel,
+                                data: values,
+                                yAxisID: 'y',
+                                backgroundColor: barBgColors,
+                                borderColor: barBorderColors,
+                                borderWidth: barBorderWidths,
+                                borderRadius: 6,
+                                maxBarThickness: 36,
+                                order: 2
+                            },
+                            {
+                                type: 'line',
+                                label: 'Period Growth %',
+                                data: growths,
+                                yAxisID: 'yGrowth',
+                                borderColor: lineColor,
+                                backgroundColor: lineColor,
+                                borderWidth: 2.5,
+                                fill: false,
+                                tension: 0.2,
+                                spanGaps: false,
+                                pointRadius: pointRadii,
+                                pointHoverRadius: 8,
+                                pointBackgroundColor: pointBgColors,
+                                pointBorderColor: pointBorderColors,
+                                pointBorderWidth: pointBorderWidths,
+                                order: 1
+                            }
+                        ]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'nearest',
+                            intersect: true
+                        },
                         plugins: {
-                            legend: { display: false },
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                align: 'end',
+                                labels: {
+                                    color: textColor,
+                                    font: { family: 'JetBrains Mono', size: 9, weight: 'bold' },
+                                    boxWidth: 10,
+                                    usePointStyle: true
+                                }
+                            },
                             tooltip: {
                                 callbacks: {
                                     title: (items) => {
                                         const idx = items[0].dataIndex;
-                                        return periods[idx].label + ' (' + periods[idx].short_label + ') — ' + periods[idx].display_range;
+                                        const pt = trendPts[idx];
+                                        const p = periods[idx];
+                                        const isBase = (pt?.key === this.baselinePeriodKey);
+                                        return (p ? (p.label + ' (' + (p.short_label || p.label) + ')') : (pt?.label || '')) + (isBase ? ' [BASELINE]' : '');
                                     },
-                                    label: (item) => {
-                                        const isBase = periods[item.dataIndex].key === this.baselinePeriodKey;
-                                        return label + ': ' + Number(item.raw).toLocaleString() + ' ' + unit + (isBase ? ' [BASELINE]' : '');
-                                    }
+                                    beforeBody: (items) => {
+                                        const item = items[0];
+                                        const idx = item.dataIndex;
+                                        const pt = trendPts[idx] || {};
+                                        const isLine = item.dataset.type === 'line';
+
+                                        if (!isLine) {
+                                            return [
+                                                'METRIC: ' + metricLabel,
+                                                'VALUE: ' + Number(pt.value || 0).toLocaleString() + ' ' + unit,
+                                                'PERIOD GROWTH: ' + (pt.growth_fmt || 'N/A'),
+                                                pt.previous_value !== null && pt.previous_value !== undefined
+                                                    ? 'Previous: ' + Number(pt.previous_value).toLocaleString() + ' ' + unit + (pt.previous_label ? ' (' + pt.previous_label + ')' : '')
+                                                    : 'Previous: — (Initial Period)'
+                                            ];
+                                        } else {
+                                            return [
+                                                'GROWTH: ' + (pt.growth_fmt || 'N/A'),
+                                                'CURRENT: ' + Number(pt.value || 0).toLocaleString() + ' ' + unit,
+                                                pt.previous_value !== null && pt.previous_value !== undefined
+                                                    ? 'PREVIOUS: ' + Number(pt.previous_value).toLocaleString() + ' ' + unit + (pt.previous_label ? ' (' + pt.previous_label + ')' : '')
+                                                    : 'PREVIOUS: — (Initial Period)'
+                                            ];
+                                        }
+                                    },
+                                    label: () => ''
                                 }
                             }
                         },
@@ -809,11 +885,36 @@ function dauComparisonDashboard() {
                                 ticks: { color: textColor, font: { family: 'JetBrains Mono', size: 10 } }
                             },
                             y: {
+                                type: 'linear',
+                                position: 'left',
+                                beginAtZero: true,
                                 grid: { color: gridColor },
+                                title: {
+                                    display: true,
+                                    text: unit,
+                                    color: textColor,
+                                    font: { family: 'JetBrains Mono', size: 9, weight: 'bold' }
+                                },
                                 ticks: {
                                     color: textColor,
                                     font: { family: 'JetBrains Mono', size: 9 },
-                                    callback: (v) => v >= 1000000 ? (v / 1000000).toFixed(1) + 'M' : (v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v)
+                                    callback: (v) => v >= 1000000000 ? (v / 1000000000).toFixed(1) + 'B' : (v >= 1000000 ? (v / 1000000).toFixed(1) + 'M' : (v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v))
+                                }
+                            },
+                            yGrowth: {
+                                type: 'linear',
+                                position: 'right',
+                                grid: { drawOnChartArea: false },
+                                title: {
+                                    display: true,
+                                    text: 'Growth %',
+                                    color: lineColor,
+                                    font: { family: 'JetBrains Mono', size: 9, weight: 'bold' }
+                                },
+                                ticks: {
+                                    color: lineColor,
+                                    font: { family: 'JetBrains Mono', size: 9 },
+                                    callback: (v) => (v > 0 ? '+' : '') + Number(v).toFixed(0) + '%'
                                 }
                             }
                         }
@@ -821,9 +922,9 @@ function dauComparisonDashboard() {
                 });
             };
 
-            buildLineChart('chart-trend-passenger', 'passenger', 'Passenger Movement', '#2563eb', 'Pax');
-            buildLineChart('chart-trend-aircraft', 'aircraft', 'Aircraft Movement', '#059669', 'Movements');
-            buildLineChart('chart-trend-cargo', 'cargo', 'Cargo Movement', '#d97706', this.comparisonData.cargo_unit);
+            buildComboChart('chart-trend-passenger', 'passenger', 'Passenger', '#2563eb', '#f59e0b', 'Pax');
+            buildComboChart('chart-trend-aircraft',  'aircraft',  'Aircraft',  '#059669', '#d97706', 'Movements');
+            buildComboChart('chart-trend-cargo',     'cargo',     'Cargo',     '#d97706', '#2563eb', this.comparisonData.cargo_unit);
         },
 
         renderHistoricalCharts() {
@@ -837,13 +938,14 @@ function dauComparisonDashboard() {
             const buildBarChart = (canvasId, metricKey, unit) => {
                 const ctx = document.getElementById(canvasId);
                 if (!ctx) return;
-                if (this.historicalCharts[canvasId]) {
-                    this.historicalCharts[canvasId].destroy();
+                const existing = Chart.getChart(canvasId) || _dauCharts.historical[canvasId];
+                if (existing) {
+                    existing.destroy();
                 }
 
                 const datasets = this.getHistoricalDatasets(metricKey);
 
-                this.historicalCharts[canvasId] = new Chart(ctx, {
+                _dauCharts.historical[canvasId] = new Chart(ctx, {
                     type: 'bar',
                     data: {
                         labels: labels,
@@ -905,7 +1007,7 @@ function dauComparisonDashboard() {
             ];
 
             configs.forEach(c => {
-                const chart = this.historicalCharts[c.id];
+                const chart = Chart.getChart(c.id) || _dauCharts.historical[c.id];
                 if (chart) {
                     const newDatasets = this.getHistoricalDatasets(c.key);
                     chart.data.datasets = newDatasets;
