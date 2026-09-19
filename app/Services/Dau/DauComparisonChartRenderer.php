@@ -144,12 +144,12 @@ class DauComparisonChartRenderer
         $ceilCargo = self::getNiceCeiling($maxCargo);
 
         // Colors
-        $gridColor  = imagecolorallocate($im, 226, 232, 240);
+        $gridColor  = imagecolorallocate($im, 241, 245, 249); // Subtle #f1f5f9
         $textDark   = imagecolorallocate($im, 15, 23, 42);
         $textMuted  = imagecolorallocate($im, 100, 116, 139);
         $paxColor   = imagecolorallocate($im, 37, 99, 235);   // #2563eb
         $acColor    = imagecolorallocate($im, 5, 150, 105);   // #059669
-        $cargoColor = imagecolorallocate($im, 217, 119, 6);   // #d97706
+        $cargoColor = imagecolorallocate($im, 234, 88, 12);   // #ea580c
         $amber      = imagecolorallocate($im, 245, 158, 11);  // #f59e0b
         $grayNotch  = imagecolorallocate($im, 203, 213, 225);
 

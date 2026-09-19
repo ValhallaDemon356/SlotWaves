@@ -269,22 +269,8 @@
                         KINERJA OPERASIONAL BANDARA
                     </h2>
                     <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
-                        {{ $comparison['airport_name'] }} ({{ $comparison['airport_code'] }}) &mdash; Passenger, Aircraft &amp; Cargo Movement Trend across uploaded periods.
-                        <span class="text-amber-600 dark:text-amber-400 font-bold">&bull; Subtle marker denotes Baseline period.</span>
+                        {{ $comparison['airport_name'] }} ({{ $comparison['airport_code'] }}) &mdash; Passenger, Aircraft &amp; Cargo Movement Trend
                     </p>
-                </div>
-
-                {{-- Visual Legend Pill --}}
-                <div class="flex items-center gap-3 text-xs font-mono bg-slate-50 dark:bg-navy-900/60 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800/80">
-                    <span class="flex items-center gap-1.5 font-bold text-blue-600 dark:text-blue-400">
-                        <span class="w-3 h-3 rounded-xs bg-blue-600 inline-block"></span> Passenger (Bar)
-                    </span>
-                    <span class="flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400">
-                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block"></span> Aircraft (Line)
-                    </span>
-                    <span class="flex items-center gap-1.5 font-bold text-amber-600 dark:text-amber-400">
-                        <span class="w-2.5 h-2.5 rounded-full bg-amber-600 inline-block"></span> Cargo (Line)
-                    </span>
                 </div>
             </div>
 
@@ -300,22 +286,77 @@
             {{-- ONE Large Combined Chart Card --}}
             <template x-if="periodsList.length > 0">
                 <div class="glass-card p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pb-3 border-b border-slate-100 dark:border-slate-800/60">
+                    {{-- Chart Header: Title, Subtitle, and Compact Legend Row --}}
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-slate-100 dark:border-slate-800/60">
                         <div>
-                            <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 font-mono flex items-center gap-2">
-                                <span>Pax and Flight Trend</span>
-                                <span class="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-navy-800 text-slate-600 dark:text-slate-400 font-normal">
+                            <h3 class="text-sm font-black text-slate-900 dark:text-white font-mono tracking-tight flex items-center gap-2">
+                                <span>PAX AND FLIGHT TREND</span>
+                                <span class="sr-only">Pax and Flight Trend</span>
+                                <span class="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-navy-800 text-slate-500 dark:text-slate-400 font-normal">
                                     3 Independent Dynamic Scales
                                 </span>
                             </h3>
-                            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                                Left: Passenger (Pax) &bull; Right 1: Aircraft Movement (A/C) &bull; Right 2: Cargo (<span x-text="comparisonData.cargo_unit || 'Kg'"></span>)
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+                                Passenger &bull; Aircraft &bull; Cargo
                             </p>
+                        </div>
+
+                        {{-- Compact Horizontal Legend Row --}}
+                        <div class="flex items-center gap-4 text-xs font-mono bg-slate-50/80 dark:bg-navy-900/60 px-3.5 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800/80">
+                            <span class="inline-flex items-center gap-1.5 font-bold text-blue-600 dark:text-blue-400">
+                                <span class="w-3 h-3 rounded-xs bg-blue-600 inline-block shadow-2xs"></span> Passenger
+                            </span>
+                            <span class="inline-flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400">
+                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block shadow-2xs"></span> Aircraft
+                            </span>
+                            <span class="inline-flex items-center gap-1.5 font-bold text-amber-600 dark:text-amber-400">
+                                <span class="w-2.5 h-2.5 rounded-full bg-amber-600 inline-block shadow-2xs"></span> Cargo
+                            </span>
                         </div>
                     </div>
 
-                    {{-- Unified Chart Canvas Container (Full Width, 420px height) --}}
-                    <div class="h-96 sm:h-[440px] w-full relative">
+                    {{-- Executive Summary Metric Strip (Syncs with latest/hovered period) --}}
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-4" x-show="activePeriodMetric">
+                        {{-- Period Status Chip --}}
+                        <div class="p-2.5 rounded-xl bg-slate-50/80 dark:bg-navy-900/40 border border-slate-200/70 dark:border-slate-800/70 flex flex-col justify-center">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+                                    <span x-text="activePeriodMetric?.isHovered ? 'HOVERED PERIOD' : 'LATEST PERIOD'"></span>
+                                </span>
+                                <template x-if="activePeriodMetric?.isBaseline">
+                                    <span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-bold">BASELINE</span>
+                                </template>
+                            </div>
+                            <div class="text-sm font-black text-slate-800 dark:text-slate-100 font-mono mt-0.5" x-text="activePeriodMetric?.label"></div>
+                        </div>
+
+                        {{-- Passenger Metric Chip --}}
+                        <div class="p-2.5 rounded-xl bg-blue-50/40 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 flex flex-col justify-center">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 font-mono">PASSENGER</span>
+                            <div class="text-sm font-black text-blue-700 dark:text-blue-300 font-mono mt-0.5">
+                                <span x-text="formatMetricCompact(activePeriodMetric?.passenger)"></span> <span class="text-[11px] font-semibold text-blue-500">Pax</span>
+                            </div>
+                        </div>
+
+                        {{-- Aircraft Metric Chip --}}
+                        <div class="p-2.5 rounded-xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 flex flex-col justify-center">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-mono">AIRCRAFT</span>
+                            <div class="text-sm font-black text-emerald-700 dark:text-emerald-300 font-mono mt-0.5">
+                                <span x-text="formatMetricCompact(activePeriodMetric?.aircraft)"></span> <span class="text-[11px] font-semibold text-emerald-500">A/C</span>
+                            </div>
+                        </div>
+
+                        {{-- Cargo Metric Chip --}}
+                        <div class="p-2.5 rounded-xl bg-amber-50/40 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 flex flex-col justify-center">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 font-mono">CARGO</span>
+                            <div class="text-sm font-black text-amber-700 dark:text-amber-300 font-mono mt-0.5">
+                                <span x-text="formatMetricCompact(activePeriodMetric?.cargo)"></span> <span class="text-[11px] font-semibold text-amber-500" x-text="comparisonData.cargo_unit || 'Kg'"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Unified Chart Canvas Container (Full Width, ~440-460px height) --}}
+                    <div class="h-96 sm:h-[450px] w-full relative" @mouseleave="hoveredPeriodIndex = null">
                         <canvas id="chart-operational-combined"></canvas>
                     </div>
                 </div>
@@ -571,9 +612,47 @@ function dauComparisonDashboard() {
         historicalScope: @json($filters['hist_scope'] ?? 'ALL'),
         historicalDirection: @json($filters['hist_direction'] ?? 'ALL'),
         comparisonData: _comparisonData,
+        hoveredPeriodIndex: null,
 
         get periodsList() {
             return Object.values(this.comparisonData.periods || {});
+        },
+
+        get activePeriodMetric() {
+            const periods = this.periodsList;
+            if (!periods || periods.length === 0) return null;
+            const idx = (this.hoveredPeriodIndex !== null && this.hoveredPeriodIndex >= 0 && this.hoveredPeriodIndex < periods.length)
+                ? this.hoveredPeriodIndex
+                : (periods.length - 1);
+            const p = periods[idx];
+            if (!p) return null;
+
+            const paxTrend = this.comparisonData.operational_trend?.passenger || [];
+            const acTrend  = this.comparisonData.operational_trend?.aircraft || [];
+            const cargoTrend = this.comparisonData.operational_trend?.cargo || [];
+
+            const pVal = paxTrend[idx]?.value !== undefined ? paxTrend[idx].value : (p.metrics?.passenger ?? 0);
+            const aVal = acTrend[idx]?.value !== undefined ? acTrend[idx].value : (p.metrics?.aircraft ?? 0);
+            const cVal = cargoTrend[idx]?.value !== undefined ? cargoTrend[idx].value : (p.metrics?.cargo ?? 0);
+
+            return {
+                label: p.short_label || p.label,
+                fullLabel: p.label,
+                isLatest: (idx === periods.length - 1),
+                isHovered: (this.hoveredPeriodIndex !== null),
+                isBaseline: (p.key === this.baselinePeriodKey),
+                passenger: Number(pVal || 0),
+                aircraft: Number(aVal || 0),
+                cargo: Number(cVal || 0),
+            };
+        },
+
+        formatMetricCompact(v) {
+            if (v === null || v === undefined) return '0';
+            if (v >= 1000000000) return (v / 1000000000).toFixed(2) + 'B';
+            if (v >= 1000000) return (v / 1000000).toFixed(2) + 'M';
+            if (v >= 1000) return (v / 1000).toFixed(2) + 'K';
+            return Number(v).toLocaleString();
         },
 
         get baselinePeriod() {
@@ -743,7 +822,7 @@ function dauComparisonDashboard() {
 
             const isDark = document.documentElement.classList.contains('dark');
             const textColor = isDark ? '#94a3b8' : '#64748b';
-            const gridColor = isDark ? 'rgba(51, 65, 85, 0.3)' : 'rgba(226, 232, 240, 0.6)';
+            const gridColor = isDark ? 'rgba(51, 65, 85, 0.25)' : 'rgba(241, 245, 249, 0.9)';
 
             const labels = periods.map(p => p.short_label || p.label);
             const baselineIdx = periods.findIndex(p => p.key === this.baselinePeriodKey);
@@ -769,12 +848,10 @@ function dauComparisonDashboard() {
             const acValues = periodMetrics.map(m => m.aircraft);
             const cargoValues = periodMetrics.map(m => m.cargo);
 
-            // Passenger Bar Styling (Subtle baseline highlight)
-            const paxBarBg = paxValues.map((_, i) => i === baselineIdx
-                ? (isDark ? 'rgba(245, 158, 11, 0.75)' : 'rgba(217, 119, 6, 0.85)')
-                : (isDark ? 'rgba(37, 99, 235, 0.8)' : '#2563eb'));
-            const paxBarBorder = paxValues.map((_, i) => i === baselineIdx ? '#f59e0b' : '#2563eb');
-            const paxBarBorderWidth = paxValues.map((_, i) => i === baselineIdx ? 2 : 1);
+            // Passenger Bar Styling (Primary series: solid blue; baseline marked by subtle amber border outline)
+            const paxBarBg = paxValues.map(() => isDark ? 'rgba(37, 99, 235, 0.85)' : 'rgba(37, 99, 235, 0.9)');
+            const paxBarBorder = paxValues.map((_, i) => i === baselineIdx ? '#f59e0b' : 'transparent');
+            const paxBarBorderWidth = paxValues.map((_, i) => i === baselineIdx ? 2 : 0);
 
             const cargoUnit = this.comparisonData.cargo_unit || 'Kg';
 
@@ -782,11 +859,11 @@ function dauComparisonDashboard() {
                 if (v === null || v === undefined) return '0';
                 if (v >= 1000000000) return (v / 1000000000).toFixed(1) + 'B';
                 if (v >= 1000000) return (v / 1000000).toFixed(1) + 'M';
-                if (v >= 1000) return (v / 1000).toFixed(0) + 'k';
+                if (v >= 1000) return (v / 1000).toFixed(0) + 'K';
                 return Number(v).toLocaleString();
             };
 
-            // Custom baseline vertical line plugin to mark baseline period cleanly
+            // Custom baseline vertical line plugin: subtle 1px dashed marker that never obscures data points
             const baselineMarkerPlugin = {
                 id: 'baselineMarker',
                 afterDraw: (chart) => {
@@ -801,20 +878,22 @@ function dauComparisonDashboard() {
 
                     chartCtx.save();
                     chartCtx.beginPath();
-                    chartCtx.setLineDash([4, 4]);
-                    chartCtx.strokeStyle = '#f59e0b';
-                    chartCtx.lineWidth = 1.5;
+                    chartCtx.setLineDash([3, 3]);
+                    chartCtx.strokeStyle = isDark ? 'rgba(245, 158, 11, 0.65)' : 'rgba(217, 119, 6, 0.6)';
+                    chartCtx.lineWidth = 1;
                     chartCtx.moveTo(x, top);
                     chartCtx.lineTo(x, bottom);
                     chartCtx.stroke();
 
-                    chartCtx.fillStyle = '#f59e0b';
-                    chartCtx.font = 'bold 9px "JetBrains Mono", monospace';
+                    chartCtx.fillStyle = isDark ? '#fbbf24' : '#d97706';
+                    chartCtx.font = 'bold 8px "JetBrains Mono", monospace';
                     chartCtx.textAlign = 'center';
-                    chartCtx.fillText('BASELINE', x, top - 6);
+                    chartCtx.fillText('BASELINE', x, top - 4);
                     chartCtx.restore();
                 }
             };
+
+            const self = this;
 
             _dauCharts.combined = new Chart(ctx, {
                 type: 'bar',
@@ -829,8 +908,9 @@ function dauComparisonDashboard() {
                             backgroundColor: paxBarBg,
                             borderColor: paxBarBorder,
                             borderWidth: paxBarBorderWidth,
-                            borderRadius: 6,
-                            maxBarThickness: 44,
+                            hoverBackgroundColor: '#1d4ed8',
+                            borderRadius: 4,
+                            maxBarThickness: 42,
                             order: 3
                         },
                         {
@@ -842,13 +922,16 @@ function dauComparisonDashboard() {
                             backgroundColor: '#059669',
                             borderWidth: 2.5,
                             fill: false,
-                            tension: 0.2,
+                            tension: 0.12,
                             spanGaps: true,
-                            pointRadius: 6,
-                            pointHoverRadius: 9,
+                            pointRadius: 5,
+                            pointHoverRadius: 7,
                             pointBackgroundColor: '#ffffff',
                             pointBorderColor: '#059669',
                             pointBorderWidth: 2.5,
+                            pointHoverBackgroundColor: '#059669',
+                            pointHoverBorderColor: '#ffffff',
+                            pointHoverBorderWidth: 2,
                             order: 1
                         },
                         {
@@ -856,17 +939,20 @@ function dauComparisonDashboard() {
                             label: 'Cargo Movement',
                             data: cargoValues,
                             yAxisID: 'yCargo',
-                            borderColor: '#d97706',
-                            backgroundColor: '#d97706',
+                            borderColor: '#ea580c',
+                            backgroundColor: '#ea580c',
                             borderWidth: 2.5,
                             fill: false,
-                            tension: 0.2,
+                            tension: 0.12,
                             spanGaps: true,
-                            pointRadius: 6,
-                            pointHoverRadius: 9,
+                            pointRadius: 5,
+                            pointHoverRadius: 7,
                             pointBackgroundColor: '#ffffff',
-                            pointBorderColor: '#d97706',
+                            pointBorderColor: '#ea580c',
                             pointBorderWidth: 2.5,
+                            pointHoverBackgroundColor: '#ea580c',
+                            pointHoverBorderColor: '#ffffff',
+                            pointHoverBorderWidth: 2,
                             order: 2
                         }
                     ]
@@ -875,63 +961,104 @@ function dauComparisonDashboard() {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            top: 16,
+                            bottom: 6,
+                            left: 4,
+                            right: 6
+                        }
+                    },
+                    onHover: (event, activeElements) => {
+                        if (activeElements && activeElements.length > 0) {
+                            const idx = activeElements[0].index;
+                            if (self.hoveredPeriodIndex !== idx) {
+                                self.hoveredPeriodIndex = idx;
+                            }
+                        } else {
+                            if (self.hoveredPeriodIndex !== null) {
+                                self.hoveredPeriodIndex = null;
+                            }
+                        }
+                    },
                     interaction: {
                         mode: 'index',
                         intersect: false
                     },
                     plugins: {
                         legend: {
-                            display: true,
-                            position: 'top',
-                            align: 'end',
-                            labels: {
-                                color: textColor,
-                                font: { family: 'JetBrains Mono', size: 10, weight: 'bold' },
-                                boxWidth: 10,
-                                usePointStyle: true
-                            }
+                            display: false // Using compact horizontal HTML legend in card header to eliminate overlap
                         },
                         tooltip: {
+                            backgroundColor: isDark ? 'rgba(15, 23, 42, 0.96)' : 'rgba(15, 23, 42, 0.94)',
+                            padding: { top: 8, bottom: 8, left: 12, right: 12 },
+                            cornerRadius: 8,
+                            borderWidth: 1,
+                            borderColor: isDark ? 'rgba(148, 163, 184, 0.15)' : 'rgba(255, 255, 255, 0.1)',
+                            titleFont: { family: 'JetBrains Mono', size: 11, weight: 'bold' },
+                            titleColor: '#ffffff',
+                            titleSpacing: 6,
+                            bodyFont: { family: 'JetBrains Mono', size: 10.5 },
+                            bodyColor: '#e2e8f0',
+                            bodySpacing: 4,
+                            boxWidth: 8,
+                            boxHeight: 8,
+                            boxPadding: 4,
+                            usePointStyle: true,
+                            multiKeyBackground: 'transparent',
                             callbacks: {
                                 title: (items) => {
                                     const idx = items[0].dataIndex;
                                     const p = periods[idx];
-                                    const isBase = (p?.key === this.baselinePeriodKey);
-                                    return (p ? (p.label + ' (' + (p.short_label || p.label) + ')') : labels[idx]) + (isBase ? ' [BASELINE]' : '');
+                                    const isBase = (p?.key === self.baselinePeriodKey);
+                                    const pLabel = p ? (p.label + ' (' + (p.short_label || p.label) + ')') : labels[idx];
+                                    return pLabel + (isBase ? '  [BASELINE]' : '');
                                 },
                                 label: (item) => {
                                     const val = item.raw;
                                     if (val === null || val === undefined) {
-                                        return item.dataset.label + ': N/A';
+                                        return ' ' + item.dataset.label + ': N/A';
                                     }
                                     let unit = 'Pax';
                                     if (item.dataset.yAxisID === 'yAircraft') unit = 'A/C';
                                     else if (item.dataset.yAxisID === 'yCargo') unit = cargoUnit;
-                                    return item.dataset.label + ': ' + Number(val).toLocaleString() + ' ' + unit;
+                                    return ' ' + item.dataset.label + ': ' + Number(val).toLocaleString() + ' ' + unit;
                                 }
                             }
                         }
                     },
                     scales: {
                         x: {
-                            grid: { display: false },
-                            ticks: { color: textColor, font: { family: 'JetBrains Mono', size: 10 } }
+                            border: { display: false },
+                            grid: { display: false, drawTicks: false },
+                            ticks: {
+                                color: textColor,
+                                font: { family: 'JetBrains Mono', size: 10, weight: '500' },
+                                padding: 6
+                            }
                         },
                         yPassenger: {
                             type: 'linear',
                             position: 'left',
                             beginAtZero: true,
-                            grace: '5%',
-                            grid: { color: gridColor },
+                            grace: '8%',
+                            border: { display: false },
+                            grid: {
+                                color: gridColor,
+                                drawTicks: false
+                            },
                             title: {
                                 display: true,
                                 text: 'Passenger (Pax)',
-                                color: '#2563eb',
-                                font: { family: 'JetBrains Mono', size: 9, weight: 'bold' }
+                                color: isDark ? '#93c5fd' : '#2563eb',
+                                font: { family: 'JetBrains Mono', size: 9, weight: '600' },
+                                padding: { bottom: 2 }
                             },
                             ticks: {
-                                color: '#2563eb',
+                                color: isDark ? '#94a3b8' : '#64748b',
                                 font: { family: 'JetBrains Mono', size: 9 },
+                                maxTicksLimit: 5,
+                                padding: 6,
                                 callback: (v) => formatShort(v)
                             }
                         },
@@ -939,17 +1066,21 @@ function dauComparisonDashboard() {
                             type: 'linear',
                             position: 'right',
                             beginAtZero: true,
-                            grace: '5%',
-                            grid: { drawOnChartArea: false },
+                            grace: '8%',
+                            border: { display: false },
+                            grid: { drawOnChartArea: false, drawTicks: false },
                             title: {
                                 display: true,
                                 text: 'Aircraft (A/C)',
-                                color: '#059669',
-                                font: { family: 'JetBrains Mono', size: 9, weight: 'bold' }
+                                color: isDark ? '#6ee7b7' : '#059669',
+                                font: { family: 'JetBrains Mono', size: 9, weight: '600' },
+                                padding: { bottom: 2 }
                             },
                             ticks: {
-                                color: '#059669',
+                                color: isDark ? '#6ee7b7' : '#059669',
                                 font: { family: 'JetBrains Mono', size: 9 },
+                                maxTicksLimit: 5,
+                                padding: 6,
                                 callback: (v) => formatShort(v)
                             }
                         },
@@ -957,17 +1088,21 @@ function dauComparisonDashboard() {
                             type: 'linear',
                             position: 'right',
                             beginAtZero: true,
-                            grace: '5%',
-                            grid: { drawOnChartArea: false },
+                            grace: '8%',
+                            border: { display: false },
+                            grid: { drawOnChartArea: false, drawTicks: false },
                             title: {
                                 display: true,
                                 text: 'Cargo (' + cargoUnit + ')',
-                                color: '#d97706',
-                                font: { family: 'JetBrains Mono', size: 9, weight: 'bold' }
+                                color: isDark ? '#fdba74' : '#ea580c',
+                                font: { family: 'JetBrains Mono', size: 9, weight: '600' },
+                                padding: { bottom: 2 }
                             },
                             ticks: {
-                                color: '#d97706',
+                                color: isDark ? '#fdba74' : '#ea580c',
                                 font: { family: 'JetBrains Mono', size: 9 },
+                                maxTicksLimit: 5,
+                                padding: 6,
                                 callback: (v) => formatShort(v)
                             }
                         }
