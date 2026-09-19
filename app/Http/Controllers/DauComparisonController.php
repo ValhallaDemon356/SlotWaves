@@ -174,6 +174,15 @@ class DauComparisonController extends Controller
 
         // Pre-render high resolution retina combo charts for PDF
         $charts = [
+            'combined_operational' => \App\Services\Dau\DauComparisonChartRenderer::renderCombinedOperationalChartPng(
+                array_values($comparison['periods']),
+                $comparison['operational_trend'],
+                $comparison['cargo_unit'] ?? 'Kg',
+                $comparison['baseline_period_key'],
+                'Pax and Flight Trend',
+                700,
+                240
+            ),
             'trend_passenger' => \App\Services\Dau\DauComparisonChartRenderer::renderOperationalComboChartPng(
                 $comparison['operational_trend']['passenger'],
                 'Pax',

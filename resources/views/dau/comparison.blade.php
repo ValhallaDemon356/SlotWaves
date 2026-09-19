@@ -252,100 +252,74 @@
         </section>
 
         {{-- ═══════════════════════════════════════════════════════════════════
-             SECTION 1: KINERJA OPERASIONAL BANDARA (COMBO CHARTS: BAR + LINE)
+             SECTION 1: KINERJA OPERASIONAL BANDARA (ONE COMBINED OPERATIONAL CHART)
              ═══════════════════════════════════════════════════════════════════ --}}
         <section class="space-y-4">
-            <div class="border-b border-slate-200/80 dark:border-slate-800/80 pb-3">
-                <div class="flex items-center gap-2">
-                    <span class="text-[11px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400 font-mono">
-                        SECTION 1 &bull; OPERATIONAL PERFORMANCE
+            <div class="border-b border-slate-200/80 dark:border-slate-800/80 pb-3 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400 font-mono">
+                            SECTION 1 &bull; OPERATIONAL PERFORMANCE
+                        </span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900">
+                            Combined Operational Trend
+                        </span>
+                    </div>
+                    <h2 class="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-0.5">
+                        KINERJA OPERASIONAL BANDARA
+                    </h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+                        {{ $comparison['airport_name'] }} ({{ $comparison['airport_code'] }}) &mdash; Passenger, Aircraft &amp; Cargo Movement Trend across uploaded periods.
+                        <span class="text-amber-600 dark:text-amber-400 font-bold">&bull; Subtle marker denotes Baseline period.</span>
+                    </p>
+                </div>
+
+                {{-- Visual Legend Pill --}}
+                <div class="flex items-center gap-3 text-xs font-mono bg-slate-50 dark:bg-navy-900/60 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800/80">
+                    <span class="flex items-center gap-1.5 font-bold text-blue-600 dark:text-blue-400">
+                        <span class="w-3 h-3 rounded-xs bg-blue-600 inline-block"></span> Passenger (Bar)
                     </span>
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900">
-                        Operational Combo Analysis (Bar + Line Growth)
+                    <span class="flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block"></span> Aircraft (Line)
+                    </span>
+                    <span class="flex items-center gap-1.5 font-bold text-amber-600 dark:text-amber-400">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-600 inline-block"></span> Cargo (Line)
                     </span>
                 </div>
-                <h2 class="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-0.5">
-                    KINERJA OPERASIONAL BANDARA
-                </h2>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
-                    {{ $comparison['airport_name'] }} ({{ $comparison['airport_code'] }}) &mdash; Actual movement volumes (Bar) with period-over-period growth % (Line) on independent dual scales.
-                    <span class="text-amber-600 dark:text-amber-400 font-bold">&bull; Subtle marker denotes Baseline period.</span>
-                </p>
             </div>
 
-            {{-- 3 Major Combo Chart Cards --}}
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {{-- Empty state if periods is empty --}}
+            <template x-if="periodsList.length === 0">
+                <div class="glass-card p-12 text-center rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md">
+                    <div class="text-3xl mb-2">📊</div>
+                    <p class="text-sm font-bold text-slate-700 dark:text-slate-300">NO DATA AVAILABLE</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Please upload or select valid DAU-02 reports to display operational comparison.</p>
+                </div>
+            </template>
 
-                {{-- Trend Metric 1: Pergerakan Penumpang --}}
-                <div class="glass-card p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center justify-between gap-2 mb-1">
-                            <span class="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 font-mono flex items-center gap-1.5">
-                                <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
-                                <span>1. PERGERAKAN PENUMPANG</span>
-                            </span>
-                            <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold">
-                                Pax &bull; Growth %
-                            </span>
-                        </div>
-                        <div class="text-[11px] text-slate-500 dark:text-slate-400 font-medium mb-3">
-                            Actual Pax + Period Growth
-                        </div>
-
-                        {{-- Combo Chart Canvas --}}
-                        <div class="h-56 relative">
-                            <canvas id="chart-trend-passenger"></canvas>
+            {{-- ONE Large Combined Chart Card --}}
+            <template x-if="periodsList.length > 0">
+                <div class="glass-card p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pb-3 border-b border-slate-100 dark:border-slate-800/60">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 font-mono flex items-center gap-2">
+                                <span>Pax and Flight Trend</span>
+                                <span class="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-navy-800 text-slate-600 dark:text-slate-400 font-normal">
+                                    3 Independent Dynamic Scales
+                                </span>
+                            </h3>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                Left: Passenger (Pax) &bull; Right 1: Aircraft Movement (A/C) &bull; Right 2: Cargo (<span x-text="comparisonData.cargo_unit || 'Kg'"></span>)
+                            </p>
                         </div>
                     </div>
-                </div>
 
-                {{-- Trend Metric 2: Pergerakan Pesawat --}}
-                <div class="glass-card p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center justify-between gap-2 mb-1">
-                            <span class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-mono flex items-center gap-1.5">
-                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
-                                <span>2. PERGERAKAN PESAWAT</span>
-                            </span>
-                            <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold">
-                                Movements &bull; Growth %
-                            </span>
-                        </div>
-                        <div class="text-[11px] text-slate-500 dark:text-slate-400 font-medium mb-3">
-                            Actual Movements + Period Growth
-                        </div>
-
-                        {{-- Combo Chart Canvas --}}
-                        <div class="h-56 relative">
-                            <canvas id="chart-trend-aircraft"></canvas>
-                        </div>
+                    {{-- Unified Chart Canvas Container (Full Width, 420px height) --}}
+                    <div class="h-96 sm:h-[440px] w-full relative">
+                        <canvas id="chart-operational-combined"></canvas>
                     </div>
                 </div>
-
-                {{-- Trend Metric 3: Pergerakan Kargo --}}
-                <div class="glass-card p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center justify-between gap-2 mb-1">
-                            <span class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 font-mono flex items-center gap-1.5">
-                                <span class="w-2.5 h-2.5 rounded-full bg-amber-600"></span>
-                                <span>3. PERGERAKAN KARGO</span>
-                            </span>
-                            <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-bold"
-                                  x-text="comparisonData.cargo_unit + ' &bull; Growth %'">
-                            </span>
-                        </div>
-                        <div class="text-[11px] text-slate-500 dark:text-slate-400 font-medium mb-3">
-                            Actual Cargo + Period Growth
-                        </div>
-
-                        {{-- Combo Chart Canvas --}}
-                        <div class="h-56 relative">
-                            <canvas id="chart-trend-cargo"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
+            </template>
         </section>
 
         {{-- ═══════════════════════════════════════════════════════════════════
@@ -574,7 +548,7 @@
 
 @push('scripts')
 <script>
-const _dauCharts = { trend: {}, historical: {} };
+const _dauCharts = { combined: null, trend: {}, historical: {} };
 
 function deepFreeze(obj) {
     if (obj && typeof obj === 'object' && !Object.isFrozen(obj)) {
@@ -745,7 +719,7 @@ function dauComparisonDashboard() {
                     const b = p.breakdown?.[metricKey] || {};
                     if (dir === 'ARRIVAL') return b.int_arr || 0;
                     if (dir === 'DEPARTURE') return b.int_dep || 0;
-                    return b.int_tot || 0;
+                    return b.int_tot;
                 });
                 return [
                     { label: 'International', backgroundColor: '#7c3aed', data: intVals, borderRadius: 4, maxBarThickness: 44 }
@@ -754,177 +728,252 @@ function dauComparisonDashboard() {
         },
 
         renderTrendCharts() {
+            const canvasId = 'chart-operational-combined';
+            const ctx = document.getElementById(canvasId);
+            if (!ctx) return;
+
+            const existing = Chart.getChart(canvasId) || _dauCharts.combined;
+            if (existing) {
+                existing.destroy();
+                _dauCharts.combined = null;
+            }
+
+            const periods = this.periodsList;
+            if (!periods || periods.length === 0) return;
+
             const isDark = document.documentElement.classList.contains('dark');
             const textColor = isDark ? '#94a3b8' : '#64748b';
             const gridColor = isDark ? 'rgba(51, 65, 85, 0.3)' : 'rgba(226, 232, 240, 0.6)';
 
-            const periods = this.periodsList;
             const labels = periods.map(p => p.short_label || p.label);
+            const baselineIdx = periods.findIndex(p => p.key === this.baselinePeriodKey);
 
-            const buildComboChart = (canvasId, metricKey, metricLabel, barColor, lineColor, unit) => {
-                const ctx = document.getElementById(canvasId);
-                if (!ctx) return;
-                const existing = Chart.getChart(canvasId) || _dauCharts.trend[canvasId];
-                if (existing) {
-                    existing.destroy();
+            const paxTrend = this.comparisonData.operational_trend?.passenger || [];
+            const acTrend  = this.comparisonData.operational_trend?.aircraft || [];
+            const cargoTrend = this.comparisonData.operational_trend?.cargo || [];
+
+            // Unified period metrics mapping
+            const periodMetrics = periods.map((p, i) => {
+                const pVal = paxTrend[i]?.value !== undefined ? paxTrend[i].value : (p.metrics?.passenger ?? null);
+                const aVal = acTrend[i]?.value !== undefined ? acTrend[i].value : (p.metrics?.aircraft ?? null);
+                const cVal = cargoTrend[i]?.value !== undefined ? cargoTrend[i].value : (p.metrics?.cargo ?? null);
+                return {
+                    period: p.short_label || p.label,
+                    passenger: pVal !== null && pVal !== undefined ? Number(pVal) : null,
+                    aircraft: aVal !== null && aVal !== undefined ? Number(aVal) : null,
+                    cargo: cVal !== null && cVal !== undefined ? Number(cVal) : null,
+                };
+            });
+
+            const paxValues = periodMetrics.map(m => m.passenger);
+            const acValues = periodMetrics.map(m => m.aircraft);
+            const cargoValues = periodMetrics.map(m => m.cargo);
+
+            // Passenger Bar Styling (Subtle baseline highlight)
+            const paxBarBg = paxValues.map((_, i) => i === baselineIdx
+                ? (isDark ? 'rgba(245, 158, 11, 0.75)' : 'rgba(217, 119, 6, 0.85)')
+                : (isDark ? 'rgba(37, 99, 235, 0.8)' : '#2563eb'));
+            const paxBarBorder = paxValues.map((_, i) => i === baselineIdx ? '#f59e0b' : '#2563eb');
+            const paxBarBorderWidth = paxValues.map((_, i) => i === baselineIdx ? 2 : 1);
+
+            const cargoUnit = this.comparisonData.cargo_unit || 'Kg';
+
+            const formatShort = (v) => {
+                if (v === null || v === undefined) return '0';
+                if (v >= 1000000000) return (v / 1000000000).toFixed(1) + 'B';
+                if (v >= 1000000) return (v / 1000000).toFixed(1) + 'M';
+                if (v >= 1000) return (v / 1000).toFixed(0) + 'k';
+                return Number(v).toLocaleString();
+            };
+
+            // Custom baseline vertical line plugin to mark baseline period cleanly
+            const baselineMarkerPlugin = {
+                id: 'baselineMarker',
+                afterDraw: (chart) => {
+                    if (baselineIdx === -1) return;
+                    const meta = chart.getDatasetMeta(0);
+                    if (!meta || !meta.data || !meta.data[baselineIdx]) return;
+                    const bar = meta.data[baselineIdx];
+                    const chartCtx = chart.ctx;
+                    const x = bar.x;
+                    const top = chart.chartArea.top;
+                    const bottom = chart.chartArea.bottom;
+
+                    chartCtx.save();
+                    chartCtx.beginPath();
+                    chartCtx.setLineDash([4, 4]);
+                    chartCtx.strokeStyle = '#f59e0b';
+                    chartCtx.lineWidth = 1.5;
+                    chartCtx.moveTo(x, top);
+                    chartCtx.lineTo(x, bottom);
+                    chartCtx.stroke();
+
+                    chartCtx.fillStyle = '#f59e0b';
+                    chartCtx.font = 'bold 9px "JetBrains Mono", monospace';
+                    chartCtx.textAlign = 'center';
+                    chartCtx.fillText('BASELINE', x, top - 6);
+                    chartCtx.restore();
                 }
+            };
 
-                const trendPts = this.comparisonData.operational_trend[metricKey] || [];
-                const values = trendPts.map(pt => pt.value);
-                const growths = trendPts.map(pt => pt.growth_pct);
-                const baselineIdx = periods.findIndex(p => p.key === this.baselinePeriodKey);
-
-                // Bar styling per point (highlight baseline)
-                const barBgColors = values.map((_, i) => i === baselineIdx ? (isDark ? 'rgba(245, 158, 11, 0.75)' : 'rgba(217, 119, 6, 0.85)') : (isDark ? barColor + 'bb' : barColor));
-                const barBorderColors = values.map((_, i) => i === baselineIdx ? '#f59e0b' : barColor);
-                const barBorderWidths = values.map((_, i) => i === baselineIdx ? 2 : 1);
-
-                // Line point styling (gold ring for baseline)
-                const pointRadii = growths.map((g, i) => g === null ? 0 : (i === baselineIdx ? 7 : 5));
-                const pointBorderColors = growths.map((_, i) => i === baselineIdx ? '#f59e0b' : lineColor);
-                const pointBgColors = growths.map((_, i) => i === baselineIdx ? '#fef3c7' : '#ffffff');
-                const pointBorderWidths = growths.map((_, i) => i === baselineIdx ? 3 : 2);
-
-                _dauCharts.trend[canvasId] = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [
-                            {
-                                type: 'bar',
-                                label: 'Actual ' + metricLabel,
-                                data: values,
-                                yAxisID: 'y',
-                                backgroundColor: barBgColors,
-                                borderColor: barBorderColors,
-                                borderWidth: barBorderWidths,
-                                borderRadius: 6,
-                                maxBarThickness: 36,
-                                order: 2
-                            },
-                            {
-                                type: 'line',
-                                label: 'Period Growth %',
-                                data: growths,
-                                yAxisID: 'yGrowth',
-                                borderColor: lineColor,
-                                backgroundColor: lineColor,
-                                borderWidth: 2.5,
-                                fill: false,
-                                tension: 0.2,
-                                spanGaps: false,
-                                pointRadius: pointRadii,
-                                pointHoverRadius: 8,
-                                pointBackgroundColor: pointBgColors,
-                                pointBorderColor: pointBorderColors,
-                                pointBorderWidth: pointBorderWidths,
-                                order: 1
-                            }
-                        ]
+            _dauCharts.combined = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            type: 'bar',
+                            label: 'Passenger Movement',
+                            data: paxValues,
+                            yAxisID: 'yPassenger',
+                            backgroundColor: paxBarBg,
+                            borderColor: paxBarBorder,
+                            borderWidth: paxBarBorderWidth,
+                            borderRadius: 6,
+                            maxBarThickness: 44,
+                            order: 3
+                        },
+                        {
+                            type: 'line',
+                            label: 'Aircraft Movement',
+                            data: acValues,
+                            yAxisID: 'yAircraft',
+                            borderColor: '#059669',
+                            backgroundColor: '#059669',
+                            borderWidth: 2.5,
+                            fill: false,
+                            tension: 0.2,
+                            spanGaps: true,
+                            pointRadius: 6,
+                            pointHoverRadius: 9,
+                            pointBackgroundColor: '#ffffff',
+                            pointBorderColor: '#059669',
+                            pointBorderWidth: 2.5,
+                            order: 1
+                        },
+                        {
+                            type: 'line',
+                            label: 'Cargo Movement',
+                            data: cargoValues,
+                            yAxisID: 'yCargo',
+                            borderColor: '#d97706',
+                            backgroundColor: '#d97706',
+                            borderWidth: 2.5,
+                            fill: false,
+                            tension: 0.2,
+                            spanGaps: true,
+                            pointRadius: 6,
+                            pointHoverRadius: 9,
+                            pointBackgroundColor: '#ffffff',
+                            pointBorderColor: '#d97706',
+                            pointBorderWidth: 2.5,
+                            order: 2
+                        }
+                    ]
+                },
+                plugins: [baselineMarkerPlugin],
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        interaction: {
-                            mode: 'nearest',
-                            intersect: true
-                        },
-                        plugins: {
-                            legend: {
-                                display: true,
-                                position: 'top',
-                                align: 'end',
-                                labels: {
-                                    color: textColor,
-                                    font: { family: 'JetBrains Mono', size: 9, weight: 'bold' },
-                                    boxWidth: 10,
-                                    usePointStyle: true
-                                }
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    title: (items) => {
-                                        const idx = items[0].dataIndex;
-                                        const pt = trendPts[idx];
-                                        const p = periods[idx];
-                                        const isBase = (pt?.key === this.baselinePeriodKey);
-                                        return (p ? (p.label + ' (' + (p.short_label || p.label) + ')') : (pt?.label || '')) + (isBase ? ' [BASELINE]' : '');
-                                    },
-                                    beforeBody: (items) => {
-                                        const item = items[0];
-                                        const idx = item.dataIndex;
-                                        const pt = trendPts[idx] || {};
-                                        const isLine = item.dataset.type === 'line';
-
-                                        if (!isLine) {
-                                            return [
-                                                'METRIC: ' + metricLabel,
-                                                'VALUE: ' + Number(pt.value || 0).toLocaleString() + ' ' + unit,
-                                                'PERIOD GROWTH: ' + (pt.growth_fmt || 'N/A'),
-                                                pt.previous_value !== null && pt.previous_value !== undefined
-                                                    ? 'Previous: ' + Number(pt.previous_value).toLocaleString() + ' ' + unit + (pt.previous_label ? ' (' + pt.previous_label + ')' : '')
-                                                    : 'Previous: — (Initial Period)'
-                                            ];
-                                        } else {
-                                            return [
-                                                'GROWTH: ' + (pt.growth_fmt || 'N/A'),
-                                                'CURRENT: ' + Number(pt.value || 0).toLocaleString() + ' ' + unit,
-                                                pt.previous_value !== null && pt.previous_value !== undefined
-                                                    ? 'PREVIOUS: ' + Number(pt.previous_value).toLocaleString() + ' ' + unit + (pt.previous_label ? ' (' + pt.previous_label + ')' : '')
-                                                    : 'PREVIOUS: — (Initial Period)'
-                                            ];
-                                        }
-                                    },
-                                    label: () => ''
-                                }
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            align: 'end',
+                            labels: {
+                                color: textColor,
+                                font: { family: 'JetBrains Mono', size: 10, weight: 'bold' },
+                                boxWidth: 10,
+                                usePointStyle: true
                             }
                         },
-                        scales: {
-                            x: {
-                                grid: { display: false },
-                                ticks: { color: textColor, font: { family: 'JetBrains Mono', size: 10 } }
-                            },
-                            y: {
-                                type: 'linear',
-                                position: 'left',
-                                beginAtZero: true,
-                                grid: { color: gridColor },
-                                title: {
-                                    display: true,
-                                    text: unit,
-                                    color: textColor,
-                                    font: { family: 'JetBrains Mono', size: 9, weight: 'bold' }
+                        tooltip: {
+                            callbacks: {
+                                title: (items) => {
+                                    const idx = items[0].dataIndex;
+                                    const p = periods[idx];
+                                    const isBase = (p?.key === this.baselinePeriodKey);
+                                    return (p ? (p.label + ' (' + (p.short_label || p.label) + ')') : labels[idx]) + (isBase ? ' [BASELINE]' : '');
                                 },
-                                ticks: {
-                                    color: textColor,
-                                    font: { family: 'JetBrains Mono', size: 9 },
-                                    callback: (v) => v >= 1000000000 ? (v / 1000000000).toFixed(1) + 'B' : (v >= 1000000 ? (v / 1000000).toFixed(1) + 'M' : (v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v))
-                                }
-                            },
-                            yGrowth: {
-                                type: 'linear',
-                                position: 'right',
-                                grid: { drawOnChartArea: false },
-                                title: {
-                                    display: true,
-                                    text: 'Growth %',
-                                    color: lineColor,
-                                    font: { family: 'JetBrains Mono', size: 9, weight: 'bold' }
-                                },
-                                ticks: {
-                                    color: lineColor,
-                                    font: { family: 'JetBrains Mono', size: 9 },
-                                    callback: (v) => (v > 0 ? '+' : '') + Number(v).toFixed(0) + '%'
+                                label: (item) => {
+                                    const val = item.raw;
+                                    if (val === null || val === undefined) {
+                                        return item.dataset.label + ': N/A';
+                                    }
+                                    let unit = 'Pax';
+                                    if (item.dataset.yAxisID === 'yAircraft') unit = 'A/C';
+                                    else if (item.dataset.yAxisID === 'yCargo') unit = cargoUnit;
+                                    return item.dataset.label + ': ' + Number(val).toLocaleString() + ' ' + unit;
                                 }
                             }
                         }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: textColor, font: { family: 'JetBrains Mono', size: 10 } }
+                        },
+                        yPassenger: {
+                            type: 'linear',
+                            position: 'left',
+                            beginAtZero: true,
+                            grace: '5%',
+                            grid: { color: gridColor },
+                            title: {
+                                display: true,
+                                text: 'Passenger (Pax)',
+                                color: '#2563eb',
+                                font: { family: 'JetBrains Mono', size: 9, weight: 'bold' }
+                            },
+                            ticks: {
+                                color: '#2563eb',
+                                font: { family: 'JetBrains Mono', size: 9 },
+                                callback: (v) => formatShort(v)
+                            }
+                        },
+                        yAircraft: {
+                            type: 'linear',
+                            position: 'right',
+                            beginAtZero: true,
+                            grace: '5%',
+                            grid: { drawOnChartArea: false },
+                            title: {
+                                display: true,
+                                text: 'Aircraft (A/C)',
+                                color: '#059669',
+                                font: { family: 'JetBrains Mono', size: 9, weight: 'bold' }
+                            },
+                            ticks: {
+                                color: '#059669',
+                                font: { family: 'JetBrains Mono', size: 9 },
+                                callback: (v) => formatShort(v)
+                            }
+                        },
+                        yCargo: {
+                            type: 'linear',
+                            position: 'right',
+                            beginAtZero: true,
+                            grace: '5%',
+                            grid: { drawOnChartArea: false },
+                            title: {
+                                display: true,
+                                text: 'Cargo (' + cargoUnit + ')',
+                                color: '#d97706',
+                                font: { family: 'JetBrains Mono', size: 9, weight: 'bold' }
+                            },
+                            ticks: {
+                                color: '#d97706',
+                                font: { family: 'JetBrains Mono', size: 9 },
+                                callback: (v) => formatShort(v)
+                            }
+                        }
                     }
-                });
-            };
-
-            buildComboChart('chart-trend-passenger', 'passenger', 'Passenger', '#2563eb', '#f59e0b', 'Pax');
-            buildComboChart('chart-trend-aircraft',  'aircraft',  'Aircraft',  '#059669', '#d97706', 'Movements');
-            buildComboChart('chart-trend-cargo',     'cargo',     'Cargo',     '#d97706', '#2563eb', this.comparisonData.cargo_unit);
+                }
+            });
         },
 
         renderHistoricalCharts() {

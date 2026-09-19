@@ -278,60 +278,34 @@
         <tr>
             <td style="vertical-align: middle;">
                 <div class="section-tag">SECTION 1 &bull; OPERATIONAL PERFORMANCE</div>
-                <h2 class="brand-title">KINERJA OPERASIONAL BANDARA — COMBO ANALYSIS</h2>
-                <p class="brand-sub">Actual Movement Volume (Bar) + Period Growth % (Line + Data Points) &bull; Dual Independent Scales</p>
+                <h2 class="brand-title">KINERJA OPERASIONAL BANDARA — COMBINED OPERATIONAL TREND</h2>
+                <p class="brand-sub">Combined Passenger (Bar), Aircraft (Line), and Cargo (Line) &bull; 3 Independent Dynamic Scales</p>
             </td>
             <td style="text-align: right; vertical-align: middle;">
-                <span class="badge">Combo Analysis</span>
+                <span class="badge">Combined Trend</span>
             </td>
         </tr>
     </table>
 
-    {{-- Chart 1: Passenger Combo Chart --}}
-    <div class="chart-container">
+    {{-- Single Combined Operational Chart Container --}}
+    <div class="chart-container" style="margin-bottom: 8px;">
         <table style="width: 100%; margin-bottom: 4px; border-bottom: 1px solid #f1f5f9; font-size: 9px; font-weight: bold;">
             <tr>
-                <td style="text-align: left; color: #0f172a; text-transform: uppercase;">1. Pergerakan Penumpang &mdash; Actual Pax + Period Growth</td>
-                <td style="text-align: right; color: #2563eb;">Left: Pax &bull; Right: Growth %</td>
+                <td style="text-align: left; color: #0f172a; text-transform: uppercase;">Pax and Flight Trend &mdash; Operational Performance Comparison</td>
+                <td style="text-align: right; color: #64748b;">Left: Pax &bull; Right 1: A/C &bull; Right 2: {{ $comparison['cargo_unit'] }}</td>
             </tr>
         </table>
         <div>
-            <img src="{{ $charts['trend_passenger'] }}" style="width: 100%; height: auto; display: block;" />
+            <img src="{{ $charts['combined_operational'] }}" style="width: 100%; height: auto; display: block;" />
         </div>
     </div>
 
-    {{-- Chart 2: Aircraft Combo Chart --}}
-    <div class="chart-container">
-        <table style="width: 100%; margin-bottom: 4px; border-bottom: 1px solid #f1f5f9; font-size: 9px; font-weight: bold;">
-            <tr>
-                <td style="text-align: left; color: #0f172a; text-transform: uppercase;">2. Pergerakan Pesawat &mdash; Actual Movements + Period Growth</td>
-                <td style="text-align: right; color: #059669;">Left: Movements &bull; Right: Growth %</td>
-            </tr>
-        </table>
-        <div>
-            <img src="{{ $charts['trend_aircraft'] }}" style="width: 100%; height: auto; display: block;" />
-        </div>
-    </div>
-
-    {{-- Chart 3: Cargo Combo Chart --}}
-    <div class="chart-container">
-        <table style="width: 100%; margin-bottom: 4px; border-bottom: 1px solid #f1f5f9; font-size: 9px; font-weight: bold;">
-            <tr>
-                <td style="text-align: left; color: #0f172a; text-transform: uppercase;">3. Pergerakan Kargo &mdash; Actual Cargo + Period Growth</td>
-                <td style="text-align: right; color: #d97706;">Left: {{ $comparison['cargo_unit'] }} &bull; Right: Growth %</td>
-            </tr>
-        </table>
-        <div>
-            <img src="{{ $charts['trend_cargo'] }}" style="width: 100%; height: auto; display: block;" />
-        </div>
-    </div>
-
-    {{-- Operational Trend Values Table --}}
+    {{-- Operational Movement Values Table --}}
     <table class="table-data" style="margin-top: 6px;">
         <thead>
             <tr>
                 <th>Metrik Operasional</th>
-                <th>Unit / Tipe</th>
+                <th>Tipe / Visual</th>
                 @foreach ($comparison['periods'] as $p)
                     <th>{{ $p['label'] }}<br><span style="font-weight: normal; font-size: 7.5px;">{{ $p['short_label'] }}</span></th>
                 @endforeach
@@ -342,48 +316,21 @@
                 <td style="font-weight: bold;">Pergerakan Penumpang</td>
                 <td style="text-align: center; color: #2563eb; font-weight: bold;">Pax (Bar)</td>
                 @foreach ($comparison['operational_trend']['passenger'] as $pt)
-                    <td>{{ number_format($pt['value']) }}</td>
-                @endforeach
-            </tr>
-            <tr style="background: #f8fafc;">
-                <td style="padding-left: 12px; color: #64748b;">&bull; Pertumbuhan (MoM)</td>
-                <td style="text-align: center; color: #d97706; font-weight: bold;">% (Line)</td>
-                @foreach ($comparison['operational_trend']['passenger'] as $pt)
-                    <td style="font-weight: bold; {{ ($pt['growth_pct'] ?? 0) < 0 ? 'color: #dc2626;' : (($pt['growth_pct'] ?? 0) > 0 ? 'color: #16a34a;' : '') }}">
-                        {{ $pt['growth_fmt'] ?? 'N/A' }}
-                    </td>
+                    <td style="font-weight: 600;">{{ number_format($pt['value']) }}</td>
                 @endforeach
             </tr>
             <tr>
                 <td style="font-weight: bold;">Pergerakan Pesawat</td>
-                <td style="text-align: center; color: #059669; font-weight: bold;">Movements (Bar)</td>
+                <td style="text-align: center; color: #059669; font-weight: bold;">Movements (Line)</td>
                 @foreach ($comparison['operational_trend']['aircraft'] as $pt)
-                    <td>{{ number_format($pt['value']) }}</td>
-                @endforeach
-            </tr>
-            <tr style="background: #f8fafc;">
-                <td style="padding-left: 12px; color: #64748b;">&bull; Pertumbuhan (MoM)</td>
-                <td style="text-align: center; color: #d97706; font-weight: bold;">% (Line)</td>
-                @foreach ($comparison['operational_trend']['aircraft'] as $pt)
-                    <td style="font-weight: bold; {{ ($pt['growth_pct'] ?? 0) < 0 ? 'color: #dc2626;' : (($pt['growth_pct'] ?? 0) > 0 ? 'color: #16a34a;' : '') }}">
-                        {{ $pt['growth_fmt'] ?? 'N/A' }}
-                    </td>
+                    <td style="font-weight: 600;">{{ number_format($pt['value']) }}</td>
                 @endforeach
             </tr>
             <tr>
                 <td style="font-weight: bold;">Pergerakan Kargo</td>
-                <td style="text-align: center; color: #d97706; font-weight: bold;">{{ $comparison['cargo_unit'] }} (Bar)</td>
+                <td style="text-align: center; color: #d97706; font-weight: bold;">{{ $comparison['cargo_unit'] }} (Line)</td>
                 @foreach ($comparison['operational_trend']['cargo'] as $pt)
-                    <td>{{ number_format($pt['value']) }}</td>
-                @endforeach
-            </tr>
-            <tr style="background: #f8fafc;">
-                <td style="padding-left: 12px; color: #64748b;">&bull; Pertumbuhan (MoM)</td>
-                <td style="text-align: center; color: #2563eb; font-weight: bold;">% (Line)</td>
-                @foreach ($comparison['operational_trend']['cargo'] as $pt)
-                    <td style="font-weight: bold; {{ ($pt['growth_pct'] ?? 0) < 0 ? 'color: #dc2626;' : (($pt['growth_pct'] ?? 0) > 0 ? 'color: #16a34a;' : '') }}">
-                        {{ $pt['growth_fmt'] ?? 'N/A' }}
-                    </td>
+                    <td style="font-weight: 600;">{{ number_format($pt['value']) }}</td>
                 @endforeach
             </tr>
         </tbody>

@@ -23,7 +23,7 @@ class DauComparisonChartRenderer
     /**
      * Helper to find a clean human ceiling for the Y-axis.
      */
-    private static function getNiceCeiling(float $value): float
+    public static function getNiceCeiling(float $value): float
     {
         if ($value <= 0) return 10;
         $exp = floor(log10($value));
@@ -51,7 +51,7 @@ class DauComparisonChartRenderer
     /**
      * Format number concisely (e.g. 1.2M, 45k, 500).
      */
-    private static function formatShortNumber(float $v): string
+    public static function formatShortNumber(float $v): string
     {
         if ($v >= 1000000000) {
             return round($v / 1000000000, 1) . 'B';
@@ -63,6 +63,256 @@ class DauComparisonChartRenderer
             return round($v / 1000, 1) . 'k';
         }
         return number_format($v);
+    }
+
+    /**
+     * Render high-resolution 2x retina raster PNG for ONE COMBINED OPERATIONAL CHART
+     * combining:
+     * - Passenger Movement (Bar, Left Y1 axis)
+     * - Aircraft Movement (Line + Points, Right Y2 axis)
+     * - Cargo Movement (Line + Points, Right Y3 axis offset)
+     *
+     * @param array $periods Array of periods
+     * @param array $operationalTrend Array with keys 'passenger', 'aircraft', 'cargo'
+     * @param string $cargoUnit Cargo unit (default 'Kg')
+     * @param string|null $baselineKey Baseline period key (e.g. 'P1')
+     * @param string $title Chart title
+     * @param int $w Display width in px
+     * @param int $h Display height in px
+     * @return string Data URI (data:image/png;base64,...)
+     */
+    public static function renderCombinedOperationalChartPng(
+        array $periods,
+        array $operationalTrend,
+        string $cargoUnit = 'Kg',
+        ?string $baselineKey = null,
+        string $title = 'Pax and Flight Trend',
+        int $w = 700,
+        int $h = 250
+    ): string {
+        $scale = 2; // 2x Retina resolution
+        $width = $w * $scale;
+        $height = $h * $scale;
+
+        $im = imagecreatetruecolor($width, $height);
+        if (function_exists('imageantialias')) {
+            @imageantialias($im, true);
+        }
+
+        $white = imagecolorallocate($im, 255, 255, 255);
+        imagefilledrectangle($im, 0, 0, $width, $height, $white);
+
+        $padL = 72 * $scale; // Left Y-axis (Passenger Pax)
+        $padR = 108 * $scale; // Right Y-axes (Aircraft + Cargo)
+        $padT = 36 * $scale; // Header / Legends
+        $padB = 32 * $scale; // Period labels
+
+        $chartW = $width - $padL - $padR;
+        $chartH = $height - $padT - $padB;
+
+        $paxTrend = array_values($operationalTrend['passenger'] ?? []);
+        $acTrend  = array_values($operationalTrend['aircraft'] ?? []);
+        $cargoTrend = array_values($operationalTrend['cargo'] ?? []);
+
+        $numPeriods = max(count($periods), count($paxTrend));
+        if ($numPeriods === 0) {
+            // Empty state fallback
+            $textMuted = imagecolorallocate($im, 100, 116, 139);
+            $msg = 'NO DATA AVAILABLE';
+            imagestring($im, 4, (int)($width / 2 - strlen($msg) * 4 * $scale), (int)($height / 2 - 8 * $scale), $msg, $textMuted);
+            ob_start();
+            imagepng($im);
+            $png = ob_get_clean();
+            imagedestroy($im);
+            return 'data:image/png;base64,' . base64_encode($png);
+        }
+
+        // 1. Calculate 3 Independent Dynamic Scales
+        $paxVals = array_map(fn($p) => (float)($p['value'] ?? 0), $paxTrend);
+        $maxPax = count($paxVals) > 0 ? max($paxVals) : 1;
+        if ($maxPax <= 0) $maxPax = 1;
+        $ceilPax = self::getNiceCeiling($maxPax);
+
+        $acVals = array_map(fn($p) => (float)($p['value'] ?? 0), $acTrend);
+        $maxAc = count($acVals) > 0 ? max($acVals) : 1;
+        if ($maxAc <= 0) $maxAc = 1;
+        $ceilAc = self::getNiceCeiling($maxAc);
+
+        $cargoVals = array_map(fn($p) => (float)($p['value'] ?? 0), $cargoTrend);
+        $maxCargo = count($cargoVals) > 0 ? max($cargoVals) : 1;
+        if ($maxCargo <= 0) $maxCargo = 1;
+        $ceilCargo = self::getNiceCeiling($maxCargo);
+
+        // Colors
+        $gridColor  = imagecolorallocate($im, 226, 232, 240);
+        $textDark   = imagecolorallocate($im, 15, 23, 42);
+        $textMuted  = imagecolorallocate($im, 100, 116, 139);
+        $paxColor   = imagecolorallocate($im, 37, 99, 235);   // #2563eb
+        $acColor    = imagecolorallocate($im, 5, 150, 105);   // #059669
+        $cargoColor = imagecolorallocate($im, 217, 119, 6);   // #d97706
+        $amber      = imagecolorallocate($im, 245, 158, 11);  // #f59e0b
+        $grayNotch  = imagecolorallocate($im, 203, 213, 225);
+
+        // 2. Draw Horizontal Grid Lines and 3 Independent Ticks
+        for ($i = 0; $i <= 4; $i++) {
+            $y = $padT + $chartH - ($i / 4) * $chartH;
+
+            // Horizontal dashed grid line
+            for ($gx = $padL; $gx < $padL + $chartW; $gx += 8 * $scale) {
+                imageline($im, (int)$gx, (int)$y, (int)min($gx + 4 * $scale, $padL + $chartW), (int)$y, $gridColor);
+            }
+
+            // Left Tick: Passenger (Pax)
+            $tvPax = ($ceilPax / 4) * $i;
+            $lblPax = self::formatShortNumber($tvPax);
+            $lblPaxX = (int)($padL - (strlen($lblPax) * 7 * $scale) - 4 * $scale);
+            imagestring($im, 2, max(2, $lblPaxX), (int)($y - 6 * $scale), $lblPax, $paxColor);
+
+            // Right Tick 1: Aircraft Movements (A/C)
+            $tvAc = ($ceilAc / 4) * $i;
+            $lblAc = self::formatShortNumber($tvAc);
+            $lblAcX = (int)($padL + $chartW + 6 * $scale);
+            imagestring($im, 2, $lblAcX, (int)($y - 6 * $scale), $lblAc, $acColor);
+
+            // Right Tick 2: Cargo (Kg) - Offset from Aircraft Axis
+            $tvCargo = ($ceilCargo / 4) * $i;
+            $lblCargo = self::formatShortNumber($tvCargo);
+            $lblCargoX = (int)($padL + $chartW + 56 * $scale);
+            imagestring($im, 2, $lblCargoX, (int)($y - 6 * $scale), $lblCargo, $cargoColor);
+        }
+
+        // Axis Titles above columns
+        imagestring($im, 2, (int)($padL - 60 * $scale), (int)(12 * $scale), 'Pax (Left)', $paxColor);
+        imagestring($im, 2, (int)($padL + $chartW + 6 * $scale), (int)(12 * $scale), 'A/C', $acColor);
+        imagestring($im, 2, (int)($padL + $chartW + 56 * $scale), (int)(12 * $scale), $cargoUnit, $cargoColor);
+
+        // Legend at top center
+        $legX = (int)($padL + 20 * $scale);
+        $legY = (int)(12 * $scale);
+
+        // Legend 1: Passenger (Bar)
+        imagefilledrectangle($im, $legX, $legY + 2 * $scale, $legX + 8 * $scale, $legY + 8 * $scale, $paxColor);
+        imagestring($im, 2, $legX + 11 * $scale, $legY, 'Passenger (Bar)', $textDark);
+        $legX += 130 * $scale;
+
+        // Legend 2: Aircraft (Line + Point)
+        imageline($im, $legX, $legY + 5 * $scale, $legX + 12 * $scale, $legY + 5 * $scale, $acColor);
+        imagefilledellipse($im, $legX + 6 * $scale, $legY + 5 * $scale, 6 * $scale, 6 * $scale, $acColor);
+        imagestring($im, 2, $legX + 16 * $scale, $legY, 'Aircraft (Line)', $textDark);
+        $legX += 130 * $scale;
+
+        // Legend 3: Cargo (Line + Point)
+        imageline($im, $legX, $legY + 5 * $scale, $legX + 12 * $scale, $legY + 5 * $scale, $cargoColor);
+        imagefilledellipse($im, $legX + 6 * $scale, $legY + 5 * $scale, 6 * $scale, 6 * $scale, $cargoColor);
+        imagestring($im, 2, $legX + 16 * $scale, $legY, 'Cargo (Line)', $textDark);
+
+        $slotW = $chartW / $numPeriods;
+        $barMaxW = 38 * $scale;
+        $barW = min($barMaxW, $slotW * 0.45);
+
+        $acCoords = [];
+        $cargoCoords = [];
+
+        // 3. Draw Passenger Bars & Baseline Marker
+        for ($i = 0; $i < $numPeriods; $i++) {
+            $slotCenterX = $padL + ($i + 0.5) * $slotW;
+            $ptPax = $paxTrend[$i] ?? [];
+            $vPax = (float)($ptPax['value'] ?? 0);
+
+            $pKey = $ptPax['key'] ?? (is_array($periods[$i] ?? null) ? ($periods[$i]['key'] ?? '') : '');
+            $pShort = $ptPax['short_label'] ?? (is_array($periods[$i] ?? null) ? ($periods[$i]['short_label'] ?? $periods[$i]['label'] ?? '') : '');
+            $isBase = !empty($ptPax['is_baseline']) || ($baselineKey && ($pKey === $baselineKey || $pShort === $baselineKey));
+
+            // Vertical dashed baseline marker
+            if ($isBase) {
+                for ($my = $padT; $my < $padT + $chartH; $my += 8 * $scale) {
+                    imageline($im, (int)$slotCenterX, (int)$my, (int)$slotCenterX, (int)min($my + 4 * $scale, $padT + $chartH), $amber);
+                }
+                $baseTag = '[Base]';
+                $btX = (int)($slotCenterX - strlen($baseTag) * 3 * $scale);
+                imagestring($im, 1, max(2, $btX), (int)($padT - 10 * $scale), $baseTag, $amber);
+            }
+
+            // Passenger Bar
+            $barH = ($vPax / $ceilPax) * $chartH;
+            if ($barH < 0) $barH = 0;
+            $bx1 = (int)($slotCenterX - $barW / 2);
+            $bx2 = (int)($slotCenterX + $barW / 2);
+            $by2 = (int)($padT + $chartH);
+            $by1 = (int)($by2 - $barH);
+
+            if ($barH > 0) {
+                imagefilledrectangle($im, $bx1, $by1, $bx2, $by2, $paxColor);
+                if ($isBase) {
+                    imagesetthickness($im, 2 * $scale);
+                    imagerectangle($im, $bx1 - 2 * $scale, $by1 - 2 * $scale, $bx2 + 2 * $scale, $by2, $amber);
+                }
+                // Short value label above bar
+                $lblVal = self::formatShortNumber($vPax);
+                $lblValX = (int)($slotCenterX - strlen($lblVal) * 3 * $scale);
+                imagestring($im, 1, max(2, $lblValX), (int)($by1 - 10 * $scale), $lblVal, $textDark);
+            } else {
+                imagefilledrectangle($im, $bx1, $by2 - 2 * $scale, $bx2, $by2, $grayNotch);
+            }
+
+            // X-Axis period label
+            $xl = $pShort ?: ($ptPax['label'] ?? ('P' . ($i + 1)));
+            $xlX = (int)($slotCenterX - strlen($xl) * 3.5 * $scale);
+            imagestring($im, 2, max(2, $xlX), (int)($height - 18 * $scale), $xl, $textDark);
+
+            // Aircraft Coordinate
+            $ptAc = $acTrend[$i] ?? [];
+            if (isset($ptAc['value'])) {
+                $vAc = (float)$ptAc['value'];
+                $acY = $padT + $chartH - ($vAc / $ceilAc) * $chartH;
+                $acY = max($padT, min($padT + $chartH, $acY));
+                $acCoords[] = ['x' => (int)$slotCenterX, 'y' => (int)$acY, 'val' => $vAc];
+            }
+
+            // Cargo Coordinate
+            $ptCargo = $cargoTrend[$i] ?? [];
+            if (isset($ptCargo['value'])) {
+                $vCargo = (float)$ptCargo['value'];
+                $cargoY = $padT + $chartH - ($vCargo / $ceilCargo) * $chartH;
+                $cargoY = max($padT, min($padT + $chartH, $cargoY));
+                $cargoCoords[] = ['x' => (int)$slotCenterX, 'y' => (int)$cargoY, 'val' => $vCargo];
+            }
+        }
+
+        // 4. Draw Aircraft Line & Points Layer
+        if (count($acCoords) > 1) {
+            imagesetthickness($im, 3 * $scale);
+            for ($i = 0; $i < count($acCoords) - 1; $i++) {
+                imageline($im, $acCoords[$i]['x'], $acCoords[$i]['y'], $acCoords[$i+1]['x'], $acCoords[$i+1]['y'], $acColor);
+            }
+        }
+        foreach ($acCoords as $ac) {
+            imagefilledellipse($im, $ac['x'], $ac['y'], 10 * $scale, 10 * $scale, $white);
+            imagesetthickness($im, 2 * $scale);
+            imageellipse($im, $ac['x'], $ac['y'], 10 * $scale, 10 * $scale, $acColor);
+            imagefilledellipse($im, $ac['x'], $ac['y'], 5 * $scale, 5 * $scale, $acColor);
+        }
+
+        // 5. Draw Cargo Line & Points Layer
+        if (count($cargoCoords) > 1) {
+            imagesetthickness($im, 3 * $scale);
+            for ($i = 0; $i < count($cargoCoords) - 1; $i++) {
+                imageline($im, $cargoCoords[$i]['x'], $cargoCoords[$i]['y'], $cargoCoords[$i+1]['x'], $cargoCoords[$i+1]['y'], $cargoColor);
+            }
+        }
+        foreach ($cargoCoords as $cg) {
+            imagefilledellipse($im, $cg['x'], $cg['y'], 10 * $scale, 10 * $scale, $white);
+            imagesetthickness($im, 2 * $scale);
+            imageellipse($im, $cg['x'], $cg['y'], 10 * $scale, 10 * $scale, $cargoColor);
+            imagefilledellipse($im, $cg['x'], $cg['y'], 5 * $scale, 5 * $scale, $cargoColor);
+        }
+
+        ob_start();
+        imagepng($im);
+        $png = ob_get_clean();
+        imagedestroy($im);
+
+        return 'data:image/png;base64,' . base64_encode($png);
     }
 
     /**
