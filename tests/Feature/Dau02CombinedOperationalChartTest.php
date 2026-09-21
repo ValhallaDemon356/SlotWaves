@@ -44,9 +44,9 @@ class Dau02CombinedOperationalChartTest extends TestCase
     }
 
     /**
-     * TEST 1: Verify exactly one combined chart exists in Section 1 (not 3 separate combo charts).
+     * TEST 1: Verify Section 1 renders three separate combo chart instances.
      */
-    public function test_section_1_renders_one_combined_chart_instance(): void
+    public function test_section_1_renders_three_separate_combo_chart_instances(): void
     {
         $u1 = $this->createReport(2020, 10000, 200, 5000);
         $u2 = $this->createReport(2021, 12000, 220, 5500);
@@ -57,22 +57,20 @@ class Dau02CombinedOperationalChartTest extends TestCase
         // Section 1 headers and tags
         $res->assertSee('KINERJA OPERASIONAL BANDARA');
         $res->assertSee('SECTION 1 &bull; OPERATIONAL PERFORMANCE', false);
-        $res->assertSee('Combined Operational Trend');
-        $res->assertSee('Pax and Flight Trend');
+        $res->assertSee('1. PERGERAKAN PENUMPANG');
+        $res->assertSee('2. PERGERAKAN PESAWAT');
+        $res->assertSee('3. PERGERAKAN KARGO');
 
-        // Combined canvas exists
-        $res->assertSee('id="chart-operational-combined"', false);
-
-        // The 3 previous separate chart canvases must NOT exist
-        $res->assertDontSee('id="chart-trend-passenger"', false);
-        $res->assertDontSee('id="chart-trend-aircraft"', false);
-        $res->assertDontSee('id="chart-trend-cargo"', false);
+        // Three separate canvas elements exist
+        $res->assertSee('id="chart-trend-passenger"', false);
+        $res->assertSee('id="chart-trend-aircraft"', false);
+        $res->assertSee('id="chart-trend-cargo"', false);
     }
 
     /**
-     * TEST 2: Verify datasets configuration in view (Passenger=bar, Aircraft=line, Cargo=line).
+     * TEST 2: Verify datasets configuration in view (Bar = Actual Movement, Line = Trend).
      */
-    public function test_combined_chart_datasets_configuration(): void
+    public function test_combo_chart_datasets_configuration(): void
     {
         $u1 = $this->createReport(2020, 10000, 200, 5000);
         $u2 = $this->createReport(2021, 12000, 220, 5500);
@@ -80,15 +78,9 @@ class Dau02CombinedOperationalChartTest extends TestCase
         $res = $this->get("/dau/compare?reports={$u1->id},{$u2->id}");
         $res->assertStatus(200);
 
-        // View JavaScript must configure Passenger as bar, Aircraft as line, Cargo as line
-        $res->assertSee("label: 'Passenger Movement'", false);
-        $res->assertSee("yAxisID: 'yPassenger'", false);
-
-        $res->assertSee("label: 'Aircraft Movement'", false);
-        $res->assertSee("yAxisID: 'yAircraft'", false);
-
-        $res->assertSee("label: 'Cargo Movement'", false);
-        $res->assertSee("yAxisID: 'yCargo'", false);
+        // View JavaScript configures Actual Movement bar and Trend line
+        $res->assertSee("label: 'Actual Movement'", false);
+        $res->assertSee("label: 'Trend'", false);
     }
 
     /**

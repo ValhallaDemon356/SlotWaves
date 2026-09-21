@@ -187,31 +187,31 @@ class DauComparisonController extends Controller
                 $comparison['operational_trend']['passenger'],
                 'Pax',
                 '#2563eb',
-                '#f59e0b',
+                '#1d4ed8',
                 $comparison['baseline_period_key'],
-                'Pergerakan Penumpang',
+                '1. Pergerakan Penumpang',
                 680,
-                145
+                150
             ),
             'trend_aircraft' => \App\Services\Dau\DauComparisonChartRenderer::renderOperationalComboChartPng(
                 $comparison['operational_trend']['aircraft'],
-                'Movements',
+                'A/C',
                 '#059669',
-                '#d97706',
+                '#047857',
                 $comparison['baseline_period_key'],
-                'Pergerakan Pesawat',
+                '2. Pergerakan Pesawat',
                 680,
-                145
+                150
             ),
             'trend_cargo' => \App\Services\Dau\DauComparisonChartRenderer::renderOperationalComboChartPng(
                 $comparison['operational_trend']['cargo'],
                 $comparison['cargo_unit'],
                 '#d97706',
-                '#2563eb',
+                '#b45309',
                 $comparison['baseline_period_key'],
-                'Pergerakan Kargo',
+                '3. Pergerakan Kargo',
                 680,
-                145
+                150
             ),
             'bar_passenger' => \App\Services\Dau\DauComparisonChartRenderer::renderHistoricalBarSvg(
                 array_values($comparison['periods']),

@@ -333,11 +333,11 @@ class DauComparisonChartRenderer
         array $points,
         string $unit,
         string $barHex = '#2563eb',
-        string $lineHex = '#f59e0b',
+        string $lineHex = '#1d4ed8',
         ?string $baselineKey = null,
         string $title = '',
         int $w = 680,
-        int $h = 150
+        int $h = 160
     ): string {
         $scale = 2; // 2x Retina resolution
         $width = $w * $scale;
@@ -351,47 +351,36 @@ class DauComparisonChartRenderer
         $white = imagecolorallocate($im, 255, 255, 255);
         imagefilledrectangle($im, 0, 0, $width, $height, $white);
 
-        $padL = 70 * $scale; // Left Y-axis (Actuals)
-        $padR = 55 * $scale; // Right Y-axis (Growth %)
-        $padT = 28 * $scale;
+        $padL = 65 * $scale; // Left Y-axis (Actuals)
+        $padR = 25 * $scale;
+        $padT = 30 * $scale;
         $padB = 30 * $scale;
 
         $chartW = $width - $padL - $padR;
         $chartH = $height - $padT - $padB;
 
-        // 1. Left Y-Axis Scale (Actual Metric Value)
+        if (empty($points)) {
+            $textMuted = imagecolorallocate($im, 100, 116, 139);
+            $msg = 'NO DATA AVAILABLE';
+            imagestring($im, 4, (int)($width / 2 - strlen($msg) * 4 * $scale), (int)($height / 2 - 8 * $scale), $msg, $textMuted);
+            ob_start();
+            imagepng($im);
+            $png = ob_get_clean();
+            imagedestroy($im);
+            return 'data:image/png;base64,' . base64_encode($png);
+        }
+
+        // 1. Single Left Y-Axis Scale (Actual Metric Value)
         $vals = array_map(fn($p) => (float)($p['value'] ?? 0), $points);
         $maxVal = count($vals) ? max($vals) : 1;
         if ($maxVal <= 0) $maxVal = 1;
         $maxTick = self::getNiceCeiling($maxVal);
 
-        // 2. Right Y-Axis Scale (Period-over-period Growth %)
-        $growths = [];
-        foreach ($points as $p) {
-            if (isset($p['growth_pct']) && $p['growth_pct'] !== null && is_numeric($p['growth_pct'])) {
-                $growths[] = (float)$p['growth_pct'];
-            }
-        }
-
-        if (empty($growths)) {
-            $growthMin = -20.0;
-            $growthMax = 100.0;
-        } else {
-            $minG = min($growths);
-            $maxG = max($growths);
-            $bottom = ($minG < 0) ? floor($minG / 20.0) * 20.0 : 0.0;
-            $top = ($maxG > 0) ? ceil($maxG / 20.0) * 20.0 : 20.0;
-            if ($top - $bottom < 40.0) {
-                $top = $bottom + 40.0;
-            }
-            $growthMin = $bottom;
-            $growthMax = $top;
-        }
-        $growthRange = ($growthMax - $growthMin) ?: 1.0;
-
-        $gridColor = imagecolorallocate($im, 226, 232, 240);
-        $textDark = imagecolorallocate($im, 15, 23, 42);
-        $textMuted = imagecolorallocate($im, 100, 116, 139);
+        $gridColor  = imagecolorallocate($im, 241, 245, 249);
+        $textDark   = imagecolorallocate($im, 15, 23, 42);
+        $textMuted  = imagecolorallocate($im, 100, 116, 139);
+        $amber      = imagecolorallocate($im, 245, 158, 11);
+        $amberMuted = imagecolorallocate($im, 217, 119, 6);
 
         [$br, $bg, $bb] = self::hexToRgb($barHex);
         $barColor = imagecolorallocate($im, $br, $bg, $bb);
@@ -399,10 +388,7 @@ class DauComparisonChartRenderer
         [$lr, $lg, $lb] = self::hexToRgb($lineHex);
         $lineColor = imagecolorallocate($im, $lr, $lg, $lb);
 
-        $amber = imagecolorallocate($im, 245, 158, 11);
-        $amberLight = imagecolorallocate($im, 254, 243, 199);
-
-        // Y-axis grid lines and Dual Axis Ticks
+        // Y-axis grid lines and Single Axis Ticks
         for ($i = 0; $i <= 4; $i++) {
             $y = $padT + $chartH - ($i / 4) * $chartH;
 
@@ -417,50 +403,47 @@ class DauComparisonChartRenderer
             $lblLeftX = (int)($padL - (strlen($lblLeft) * 7 * $scale) - 4 * $scale);
             $lblLeftY = (int)($y - 6 * $scale);
             imagestring($im, 2, max(2, $lblLeftX), max(0, $lblLeftY), $lblLeft, $textMuted);
-
-            // Right Y-Axis Tick (Growth %)
-            $gv = $growthMin + ($growthRange / 4) * $i;
-            $lblRight = ($gv > 0 ? '+' : '') . round($gv) . '%';
-            $lblRightX = (int)($padL + $chartW + 6 * $scale);
-            $lblRightY = (int)($y - 6 * $scale);
-            imagestring($im, 2, $lblRightX, max(0, $lblRightY), $lblRight, $lineColor);
         }
 
-        // Axis Titles
-        imagestring($im, 2, (int)(10 * $scale), (int)(10 * $scale), $unit, $textMuted);
-        $rightTitle = 'Growth %';
-        $rtX = (int)($width - (strlen($rightTitle) * 7 * $scale) - 10 * $scale);
-        imagestring($im, 2, $rtX, (int)(10 * $scale), $rightTitle, $lineColor);
+        // Left Axis Title: e.g. "Passenger (Pax)" or unit
+        $axisTitle = !empty($title) ? "{$title} ({$unit})" : $unit;
+        imagestring($im, 2, (int)(10 * $scale), (int)(10 * $scale), $axisTitle, $textDark);
 
-        // Legend at top center-right
-        $legActual = 'Actual ' . ($unit === 'Pax' ? 'Passenger' : ($unit === 'Movements' ? 'Aircraft' : 'Cargo'));
-        $legGrowth = 'Period Growth %';
-        $legX = (int)($padL + $chartW / 2 - 40 * $scale);
+        // Minimal Legend at top right: ■ Actual Movement   ● Trend
+        $legActual = 'Actual Movement';
+        $legTrend  = 'Trend';
+        $legX = (int)($padL + $chartW - 190 * $scale);
         $legY = (int)(10 * $scale);
 
         // Actual movement box
         imagefilledrectangle($im, $legX, $legY + 2 * $scale, $legX + 8 * $scale, $legY + 8 * $scale, $barColor);
         imagestring($im, 2, $legX + 11 * $scale, $legY, $legActual, $textDark);
 
-        // Growth line dot
-        $legX2 = $legX + strlen($legActual) * 7 * $scale + 24 * $scale;
+        // Trend line dot
+        $legX2 = $legX + 105 * $scale;
         imageline($im, $legX2, $legY + 5 * $scale, $legX2 + 12 * $scale, $legY + 5 * $scale, $lineColor);
-        imagefilledellipse($im, $legX2 + 6 * $scale, $legY + 5 * $scale, 6 * $scale, 6 * $scale, $lineColor);
-        imagestring($im, 2, $legX2 + 16 * $scale, $legY, $legGrowth, $textDark);
+        imagefilledellipse($im, $legX2 + 6 * $scale, $legY + 5 * $scale, 6 * $scale, 6 * $scale, $white);
+        imageellipse($im, $legX2 + 6 * $scale, $legY + 5 * $scale, 6 * $scale, 6 * $scale, $lineColor);
+        imagestring($im, 2, $legX2 + 16 * $scale, $legY, $legTrend, $textDark);
 
         $n = max(1, count($points));
         $slotW = $chartW / $n;
-        $barMaxW = 34 * $scale;
-        $barW = min($barMaxW, $slotW * 0.42);
+        $barMaxW = 36 * $scale;
+        $barW = min($barMaxW, $slotW * 0.44);
 
         $lineCoords = [];
+        $baselineX = null;
 
-        // 3. Draw Bar Layer & collect Growth Line points
+        // 2. Draw Bar Layer & collect Trend Line coordinates (same actual values)
         for ($i = 0; $i < $n; $i++) {
             $p = $points[$i];
             $slotCenterX = $padL + ($i + 0.5) * $slotW;
             $v = (float)($p['value'] ?? 0);
             $isBase = !empty($p['is_baseline']) || ($baselineKey && (($p['key'] ?? '') === $baselineKey || ($p['short_label'] ?? '') === $baselineKey));
+
+            if ($isBase) {
+                $baselineX = $slotCenterX;
+            }
 
             // Bar dimensions
             $barH = ($v / $maxTick) * $chartH;
@@ -473,7 +456,7 @@ class DauComparisonChartRenderer
             if ($barH > 0) {
                 imagefilledrectangle($im, $bx1, $by1, $bx2, $by2, $barColor);
                 if ($isBase) {
-                    // Subtle baseline golden halo around bar
+                    // Subtle baseline golden outline around bar
                     imagesetthickness($im, 2 * $scale);
                     imagerectangle($im, $bx1 - 2 * $scale, $by1 - 2 * $scale, $bx2 + 2 * $scale, $by2, $amber);
                 }
@@ -498,51 +481,49 @@ class DauComparisonChartRenderer
             $xlY = (int)($height - 18 * $scale);
             imagestring($im, 2, max(2, $xlX), max(0, $xlY), $xl, $textDark);
 
-            // Record growth line coordinate if available
-            if (isset($p['growth_pct']) && $p['growth_pct'] !== null && is_numeric($p['growth_pct'])) {
-                $gp = (float)$p['growth_pct'];
-                $gy = $padT + $chartH - (($gp - $growthMin) / $growthRange) * $chartH;
-                $gy = max($padT, min($padT + $chartH, $gy));
-                $lineCoords[] = [
-                    'x'   => (int)$slotCenterX,
-                    'y'   => (int)$gy,
-                    'gp'  => $gp,
-                    'fmt' => $p['growth_fmt'] ?? (($gp > 0 ? '+' : '') . number_format($gp, 1) . '%'),
-                    'is_base' => $isBase,
-                ];
-            }
+            // Record trend line coordinate matching EXACTLY the bar value
+            $lineCoords[] = [
+                'x'       => (int)$slotCenterX,
+                'y'       => (int)$by1,
+                'val'     => $v,
+                'is_base' => $isBase,
+            ];
         }
 
-        // 4. Draw Growth Line + Points Layer
+        // 3. Subtle Baseline Vertical Dashed Marker
+        if ($baselineX !== null) {
+            imagesetthickness($im, 1 * $scale);
+            for ($my = $padT; $my < $padT + $chartH; $my += 6 * $scale) {
+                imageline($im, (int)$baselineX, (int)$my, (int)$baselineX, (int)min($my + 3 * $scale, $padT + $chartH), $amberMuted);
+            }
+            $baseLabel = 'BASELINE';
+            $blX = (int)($baselineX - strlen($baseLabel) * 3 * $scale);
+            imagestring($im, 1, max(2, $blX), (int)($padT - 10 * $scale), $baseLabel, $amberMuted);
+        }
+
+        // 4. Draw Trend Line Layer (Connecting Actual Values)
         if (count($lineCoords) > 1) {
-            imagesetthickness($im, 3 * $scale);
+            imagesetthickness($im, 2.5 * $scale);
             for ($i = 0; $i < count($lineCoords) - 1; $i++) {
                 imageline($im, $lineCoords[$i]['x'], $lineCoords[$i]['y'], $lineCoords[$i+1]['x'], $lineCoords[$i+1]['y'], $lineColor);
             }
         }
 
+        // 5. Draw Trend Circular Points on Every Period
         foreach ($lineCoords as $lc) {
             $lx = $lc['x'];
             $ly = $lc['y'];
 
-            // Distinct circular point
-            imagefilledellipse($im, $lx, $ly, 10 * $scale, 10 * $scale, $white);
+            imagefilledellipse($im, $lx, $ly, 9 * $scale, 9 * $scale, $white);
             imagesetthickness($im, 2 * $scale);
-            imageellipse($im, $lx, $ly, 10 * $scale, 10 * $scale, $lineColor);
-            imagefilledellipse($im, $lx, $ly, 6 * $scale, 6 * $scale, $lineColor);
-
-            // Growth % label near point
-            $gFmt = $lc['fmt'];
-            $gX = (int)($lx - (strlen($gFmt) * 3 * $scale));
-            $gY = (int)($ly - 14 * $scale);
-            imagestring($im, 1, max(2, $gX), max(0, $gY), $gFmt, $lineColor);
+            imageellipse($im, $lx, $ly, 9 * $scale, 9 * $scale, $lineColor);
+            imagefilledellipse($im, $lx, $ly, 4 * $scale, 4 * $scale, $lineColor);
         }
 
         ob_start();
         imagepng($im);
         $png = ob_get_clean();
         imagedestroy($im);
-
         return 'data:image/png;base64,' . base64_encode($png);
     }
 

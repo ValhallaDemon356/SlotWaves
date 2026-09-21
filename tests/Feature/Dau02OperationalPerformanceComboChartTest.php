@@ -55,17 +55,17 @@ class Dau02OperationalPerformanceComboChartTest extends TestCase
         $res = $this->get("/dau/compare?reports={$u1->id},{$u2->id},{$u3->id}&baseline=P1");
         $res->assertStatus(200);
 
-        // Section 1 headers and combined chart tags
+        // Section 1 headers and 3 separate combo charts
         $res->assertSee('KINERJA OPERASIONAL BANDARA');
         $res->assertSee('SECTION 1 &bull; OPERATIONAL PERFORMANCE', false);
-        $res->assertSee('Combined Operational Trend');
-        $res->assertSee('Pax and Flight Trend');
+        $res->assertSee('1. PERGERAKAN PENUMPANG');
+        $res->assertSee('2. PERGERAKAN PESAWAT');
+        $res->assertSee('3. PERGERAKAN KARGO');
 
-        // Canvas element for combined chart
-        $res->assertSee('id="chart-operational-combined"', false);
-        $res->assertDontSee('id="chart-trend-passenger"', false);
-        $res->assertDontSee('id="chart-trend-aircraft"', false);
-        $res->assertDontSee('id="chart-trend-cargo"', false);
+        // Canvas elements for 3 separate combo charts
+        $res->assertSee('id="chart-trend-passenger"', false);
+        $res->assertSee('id="chart-trend-aircraft"', false);
+        $res->assertSee('id="chart-trend-cargo"', false);
 
         // Verify view data structure
         $comparison = $res->viewData('comparison');

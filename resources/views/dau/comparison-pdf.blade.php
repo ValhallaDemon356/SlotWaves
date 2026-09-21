@@ -278,25 +278,51 @@
         <tr>
             <td style="vertical-align: middle;">
                 <div class="section-tag">SECTION 1 &bull; OPERATIONAL PERFORMANCE</div>
-                <h2 class="brand-title">KINERJA OPERASIONAL BANDARA — COMBINED OPERATIONAL TREND</h2>
-                <p class="brand-sub">Combined Passenger (Bar), Aircraft (Line), and Cargo (Line) &bull; 3 Independent Dynamic Scales</p>
+                <h2 class="brand-title">KINERJA OPERASIONAL BANDARA</h2>
+                <p class="brand-sub">Three Independent Analytical Categories &bull; Bar + Trend Line (Actual Movement Progression)</p>
             </td>
             <td style="text-align: right; vertical-align: middle;">
-                <span class="badge">Combined Trend</span>
+                <span class="badge">Operational Trends</span>
             </td>
         </tr>
     </table>
 
-    {{-- Single Combined Operational Chart Container --}}
-    <div class="chart-container" style="margin-bottom: 8px;">
-        <table style="width: 100%; margin-bottom: 4px; border-bottom: 1px solid #f1f5f9; font-size: 9px; font-weight: bold;">
+    {{-- Category 1: Passenger Movement Combo Chart --}}
+    <div class="chart-container" style="margin-bottom: 6px;">
+        <table style="width: 100%; margin-bottom: 2px; border-bottom: 1px solid #f1f5f9; font-size: 8.5px; font-weight: bold;">
             <tr>
-                <td style="text-align: left; color: #0f172a; text-transform: uppercase;">Pax and Flight Trend &mdash; Operational Performance Comparison</td>
-                <td style="text-align: right; color: #64748b;">Left: Pax &bull; Right 1: A/C &bull; Right 2: {{ $comparison['cargo_unit'] }}</td>
+                <td style="text-align: left; color: #2563eb; text-transform: uppercase;">1. PERGERAKAN PENUMPANG &mdash; Bar + Trend Line</td>
+                <td style="text-align: right; color: #64748b;">Unit: Pax &bull; Actual Movement &amp; Progression</td>
             </tr>
         </table>
         <div>
-            <img src="{{ $charts['combined_operational'] }}" style="width: 100%; height: auto; display: block;" />
+            <img src="{{ $charts['trend_passenger'] }}" style="width: 100%; height: 120px; display: block;" />
+        </div>
+    </div>
+
+    {{-- Category 2: Aircraft Movement Combo Chart --}}
+    <div class="chart-container" style="margin-bottom: 6px;">
+        <table style="width: 100%; margin-bottom: 2px; border-bottom: 1px solid #f1f5f9; font-size: 8.5px; font-weight: bold;">
+            <tr>
+                <td style="text-align: left; color: #059669; text-transform: uppercase;">2. PERGERAKAN PESAWAT &mdash; Bar + Trend Line</td>
+                <td style="text-align: right; color: #64748b;">Unit: Movements / A/C &bull; Actual Movement &amp; Progression</td>
+            </tr>
+        </table>
+        <div>
+            <img src="{{ $charts['trend_aircraft'] }}" style="width: 100%; height: 120px; display: block;" />
+        </div>
+    </div>
+
+    {{-- Category 3: Cargo Movement Combo Chart --}}
+    <div class="chart-container" style="margin-bottom: 6px;">
+        <table style="width: 100%; margin-bottom: 2px; border-bottom: 1px solid #f1f5f9; font-size: 8.5px; font-weight: bold;">
+            <tr>
+                <td style="text-align: left; color: #d97706; text-transform: uppercase;">3. PERGERAKAN KARGO &mdash; Bar + Trend Line</td>
+                <td style="text-align: right; color: #64748b;">Unit: {{ $comparison['cargo_unit'] ?? 'Kg' }} &bull; Actual Movement &amp; Progression</td>
+            </tr>
+        </table>
+        <div>
+            <img src="{{ $charts['trend_cargo'] }}" style="width: 100%; height: 120px; display: block;" />
         </div>
     </div>
 
