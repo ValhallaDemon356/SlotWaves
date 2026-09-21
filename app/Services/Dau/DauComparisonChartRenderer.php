@@ -663,8 +663,8 @@ class DauComparisonChartRenderer
             imagestring($im, 3, max(2, $xlX), max(0, $xlY), $xl, $textDark);
         }
 
-        // Legend at top right if multiple datasets
-        if ($numDatasets > 1) {
+        // Legend at top right
+        if ($numDatasets >= 1) {
             $legX = $width - $padR;
             $legY = (int)(12 * $scale);
             foreach (array_reverse($datasets, true) as $dIdx => $ds) {

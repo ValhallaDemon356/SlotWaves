@@ -620,9 +620,27 @@ class DauComparisonService
         }
 
         $metrics = ['passenger', 'aircraft', 'cargo'];
+        $metricColorMap = [
+            'passenger' => [
+                'dom' => '#2563eb', // Aviation Blue (Blue 600)
+                'int' => '#93c5fd', // Light Blue (Blue 300)
+            ],
+            'aircraft' => [
+                'dom' => '#059669', // Emerald Green (Emerald 600)
+                'int' => '#6ee7b7', // Light Emerald (Emerald 300)
+            ],
+            'cargo' => [
+                'dom' => '#d97706', // Amber/Orange (Amber 600)
+                'int' => '#fcd34d', // Light Amber/Orange (Amber 300)
+            ],
+        ];
+
         $data = [];
 
         foreach ($metrics as $mKey) {
+            $domColor = $metricColorMap[$mKey]['dom'];
+            $intColor = $metricColorMap[$mKey]['int'];
+
             if ($scope === 'ALL') {
                 $domValues = [];
                 $intValues = [];
@@ -650,12 +668,12 @@ class DauComparisonService
                 $datasets = [
                     [
                         'label' => 'Domestic',
-                        'color' => '#2563eb', // Aviation Blue
+                        'color' => $domColor,
                         'values'=> $domValues,
                     ],
                     [
                         'label' => 'International',
-                        'color' => '#7c3aed', // Purple / Violet
+                        'color' => $intColor,
                         'values'=> $intValues,
                     ],
                 ];
@@ -676,7 +694,7 @@ class DauComparisonService
                 $datasets = [
                     [
                         'label' => 'Domestic',
-                        'color' => '#2563eb',
+                        'color' => $domColor,
                         'values'=> $domValues,
                     ]
                 ];
@@ -697,7 +715,7 @@ class DauComparisonService
                 $datasets = [
                     [
                         'label' => 'International',
-                        'color' => '#7c3aed',
+                        'color' => $intColor,
                         'values'=> $intValues,
                     ]
                 ];

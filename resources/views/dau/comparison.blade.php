@@ -464,7 +464,7 @@
                     <span class="text-[11px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400 font-mono">
                         SECTION 2 &bull; HISTORICAL TRAFFIC DISTRIBUTION
                     </span>
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-900">
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-aviation-50 dark:bg-aviation-950 text-aviation-600 dark:text-aviation-400 border border-aviation-200 dark:border-aviation-900">
                         Period Distribution (Bar Charts)
                     </span>
                 </div>
@@ -557,8 +557,11 @@
                         </span>
                         <span class="text-[10px] font-mono text-slate-400">Pax (Bars)</span>
                     </div>
-                    <div class="h-60 relative">
+                    <div class="h-60 relative flex items-center justify-center">
                         <canvas id="chart-hist-passenger"></canvas>
+                        <div x-show="isHistoricalMetricEmpty('passenger')" class="absolute inset-0 flex items-center justify-center bg-white/90 dark:bg-navy-900/90 text-xs font-mono text-slate-400 font-bold tracking-wider rounded-xl">
+                            NO DATA FOR SELECTED FILTER
+                        </div>
                     </div>
                 </div>
 
@@ -571,8 +574,11 @@
                         </span>
                         <span class="text-[10px] font-mono text-slate-400">Movements (Bars)</span>
                     </div>
-                    <div class="h-60 relative">
+                    <div class="h-60 relative flex items-center justify-center">
                         <canvas id="chart-hist-aircraft"></canvas>
+                        <div x-show="isHistoricalMetricEmpty('aircraft')" class="absolute inset-0 flex items-center justify-center bg-white/90 dark:bg-navy-900/90 text-xs font-mono text-slate-400 font-bold tracking-wider rounded-xl">
+                            NO DATA FOR SELECTED FILTER
+                        </div>
                     </div>
                 </div>
 
@@ -585,8 +591,11 @@
                         </span>
                         <span class="text-[10px] font-mono text-slate-400" x-text="comparisonData.cargo_unit + ' (Bars)'"></span>
                     </div>
-                    <div class="h-60 relative">
+                    <div class="h-60 relative flex items-center justify-center">
                         <canvas id="chart-hist-cargo"></canvas>
+                        <div x-show="isHistoricalMetricEmpty('cargo')" class="absolute inset-0 flex items-center justify-center bg-white/90 dark:bg-navy-900/90 text-xs font-mono text-slate-400 font-bold tracking-wider rounded-xl">
+                            NO DATA FOR SELECTED FILTER
+                        </div>
                     </div>
                 </div>
             </div>
@@ -879,10 +888,42 @@ function dauComparisonDashboard() {
             }
         },
 
+        isHistoricalMetricEmpty(metricKey) {
+            const datasets = this.getHistoricalDatasets(metricKey);
+            if (!datasets || datasets.length === 0) return true;
+            return datasets.every(ds => !ds.data || ds.data.length === 0 || ds.data.every(v => !v || v === 0));
+        },
+
+        getHistoricalPalette(metricKey) {
+            const isDark = document.documentElement.classList.contains('dark');
+            const palettes = {
+                passenger: {
+                    dom: isDark ? '#3b82f6' : '#2563eb',          // Primary Blue (Blue 600)
+                    int: isDark ? '#93c5fd' : '#93c5fd',          // Secondary Light Blue (Blue 300)
+                    domHover: '#1d4ed8',
+                    intHover: '#60a5fa',
+                },
+                aircraft: {
+                    dom: isDark ? '#10b981' : '#059669',          // Primary Green (Emerald 600)
+                    int: isDark ? '#6ee7b7' : '#6ee7b7',          // Secondary Light Green (Emerald 300)
+                    domHover: '#047857',
+                    intHover: '#34d399',
+                },
+                cargo: {
+                    dom: isDark ? '#f59e0b' : '#d97706',          // Primary Orange/Amber (Amber 600)
+                    int: isDark ? '#fcd34d' : '#fcd34d',          // Secondary Light Orange/Amber (Amber 300)
+                    domHover: '#b45309',
+                    intHover: '#fbbf24',
+                },
+            };
+            return palettes[metricKey] || palettes.passenger;
+        },
+
         getHistoricalDatasets(metricKey) {
             const periods = this.periodsList;
             const scope = this.historicalScope;
             const dir = this.historicalDirection;
+            const pal = this.getHistoricalPalette(metricKey);
 
             if (scope === 'ALL') {
                 const domVals = periods.map(p => {
@@ -898,8 +939,8 @@ function dauComparisonDashboard() {
                     return b.int_tot || 0;
                 });
                 return [
-                    { label: 'Domestic', backgroundColor: '#2563eb', data: domVals, borderRadius: 4, maxBarThickness: 32 },
-                    { label: 'International', backgroundColor: '#7c3aed', data: intVals, borderRadius: 4, maxBarThickness: 32 }
+                    { label: 'Domestic', backgroundColor: pal.dom, hoverBackgroundColor: pal.domHover, data: domVals, borderRadius: 4, maxBarThickness: 32 },
+                    { label: 'International', backgroundColor: pal.int, hoverBackgroundColor: pal.intHover, data: intVals, borderRadius: 4, maxBarThickness: 32 }
                 ];
             } else if (scope === 'DOM') {
                 const domVals = periods.map(p => {
@@ -909,17 +950,17 @@ function dauComparisonDashboard() {
                     return b.dom_tot || 0;
                 });
                 return [
-                    { label: 'Domestic', backgroundColor: '#2563eb', data: domVals, borderRadius: 4, maxBarThickness: 44 }
+                    { label: 'Domestic', backgroundColor: pal.dom, hoverBackgroundColor: pal.domHover, data: domVals, borderRadius: 4, maxBarThickness: 44 }
                 ];
             } else {
                 const intVals = periods.map(p => {
                     const b = p.breakdown?.[metricKey] || {};
                     if (dir === 'ARRIVAL') return b.int_arr || 0;
                     if (dir === 'DEPARTURE') return b.int_dep || 0;
-                    return b.int_tot;
+                    return b.int_tot || 0;
                 });
                 return [
-                    { label: 'International', backgroundColor: '#7c3aed', data: intVals, borderRadius: 4, maxBarThickness: 44 }
+                    { label: 'International', backgroundColor: pal.int, hoverBackgroundColor: pal.intHover, data: intVals, borderRadius: 4, maxBarThickness: 44 }
                 ];
             }
         },
@@ -1184,6 +1225,13 @@ function dauComparisonDashboard() {
 
             const periods = this.periodsList;
             const labels = periods.map(p => p.short_label || p.label);
+            const self = this;
+
+            const metricLabels = {
+                passenger: 'Passenger',
+                aircraft:  'Aircraft',
+                cargo:     'Cargo',
+            };
 
             const buildBarChart = (canvasId, metricKey, unit) => {
                 const ctx = document.getElementById(canvasId);
@@ -1206,22 +1254,45 @@ function dauComparisonDashboard() {
                         maintainAspectRatio: false,
                         plugins: {
                             legend: {
-                                display: datasets.length > 1,
+                                display: true,
                                 position: 'top',
                                 labels: {
                                     color: textColor,
-                                    font: { family: 'JetBrains Mono', size: 9 },
-                                    boxWidth: 10
+                                    font: { family: 'JetBrains Mono', size: 9.5, weight: 'bold' },
+                                    boxWidth: 10,
+                                    padding: 8
                                 }
                             },
                             tooltip: {
+                                backgroundColor: isDark ? 'rgba(15, 23, 42, 0.96)' : 'rgba(15, 23, 42, 0.94)',
+                                padding: { top: 8, bottom: 8, left: 12, right: 12 },
+                                cornerRadius: 8,
+                                borderWidth: 1,
+                                borderColor: isDark ? 'rgba(148, 163, 184, 0.15)' : 'rgba(255, 255, 255, 0.1)',
+                                titleFont: { family: 'JetBrains Mono', size: 11, weight: 'bold' },
+                                titleColor: '#ffffff',
+                                titleSpacing: 6,
+                                bodyFont: { family: 'JetBrains Mono', size: 10 },
+                                bodyColor: '#e2e8f0',
+                                bodySpacing: 3,
                                 callbacks: {
                                     title: (items) => {
                                         const idx = items[0].dataIndex;
-                                        return periods[idx].label + ' (' + periods[idx].short_label + ')';
+                                        const p = periods[idx];
+                                        return p ? (p.label + ' (' + (p.short_label || p.label) + ')') : labels[idx];
                                     },
                                     label: (item) => {
-                                        return item.dataset.label + ': ' + Number(item.raw).toLocaleString() + ' ' + unit;
+                                        const val = Number(item.raw || 0).toLocaleString();
+                                        const mName = metricLabels[metricKey] || metricKey;
+                                        const scopeName = item.dataset.label;
+                                        const dirName = self.historicalDirection === 'ARRIVAL' ? 'Arrival'
+                                            : (self.historicalDirection === 'DEPARTURE' ? 'Departure' : 'All Directions');
+                                        return [
+                                            'Metric: ' + mName,
+                                            'Scope: ' + scopeName,
+                                            'Direction: ' + dirName,
+                                            'Value: ' + val + ' ' + unit
+                                        ];
                                     }
                                 }
                             }
@@ -1261,7 +1332,7 @@ function dauComparisonDashboard() {
                 if (chart) {
                     const newDatasets = this.getHistoricalDatasets(c.key);
                     chart.data.datasets = newDatasets;
-                    chart.options.plugins.legend.display = newDatasets.length > 1;
+                    chart.options.plugins.legend.display = true;
                     chart.update();
                 }
             });
