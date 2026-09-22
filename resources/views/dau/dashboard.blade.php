@@ -517,6 +517,116 @@
 
         {{-- ══ 3. KPI SUMMARY SECTION ═════════════════════════════════════════ --}}
         @if ($reportType === 'DAU1')
+            {{-- Directional Balance Congestion Alert Banner (Auto-triggers if Inbound > 70%) --}}
+            <template x-if="dau1Ratios && dau1Ratios.isInboundHeavy">
+                <div class="rounded-xl border border-amber-400/70 dark:border-amber-500/50 bg-amber-500/10 dark:bg-amber-950/40 p-3.5 sm:p-4 backdrop-blur-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900 dark:text-amber-200 shadow-sm animate-pulse mb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm font-black text-lg">
+                            ⚠️
+                        </div>
+                        <div>
+                            <div class="font-black text-xs sm:text-sm tracking-wide uppercase flex items-center gap-2">
+                                <span>Inbound Heavy — Apron Congestion Alert</span>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-600 text-white shadow-2xs" x-text="dau1Ratios.inboundRatio + '% Inbound'"></span>
+                            </div>
+                            <p class="text-[11px] sm:text-xs text-amber-800 dark:text-amber-300 mt-0.5 font-medium">
+                                Inbound arrival traffic represents over 70% of total movements. High risk of apron stand occupancy bottlenecks, gate dwell time inflation, and ground handling congestion.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 self-end sm:self-center font-mono text-xs">
+                        <div class="text-right">
+                            <div class="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400">Directional Split</div>
+                            <div class="font-black text-slate-900 dark:text-white" x-text="formatNumber(dau1Ratios.arrMovements) + ' ARR / ' + formatNumber(dau1Ratios.depMovements) + ' DEP'"></div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            {{-- DAU-01 Operational Intelligence Derived Cards --}}
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-3 sm:mb-4">
+                {{-- CARD 1: PAX PER FLIGHT RATIO --}}
+                <div class="glass-card p-4 shadow-sm border-t-2 border-t-cyan-500 relative overflow-hidden">
+                    <div class="flex items-center justify-between">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pax per Flight Ratio</div>
+                        <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-cyan-50 dark:bg-cyan-950/60 text-cyan-600 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800 font-mono">Load Density</span>
+                    </div>
+                    <div class="flex items-baseline gap-2 mt-1">
+                        <span class="text-2xl sm:text-3xl font-black text-cyan-600 dark:text-cyan-400 font-mono" x-text="formatNumber(dau1Ratios.paxPerFlight)">
+                            {{ number_format($dau1Ratios['pax_per_flight'] ?? 0, 1) }}
+                        </span>
+                        <span class="text-xs font-bold text-slate-500 font-mono">Pax / Flight</span>
+                    </div>
+                    <div class="text-[10px] text-slate-500 mt-1.5 flex items-center justify-between font-mono">
+                        <span>Total Pax: <strong class="text-slate-700 dark:text-slate-200" x-text="formatNumber(activeSummary.passenger_total)">{{ number_format($summary['passenger_total'] ?? 0) }}</strong></span>
+                        <span>Mov: <strong class="text-slate-700 dark:text-slate-200" x-text="formatNumber(activeSummary.total_movements)">{{ number_format($summary['total_movements'] ?? 0) }}</strong></span>
+                    </div>
+                </div>
+
+                {{-- CARD 2: BAGGAGE LOAD PER PAX --}}
+                <div class="glass-card p-4 shadow-sm border-t-2 border-t-blue-600 relative overflow-hidden">
+                    <div class="flex items-center justify-between">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Baggage Load per Pax</div>
+                        <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 font-mono">Checked Load</span>
+                    </div>
+                    <div class="flex items-baseline gap-2 mt-1">
+                        <span class="text-2xl sm:text-3xl font-black text-blue-600 dark:text-blue-400 font-mono" x-text="formatNumber(dau1Ratios.baggagePerPax)">
+                            {{ number_format($dau1Ratios['baggage_per_pax'] ?? 0, 1) }}
+                        </span>
+                        <span class="text-xs font-bold text-slate-500 font-mono">Kg / Pax</span>
+                    </div>
+                    <div class="text-[10px] text-slate-500 mt-1.5 flex items-center justify-between font-mono">
+                        <span>Total Bag: <strong class="text-slate-700 dark:text-slate-200" x-text="formatNumber(activeSummary.baggage_total) + ' kg'">{{ number_format($summary['baggage_total'] ?? 0) }} kg</strong></span>
+                        <span x-text="dau1Ratios.paxPerFlight > 0 ? (Math.round(dau1Ratios.baggagePerPax * dau1Ratios.paxPerFlight) + ' kg/flt') : '—'"></span>
+                    </div>
+                </div>
+
+                {{-- CARD 3: CARGO TO FLIGHT DENSITY --}}
+                <div class="glass-card p-4 shadow-sm border-t-2 border-t-teal-600 relative overflow-hidden">
+                    <div class="flex items-center justify-between">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Cargo to Flight Density</div>
+                        <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-800 font-mono">Freight Density</span>
+                    </div>
+                    <div class="flex items-baseline gap-2 mt-1">
+                        <span class="text-2xl sm:text-3xl font-black text-teal-600 dark:text-teal-400 font-mono" x-text="formatNumber(dau1Ratios.cargoDensityTon)">
+                            {{ number_format($dau1Ratios['cargo_density_ton'] ?? 0, 2) }}
+                        </span>
+                        <span class="text-xs font-bold text-slate-500 font-mono">Tons / Flight</span>
+                    </div>
+                    <div class="text-[10px] text-slate-500 mt-1.5 flex items-center justify-between font-mono">
+                        <span>Total Cargo: <strong class="text-slate-700 dark:text-slate-200" x-text="formatNumber(activeSummary.cargo_total) + ' kg'">{{ number_format($summary['cargo_total'] ?? 0) }} kg</strong></span>
+                        <span x-text="formatNumber(dau1Ratios.cargoDensityKg) + ' kg/flt'"></span>
+                    </div>
+                </div>
+
+                {{-- CARD 4: DIRECTIONAL BALANCE GAUGE & SPLIT --}}
+                <div class="glass-card p-4 shadow-sm border-t-2 relative overflow-hidden"
+                     :class="dau1Ratios.isInboundHeavy ? 'border-t-amber-500' : 'border-t-indigo-600'">
+                    <div class="flex items-center justify-between">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Directional Balance</div>
+                        <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded"
+                              :class="dau1Ratios.isInboundHeavy ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 font-black' : 'bg-slate-100 dark:bg-navy-800 text-slate-600 dark:text-slate-300 font-mono'"
+                              x-text="dau1Ratios.directionalStatus">
+                            {{ $dau1Ratios['directional_status'] ?? 'BALANCED' }}
+                        </span>
+                    </div>
+                    <div class="mt-2 space-y-1.5">
+                        <div class="flex items-center justify-between text-xs font-mono font-bold">
+                            <span class="text-indigo-600 dark:text-indigo-400" x-text="'ARR ' + dau1Ratios.inboundRatio + '%'">ARR {{ $dau1Ratios['inbound_ratio'] ?? 50 }}%</span>
+                            <span class="text-blue-600 dark:text-blue-400" x-text="'DEP ' + dau1Ratios.outboundRatio + '%'">DEP {{ $dau1Ratios['outbound_ratio'] ?? 50 }}%</span>
+                        </div>
+                        <div class="w-full h-2.5 rounded-full overflow-hidden bg-slate-100 dark:bg-navy-800 flex shadow-inner">
+                            <div class="h-full bg-indigo-600 transition-all duration-300" :style="'width: ' + dau1Ratios.inboundRatio + '%'"></div>
+                            <div class="h-full bg-blue-500 transition-all duration-300" :style="'width: ' + dau1Ratios.outboundRatio + '%'"></div>
+                        </div>
+                        <div class="text-[10px] text-slate-500 flex items-center justify-between font-mono">
+                            <span x-text="formatNumber(dau1Ratios.arrMovements) + ' Inbound'">{{ number_format($dau1Ratios['arr_movements'] ?? 0) }} Inbound</span>
+                            <span x-text="formatNumber(dau1Ratios.depMovements) + ' Outbound'">{{ number_format($dau1Ratios['dep_movements'] ?? 0) }} Outbound</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {{-- DAU-01 PASSENGER MODE KPI CARDS (6 CARDS) --}}
             <div x-show="selectedMetric === 'passenger'" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
                 {{-- 1. TOTAL PASSENGERS --}}
@@ -810,42 +920,73 @@
 
                 <div class="glass-card p-5 sm:p-6 shadow-md space-y-4 flex flex-col justify-between">
                     <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
-                        <div class="text-[10px] font-bold uppercase tracking-wider"
-                             :class="selectedMetric === 'passenger' ? 'text-emerald-600 dark:text-emerald-400' : 'text-teal-600 dark:text-teal-400'"
-                             x-text="selectedMetric === 'passenger' ? 'Passenger Composition' : 'Payload Distribution'">Payload Distribution</div>
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400"
+                             x-text="selectedMetric === 'passenger' ? 'Demographic Split' : 'Payload Distribution'">Demographic Split</div>
                         <h2 class="text-base font-black tracking-tight text-slate-900 dark:text-white"
-                            x-text="selectedMetric === 'passenger' ? 'DEWASA • ANAK • BAYI SHARE' : 'CARGO & BAGGAGE COMPOSITION'">
-                            CARGO &amp; BAGGAGE COMPOSITION
+                            x-text="selectedMetric === 'passenger' ? 'PASSENGER DEMOGRAPHIC BREAKDOWN' : 'CARGO & BAGGAGE PAYLOAD DENSITY'">
+                            PASSENGER DEMOGRAPHIC BREAKDOWN
                         </h2>
                     </div>
-                    <div class="relative h-56 w-full flex items-center justify-center">
+
+                    {{-- Multi-segment Demographic Progress Bar (Live Adult / Child / Infant shares) --}}
+                    <template x-if="selectedMetric === 'passenger'">
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between text-xs font-mono">
+                                <span class="font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                                    <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+                                    Dewasa <span x-text="'(' + dau1Ratios.adultPct + '%)'"></span>
+                                </span>
+                                <span class="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    Anak <span x-text="'(' + dau1Ratios.childPct + '%)'"></span>
+                                </span>
+                                <span class="font-bold text-amber-500 flex items-center gap-1">
+                                    <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                                    Bayi <span x-text="'(' + dau1Ratios.infantPct + '%)'"></span>
+                                </span>
+                            </div>
+                            <div class="w-full h-3 rounded-full overflow-hidden bg-slate-100 dark:bg-navy-800 flex shadow-inner">
+                                <div class="h-full bg-blue-600 transition-all duration-300" :style="'width: ' + dau1Ratios.adultPct + '%'"></div>
+                                <div class="h-full bg-emerald-500 transition-all duration-300" :style="'width: ' + dau1Ratios.childPct + '%'"></div>
+                                <div class="h-full bg-amber-500 transition-all duration-300" :style="'width: ' + dau1Ratios.infantPct + '%'"></div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <div class="relative h-52 w-full flex items-center justify-center">
                         <canvas id="dau1PayloadChart"></canvas>
                     </div>
+
                     <template x-if="selectedMetric === 'passenger'">
-                        <div class="grid grid-cols-3 gap-1.5 text-center text-xs font-mono pt-2 border-t border-slate-100 dark:border-slate-800">
-                            <div class="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
-                                <div class="text-[9px] text-blue-600 font-bold uppercase">Dewasa</div>
-                                <div class="font-black text-blue-700 dark:text-blue-300" x-text="formatNumber(activeSummary.passenger_adult)"></div>
+                        <div class="grid grid-cols-3 gap-2 text-center text-xs font-mono pt-2 border-t border-slate-100 dark:border-slate-800">
+                            <div class="p-2.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/80">
+                                <div class="text-[9px] text-blue-600 font-bold uppercase">Dewasa (Adult)</div>
+                                <div class="font-black text-blue-700 dark:text-blue-300 text-sm mt-0.5" x-text="formatNumber(activeSummary.passenger_adult)"></div>
+                                <div class="text-[10px] text-blue-500 font-bold" x-text="dau1Ratios.adultPct + '%'"></div>
                             </div>
-                            <div class="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
-                                <div class="text-[9px] text-emerald-600 font-bold uppercase">Anak</div>
-                                <div class="font-black text-emerald-700 dark:text-emerald-300" x-text="formatNumber(activeSummary.passenger_child)"></div>
+                            <div class="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/80">
+                                <div class="text-[9px] text-emerald-600 font-bold uppercase">Anak (Child)</div>
+                                <div class="font-black text-emerald-700 dark:text-emerald-300 text-sm mt-0.5" x-text="formatNumber(activeSummary.passenger_child)"></div>
+                                <div class="text-[10px] text-emerald-500 font-bold" x-text="dau1Ratios.childPct + '%'"></div>
                             </div>
-                            <div class="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
-                                <div class="text-[9px] text-amber-600 font-bold uppercase">Bayi</div>
-                                <div class="font-black text-amber-700 dark:text-amber-300" x-text="formatNumber(activeSummary.passenger_infant)"></div>
+                            <div class="p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/80">
+                                <div class="text-[9px] text-amber-600 font-bold uppercase">Bayi (Infant)</div>
+                                <div class="font-black text-amber-700 dark:text-amber-300 text-sm mt-0.5" x-text="formatNumber(activeSummary.passenger_infant)"></div>
+                                <div class="text-[10px] text-amber-500 font-bold" x-text="dau1Ratios.infantPct + '%'"></div>
                             </div>
                         </div>
                     </template>
                     <template x-if="selectedMetric !== 'passenger'">
                         <div class="grid grid-cols-2 gap-2 text-center text-xs font-mono pt-2 border-t border-slate-100 dark:border-slate-800">
-                            <div class="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800">
-                                <div class="text-[10px] text-rose-600 font-bold uppercase">Baggage</div>
-                                <div class="font-black text-rose-700 dark:text-rose-300" x-text="formatNumber(activeSummary.baggage_total) + ' Kg'"></div>
+                            <div class="p-2.5 rounded-xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800/80">
+                                <div class="text-[10px] text-rose-600 font-bold uppercase">Total Baggage</div>
+                                <div class="font-black text-rose-700 dark:text-rose-300 text-sm mt-0.5" x-text="formatNumber(activeSummary.baggage_total) + ' Kg'"></div>
+                                <div class="text-[10px] text-rose-500 font-bold" x-text="dau1Ratios.baggagePerPax + ' kg/pax'"></div>
                             </div>
-                            <div class="p-2 rounded-lg bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800">
-                                <div class="text-[10px] text-teal-600 font-bold uppercase">Cargo</div>
-                                <div class="font-black text-teal-700 dark:text-teal-300" x-text="formatNumber(activeSummary.cargo_total) + ' Kg'"></div>
+                            <div class="p-2.5 rounded-xl bg-teal-50/70 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-800/80">
+                                <div class="text-[10px] text-teal-600 font-bold uppercase">Total Cargo</div>
+                                <div class="font-black text-teal-700 dark:text-teal-300 text-sm mt-0.5" x-text="formatNumber(activeSummary.cargo_total) + ' Kg'"></div>
+                                <div class="text-[10px] text-teal-500 font-bold" x-text="dau1Ratios.cargoDensityTon + ' ton/flt'"></div>
                             </div>
                         </div>
                     </template>
@@ -892,107 +1033,246 @@
             </div>
         @endif
 
-        {{-- DAU-3: STATUS PENERBANGAN --}}
+        {{-- DAU-3: STATUS PENERBANGAN & REGULARITAS (UPGRADED) --}}
         @if ($reportType === 'DAU3')
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
-                    <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
-                        <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Business Classification</div>
-                        <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">NIAGA (COMMERCIAL) VS BUKAN NIAGA</h2>
-                    </div>
-                    <div class="relative h-64 w-full flex items-center justify-center">
-                        <canvas id="dau3StatusDonut"></canvas>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3 text-center font-mono text-xs pt-2">
-                        <div class="p-3 rounded-xl bg-aviation-50 dark:bg-aviation-950/40 border border-aviation-200 dark:border-aviation-800">
-                            <div class="text-[10px] text-aviation-600 font-bold uppercase">Niaga (Commercial)</div>
-                            <div class="text-lg font-black text-aviation-700 dark:text-aviation-300" x-text="formatNumber(dau3Metrics.niagaAcft) + ' A/C'"></div>
+            <div class="space-y-6">
+                {{-- 1. Operational Regularity & Apron Stand Impact Alert Banner --}}
+                <div class="glass-card p-4 sm:p-5 shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center font-black text-base shadow-xs"
+                             :class="dau3Regularity.extra_flight_impact ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'">
+                            <span x-text="dau3Regularity.extra_flight_impact ? '⚠️' : '✅'"></span>
                         </div>
-                        <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
-                            <div class="text-[10px] text-amber-600 font-bold uppercase">Bukan Niaga</div>
-                            <div class="text-lg font-black text-amber-700 dark:text-amber-300" x-text="formatNumber(dau3Metrics.bukanNiagaAcft) + ' A/C'"></div>
+                        <div>
+                            <div class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
+                                <span>Apron Stand Stress &amp; Regularity Profile</span>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                                      :class="dau3Regularity.extra_flight_impact ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 border border-amber-300 dark:border-amber-700' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'"
+                                      x-text="dau3Regularity.extra_flight_impact ? ('Apron Stress: ' + dau3Regularity.extra_flight_pct + '% Non-Scheduled') : ('Normal Operations: ' + dau3Regularity.regularity_rate + '% Scheduled')">
+                                </span>
+                            </div>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5"
+                               x-text="dau3Regularity.extra_flight_impact ? 'Penerbangan non-berjadwal/extra flights melebihi ambang 5%, berpotensi membebani alokasi parking stand dan slot apron.' : 'Mayoritas pergerakan adalah penerbangan niaga berjadwal komersial, perputaran apron stabil.'">
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 shrink-0">
+                        <div class="p-2.5 px-3 rounded-lg bg-slate-50 dark:bg-navy-900 border border-slate-200 dark:border-slate-800 text-center font-mono">
+                            <div class="text-[9px] font-bold uppercase text-slate-400">Regularity Rate</div>
+                            <div class="text-base font-black text-aviation-600 dark:text-aviation-400" x-text="(dau3Regularity.regularity_rate || '100') + '%'"></div>
+                        </div>
+                        <div class="p-2.5 px-3 rounded-lg bg-slate-50 dark:bg-navy-900 border border-slate-200 dark:border-slate-800 text-center font-mono">
+                            <div class="text-[9px] font-bold uppercase text-slate-400">Extra / Charter Share</div>
+                            <div class="text-base font-black text-amber-600 dark:text-amber-400" x-text="(dau3Regularity.extra_flight_pct || '0') + '%'"></div>
                         </div>
                     </div>
                 </div>
 
-                <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
-                    <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
-                        <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Flight Scope</div>
-                        <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">DOMESTIK VS INTERNASIONAL</h2>
-                    </div>
-                    <div class="relative h-64 w-full flex items-center justify-center">
-                        <canvas id="dau3CategoryDonut"></canvas>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3 text-center font-mono text-xs pt-2">
-                        <div class="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
-                            <div class="text-[10px] text-blue-600 font-bold uppercase">Domestik</div>
-                            <div class="text-lg font-black text-blue-700 dark:text-blue-300" x-text="formatNumber(dau3Metrics.domAcft) + ' A/C'"></div>
+                {{-- 2. Visual Charts (Regularity Donut & Domestic vs International Scope) --}}
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
+                        <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Regularity Split</div>
+                            <h2 class="text-base font-black tracking-tight text-slate-900 dark:text-white">SCHEDULED VS NON-SCHEDULED</h2>
                         </div>
-                        <div class="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800">
-                            <div class="text-[10px] text-indigo-600 font-bold uppercase">Internasional</div>
-                            <div class="text-lg font-black text-indigo-700 dark:text-indigo-300" x-text="formatNumber(dau3Metrics.intAcft) + ' A/C'"></div>
+                        <div class="relative h-60 w-full flex items-center justify-center">
+                            <canvas id="dau3StatusDonut"></canvas>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-center font-mono text-xs pt-1">
+                            <div class="p-2.5 rounded-lg bg-aviation-50 dark:bg-aviation-950/40 border border-aviation-200 dark:border-aviation-800">
+                                <div class="text-[9px] text-aviation-600 font-bold uppercase">Scheduled (Niaga)</div>
+                                <div class="text-sm font-black text-aviation-700 dark:text-aviation-300" x-text="formatNumber(dau3Metrics.niagaAcft) + ' A/C'"></div>
+                            </div>
+                            <div class="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
+                                <div class="text-[9px] text-amber-600 font-bold uppercase">Non-Scheduled</div>
+                                <div class="text-sm font-black text-amber-700 dark:text-amber-300" x-text="formatNumber(dau3Metrics.bukanNiagaAcft) + ' A/C'"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
+                        <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Traffic Scope</div>
+                            <h2 class="text-base font-black tracking-tight text-slate-900 dark:text-white">DOMESTIK VS INTERNASIONAL</h2>
+                        </div>
+                        <div class="relative h-60 w-full flex items-center justify-center">
+                            <canvas id="dau3CategoryDonut"></canvas>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-center font-mono text-xs pt-1">
+                            <div class="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
+                                <div class="text-[9px] text-blue-600 font-bold uppercase">Domestik</div>
+                                <div class="text-sm font-black text-blue-700 dark:text-blue-300" x-text="formatNumber(dau3Metrics.domAcft) + ' A/C'"></div>
+                            </div>
+                            <div class="p-2.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800">
+                                <div class="text-[9px] text-indigo-600 font-bold uppercase">Internasional</div>
+                                <div class="text-sm font-black text-indigo-700 dark:text-indigo-300" x-text="formatNumber(dau3Metrics.intAcft) + ' A/C'"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- 3. Irregularity & Cancellation Card (Strict Source-First) --}}
+                    <div class="glass-card p-5 sm:p-6 shadow-md space-y-4 flex flex-col justify-between">
+                        <div class="space-y-2">
+                            <div class="border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center justify-between">
+                                <div>
+                                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Irregularity &amp; Cancellations</div>
+                                    <h2 class="text-base font-black tracking-tight text-slate-900 dark:text-white">STATUS PEMBATALAN</h2>
+                                </div>
+                                <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-100 dark:bg-navy-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                    SOURCE-FIRST
+                                </span>
+                            </div>
+                            <div class="p-4 rounded-xl bg-slate-50 dark:bg-navy-900/60 border border-slate-200 dark:border-slate-800 space-y-3 mt-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Cancellation Rate</span>
+                                    <span class="px-2 py-0.5 rounded text-xs font-mono font-bold bg-slate-200 dark:bg-navy-800 text-slate-700 dark:text-slate-300">N/A</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Diverted Flights</span>
+                                    <span class="px-2 py-0.5 rounded text-xs font-mono font-bold bg-slate-200 dark:bg-navy-800 text-slate-700 dark:text-slate-300">N/A</span>
+                                </div>
+                                <p class="text-[10px] text-slate-400 leading-relaxed pt-1 border-t border-slate-200/60 dark:border-slate-800">
+                                    Data pembatalan, pengalihan (divert), dan irregularitas teknis tidak tercatat pada arsip fisik DAU-03 OASYS. Widget menampilkan status N/A sesuai data asli.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="p-3 rounded-lg bg-aviation-50/50 dark:bg-aviation-950/30 border border-aviation-100 dark:border-aviation-900 text-[11px] text-aviation-800 dark:text-aviation-300 font-medium">
+                            💡 Total volume teranalisis: <span class="font-bold font-mono" x-text="formatNumber(activeSummary.total_movements) + ' pergerakan pesawat'"></span>.
                         </div>
                     </div>
                 </div>
             </div>
         @endif
 
+
         {{-- DAU-4: ASAL / TUJUAN --}}
         @if ($reportType === 'DAU4')
-            <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
-                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                    <div>
-                        <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Bi-Directional Route Analysis</div>
-                        <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">TOP ORIGIN (ARRIVAL) VS TOP DESTINATION (DEPARTURE)</h2>
-                    </div>
-                    <div class="flex items-center gap-3 text-xs font-mono">
-                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-amber-500"></span> Origin / ARR (Left)</span>
-                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-blue-600"></span> Destination / DEP (Right)</span>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                    <div class="space-y-3">
-                        <h3 class="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-                            <span>Top Origins (Arrival)</span>
-                            <span class="text-[10px] text-slate-400 font-normal" x-text="'(' + (dau4Diverging.top_arrival || []).length + ' routes)'"></span>
-                        </h3>
-                        <div class="space-y-2">
-                            <template x-for="(r, idx) in (dau4Diverging.top_arrival || [])" :key="'arr-' + idx">
-                                <div @click="searchQuery = (r.city_code || r.airport); applyFilters();"
-                                     class="p-2.5 rounded-lg bg-slate-50 dark:bg-navy-900 hover:bg-amber-50/70 dark:hover:bg-amber-950/40 border border-slate-200 dark:border-slate-800 transition cursor-pointer space-y-1">
-                                    <div class="flex items-center justify-between text-xs font-bold">
-                                        <span class="text-slate-800 dark:text-slate-200 truncate" x-text="(idx+1) + '. ' + (r.city || r.airport) + ' (' + (r.city_code || '—') + ')'"></span>
-                                        <span class="font-mono text-amber-600" x-text="formatNumber(selectedMetric === 'passenger' ? r.passenger_arrival : r.aircraft_arrival)"></span>
-                                    </div>
-                                    <div class="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                                        <div class="bg-amber-500 h-full rounded-full transition-all"
-                                             :style="'width: ' + calculateBarHeight((selectedMetric === 'passenger' ? r.passenger_arrival : r.aircraft_arrival), maxDau4Val) + '%'"></div>
-                                    </div>
-                                </div>
-                            </template>
+            <div class="space-y-6">
+                {{-- 1. Bi-Directional Top 10 Origin vs Destination --}}
+                <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                        <div>
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Bi-Directional Route Intelligence</div>
+                            <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">TOP 10 ORIGIN (ARRIVAL) VS TOP 10 DESTINATION (DEPARTURE)</h2>
+                        </div>
+                        <div class="flex items-center gap-3 text-xs font-mono">
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-amber-500"></span> Origin / ARR</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-blue-600"></span> Destination / DEP</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-navy-800 text-slate-600 dark:text-slate-300 font-mono">
+                                Metric: <span class="text-aviation-600 uppercase" x-text="selectedMetric"></span>
+                            </span>
                         </div>
                     </div>
 
-                    <div class="space-y-3">
-                        <h3 class="text-xs font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
-                            <span>Top Destinations (Departure)</span>
-                            <span class="text-[10px] text-slate-400 font-normal" x-text="'(' + (dau4Diverging.top_departure || []).length + ' routes)'"></span>
-                        </h3>
-                        <div class="space-y-2">
-                            <template x-for="(r, idx) in (dau4Diverging.top_departure || [])" :key="'dep-' + idx">
-                                <div @click="searchQuery = (r.city_code || r.airport); applyFilters();"
-                                     class="p-2.5 rounded-lg bg-slate-50 dark:bg-navy-900 hover:bg-blue-50/70 dark:hover:bg-blue-950/40 border border-slate-200 dark:border-slate-800 transition cursor-pointer space-y-1">
-                                    <div class="flex items-center justify-between text-xs font-bold">
-                                        <span class="text-slate-800 dark:text-slate-200 truncate" x-text="(idx+1) + '. ' + (r.city || r.airport) + ' (' + (r.city_code || '—') + ')'"></span>
-                                        <span class="font-mono text-blue-600" x-text="formatNumber(selectedMetric === 'passenger' ? r.passenger_departure : r.aircraft_departure)"></span>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                        {{-- Top Origins (Arrival) --}}
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between border-b border-amber-100 dark:border-amber-950/60 pb-2">
+                                <h3 class="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                                    <span>Top Origins (Arrival)</span>
+                                    <span class="text-[10px] text-slate-400 font-normal" x-text="'(' + (dau4Diverging.top_arrival || []).length + ' routes)'"></span>
+                                </h3>
+                                <span class="text-[10px] font-mono text-amber-600 font-bold">INBOUND FLOW</span>
+                            </div>
+                            <div class="space-y-2">
+                                <template x-for="(r, idx) in (dau4Diverging.top_arrival || []).slice(0, 10)" :key="'arr-' + idx">
+                                    <div @click="searchQuery = (r.city_code || r.airport); applyFilters();"
+                                         class="p-2.5 rounded-lg bg-slate-50 dark:bg-navy-900 hover:bg-amber-50/70 dark:hover:bg-amber-950/40 border border-slate-200 dark:border-slate-800 transition cursor-pointer space-y-1.5 group">
+                                        <div class="flex items-center justify-between text-xs font-bold">
+                                            <div class="flex items-center gap-2 truncate">
+                                                <span class="w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 text-[10px] flex items-center justify-center font-mono font-bold" x-text="idx + 1"></span>
+                                                <span class="text-slate-800 dark:text-slate-200 truncate group-hover:text-amber-600 transition" x-text="(r.city || r.airport) + ' (' + (r.city_code || '—') + ')'"></span>
+                                            </div>
+                                            <span class="font-mono text-amber-600 font-black whitespace-nowrap" x-text="formatNumber(selectedMetric === 'passenger' ? r.passenger_arrival : r.aircraft_arrival)"></span>
+                                        </div>
+                                        <div class="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                                            <div class="bg-amber-500 h-full rounded-full transition-all duration-500"
+                                                 :style="'width: ' + calculateBarHeight((selectedMetric === 'passenger' ? r.passenger_arrival : r.aircraft_arrival), maxDau4Val) + '%'"></div>
+                                        </div>
                                     </div>
-                                    <div class="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                                        <div class="bg-blue-600 h-full rounded-full transition-all"
-                                             :style="'width: ' + calculateBarHeight((selectedMetric === 'passenger' ? r.passenger_departure : r.aircraft_departure), maxDau4Val) + '%'"></div>
+                                </template>
+                            </div>
+                        </div>
+
+                        {{-- Top Destinations (Departure) --}}
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between border-b border-blue-100 dark:border-blue-950/60 pb-2">
+                                <h3 class="text-xs font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+                                    <span>Top Destinations (Departure)</span>
+                                    <span class="text-[10px] text-slate-400 font-normal" x-text="'(' + (dau4Diverging.top_departure || []).length + ' routes)'"></span>
+                                </h3>
+                                <span class="text-[10px] font-mono text-blue-600 font-bold">OUTBOUND FLOW</span>
+                            </div>
+                            <div class="space-y-2">
+                                <template x-for="(r, idx) in (dau4Diverging.top_departure || []).slice(0, 10)" :key="'dep-' + idx">
+                                    <div @click="searchQuery = (r.city_code || r.airport); applyFilters();"
+                                         class="p-2.5 rounded-lg bg-slate-50 dark:bg-navy-900 hover:bg-blue-50/70 dark:hover:bg-blue-950/40 border border-slate-200 dark:border-slate-800 transition cursor-pointer space-y-1.5 group">
+                                        <div class="flex items-center justify-between text-xs font-bold">
+                                            <div class="flex items-center gap-2 truncate">
+                                                <span class="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-[10px] flex items-center justify-center font-mono font-bold" x-text="idx + 1"></span>
+                                                <span class="text-slate-800 dark:text-slate-200 truncate group-hover:text-blue-600 transition" x-text="(r.city || r.airport) + ' (' + (r.city_code || '—') + ')'"></span>
+                                            </div>
+                                            <span class="font-mono text-blue-600 font-black whitespace-nowrap" x-text="formatNumber(selectedMetric === 'passenger' ? r.passenger_departure : r.aircraft_departure)"></span>
+                                        </div>
+                                        <div class="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                                            <div class="bg-blue-600 h-full rounded-full transition-all duration-500"
+                                                 :style="'width: ' + calculateBarHeight((selectedMetric === 'passenger' ? r.passenger_departure : r.aircraft_departure), maxDau4Val) + '%'"></div>
+                                        </div>
                                     </div>
-                                </div>
-                            </template>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- 2. "Top N + Others" Aggregator Card (100% Volume Breakdown) --}}
+                <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                        <div>
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Route Traffic Pareto Concentration</div>
+                            <h2 class="text-base font-black tracking-tight text-slate-900 dark:text-white">TOP ROUTES VS TAIL ROUTES ("OTHERS / RUTE LAINNYA")</h2>
+                        </div>
+                        <div class="text-xs font-mono text-slate-400">100% Volume Distribution Clustered</div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-1">
+                        <div class="p-4 rounded-xl bg-aviation-50/60 dark:bg-aviation-950/40 border border-aviation-200 dark:border-aviation-800 space-y-2">
+                            <div class="text-[10px] font-bold uppercase text-aviation-700 dark:text-aviation-300">Top 10 Routes Share</div>
+                            <div class="text-2xl font-black text-aviation-700 dark:text-aviation-200 font-mono"
+                                 x-text="top10RouteSharePct + '%'"></div>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                                Porsi pergerakan lalu lintas yang terkonsentrasi pada 10 rute utama bandara.
+                            </p>
+                        </div>
+                        <div class="p-4 rounded-xl bg-amber-50/60 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 space-y-2">
+                            <div class="text-[10px] font-bold uppercase text-amber-700 dark:text-amber-300">Others / Rute Lainnya Share</div>
+                            <div class="text-2xl font-black text-amber-700 dark:text-amber-300 font-mono"
+                                 x-text="othersRouteSharePct + '%'"></div>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                                Agregasi volume pergerakan rute sekunder &amp; perintis (long-tail routes).
+                            </p>
+                        </div>
+                        <div class="p-4 rounded-xl bg-slate-50 dark:bg-navy-900 border border-slate-200 dark:border-slate-800 space-y-2">
+                            <div class="text-[10px] font-bold uppercase text-slate-500">Total Connected Network</div>
+                            <div class="text-2xl font-black text-slate-800 dark:text-white font-mono"
+                                 x-text="formatNumber((dau4Diverging.top_arrival || []).length) + ' Bandara'"></div>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                                Total jaringan destinasi &amp; asal penerbangan aktif pada periode ini.
+                            </p>
+                        </div>
+                    </div>
+
+                    {{-- Proportional Segmented 100% Progress Bar --}}
+                    <div class="space-y-1.5 pt-2">
+                        <div class="flex items-center justify-between text-xs font-mono font-bold">
+                            <span class="text-aviation-600">Top 10 Routes: <span x-text="top10RouteSharePct + '%'"></span></span>
+                            <span class="text-amber-600">Others / Rute Lainnya: <span x-text="othersRouteSharePct + '%'"></span></span>
+                        </div>
+                        <div class="w-full h-3.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden flex">
+                            <div class="bg-aviation-600 h-full transition-all duration-500" :style="'width: ' + top10RouteSharePct + '%'"></div>
+                            <div class="bg-amber-500 h-full transition-all duration-500" :style="'width: ' + othersRouteSharePct + '%'"></div>
                         </div>
                     </div>
                 </div>
@@ -1001,35 +1281,112 @@
 
         {{-- DAU-4A: ASAL / TUJUAN - OPERATOR --}}
         @if ($reportType === 'DAU4A')
-            <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
-                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                    <div>
-                        <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Hierarchical Operator Matrix</div>
-                        <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">OPERATOR × ROUTE TRAFFIC VOLUME</h2>
+            <div class="space-y-6">
+                {{-- 1. Route Market Share Analyzer --}}
+                <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+                        <div>
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Route Intelligence</div>
+                            <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">ROUTE MARKET SHARE ANALYZER</h2>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label for="dau4aRouteSelect" class="text-xs font-bold text-slate-500 whitespace-nowrap">Pilih Rute:</label>
+                            <select id="dau4aRouteSelect" x-model="dau4aSelectedRoute"
+                                    class="px-3 py-1.5 text-xs font-mono font-bold rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-navy-900 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-aviation-500">
+                                <template x-for="rKey in availableDau4aRoutes" :key="rKey">
+                                    <option :value="rKey" x-text="rKey"></option>
+                                </template>
+                            </select>
+                        </div>
                     </div>
-                    <div class="text-xs text-slate-400 font-mono">Ranked by Volume • Click to filter table</div>
-                </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-                    <template x-for="(op, idx) in dau4aOperators.slice(0, 12)" :key="'op-' + idx">
-                        <div @click="filterAirline = op.name; applyFilters();"
-                             class="p-4 rounded-xl bg-slate-50 dark:bg-navy-900 hover:bg-slate-100 dark:hover:bg-navy-800/80 border border-slate-200 dark:border-slate-800 transition cursor-pointer space-y-2"
-                             :class="filterAirline === op.name ? 'ring-2 ring-aviation-500 bg-aviation-50/30 dark:bg-aviation-950/30' : ''">
-                            <div class="flex items-center justify-between">
-                                <span class="font-bold text-slate-900 dark:text-white truncate text-xs" x-text="op.name"></span>
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-aviation-50 text-aviation-700 dark:bg-aviation-950 dark:text-aviation-300"
-                                      x-text="selectedMetric === 'passenger' ? (formatNumber(op.pax) + ' Pax') : (selectedMetric === 'baggage' ? (formatNumber(op.baggage) + ' Kg') : (selectedMetric === 'cargo' ? (formatNumber(op.cargo) + ' Kg') : (selectedMetric === 'pos' ? (formatNumber(op.pos) + ' Kg') : (formatNumber(op.total) + ' A/C'))))"></span>
+                    {{-- Route Market Share Breakdown Display --}}
+                    <div x-show="activeDau4aRouteBreakdown" class="space-y-4 pt-1">
+                        <div class="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl bg-aviation-50/50 dark:bg-aviation-950/30 border border-aviation-100 dark:border-aviation-900">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-aviation-600 text-white flex items-center justify-center font-mono font-black text-sm">
+                                    ✈
+                                </div>
+                                <div>
+                                    <div class="text-[10px] font-bold uppercase text-slate-400">Rute Terpilih</div>
+                                    <div class="text-base font-black text-slate-900 dark:text-white font-mono" x-text="activeDau4aRouteBreakdown?.route || dau4aSelectedRoute"></div>
+                                </div>
                             </div>
-                            <div class="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                                <div class="bg-aviation-600 h-full rounded-full"
-                                     :style="'width: ' + calculateBarHeight((selectedMetric === 'passenger' ? op.pax : (selectedMetric === 'baggage' ? op.baggage : (selectedMetric === 'cargo' ? op.cargo : (selectedMetric === 'pos' ? op.pos : op.total)))), dau4aMax) + '%'"></div>
-                            </div>
-                            <div class="flex items-center justify-between text-[10px] text-slate-400 font-mono">
-                                <span x-text="op.routesCount + ' Routes Served'"></span>
-                                <span x-text="'Pax: ' + formatNumber(op.pax)"></span>
+                            <div class="flex items-center gap-6 font-mono text-xs">
+                                <div>
+                                    <span class="text-slate-400 block text-[10px] uppercase font-bold">Total Volume</span>
+                                    <span class="font-black text-slate-900 dark:text-white text-sm" x-text="formatNumber(activeDau4aRouteBreakdown?.total_movements) + ' A/C'"></span>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 block text-[10px] uppercase font-bold">Leading Operator</span>
+                                    <span class="font-black text-aviation-600 dark:text-aviation-400 text-sm" x-text="(activeDau4aRouteBreakdown?.dominant_carrier || '—') + ' (' + (activeDau4aRouteBreakdown?.dominant_share_pct || 0) + '%)'"></span>
+                                </div>
                             </div>
                         </div>
-                    </template>
+
+                        {{-- Stacked Horizontal Market Share Bar --}}
+                        <div class="space-y-1.5">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Pangsa Pasar Maskapai pada Rute Ini (%)</div>
+                            <div class="w-full h-7 rounded-xl overflow-hidden flex bg-slate-200 dark:bg-slate-800 shadow-inner">
+                                <template x-for="(c, cIdx) in (activeDau4aRouteBreakdown?.carriers || [])" :key="'bar-' + cIdx">
+                                    <div class="h-full transition-all duration-300 relative group flex items-center justify-center text-[10px] font-mono font-bold text-white px-1 overflow-hidden"
+                                         :style="'width: ' + c.market_share_pct + '%; background-color: ' + getPaletteColor(cIdx)"
+                                         :title="c.carrier + ': ' + formatNumber(c.movements) + ' flights (' + c.market_share_pct + '%)'">
+                                        <span x-show="c.market_share_pct >= 8" x-text="c.carrier.split(' ')[0] + ' ' + c.market_share_pct + '%'"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        {{-- Carrier breakdown list --}}
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+                            <template x-for="(c, cIdx) in (activeDau4aRouteBreakdown?.carriers || [])" :key="'chip-' + cIdx">
+                                <div class="p-3 rounded-xl bg-slate-50 dark:bg-navy-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                                    <div class="flex items-center gap-2 truncate">
+                                        <span class="w-3 h-3 rounded-full flex-shrink-0" :style="'background-color: ' + getPaletteColor(cIdx)"></span>
+                                        <span class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate" x-text="c.carrier"></span>
+                                    </div>
+                                    <div class="text-right font-mono text-xs whitespace-nowrap pl-2">
+                                        <div class="font-black text-slate-900 dark:text-white" x-text="c.market_share_pct + '%'"></div>
+                                        <div class="text-[10px] text-slate-400" x-text="formatNumber(c.movements) + ' A/C'"></div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- 2. Hierarchical Operator Matrix --}}
+                <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                        <div>
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Hierarchical Operator Matrix</div>
+                            <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">OPERATOR × ROUTE TRAFFIC VOLUME</h2>
+                        </div>
+                        <div class="text-xs text-slate-400 font-mono">Ranked by Volume • Click to filter table</div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+                        <template x-for="(op, idx) in dau4aOperators.slice(0, 12)" :key="'op-' + idx">
+                            <div @click="filterAirline = op.name; applyFilters();"
+                                 class="p-4 rounded-xl bg-slate-50 dark:bg-navy-900 hover:bg-slate-100 dark:hover:bg-navy-800/80 border border-slate-200 dark:border-slate-800 transition cursor-pointer space-y-2"
+                                 :class="filterAirline === op.name ? 'ring-2 ring-aviation-500 bg-aviation-50/30 dark:bg-aviation-950/30' : ''">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-bold text-slate-900 dark:text-white truncate text-xs" x-text="op.name"></span>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-aviation-50 text-aviation-700 dark:bg-aviation-950 dark:text-aviation-300"
+                                          x-text="selectedMetric === 'passenger' ? (formatNumber(op.pax) + ' Pax') : (selectedMetric === 'baggage' ? (formatNumber(op.baggage) + ' Kg') : (selectedMetric === 'cargo' ? (formatNumber(op.cargo) + ' Kg') : (selectedMetric === 'pos' ? (formatNumber(op.pos) + ' Kg') : (formatNumber(op.total) + ' A/C'))))"></span>
+                                </div>
+                                <div class="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                    <div class="bg-aviation-600 h-full rounded-full"
+                                         :style="'width: ' + calculateBarHeight((selectedMetric === 'passenger' ? op.pax : (selectedMetric === 'baggage' ? op.baggage : (selectedMetric === 'cargo' ? op.cargo : (selectedMetric === 'pos' ? op.pos : op.total)))), dau4aMax) + '%'"></div>
+                                </div>
+                                <div class="flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                                    <span x-text="op.routesCount + ' Routes Served'"></span>
+                                    <span x-text="'Pax: ' + formatNumber(op.pax)"></span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
                 </div>
             </div>
         @endif
@@ -1039,32 +1396,37 @@
             <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
                 <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
                     <div>
-                        <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Route Frequency Matrix</div>
-                        <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">AIRPORT × AIRLINE MATRIX HEATMAP</h2>
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Route Frequency Matrix Heatmap</div>
+                        <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">AIRPORT × AIRLINE FREQUENCY DENSITY</h2>
                     </div>
-                    <div class="text-xs text-slate-400 font-mono">Color intensity = Frequency • Click cell to filter table</div>
+                    {{-- Color Scale Legend --}}
+                    <div class="flex items-center gap-3 text-xs font-mono">
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded" style="background-color: rgba(56, 189, 248, 0.4)"></span> Low (1-4)</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded" style="background-color: rgba(245, 158, 11, 0.7)"></span> Mid (5-14)</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded" style="background-color: rgba(225, 29, 72, 0.9)"></span> Peak (15+)</span>
+                    </div>
                 </div>
 
-                <div class="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl max-h-[480px]">
+                <div class="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl max-h-[500px]">
                     <table class="w-full text-xs font-mono text-center border-collapse">
                         <thead class="bg-slate-900 text-white text-[10px] font-bold uppercase sticky top-0 z-20">
                             <tr>
-                                <th class="px-3 py-2 text-left sticky left-0 z-30 bg-slate-900">Airport / City</th>
+                                <th class="px-3 py-2 text-left sticky left-0 z-30 bg-slate-900 shadow-xs">Airport / Route</th>
                                 <template x-for="air in (dau4bMatrixData.airlines || [])" :key="air">
-                                    <th class="px-2 py-2 whitespace-nowrap" x-text="air"></th>
+                                    <th class="px-2.5 py-2 whitespace-nowrap" x-text="air"></th>
                                 </template>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                             <template x-for="city in (dau4bMatrixData.cities || [])" :key="city">
                                 <tr>
-                                    <td class="px-3 py-1.5 text-left font-bold sticky left-0 z-10 bg-slate-50 dark:bg-navy-900 text-slate-800 dark:text-slate-200 whitespace-nowrap"
+                                    <td class="px-3 py-2 text-left font-bold sticky left-0 z-10 bg-slate-50 dark:bg-navy-900 text-slate-800 dark:text-slate-200 whitespace-nowrap shadow-xs"
                                         x-text="city"></td>
                                     <template x-for="air in (dau4bMatrixData.airlines || [])" :key="air">
                                         <td @click="searchQuery = city; applyFilters();"
-                                            class="px-2 py-1.5 cursor-pointer transition hover:ring-1 hover:ring-aviation-500"
+                                            class="px-2.5 py-2 cursor-pointer transition hover:ring-2 hover:ring-aviation-500 font-mono"
                                             :style="'background-color: ' + getDau4bColor(city, air)"
-                                            :class="getDau4bValue(city, air) > 5 ? 'text-white font-bold' : 'text-slate-700 dark:text-slate-300'"
+                                            :class="getDau4bValue(city, air) >= 5 ? 'text-white font-black' : 'text-slate-700 dark:text-slate-300'"
                                             x-text="getDau4bValue(city, air) > 0 ? getDau4bValue(city, air) : '—'"></td>
                                     </template>
                                 </tr>
@@ -1077,50 +1439,82 @@
 
         {{-- DAU-5: PARETO AIRLINE --}}
         @if ($reportType === 'DAU5')
-            <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
-                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                    <div>
-                        <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">80/20 Efficiency Rule</div>
-                        <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">AIRLINE PARETO ANALYSIS</h2>
+            <div class="space-y-6">
+                {{-- 1. Herfindahl-Hirschman Index (HHI) & Anchor Carrier Badges --}}
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {{-- HHI Concentration KPI Card --}}
+                    <div class="glass-card p-4 sm:p-5 shadow-md border-l-4 space-y-2"
+                         :class="{
+                             'border-l-emerald-500': (dau5ParetoIntel?.hhi_category === 'COMPETITIVE'),
+                             'border-l-amber-500': (dau5ParetoIntel?.hhi_category === 'MODERATELY CONCENTRATED'),
+                             'border-l-rose-500': (dau5ParetoIntel?.hhi_category === 'HIGHLY CONCENTRATED' || !dau5ParetoIntel?.hhi_category)
+                         }">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Market Concentration</div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-2xl font-black text-slate-900 dark:text-white font-mono"
+                                  x-text="'HHI: ' + formatNumber(dau5ParetoIntel?.hhi_index || 0)"></span>
+                            <span class="px-2.5 py-0.5 rounded text-[10px] font-bold font-mono uppercase tracking-wider"
+                                  :class="{
+                                      'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300': (dau5ParetoIntel?.hhi_category === 'COMPETITIVE'),
+                                      'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300': (dau5ParetoIntel?.hhi_category === 'MODERATELY CONCENTRATED'),
+                                      'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300': (dau5ParetoIntel?.hhi_category === 'HIGHLY CONCENTRATED' || !dau5ParetoIntel?.hhi_category)
+                                  }"
+                                  x-text="dau5ParetoIntel?.hhi_category || 'MODERATELY CONCENTRATED'"></span>
+                        </div>
+                        <p class="text-[11px] text-slate-500 leading-relaxed">
+                            Herfindahl-Hirschman Index mengukur tingkat diversifikasi dan kompetisi maskapai pada bandara.
+                        </p>
                     </div>
-                    <div class="flex items-center gap-3 text-xs font-mono">
-                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-aviation-600"></span> Volume Bars</span>
-                        <span class="flex items-center gap-1"><span class="w-3 h-1 rounded bg-amber-500"></span> Cumulative %</span>
-                        <span class="flex items-center gap-1"><span class="w-3 h-0.5 bg-red-500" style="border-top:2px dashed #ef4444;display:inline-block"></span> 80% Line</span>
+
+                    {{-- 80% Threshold Coverage --}}
+                    <div class="glass-card p-4 sm:p-5 shadow-md border-l-4 border-l-aviation-500 space-y-2">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">80% Pareto Boundary</div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-2xl font-black text-aviation-600 dark:text-aviation-400 font-mono"
+                                  x-text="(dau5ParetoIntel?.airlines_at_80_pct || dau5ParetoInsight.airlinesAt80 || 0) + ' / ' + (dau5ParetoIntel?.total_airlines || dau5ParetoInsight.total || 0)"></span>
+                            <span class="px-2.5 py-0.5 rounded text-[10px] font-bold font-mono bg-aviation-50 dark:bg-aviation-950 text-aviation-700 dark:text-aviation-300">
+                                <span x-text="(dau5ParetoIntel?.cumulative_at_80_pct || dau5ParetoInsight.cumAt80 || 0).toFixed(1) + '%'"></span> VOL
+                            </span>
+                        </div>
+                        <p class="text-[11px] text-slate-500 leading-relaxed">
+                            Jumlah maskapai yang mencakup 80% total operasional bandara berdasarkan aturan Pareto 80/20.
+                        </p>
+                    </div>
+
+                    {{-- Tier-1 Anchor Carriers --}}
+                    <div class="glass-card p-4 sm:p-5 shadow-md border-l-4 border-l-purple-500 space-y-2">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">Tier-1 Anchor Airlines</div>
+                        <div class="flex flex-wrap gap-1.5 pt-1">
+                            <template x-for="al in (dau5ParetoIntel?.tier_1_anchor_airlines || [])" :key="al">
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
+                                      x-text="'★ ' + al"></span>
+                            </template>
+                            <span x-show="!(dau5ParetoIntel?.tier_1_anchor_airlines || []).length" class="text-xs text-slate-400">—</span>
+                        </div>
                     </div>
                 </div>
 
-                {{-- No-data banner --}}
-                <div x-show="dau5ParetoNoData" class="flex flex-col items-center justify-center h-48 text-slate-400 dark:text-slate-500 gap-2">
-                    <svg class="w-10 h-10 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                    <div class="text-xs font-bold uppercase tracking-widest" x-text="'NO ' + selectedMetric.toUpperCase() + ' DATA AVAILABLE'"></div>
-                    <div class="text-[11px] text-slate-400">No airline activity recorded for the selected metric and filters</div>
-                </div>
-
-                <div x-show="!dau5ParetoNoData" class="relative h-72 sm:h-84 w-full">
-                    <canvas id="dau5ParetoChart" class="w-full h-full"></canvas>
-                </div>
-
-                {{-- Pareto Insight Card --}}
-                <div x-show="!dau5ParetoNoData && dau5ParetoInsight.total > 0"
-                     class="grid grid-cols-3 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-                    <div class="text-center">
-                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">80% Coverage</div>
-                        <div class="text-lg font-black text-aviation-600 dark:text-aviation-400"
-                             x-text="dau5ParetoInsight.airlinesAt80 + ' / ' + dau5ParetoInsight.total"></div>
-                        <div class="text-[10px] text-slate-400">Airlines needed</div>
+                {{-- 2. Enhanced Pareto Chart --}}
+                <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                        <div>
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">80/20 Efficiency Rule</div>
+                            <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">AIRLINE PARETO MOVEMENT DISTRIBUTION</h2>
+                        </div>
+                        <div class="flex items-center gap-3 text-xs font-mono">
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-aviation-600"></span> Volume Bars</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-1 rounded bg-amber-500"></span> Cumulative %</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-0.5 bg-red-500" style="border-top:2px dashed #ef4444;display:inline-block"></span> 80% Reference</span>
+                        </div>
                     </div>
-                    <div class="text-center">
-                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Cumulative at 80</div>
-                        <div class="text-lg font-black text-amber-600"
-                             x-text="dau5ParetoInsight.cumAt80.toFixed(1) + '%'"></div>
-                        <div class="text-[10px] text-slate-400">Actual coverage</div>
+
+                    <div x-show="dau5ParetoNoData" class="flex flex-col items-center justify-center h-48 text-slate-400 dark:text-slate-500 gap-2">
+                        <svg class="w-10 h-10 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                        <div class="text-xs font-bold uppercase tracking-widest" x-text="'NO ' + selectedMetric.toUpperCase() + ' DATA AVAILABLE'"></div>
                     </div>
-                    <div class="text-center">
-                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Concentration</div>
-                        <div class="text-lg font-black text-slate-700 dark:text-white"
-                             x-text="dau5ParetoInsight.total > 0 ? Math.round((dau5ParetoInsight.airlinesAt80 / dau5ParetoInsight.total) * 100) + '%' : '—'"></div>
-                        <div class="text-[10px] text-slate-400">Of airlines = 80%</div>
+
+                    <div x-show="!dau5ParetoNoData" class="relative h-72 sm:h-84 w-full">
+                        <canvas id="dau5ParetoChart" class="w-full h-full"></canvas>
                     </div>
                 </div>
             </div>
@@ -1128,105 +1522,190 @@
 
         {{-- DAU-5A: AIRLINE + EXTRA CREW --}}
         @if ($reportType === 'DAU5A')
-            <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
-                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                    <div>
-                        <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Crew Operations</div>
-                        <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">OPERATING CREW VS EXTRA CREW (TOP 12 AIRLINES)</h2>
+            <div class="space-y-6">
+                {{-- Operating Crew vs Extra Crew Chart --}}
+                <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                        <div>
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Crew Operations &amp; Positioning</div>
+                            <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">OPERATING CREW VS EXTRA CREW (TOP AIRLINES)</h2>
+                        </div>
+                        <div class="flex items-center gap-3 text-xs font-mono">
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-blue-600"></span> Operating Crew</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-purple-600"></span> Extra Crew</span>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-3 text-xs font-mono">
-                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-blue-600"></span> Operating Crew</span>
-                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-purple-600"></span> Extra Crew</span>
+                    <div x-show="dau5aCrewNoData" class="flex flex-col items-center justify-center h-48 text-slate-400 dark:text-slate-500 gap-2">
+                        <div class="text-xs font-bold uppercase tracking-widest">NO CREW DATA AVAILABLE</div>
+                    </div>
+                    <div x-show="!dau5aCrewNoData" class="relative h-72 sm:h-84 w-full">
+                        <canvas id="dau5aCrewChart" class="w-full h-full"></canvas>
                     </div>
                 </div>
-                <div x-show="dau5aCrewNoData" class="flex flex-col items-center justify-center h-48 text-slate-400 dark:text-slate-500 gap-2">
-                    <svg class="w-10 h-10 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" /></svg>
-                    <div class="text-xs font-bold uppercase tracking-widest">NO CREW DATA AVAILABLE</div>
-                    <div class="text-[11px] text-slate-400">No crew activity found for selected filters</div>
-                </div>
-                <div x-show="!dau5aCrewNoData" class="relative h-72 sm:h-84 w-full">
-                    <canvas id="dau5aCrewChart" class="w-full h-full"></canvas>
+
+                {{-- Grouped Operator Ratios & Efficiency Table --}}
+                <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
+                    <div class="border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center justify-between">
+                        <div>
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Carrier Staffing Intensity</div>
+                            <h2 class="text-base font-black tracking-tight text-slate-900 dark:text-white">CREW-TO-MOVEMENT RATIOS PER CARRIER</h2>
+                        </div>
+                        <span class="text-xs font-mono text-slate-400">Total Crew = Operating + Extra Crew</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <template x-for="(op, opIdx) in (dau5aOps?.operators || []).slice(0, 9)" :key="'op-ops-' + opIdx">
+                            <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-navy-900 border border-slate-200 dark:border-slate-800 space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-black text-slate-900 dark:text-white text-xs truncate" x-text="op.operator_name"></span>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-aviation-50 text-aviation-700 dark:bg-aviation-950 dark:text-aviation-300"
+                                          x-text="op.crew_ratio + ' Crew/Flight'"></span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2 text-[11px] font-mono pt-1 text-slate-600 dark:text-slate-400">
+                                    <div>Movements: <span class="font-bold text-slate-800 dark:text-slate-200" x-text="formatNumber(op.movements)"></span></div>
+                                    <div>Passengers: <span class="font-bold text-slate-800 dark:text-slate-200" x-text="formatNumber(op.passengers)"></span></div>
+                                    <div>Op Crew: <span class="font-bold text-blue-600" x-text="formatNumber(op.operating_crew)"></span></div>
+                                    <div>Extra Crew: <span class="font-bold text-purple-600" x-text="formatNumber(op.extra_crew)"></span></div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
                 </div>
             </div>
         @endif
 
         {{-- DAU-5B: TERMINAL × AIRLINE --}}
         @if ($reportType === 'DAU5B')
-            <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
-                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                    <div>
-                        <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Terminal Facility Allocation</div>
-                        <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">TERMINAL × AIRLINE DISTRIBUTION</h2>
-                    </div>
-                    <div class="text-xs font-mono text-slate-400">Stacked by Airline • Select Terminal filter to isolate</div>
-                </div>
-                <div x-show="dau5bTermNoData" class="flex flex-col items-center justify-center h-48 text-slate-400 dark:text-slate-500 gap-2">
-                    <svg class="w-10 h-10 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M3 14h18M10 4v16M14 4v16" /></svg>
-                    <div class="text-xs font-bold uppercase tracking-widest">NO TERMINAL DATA AVAILABLE</div>
-                    <div class="text-[11px] text-slate-400">No terminal-airline combinations found for selected filters</div>
-                </div>
-                <div x-show="!dau5bTermNoData" class="relative h-72 sm:h-84 w-full">
-                    <canvas id="dau5bTerminalChart" class="w-full h-full"></canvas>
-                </div>
-            </div>
-        @endif
-
-        {{-- DAU-5C: AIRLINE PROFILES — METRIC-AWARE (Pesawat / Penumpang / Bagasi / Kargo / POS) --}}
-        @if ($reportType === 'DAU5C')
-            <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
-                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                    <div>
-                        <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Airline Comparative Profiles</div>
-                        <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white"
-                            x-text="'TOP AIRLINE: ' + dau5cChartLabel">TOP AIRLINE OPERATOR COMPARISON</h2>
-                    </div>
-                    <div class="text-xs font-mono text-slate-400"
-                         x-text="'Ranked by ' + dau5cChartLabel + (filterDirection !== \'ALL\' ? \' • \' + filterDirection : \' • ARR + DEP\')">Ranked by selected metric</div>
-                </div>
-                <div x-show="dau5cNoData" class="flex flex-col items-center justify-center h-48 text-slate-400 dark:text-slate-500 gap-2">
-                    <svg class="w-10 h-10 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                    <div class="text-xs font-bold uppercase tracking-widest">NO AIRLINE DATA AVAILABLE</div>
-                    <div class="text-[11px] text-slate-400"
-                         x-text="'No airline activity found for metric: ' + dau5cChartLabel + (filterDirection !== \'ALL\' ? \' (\' + filterDirection + \')\' : \'\')">No airline activity found for selected filters</div>
-                </div>
-                <div x-show="!dau5cNoData" class="relative h-72 sm:h-80 w-full">
-                    <canvas id="dau5cBarChart" class="w-full h-full"></canvas>
-                </div>
-            </div>
-        @endif
-
-        {{-- DAU-6: TIPE PESAWAT --}}
-        @if ($reportType === 'DAU6')
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2 glass-card p-5 sm:p-6 shadow-md space-y-4">
+            <div class="space-y-6">
+                <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
                         <div>
-                            <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Fleet Mix Distribution</div>
-                            <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">TOP 15 AIRCRAFT TYPES</h2>
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Terminal Facility Allocation</div>
+                            <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">100% STACKED TERMINAL × AIRLINE WORKLOAD</h2>
                         </div>
-                        <span class="text-xs font-mono text-slate-400" x-text="'Metric: ' + selectedMetric"></span>
+                        <div class="text-xs font-mono text-slate-400">Spotting Terminal Bottlenecks &amp; Stand Pressure</div>
                     </div>
-                    <div class="relative h-72 sm:h-80 w-full">
-                        <canvas id="dau6FleetChart"></canvas>
+                    <div x-show="dau5bTermNoData" class="flex flex-col items-center justify-center h-48 text-slate-400 dark:text-slate-500 gap-2">
+                        <div class="text-xs font-bold uppercase tracking-widest">NO TERMINAL DATA AVAILABLE</div>
+                    </div>
+                    <div x-show="!dau5bTermNoData" class="relative h-72 sm:h-84 w-full">
+                        <canvas id="dau5bTerminalChart" class="w-full h-full"></canvas>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        {{-- DAU-5C: AIRLINE PROFILES & CARRIER EFFICIENCY --}}
+        @if ($reportType === 'DAU5C')
+            <div class="space-y-6">
+                {{-- 1. Strict Source-First Fallback / 4-Quadrant Status --}}
+                <div class="p-4 rounded-xl border flex items-start gap-3.5 bg-slate-50 dark:bg-navy-900/70 border-slate-200 dark:border-slate-800">
+                    <div class="p-2 rounded-lg bg-slate-200 dark:bg-navy-800 text-slate-600 dark:text-slate-300 font-mono text-xs font-black">
+                        SOURCE-FIRST
+                    </div>
+                    <div class="space-y-1">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                            Status Analisis Efisiensi Kapasitas Kursi (Seat Capacity)
+                        </h4>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                            <span x-show="!dau5cEfficiency?.has_seat_capacity">
+                                Kolom Kapasitas Tempat Duduk (Seat Capacity) dan Load Factor tidak tercatat pada berkas fisik OASYS DAU-05C ini. Sesuai prinsip integritas data SlotWaves, visualisasi 4-Kuadran disembunyikan secara elegan (N/A) untuk mencegah fabrikasi data.
+                            </span>
+                            <span x-show="dau5cEfficiency?.has_seat_capacity">
+                                Evaluasi 4-Kuadran Load Factor vs Seat Capacity aktif berdasarkan data kapasitas yang valid.
+                            </span>
+                        </p>
                     </div>
                 </div>
 
-                <div class="space-y-6">
-                    <div class="glass-card p-5 shadow-md space-y-3">
-                        <div class="border-b border-slate-100 dark:border-slate-800 pb-2">
-                            <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">Aircraft Category</h3>
+                {{-- 2. Airline Volume Profiles Chart --}}
+                <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                        <div>
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Carrier Volume Comparison</div>
+                            <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white"
+                                x-text="'TOP AIRLINE OPERATOR COMPARISON: ' + dau5cChartLabel">TOP AIRLINE OPERATOR COMPARISON</h2>
                         </div>
-                        <div class="relative h-44 w-full flex items-center justify-center">
-                            <canvas id="dau6CategoryDonut"></canvas>
+                        <div class="text-xs font-mono text-slate-400"
+                             x-text="'Ranked by ' + dau5cChartLabel + (filterDirection !== 'ALL' ? ' • ' + filterDirection : ' • ARR + DEP')">Ranked by selected metric</div>
+                    </div>
+                    <div x-show="dau5cNoData" class="flex flex-col items-center justify-center h-48 text-slate-400 dark:text-slate-500 gap-2">
+                        <div class="text-xs font-bold uppercase tracking-widest">NO AIRLINE DATA AVAILABLE</div>
+                    </div>
+                    <div x-show="!dau5cNoData" class="relative h-72 sm:h-80 w-full">
+                        <canvas id="dau5cBarChart" class="w-full h-full"></canvas>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        {{-- DAU-6: TIPE PESAWAT & STANDAR AERODROME ICAO --}}
+        @if ($reportType === 'DAU6')
+            <div class="space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {{-- Top 15 Aircraft Types --}}
+                    <div class="lg:col-span-2 glass-card p-5 sm:p-6 shadow-md space-y-4">
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                            <div>
+                                <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Fleet Mix Distribution</div>
+                                <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">TOP 15 AIRCRAFT TYPES</h2>
+                            </div>
+                            <span class="text-xs font-mono text-slate-400" x-text="'Metric: ' + selectedMetric"></span>
+                        </div>
+                        <div class="relative h-72 sm:h-80 w-full">
+                            <canvas id="dau6FleetChart"></canvas>
                         </div>
                     </div>
 
-                    <div class="glass-card p-5 shadow-md space-y-3">
-                        <div class="border-b border-slate-100 dark:border-slate-800 pb-2">
-                            <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">WTC (Wake Turbulence)</h3>
+                    {{-- Aerodrome Reference Codes & WTC --}}
+                    <div class="space-y-6">
+                        <div class="glass-card p-5 shadow-md space-y-3">
+                            <div class="border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center justify-between">
+                                <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">ICAO Aerodrome Code</h3>
+                                <span class="text-[10px] font-mono text-aviation-600 font-bold">STAND CAPACITY</span>
+                            </div>
+                            <div class="relative h-44 w-full flex items-center justify-center">
+                                <canvas id="dau6CategoryDonut"></canvas>
+                            </div>
+                            <div class="grid grid-cols-3 gap-1.5 text-center font-mono text-[10px] pt-1">
+                                <div class="p-1.5 rounded bg-aviation-50 dark:bg-aviation-950/40 text-aviation-700 dark:text-aviation-300">
+                                    <div class="font-bold">Code C</div>
+                                    <div x-text="formatNumber(dau6Aerodrome?.icao_codes?.code_c || 0) + ' A/C'"></div>
+                                </div>
+                                <div class="p-1.5 rounded bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300">
+                                    <div class="font-bold">Code D/E/F</div>
+                                    <div x-text="formatNumber(dau6Aerodrome?.icao_codes?.code_def || 0) + ' A/C'"></div>
+                                </div>
+                                <div class="p-1.5 rounded bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300">
+                                    <div class="font-bold">Code A/B</div>
+                                    <div x-text="formatNumber(dau6Aerodrome?.icao_codes?.code_ab || 0) + ' A/C'"></div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="relative h-44 w-full flex items-center justify-center">
-                            <canvas id="dau6WtcDonut"></canvas>
+
+                        <div class="glass-card p-5 shadow-md space-y-3">
+                            <div class="border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center justify-between">
+                                <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">WTC Safety Profile</h3>
+                                <span class="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                                      x-text="'RUNWAY SEPARATION: ' + (dau6Aerodrome?.runway_separation_workload || 'STANDARD')"></span>
+                            </div>
+                            <div class="relative h-40 w-full flex items-center justify-center">
+                                <canvas id="dau6WtcDonut"></canvas>
+                            </div>
+                            <div class="grid grid-cols-3 gap-1.5 text-center font-mono text-[10px] pt-1">
+                                <div class="p-1.5 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300">
+                                    <div class="font-bold">Medium (M)</div>
+                                    <div x-text="formatNumber(dau6Aerodrome?.wtc_breakdown?.medium || 0)"></div>
+                                </div>
+                                <div class="p-1.5 rounded bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300">
+                                    <div class="font-bold">Heavy (H)</div>
+                                    <div x-text="formatNumber(dau6Aerodrome?.wtc_breakdown?.heavy || 0)"></div>
+                                </div>
+                                <div class="p-1.5 rounded bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300">
+                                    <div class="font-bold">Light (L)</div>
+                                    <div x-text="formatNumber(dau6Aerodrome?.wtc_breakdown?.light || 0)"></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1236,6 +1715,84 @@
         {{-- DAU-10: JAM PUNCAK --}}
         @if ($reportType === 'DAU10')
             <div class="space-y-6">
+                {{-- 1. Top 3 Peak Hour Badges for Aircraft Movements and Passengers --}}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {{-- Aircraft Movement Peaks --}}
+                    <div class="glass-card p-4 sm:p-5 shadow-md border-l-4 border-l-amber-500 space-y-3">
+                        <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-base">✈️</span>
+                                <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">TOP 3 AIRCRAFT MOVEMENT PEAKS</h3>
+                            </div>
+                            <span class="text-[10px] font-mono text-amber-600 font-bold">RUNWAY DEMAND</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 text-center font-mono">
+                            <template x-for="(pk, pkIdx) in (dau10PeakIntel?.top_aircraft_peaks || [{hour: peaks.peak_aircraft_hour, value: peaks.peak_aircraft}]).slice(0, 3)" :key="'ac-pk-' + pkIdx">
+                                <div class="p-2.5 rounded-xl border transition"
+                                     :class="{
+                                         'bg-amber-50 dark:bg-amber-950/50 border-amber-300 dark:border-amber-800 ring-1 ring-amber-400': pkIdx === 0,
+                                         'bg-slate-50 dark:bg-navy-900 border-slate-200 dark:border-slate-800': pkIdx > 0
+                                     }">
+                                    <div class="text-[10px] font-black uppercase"
+                                         :class="pkIdx === 0 ? 'text-amber-700 dark:text-amber-300' : 'text-slate-400'"
+                                         x-text="pkIdx === 0 ? '🥇 Rank 1' : (pkIdx === 1 ? '🥈 Rank 2' : '🥉 Rank 3')"></div>
+                                    <div class="text-xs font-black text-slate-800 dark:text-white mt-1" x-text="pk.hour"></div>
+                                    <div class="text-sm font-black text-amber-600 mt-0.5" x-text="formatNumber(pk.value) + ' A/C'"></div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    {{-- Passenger Terminal Peaks --}}
+                    <div class="glass-card p-4 sm:p-5 shadow-md border-l-4 border-l-emerald-500 space-y-3">
+                        <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-base">👥</span>
+                                <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">TOP 3 PASSENGER TERMINAL PEAKS</h3>
+                            </div>
+                            <span class="text-[10px] font-mono text-emerald-600 font-bold">TERMINAL CONCOURSE</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 text-center font-mono">
+                            <template x-for="(pk, pkIdx) in (dau10PeakIntel?.top_passenger_peaks || [{hour: peaks.peak_passenger_hour, value: peaks.peak_passenger}]).slice(0, 3)" :key="'px-pk-' + pkIdx">
+                                <div class="p-2.5 rounded-xl border transition"
+                                     :class="{
+                                         'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-800 ring-1 ring-emerald-400': pkIdx === 0,
+                                         'bg-slate-50 dark:bg-navy-900 border-slate-200 dark:border-slate-800': pkIdx > 0
+                                     }">
+                                    <div class="text-[10px] font-black uppercase"
+                                         :class="pkIdx === 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-400'"
+                                         x-text="pkIdx === 0 ? '🥇 Rank 1' : (pkIdx === 1 ? '🥈 Rank 2' : '🥉 Rank 3')"></div>
+                                    <div class="text-xs font-black text-slate-800 dark:text-white mt-1" x-text="pk.hour"></div>
+                                    <div class="text-sm font-black text-emerald-600 mt-0.5" x-text="formatNumber(pk.value) + ' Pax'"></div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- 2. Synchronized Dual-Axis Peak Chart (Aircraft vs Passenger Overlaid Timeline) --}}
+                <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                        <div>
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Synchronized Flow Analysis</div>
+                            <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">SYNCHRONIZED DUAL-AXIS PEAK CHART (AIRCRAFT VS PASSENGERS)</h2>
+                        </div>
+                        <div class="flex items-center gap-3 text-xs font-mono">
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-amber-500"></span> Aircraft Movements (Left Axis)</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-1 bg-emerald-500 rounded-full"></span> Passengers (Right Axis)</span>
+                        </div>
+                    </div>
+
+                    <div class="relative h-72 sm:h-84 w-full">
+                        <canvas id="dau10DualPeakChart"></canvas>
+                    </div>
+
+                    <div class="p-3 rounded-xl bg-slate-50 dark:bg-navy-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs font-mono text-slate-500">
+                        <span>💡 <strong class="text-slate-800 dark:text-slate-200">Terminal Lag Time:</strong> Puncak pergerakan penumpang sering mendahului keberangkatan (check-in/security) atau menyusul kedatangan pesawat (baggage claim).</span>
+                    </div>
+                </div>
+
+                {{-- 3. Hourly Distribution Bars (Aircraft & Passenger) --}}
                 <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
                         <div>
@@ -1282,6 +1839,7 @@
                     </div>
                 </div>
 
+                {{-- Hourly Passenger Movement --}}
                 <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
                         <div>
@@ -1325,42 +1883,6 @@
                                      x-text="item.hour.split(' - ')[0] || item.hour"></div>
                             </div>
                         </template>
-                    </div>
-                </div>
-
-                {{-- ══ PEAK HOUR ANALYSIS SECTION ═════════════════════════════════════ --}}
-                <div class="glass-card p-5 sm:p-6 shadow-md border-l-4 border-l-blue-600 space-y-4">
-                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                        <div class="flex items-center gap-2">
-                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                            <h2 class="text-base font-black tracking-tight text-slate-900 dark:text-white">PEAK HOUR ANALYSIS</h2>
-                        </div>
-                        <div class="text-xs font-mono text-slate-500">
-                            Active Filter Applied: <span class="font-bold text-slate-800 dark:text-slate-200" x-text="activeFlightScope + ' • ' + activeTerminalScope"></span>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
-                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-navy-900 border border-slate-200 dark:border-slate-800">
-                            <div class="text-[10px] font-bold uppercase text-slate-400">Peak Hour Period</div>
-                            <div class="text-base font-black text-blue-600 dark:text-blue-400 mt-1 font-mono" x-text="peaks.peak_hour"></div>
-                            <div class="text-[10px] text-slate-400 mt-0.5">Highest movement concentration</div>
-                        </div>
-                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-navy-900 border border-slate-200 dark:border-slate-800">
-                            <div class="text-[10px] font-bold uppercase text-slate-400">Peak Aircraft Movement</div>
-                            <div class="text-base font-black text-amber-600 dark:text-amber-400 mt-1 font-mono" x-text="formatNumber(peaks.peak_aircraft) + ' Acft'"></div>
-                            <div class="text-[10px] text-slate-400 mt-0.5" x-text="'At ' + peaks.peak_aircraft_hour"></div>
-                        </div>
-                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-navy-900 border border-slate-200 dark:border-slate-800">
-                            <div class="text-[10px] font-bold uppercase text-slate-400">Peak Passenger Volume</div>
-                            <div class="text-base font-black text-emerald-600 dark:text-emerald-400 mt-1 font-mono" x-text="formatNumber(peaks.peak_passenger) + ' Pax'"></div>
-                            <div class="text-[10px] text-slate-400 mt-0.5" x-text="'At ' + peaks.peak_passenger_hour"></div>
-                        </div>
-                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-navy-900 border border-slate-200 dark:border-slate-800">
-                            <div class="text-[10px] font-bold uppercase text-slate-400">Busiest Terminal</div>
-                            <div class="text-base font-black text-purple-600 dark:text-purple-400 mt-1 font-mono" x-text="'T' + (peaks.peak_terminal || '—')"></div>
-                            <div class="text-[10px] text-slate-400 mt-0.5" x-text="formatNumber(peaks.peak_terminal_val) + ' movements'"></div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -1803,100 +2325,144 @@
 
         {{-- DAU-10B: BLOCK ON/OFF --}}
         @if ($reportType === 'DAU10B')
-            <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
-                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                    <div>
-                        <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Gate Operations Timeline</div>
-                        <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white"
-                            x-text="selectedMetric === 'passenger' ? 'BLOCK ON (DTG) VS BLOCK OFF (BRK) HOURLY PASSENGER COMPARISON' : 'BLOCK ON (DTG) VS BLOCK OFF (BRK) HOURLY AIRCRAFT COMPARISON'">
-                            BLOCK ON (DTG) VS BLOCK OFF (BRK) HOURLY COMPARISON
-                        </h2>
-                    </div>
-                    <div class="flex items-center gap-3 text-xs font-mono">
-                        <span x-show="filterOperation !== 'BLOCK_OFF' && filterDirection !== 'DEPARTURE'" class="flex items-center gap-1">
-                            <span class="w-3 h-3 rounded bg-purple-600"></span>
-                            <span x-text="selectedMetric === 'passenger' ? 'Block On (DTG) — Passenger' : 'Block On (DTG)'">Block On (DTG)</span>
-                        </span>
-                        <span x-show="filterOperation !== 'BLOCK_ON' && filterDirection !== 'ARRIVAL'" class="flex items-center gap-1">
-                            <span class="w-3 h-3 rounded bg-amber-500"></span>
-                            <span x-text="selectedMetric === 'passenger' ? 'Block Off (BRK) — Passenger' : 'Block Off (BRK)'">Block Off (BRK)</span>
-                        </span>
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
-                              x-show="filterOperation !== 'BLOCK_OFF' && filterDirection !== 'DEPARTURE' && peaks.peak_block_on_hour && peaks.peak_block_on_hour !== '—'">
-                            Peak On: <span x-text="(peaks.peak_block_on_hour || '—') + ' (' + formatNumber(peaks.peak_block_on) + (selectedMetric === 'passenger' ? ' PAX' : ' A/C') + ')'"></span>
-                        </span>
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-                              x-show="filterOperation !== 'BLOCK_ON' && filterDirection !== 'ARRIVAL' && peaks.peak_block_off_hour && peaks.peak_block_off_hour !== '—'">
-                            Peak Off: <span x-text="(peaks.peak_block_off_hour || '—') + ' (' + formatNumber(peaks.peak_block_off) + (selectedMetric === 'passenger' ? ' PAX' : ' A/C') + ')'"></span>
-                        </span>
-                    </div>
-                </div>
-
-                {{-- No data banner --}}
-                <div x-show="dau10bNoData" class="flex flex-col items-center justify-center h-64 text-slate-400 dark:text-slate-500 gap-2 text-center px-4">
-                    <svg class="w-10 h-10 stroke-current text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                    <div class="text-sm font-bold tracking-wide"
-                         x-text="filteredRecords.length === 0 ? 'NO MATCHING DATA' : (selectedMetric === 'passenger' && !isPassengerDataAvailable ? 'PASSENGER ANALYSIS UNAVAILABLE' : 'NO DATA AVAILABLE')">
-                        NO DATA AVAILABLE
-                    </div>
-                    <div class="text-xs font-mono max-w-md"
-                         x-text="filteredRecords.length === 0 ? 'No flight operations match the active filter criteria. Try resetting or selecting another filter.' : (selectedMetric === 'passenger' && !isPassengerDataAvailable ? 'DAU-10B source does not provide passenger values at Block On / Block Off event level.' : ('No ' + (selectedMetric === 'passenger' ? 'passenger' : 'aircraft') + ' operations found for selected filters'))">
-                    </div>
-                </div>
-
-                {{-- Chart container --}}
-                <div x-show="!dau10bNoData" class="relative h-72 sm:h-84 w-full">
-                    <canvas id="dau10bBlockChart" class="w-full h-full"></canvas>
-                </div>
-
-                {{-- Hourly Summary Table (Part 38) --}}
-                <div x-show="!dau10bNoData && activeHourlyDistribution.length > 0" class="border-t border-slate-100 dark:border-slate-800 pt-4 mt-4">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
-                             x-text="selectedMetric === 'passenger' ? 'Hourly Passenger Summary (DTG vs BRK)' : 'Hourly Aircraft Summary (DTG vs BRK)'">
-                            Hourly Summary (DTG vs BRK)
+            <div class="space-y-6">
+                {{-- 1. Apron Dwell & Stand Accumulation Alert --}}
+                <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                        <div>
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Apron Stand Turnover &amp; Capacity Stress</div>
+                            <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">HOURLY NET APRON FLOW DELTA (BLOCK ON - BLOCK OFF)</h2>
                         </div>
-                        <div class="text-[10px] font-mono text-slate-400">
-                            Unit: <span class="font-bold text-aviation-600 dark:text-aviation-400" x-text="selectedMetric === 'passenger' ? 'PAX' : 'A/C'"></span>
+                        <div class="flex items-center gap-3 text-xs font-mono">
+                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-amber-500"></span> Build-up (+Delta / Stand Dwell)</span>
+                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-blue-600"></span> Clearance (-Delta / Apron Release)</span>
                         </div>
                     </div>
-                    <div class="overflow-x-auto max-h-60 border border-slate-100 dark:border-slate-800 rounded-lg">
-                        <table class="w-full text-left border-collapse text-xs font-mono">
-                            <thead class="bg-slate-50 dark:bg-navy-800 sticky top-0 text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">
-                                <tr>
-                                    <th class="px-3 py-2">Hour</th>
-                                    <th class="px-3 py-2 text-right" x-text="selectedMetric === 'passenger' ? 'Block On (DTG) Pax' : 'Block On (DTG)'">Block On (DTG)</th>
-                                    <th class="px-3 py-2 text-right" x-text="selectedMetric === 'passenger' ? 'Block Off (BRK) Pax' : 'Block Off (BRK)'">Block Off (BRK)</th>
-                                    <th class="px-3 py-2 text-right font-black" x-text="selectedMetric === 'passenger' ? 'Total Pax' : 'Total Acft'">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100 dark:divide-slate-800/80">
-                                <template x-for="(h, hIdx) in activeHourlyDistribution" :key="hIdx">
-                                    <tr class="hover:bg-slate-50/50 dark:hover:bg-navy-800/40">
-                                        <td class="px-3 py-1.5 font-bold text-slate-700 dark:text-slate-300" x-text="h.hour"></td>
-                                        <td class="px-3 py-1.5 text-right text-purple-600 dark:text-purple-400 font-bold"
-                                            x-text="formatNumber(selectedMetric === 'passenger' ? h.passenger_arrival : h.aircraft_arrival)"></td>
-                                        <td class="px-3 py-1.5 text-right text-amber-600 dark:text-amber-400 font-bold"
-                                            x-text="formatNumber(selectedMetric === 'passenger' ? h.passenger_departure : h.aircraft_departure)"></td>
-                                        <td class="px-3 py-1.5 text-right font-black text-slate-900 dark:text-white"
-                                            x-text="formatNumber(selectedMetric === 'passenger' ? (Number(h.passenger_arrival || 0) + Number(h.passenger_departure || 0)) : (Number(h.aircraft_arrival || 0) + Number(h.aircraft_departure || 0)))"></td>
+
+                    {{-- Apron Accumulation Alert Banner --}}
+                    <div class="p-3.5 rounded-xl border flex items-center justify-between gap-3 bg-amber-50/60 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-xs">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-lg">⚠️</span>
+                            <div>
+                                <span class="font-bold text-amber-800 dark:text-amber-300">APRON ACCUMULATION STATUS:</span>
+                                <span class="text-slate-600 dark:text-slate-400 ml-1"
+                                      x-text="dau10bDwell?.max_accumulation_hour ? ('Puncak akumulasi apron terjadi pada jam ' + dau10bDwell.max_accumulation_hour + '. Pesawat parkir menumpuk pada parking stand.') : 'Perputaran apron terkendali seimbang antara kedatangan (DTG) dan keberangkatan (BRK).'"></span>
+                            </div>
+                        </div>
+                        <span class="px-2.5 py-0.5 rounded font-mono font-bold text-[10px] uppercase tracking-wider bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200 whitespace-nowrap"
+                              x-text="dau10bDwell?.max_accumulation_hour ? 'STAND STRESS' : 'BALANCED'"></span>
+                    </div>
+
+                    {{-- Hourly Net Delta Directional Bars --}}
+                    <div class="pt-2">
+                        <div class="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 mb-2">Net Hourly Dwell (Delta = DTG - BRK)</div>
+                        <div class="h-44 w-full flex items-center gap-1 sm:gap-2 px-1 overflow-x-auto border-b border-t border-slate-100 dark:border-slate-800 py-3">
+                            <template x-for="(d, dIdx) in (dau10bDwell?.hourly_dwell || [])" :key="'dwell-' + dIdx">
+                                <div class="flex-1 min-w-[28px] sm:min-w-[36px] flex flex-col items-center justify-center h-full group relative cursor-pointer"
+                                     @click="setHourFilter(d.hour)">
+                                    {{-- Tooltip --}}
+                                    <div class="opacity-0 group-hover:opacity-100 transition pointer-events-none absolute bottom-full mb-2 z-30 bg-slate-900 text-white text-[10px] font-mono rounded-lg px-2.5 py-1.5 shadow-xl whitespace-nowrap">
+                                        <div class="font-bold" x-text="'Jam: ' + d.hour"></div>
+                                        <div x-text="'Block On (DTG): ' + d.block_on"></div>
+                                        <div x-text="'Block Off (BRK): ' + d.block_off"></div>
+                                        <div class="font-bold" :class="d.net_delta > 0 ? 'text-amber-400' : (d.net_delta < 0 ? 'text-blue-400' : 'text-slate-300')"
+                                             x-text="'Net Delta: ' + (d.net_delta > 0 ? ('+' + d.net_delta) : d.net_delta) + ' A/C'"></div>
+                                    </div>
+
+                                    {{-- Bar positive or negative relative to center line --}}
+                                    <div class="w-full flex flex-col items-center justify-center h-28 relative">
+                                        <div class="w-full border-t border-slate-300 dark:border-slate-700 absolute top-1/2 left-0 z-10"></div>
+                                        {{-- Positive bar (upwards) --}}
+                                        <div class="w-2.5 sm:w-3.5 rounded-t-sm transition-all"
+                                             :class="d.is_accumulation_alert ? 'bg-rose-500 hover:bg-rose-400' : 'bg-amber-500 hover:bg-amber-400'"
+                                             :style="'height: ' + (d.net_delta > 0 ? Math.min(50, Math.abs(d.net_delta) * 10) : 0) + 'px; margin-bottom: ' + (d.net_delta > 0 ? '0' : '0') + '; transform: translateY(-50%);'"></div>
+                                        {{-- Negative bar (downwards) --}}
+                                        <div class="w-2.5 sm:w-3.5 bg-blue-600 hover:bg-blue-500 rounded-b-sm transition-all"
+                                             :style="'height: ' + (d.net_delta < 0 ? Math.min(50, Math.abs(d.net_delta) * 10) : 0) + 'px; transform: translateY(50%);'"></div>
+                                    </div>
+
+                                    <div class="text-[9px] font-mono text-slate-500 mt-1 truncate w-full text-center"
+                                         x-text="d.hour.split(' - ')[0] || d.hour"></div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- 2. Gate Operations Timeline Chart & Peaks --}}
+                <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                        <div>
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Gate Operations Timeline</div>
+                            <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white"
+                                x-text="selectedMetric === 'passenger' ? 'BLOCK ON (DTG) VS BLOCK OFF (BRK) HOURLY PASSENGER COMPARISON' : 'BLOCK ON (DTG) VS BLOCK OFF (BRK) HOURLY AIRCRAFT COMPARISON'">
+                                BLOCK ON (DTG) VS BLOCK OFF (BRK) HOURLY COMPARISON
+                            </h2>
+                        </div>
+                        <div class="flex items-center gap-3 text-xs font-mono">
+                            <span x-show="filterOperation !== 'BLOCK_OFF' && filterDirection !== 'DEPARTURE'" class="flex items-center gap-1">
+                                <span class="w-3 h-3 rounded bg-purple-600"></span>
+                                <span x-text="selectedMetric === 'passenger' ? 'Block On (DTG) — Passenger' : 'Block On (DTG)'">Block On (DTG)</span>
+                            </span>
+                            <span x-show="filterOperation !== 'BLOCK_ON' && filterDirection !== 'ARRIVAL'" class="flex items-center gap-1">
+                                <span class="w-3 h-3 rounded bg-amber-500"></span>
+                                <span x-text="selectedMetric === 'passenger' ? 'Block Off (BRK) — Passenger' : 'Block Off (BRK)'">Block Off (BRK)</span>
+                            </span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
+                                  x-show="filterOperation !== 'BLOCK_OFF' && filterDirection !== 'DEPARTURE' && peaks.peak_block_on_hour && peaks.peak_block_on_hour !== '—'">
+                                Peak On: <span x-text="(peaks.peak_block_on_hour || '—') + ' (' + formatNumber(peaks.peak_block_on) + (selectedMetric === 'passenger' ? ' PAX' : ' A/C') + ')'"></span>
+                            </span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                                  x-show="filterOperation !== 'BLOCK_ON' && filterDirection !== 'ARRIVAL' && peaks.peak_block_off_hour && peaks.peak_block_off_hour !== '—'">
+                                Peak Off: <span x-text="(peaks.peak_block_off_hour || '—') + ' (' + formatNumber(peaks.peak_block_off) + (selectedMetric === 'passenger' ? ' PAX' : ' A/C') + ')'"></span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div x-show="dau10bNoData" class="flex flex-col items-center justify-center h-64 text-slate-400 dark:text-slate-500 gap-2 text-center px-4">
+                        <div class="text-sm font-bold tracking-wide">NO DATA AVAILABLE</div>
+                    </div>
+
+                    <div x-show="!dau10bNoData" class="relative h-72 sm:h-84 w-full">
+                        <canvas id="dau10bBlockChart" class="w-full h-full"></canvas>
+                    </div>
+
+                    {{-- Hourly Summary Table --}}
+                    <div x-show="!dau10bNoData && activeHourlyDistribution.length > 0" class="border-t border-slate-100 dark:border-slate-800 pt-4 mt-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                                 x-text="selectedMetric === 'passenger' ? 'Hourly Passenger Summary (DTG vs BRK)' : 'Hourly Aircraft Summary (DTG vs BRK)'">
+                                Hourly Summary (DTG vs BRK)
+                            </div>
+                            <div class="text-[10px] font-mono text-slate-400">
+                                Unit: <span class="font-bold text-aviation-600 dark:text-aviation-400" x-text="selectedMetric === 'passenger' ? 'PAX' : 'A/C'"></span>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto max-h-60 border border-slate-100 dark:border-slate-800 rounded-lg">
+                            <table class="w-full text-left border-collapse text-xs font-mono">
+                                <thead class="bg-slate-50 dark:bg-navy-800 sticky top-0 text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">
+                                    <tr>
+                                        <th class="px-3 py-2">Hour</th>
+                                        <th class="px-3 py-2 text-right" x-text="selectedMetric === 'passenger' ? 'Block On (DTG) Pax' : 'Block On (DTG)'">Block On (DTG)</th>
+                                        <th class="px-3 py-2 text-right" x-text="selectedMetric === 'passenger' ? 'Block Off (BRK) Pax' : 'Block Off (BRK)'">Block Off (BRK)</th>
+                                        <th class="px-3 py-2 text-right font-black" x-text="selectedMetric === 'passenger' ? 'Total Pax' : 'Total Acft'">Total</th>
                                     </tr>
-                                </template>
-                            </tbody>
-                            <tfoot class="bg-slate-50/80 dark:bg-navy-800/80 border-t border-slate-200 dark:border-slate-700 font-bold text-[11px]">
-                                <tr>
-                                    <td class="px-3 py-2">TOTAL</td>
-                                    <td class="px-3 py-2 text-right text-purple-600 dark:text-purple-400 font-black"
-                                        x-text="formatNumber(selectedMetric === 'passenger' ? activeHourlyDistribution.reduce((s, h) => s + Number(h.passenger_arrival || 0), 0) : activeHourlyDistribution.reduce((s, h) => s + Number(h.aircraft_arrival || 0), 0))"></td>
-                                    <td class="px-3 py-2 text-right text-amber-600 dark:text-amber-400 font-black"
-                                        x-text="formatNumber(selectedMetric === 'passenger' ? activeHourlyDistribution.reduce((s, h) => s + Number(h.passenger_departure || 0), 0) : activeHourlyDistribution.reduce((s, h) => s + Number(h.aircraft_departure || 0), 0))"></td>
-                                    <td class="px-3 py-2 text-right font-black text-slate-900 dark:text-white"
-                                        x-text="formatNumber(selectedMetric === 'passenger' ? activeHourlyDistribution.reduce((s, h) => s + Number(h.passenger_arrival || 0) + Number(h.passenger_departure || 0), 0) : activeHourlyDistribution.reduce((s, h) => s + Number(h.aircraft_arrival || 0) + Number(h.aircraft_departure || 0), 0))"></td>
-                                </tr>
-                            </tfoot>
-                        </table>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 dark:divide-slate-800/80">
+                                    <template x-for="(h, hIdx) in activeHourlyDistribution" :key="hIdx">
+                                        <tr class="hover:bg-slate-50/50 dark:hover:bg-navy-800/40">
+                                            <td class="px-3 py-1.5 font-bold text-slate-700 dark:text-slate-300" x-text="h.hour"></td>
+                                            <td class="px-3 py-1.5 text-right text-purple-600 dark:text-purple-400 font-bold"
+                                                x-text="formatNumber(selectedMetric === 'passenger' ? h.passenger_arrival : h.aircraft_arrival)"></td>
+                                            <td class="px-3 py-1.5 text-right text-amber-600 dark:text-amber-400 font-bold"
+                                                x-text="formatNumber(selectedMetric === 'passenger' ? h.passenger_departure : h.aircraft_departure)"></td>
+                                            <td class="px-3 py-1.5 text-right font-black text-slate-900 dark:text-white"
+                                                x-text="formatNumber(selectedMetric === 'passenger' ? (Number(h.passenger_arrival || 0) + Number(h.passenger_departure || 0)) : (Number(h.aircraft_arrival || 0) + Number(h.aircraft_departure || 0)))"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1904,31 +2470,114 @@
 
         {{-- DAU-11: DATA STATISTIK 1 --}}
         @if ($reportType === 'DAU11')
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2 glass-card p-5 sm:p-6 shadow-md space-y-4">
-                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                        <div>
-                            <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Traffic Stream Breakdown</div>
-                            <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">DOMESTIC VS INTERNATIONAL FLOW (ARR &amp; DEP)</h2>
+            <div class="space-y-6">
+                {{-- 1. 2x2 Operational Traffic Matrix & CIQ Facility Demand Indicator --}}
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {{-- 2x2 Traffic Matrix Quadrants --}}
+                    <div class="lg:col-span-2 glass-card p-5 sm:p-6 shadow-md space-y-4">
+                        <div class="border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Operational Matrix</div>
+                                <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">2×2 TRAFFIC DEMAND QUADRANTS</h2>
+                            </div>
+                            <span class="text-xs font-mono text-slate-400">Dom/Int × ARR/DEP</span>
                         </div>
-                        <span class="text-xs font-mono text-slate-400">Direct • Transit • Transfer</span>
+
+                        <div class="grid grid-cols-2 gap-3.5 pt-1">
+                            {{-- Dom ARR --}}
+                            <div class="p-4 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 space-y-1">
+                                <div class="text-[10px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-300">DOMESTIC ARRIVAL</div>
+                                <div class="text-xl font-black text-blue-800 dark:text-blue-200 font-mono"
+                                     x-text="formatNumber(dau11TrafficMatrix?.matrix?.dom_arr?.movements || 0) + ' A/C'"></div>
+                                <div class="text-xs font-mono text-slate-600 dark:text-slate-400"
+                                     x-text="formatNumber(dau11TrafficMatrix?.matrix?.dom_arr?.passengers || 0) + ' Pax'"></div>
+                            </div>
+                            {{-- Dom DEP --}}
+                            <div class="p-4 rounded-xl bg-cyan-50/70 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800 space-y-1">
+                                <div class="text-[10px] font-black uppercase tracking-wider text-cyan-700 dark:text-cyan-300">DOMESTIC DEPARTURE</div>
+                                <div class="text-xl font-black text-cyan-800 dark:text-cyan-200 font-mono"
+                                     x-text="formatNumber(dau11TrafficMatrix?.matrix?.dom_dep?.movements || 0) + ' A/C'"></div>
+                                <div class="text-xs font-mono text-slate-600 dark:text-slate-400"
+                                     x-text="formatNumber(dau11TrafficMatrix?.matrix?.dom_dep?.passengers || 0) + ' Pax'"></div>
+                            </div>
+                            {{-- Int ARR --}}
+                            <div class="p-4 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 space-y-1">
+                                <div class="text-[10px] font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-300">INTERNATIONAL ARRIVAL</div>
+                                <div class="text-xl font-black text-indigo-800 dark:text-indigo-200 font-mono"
+                                     x-text="formatNumber(dau11TrafficMatrix?.matrix?.int_arr?.movements || 0) + ' A/C'"></div>
+                                <div class="text-xs font-mono text-slate-600 dark:text-slate-400"
+                                     x-text="formatNumber(dau11TrafficMatrix?.matrix?.int_arr?.passengers || 0) + ' Pax'"></div>
+                            </div>
+                            {{-- Int DEP --}}
+                            <div class="p-4 rounded-xl bg-purple-50/70 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 space-y-1">
+                                <div class="text-[10px] font-black uppercase tracking-wider text-purple-700 dark:text-purple-300">INTERNATIONAL DEPARTURE</div>
+                                <div class="text-xl font-black text-purple-800 dark:text-purple-200 font-mono"
+                                     x-text="formatNumber(dau11TrafficMatrix?.matrix?.int_dep?.movements || 0) + ' A/C'"></div>
+                                <div class="text-xs font-mono text-slate-600 dark:text-slate-400"
+                                     x-text="formatNumber(dau11TrafficMatrix?.matrix?.int_dep?.passengers || 0) + ' Pax'"></div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="relative h-72 sm:h-80 w-full">
-                        <canvas id="dau11FlowChart"></canvas>
+
+                    {{-- CIQ Facility Demand Indicator --}}
+                    <div class="glass-card p-5 sm:p-6 shadow-md space-y-4 flex flex-col justify-between">
+                        <div class="space-y-2">
+                            <div class="border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center justify-between">
+                                <div>
+                                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Border Control Readiness</div>
+                                    <h2 class="text-base font-black tracking-tight text-slate-900 dark:text-white">CIQ FACILITY DEMAND</h2>
+                                </div>
+                                <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold"
+                                      :class="{
+                                          'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300': dau11TrafficMatrix?.ciq_demand?.demand_level === 'LIGHT',
+                                          'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300': dau11TrafficMatrix?.ciq_demand?.demand_level === 'MODERATE',
+                                          'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300': dau11TrafficMatrix?.ciq_demand?.demand_level === 'PEAK'
+                                      }"
+                                      x-text="dau11TrafficMatrix?.ciq_demand?.ciq_status || 'STANDARD'"></span>
+                            </div>
+
+                            <div class="p-4 rounded-xl bg-slate-50 dark:bg-navy-900 border border-slate-200 dark:border-slate-800 space-y-2 text-center">
+                                <div class="text-[10px] font-bold uppercase text-slate-400">International Passenger Share</div>
+                                <div class="text-3xl font-black text-indigo-600 dark:text-indigo-400 font-mono"
+                                     x-text="(dau11TrafficMatrix?.ciq_demand?.international_share_pct || 0) + '%'"></div>
+                                <p class="text-[11px] text-slate-500 leading-relaxed"
+                                   x-text="dau11TrafficMatrix?.ciq_demand?.description || 'Tingkat permintaan fasilitas Customs, Immigration, dan Quarantine.'"></p>
+                            </div>
+                        </div>
+
+                        <div class="text-[11px] text-slate-400 font-mono border-t border-slate-100 dark:border-slate-800 pt-2">
+                            Customs, Immigration &amp; Quarantine Demand Rate
+                        </div>
                     </div>
                 </div>
 
-                <div class="glass-card p-5 sm:p-6 shadow-md space-y-4 flex flex-col justify-between">
-                    <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
-                        <div class="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Scope Composition</div>
-                        <h2 class="text-base font-black tracking-tight text-slate-900 dark:text-white">DOMESTIC VS INT SHARE</h2>
+                {{-- 2. Flow and Scope Charts --}}
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 glass-card p-5 sm:p-6 shadow-md space-y-4">
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                            <div>
+                                <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Traffic Stream Breakdown</div>
+                                <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">DOMESTIC VS INTERNATIONAL FLOW (ARR &amp; DEP)</h2>
+                            </div>
+                            <span class="text-xs font-mono text-slate-400">Direct • Transit • Transfer</span>
+                        </div>
+                        <div class="relative h-72 sm:h-80 w-full">
+                            <canvas id="dau11FlowChart"></canvas>
+                        </div>
                     </div>
-                    <div class="relative h-56 w-full flex items-center justify-center">
-                        <canvas id="dau11Donut"></canvas>
-                    </div>
-                    <div class="p-3 rounded-xl bg-slate-50 dark:bg-navy-900 border border-slate-200 dark:border-slate-800 text-center font-mono">
-                        <div class="text-[10px] uppercase font-bold text-slate-400">Total Passengers</div>
-                        <div class="text-lg font-black text-emerald-600 mt-0.5" x-text="formatNumber(activeSummary.passenger_total)"></div>
+
+                    <div class="glass-card p-5 sm:p-6 shadow-md space-y-4 flex flex-col justify-between">
+                        <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Scope Composition</div>
+                            <h2 class="text-base font-black tracking-tight text-slate-900 dark:text-white">DOMESTIC VS INT SHARE</h2>
+                        </div>
+                        <div class="relative h-56 w-full flex items-center justify-center">
+                            <canvas id="dau11Donut"></canvas>
+                        </div>
+                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-navy-900 border border-slate-200 dark:border-slate-800 text-center font-mono">
+                            <div class="text-[10px] uppercase font-bold text-slate-400">Total Passengers</div>
+                            <div class="text-lg font-black text-emerald-600 mt-0.5" x-text="formatNumber(activeSummary.passenger_total)"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1936,79 +2585,156 @@
 
         {{-- DAU-12: DATA STATISTIK 2 --}}
         @if ($reportType === 'DAU12')
-            <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
-                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                    <div>
-                        <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Directional Matrix</div>
-                        <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white"
-                            x-text="'ARRIVAL & DEPARTURE BY DOMESTIC VS INTERNATIONAL — ' + (selectedMetric === 'passenger' ? 'PASSENGER' : 'AIRCRAFT')">
-                            ARRIVAL &amp; DEPARTURE BY DOMESTIC VS INTERNATIONAL — AIRCRAFT
-                        </h2>
-                    </div>
-                    <div class="flex items-center gap-3 text-xs font-mono">
-                        <span class="flex items-center gap-1" x-show="filterFlightType !== 'INT'"><span class="w-3 h-3 rounded bg-blue-600"></span> Domestic</span>
-                        <span class="flex items-center gap-1" x-show="filterFlightType !== 'DOM'"><span class="w-3 h-3 rounded bg-indigo-600"></span> International</span>
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300">
-                            Unit: <span class="text-aviation-600 dark:text-aviation-400" x-text="selectedMetric === 'passenger' ? 'PAX' : 'A/C'"></span>
-                        </span>
-                    </div>
-                </div>
-
-                {{-- Empty state banner --}}
-                <div x-show="dau12NoData" class="flex flex-col items-center justify-center h-64 text-slate-400 dark:text-slate-500 gap-2 text-center px-4">
-                    <svg class="w-10 h-10 stroke-current text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                    <div class="text-sm font-bold tracking-wide"
-                         x-text="filteredRecords.length === 0 ? 'NO MATCHING DATA' : 'NO DATA AVAILABLE'">
-                        NO DATA AVAILABLE
-                    </div>
-                    <div class="text-xs font-mono max-w-md">
-                        No flight operations match the active filter criteria. Try resetting or selecting another filter.
-                    </div>
-                </div>
-
-                {{-- Chart container --}}
-                <div x-show="!dau12NoData" class="relative h-72 sm:h-84 w-full">
-                    <canvas id="dau12GroupedChart" class="w-full h-full"></canvas>
-                </div>
-
-                {{-- Directional Matrix Analytical Summary Table (Part 37) --}}
-                <div x-show="!dau12NoData" class="border-t border-slate-100 dark:border-slate-800 pt-4 mt-4 space-y-2">
-                    <div class="flex items-center justify-between">
-                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                            Directional Matrix Summary (<span x-text="selectedMetric === 'passenger' ? 'Passenger Traffic' : 'Aircraft Movements'"></span>)
+            <div class="space-y-6">
+                {{-- 1. 2x2 Directional Matrix & CIQ Demand Indicator --}}
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {{-- 2x2 Traffic Matrix Quadrants --}}
+                    <div class="lg:col-span-2 glass-card p-5 sm:p-6 shadow-md space-y-4">
+                        <div class="border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Directional Matrix</div>
+                                <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">2×2 DIRECTIONAL OPERATIONAL MATRIX</h2>
+                            </div>
+                            <span class="text-xs font-mono text-slate-400">ARR/DEP × DOM/INT</span>
                         </div>
-                        <div class="text-[10px] font-mono text-slate-400">
-                            Unit: <span class="font-bold text-aviation-600 dark:text-aviation-400" x-text="selectedMetric === 'passenger' ? 'PAX' : 'A/C'"></span>
+
+                        <div class="grid grid-cols-2 gap-3.5 pt-1">
+                            <div class="p-4 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 space-y-1">
+                                <div class="text-[10px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-300">DOMESTIC ARRIVAL</div>
+                                <div class="text-xl font-black text-blue-800 dark:text-blue-200 font-mono"
+                                     x-text="formatNumber(dau12TrafficMatrix?.matrix?.dom_arr?.movements || dau12MatrixSummary.arr_dom || 0) + ' A/C'"></div>
+                                <div class="text-xs font-mono text-slate-600 dark:text-slate-400"
+                                     x-text="formatNumber(dau12TrafficMatrix?.matrix?.dom_arr?.passengers || 0) + ' Pax'"></div>
+                            </div>
+                            <div class="p-4 rounded-xl bg-cyan-50/70 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800 space-y-1">
+                                <div class="text-[10px] font-black uppercase tracking-wider text-cyan-700 dark:text-cyan-300">DOMESTIC DEPARTURE</div>
+                                <div class="text-xl font-black text-cyan-800 dark:text-cyan-200 font-mono"
+                                     x-text="formatNumber(dau12TrafficMatrix?.matrix?.dom_dep?.movements || dau12MatrixSummary.dep_dom || 0) + ' A/C'"></div>
+                                <div class="text-xs font-mono text-slate-600 dark:text-slate-400"
+                                     x-text="formatNumber(dau12TrafficMatrix?.matrix?.dom_dep?.passengers || 0) + ' Pax'"></div>
+                            </div>
+                            <div class="p-4 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 space-y-1">
+                                <div class="text-[10px] font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-300">INTERNATIONAL ARRIVAL</div>
+                                <div class="text-xl font-black text-indigo-800 dark:text-indigo-200 font-mono"
+                                     x-text="formatNumber(dau12TrafficMatrix?.matrix?.int_arr?.movements || dau12MatrixSummary.arr_int || 0) + ' A/C'"></div>
+                                <div class="text-xs font-mono text-slate-600 dark:text-slate-400"
+                                     x-text="formatNumber(dau12TrafficMatrix?.matrix?.int_arr?.passengers || 0) + ' Pax'"></div>
+                            </div>
+                            <div class="p-4 rounded-xl bg-purple-50/70 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 space-y-1">
+                                <div class="text-[10px] font-black uppercase tracking-wider text-purple-700 dark:text-purple-300">INTERNATIONAL DEPARTURE</div>
+                                <div class="text-xl font-black text-purple-800 dark:text-purple-200 font-mono"
+                                     x-text="formatNumber(dau12TrafficMatrix?.matrix?.int_dep?.movements || dau12MatrixSummary.dep_int || 0) + ' A/C'"></div>
+                                <div class="text-xs font-mono text-slate-600 dark:text-slate-400"
+                                     x-text="formatNumber(dau12TrafficMatrix?.matrix?.int_dep?.passengers || 0) + ' Pax'"></div>
+                            </div>
                         </div>
                     </div>
-                    <div class="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-lg">
-                        <table class="w-full text-left border-collapse text-xs font-mono">
-                            <thead class="bg-slate-50 dark:bg-navy-800 text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">
-                                <tr>
-                                    <th class="px-3 py-2">Direction</th>
-                                    <th class="px-3 py-2 text-right" x-show="filterFlightType !== 'INT'">Domestic</th>
-                                    <th class="px-3 py-2 text-right" x-show="filterFlightType !== 'DOM'">International</th>
-                                    <th class="px-3 py-2 text-right font-black">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                                <tr x-show="filterDirection !== 'DEPARTURE'" class="hover:bg-slate-50/50 dark:hover:bg-navy-800/50">
-                                    <td class="px-3 py-2 font-bold text-slate-700 dark:text-slate-300">ARRIVAL</td>
-                                    <td class="px-3 py-2 text-right text-blue-600 dark:text-blue-400" x-show="filterFlightType !== 'INT'" x-text="formatNumber(dau12MatrixSummary.arr_dom)"></td>
-                                    <td class="px-3 py-2 text-right text-indigo-600 dark:text-indigo-400" x-show="filterFlightType !== 'DOM'" x-text="formatNumber(dau12MatrixSummary.arr_int)"></td>
-                                    <td class="px-3 py-2 text-right font-bold text-slate-900 dark:text-white" x-text="formatNumber(dau12MatrixSummary.arr_tot)"></td>
-                                </tr>
-                                <tr x-show="filterDirection !== 'ARRIVAL'" class="hover:bg-slate-50/50 dark:hover:bg-navy-800/50">
-                                    <td class="px-3 py-2 font-bold text-slate-700 dark:text-slate-300">DEPARTURE</td>
-                                    <td class="px-3 py-2 text-right text-blue-600 dark:text-blue-400" x-show="filterFlightType !== 'INT'" x-text="formatNumber(dau12MatrixSummary.dep_dom)"></td>
-                                    <td class="px-3 py-2 text-right text-indigo-600 dark:text-indigo-400" x-show="filterFlightType !== 'DOM'" x-text="formatNumber(dau12MatrixSummary.dep_int)"></td>
-                                    <td class="px-3 py-2 text-right font-bold text-slate-900 dark:text-white" x-text="formatNumber(dau12MatrixSummary.dep_tot)"></td>
-                                </tr>
-                                <tr class="bg-slate-50/60 dark:bg-navy-800/60 font-black">
-                                    <td class="px-3 py-2 text-slate-900 dark:text-white">TOTAL</td>
-                                    <td class="px-3 py-2 text-right text-blue-600 dark:text-blue-400" x-show="filterFlightType !== 'INT'" x-text="formatNumber(dau12MatrixSummary.tot_dom)"></td>
+
+                    {{-- CIQ Facility Demand Indicator --}}
+                    <div class="glass-card p-5 sm:p-6 shadow-md space-y-4 flex flex-col justify-between">
+                        <div class="space-y-2">
+                            <div class="border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center justify-between">
+                                <div>
+                                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">CIQ Readiness</div>
+                                    <h2 class="text-base font-black tracking-tight text-slate-900 dark:text-white">CIQ STAFFING DEMAND</h2>
+                                </div>
+                                <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold"
+                                      :class="{
+                                          'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300': dau12TrafficMatrix?.ciq_demand?.demand_level === 'LIGHT',
+                                          'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300': dau12TrafficMatrix?.ciq_demand?.demand_level === 'MODERATE',
+                                          'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300': dau12TrafficMatrix?.ciq_demand?.demand_level === 'PEAK'
+                                      }"
+                                      x-text="dau12TrafficMatrix?.ciq_demand?.ciq_status || 'STANDARD'"></span>
+                            </div>
+
+                            <div class="p-4 rounded-xl bg-slate-50 dark:bg-navy-900 border border-slate-200 dark:border-slate-800 space-y-2 text-center">
+                                <div class="text-[10px] font-bold uppercase text-slate-400">International Passenger Share</div>
+                                <div class="text-3xl font-black text-indigo-600 dark:text-indigo-400 font-mono"
+                                     x-text="(dau12TrafficMatrix?.ciq_demand?.international_share_pct || 0) + '%'"></div>
+                                <p class="text-[11px] text-slate-500 leading-relaxed"
+                                   x-text="dau12TrafficMatrix?.ciq_demand?.description || 'Evaluasi rasio pergerakan internasional terhadap kapasitas CIQ.'"></p>
+                            </div>
+                        </div>
+
+                        <div class="text-[11px] text-slate-400 font-mono border-t border-slate-100 dark:border-slate-800 pt-2">
+                            Customs, Immigration &amp; Quarantine Demand Rate
+                        </div>
+                    </div>
+                </div>
+
+                {{-- 2. Directional Matrix Grouped Chart & Analytical Summary --}}
+                <div class="glass-card p-5 sm:p-6 shadow-md space-y-4">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                        <div>
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Directional Matrix Comparison</div>
+                            <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white"
+                                x-text="'ARRIVAL & DEPARTURE BY DOMESTIC VS INTERNATIONAL — ' + (selectedMetric === 'passenger' ? 'PASSENGER' : 'AIRCRAFT')">
+                                ARRIVAL &amp; DEPARTURE BY DOMESTIC VS INTERNATIONAL — AIRCRAFT
+                            </h2>
+                        </div>
+                        <div class="flex items-center gap-3 text-xs font-mono">
+                            <span class="flex items-center gap-1" x-show="filterFlightType !== 'INT'"><span class="w-3 h-3 rounded bg-blue-600"></span> Domestic</span>
+                            <span class="flex items-center gap-1" x-show="filterFlightType !== 'DOM'"><span class="w-3 h-3 rounded bg-indigo-600"></span> International</span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-navy-800 text-slate-700 dark:text-slate-300">
+                                Unit: <span class="text-aviation-600 dark:text-aviation-400" x-text="selectedMetric === 'passenger' ? 'PAX' : 'A/C'"></span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div x-show="dau12NoData" class="flex flex-col items-center justify-center h-64 text-slate-400 dark:text-slate-500 gap-2 text-center px-4">
+                        <div class="text-sm font-bold tracking-wide">NO DATA AVAILABLE</div>
+                    </div>
+
+                    <div x-show="!dau12NoData" class="relative h-72 sm:h-84 w-full">
+                        <canvas id="dau12GroupedChart" class="w-full h-full"></canvas>
+                    </div>
+
+                    {{-- Directional Matrix Analytical Summary Table --}}
+                    <div x-show="!dau12NoData" class="border-t border-slate-100 dark:border-slate-800 pt-4 mt-4 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                Directional Matrix Summary (<span x-text="selectedMetric === 'passenger' ? 'Passenger Traffic' : 'Aircraft Movements'"></span>)
+                            </div>
+                            <div class="text-[10px] font-mono text-slate-400">
+                                Unit: <span class="font-bold text-aviation-600 dark:text-aviation-400" x-text="selectedMetric === 'passenger' ? 'PAX' : 'A/C'"></span>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-lg">
+                            <table class="w-full text-left border-collapse text-xs font-mono">
+                                <thead class="bg-slate-50 dark:bg-navy-800 text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">
+                                    <tr>
+                                        <th class="px-3 py-2">Direction</th>
+                                        <th class="px-3 py-2 text-right" x-show="filterFlightType !== 'INT'">Domestic</th>
+                                        <th class="px-3 py-2 text-right" x-show="filterFlightType !== 'DOM'">International</th>
+                                        <th class="px-3 py-2 text-right font-black">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                                    <tr x-show="filterDirection !== 'DEPARTURE'" class="hover:bg-slate-50/50 dark:hover:bg-navy-800/50">
+                                        <td class="px-3 py-2 font-bold text-slate-700 dark:text-slate-300">ARRIVAL</td>
+                                        <td class="px-3 py-2 text-right text-blue-600 dark:text-blue-400" x-show="filterFlightType !== 'INT'" x-text="formatNumber(dau12MatrixSummary.arr_dom)"></td>
+                                        <td class="px-3 py-2 text-right text-indigo-600 dark:text-indigo-400" x-show="filterFlightType !== 'DOM'" x-text="formatNumber(dau12MatrixSummary.arr_int)"></td>
+                                        <td class="px-3 py-2 text-right font-bold text-slate-900 dark:text-white" x-text="formatNumber(dau12MatrixSummary.arr_tot)"></td>
+                                    </tr>
+                                    <tr x-show="filterDirection !== 'ARRIVAL'" class="hover:bg-slate-50/50 dark:hover:bg-navy-800/50">
+                                        <td class="px-3 py-2 font-bold text-slate-700 dark:text-slate-300">DEPARTURE</td>
+                                        <td class="px-3 py-2 text-right text-blue-600 dark:text-blue-400" x-show="filterFlightType !== 'INT'" x-text="formatNumber(dau12MatrixSummary.dep_dom)"></td>
+                                        <td class="px-3 py-2 text-right text-indigo-600 dark:text-indigo-400" x-show="filterFlightType !== 'DOM'" x-text="formatNumber(dau12MatrixSummary.dep_int)"></td>
+                                        <td class="px-3 py-2 text-right font-bold text-slate-900 dark:text-white" x-text="formatNumber(dau12MatrixSummary.dep_tot)"></td>
+                                    </tr>
+                                    <tr class="bg-slate-50/60 dark:bg-navy-800/60 font-black">
+                                        <td class="px-3 py-2 text-slate-900 dark:text-white">TOTAL</td>
+                                        <td class="px-3 py-2 text-right text-blue-600 dark:text-blue-400" x-show="filterFlightType !== 'INT'" x-text="formatNumber(dau12MatrixSummary.tot_dom)"></td>
+                                        <td class="px-3 py-2 text-right text-indigo-600 dark:text-indigo-400" x-show="filterFlightType !== 'DOM'" x-text="formatNumber(dau12MatrixSummary.tot_int)"></td>
+                                        <td class="px-3 py-2 text-right text-emerald-600 dark:text-emerald-400" x-text="formatNumber(dau12MatrixSummary.grand_tot)"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endifSummary.tot_dom)"></td>
                                     <td class="px-3 py-2 text-right text-indigo-600 dark:text-indigo-400" x-show="filterFlightType !== 'DOM'" x-text="formatNumber(dau12MatrixSummary.tot_int)"></td>
                                     <td class="px-3 py-2 text-right text-emerald-600 dark:text-emerald-400" x-text="formatNumber(dau12MatrixSummary.grand_tot)"></td>
                                 </tr>
@@ -2816,20 +3542,35 @@ function dauEnhancedDashboard() {
         activeHourlyDistribution: [],
         activeTerminalComparison: [],
         dau2Metrics: { domAircraft: 0, intAircraft: 0, domSharePct: 100, intSharePct: 0 },
+        dau1Ratios: @json($dau1Ratios ?? []),
         dau2Comparative: @json($dau2Comparative ?? []),
         dau2ComparativeList: [],
         dau3Metrics: { niagaAcft: 0, bukanNiagaAcft: 0, domAcft: 0, intAcft: 0 },
+        dau3Regularity: @json($dau3Regularity ?? []),
         dau4Diverging: { top_arrival: [], top_departure: [] },
+        dau4Intelligence: @json($dau4Intelligence ?? []),
         dau4aOperators: [],
+        dau4aMarketShare: @json($dau4aMarketShare ?? []),
+        dau4aSelectedRoute: @json($dau4aMarketShare['default_route'] ?? ''),
         dau4bMatrixData: { cities: [], airlines: [], grid: {} },
+        dau4bIntelligence: @json($dau4bIntelligence ?? []),
         dau5aMetrics: { operatingCrew: 0, extraCrew: 0, arrExtraCrew: 0, depExtraCrew: 0 },
         dau5ParetoNoData: false,
         dau5ParetoInsight: { airlinesAt80: 0, cumAt80: 0.0, total: 0 },
         dau5ParetoData: [],
+        dau5ParetoIntel: @json($dau5ParetoIntel ?? []),
         dau5aCrewNoData: false,
+        dau5aOps: @json($dau5aOps ?? []),
         dau5bTermNoData: false,
+        dau5bAllocation: @json($dau5bAllocation ?? []),
         dau5cNoData: false,
         dau5cChartLabel: 'Aircraft Movements',
+        dau5cEfficiency: @json($dau5cEfficiency ?? []),
+        dau6Aerodrome: @json($dau6Aerodrome ?? []),
+        dau10PeakIntel: @json($dau10PeakIntel ?? []),
+        dau10bDwell: @json($dau10bDwell ?? []),
+        dau11TrafficMatrix: @json($dau11TrafficMatrix ?? []),
+        dau12TrafficMatrix: @json($dau12TrafficMatrix ?? []),
         dau10bNoData: false,
         dau10bFilterVersion: 0,
         dau10bIsUpdating: false,
@@ -4425,6 +5166,60 @@ function dauEnhancedDashboard() {
                 depExtraCrew: depExCrew
             };
 
+            // DAU-01 Operational Intelligence Ratios & Directional Balance
+            if (this.reportType === 'DAU1') {
+                const totM = Number(sum.total_movements || sum.aircraft_total || 0);
+                const totP = Number(sum.passenger_total || 0);
+                const totB = Number(sum.baggage_total || 0);
+                const totC = Number(sum.cargo_total || 0);
+                const arrM = Number(sum.aircraft_arrival || 0);
+                const depM = Number(sum.aircraft_departure || 0);
+                const mSum = arrM + depM;
+
+                const paxPerFl = totM > 0 ? Math.round((totP / totM) * 10) / 10 : 0;
+                const bagPerPx = totP > 0 ? Math.round((totB / totP) * 10) / 10 : 0;
+                const cgoPerFlTon = totM > 0 ? Math.round(((totC / 1000) / totM) * 100) / 100 : 0;
+                const cgoPerFlKg = totM > 0 ? Math.round((totC / totM) * 10) / 10 : 0;
+
+                const inRatio = mSum > 0 ? Math.round((arrM / mSum) * 1000) / 10 : 50.0;
+                const outRatio = mSum > 0 ? Math.round((depM / mSum) * 1000) / 10 : 50.0;
+                const isHeavy = inRatio > 70.0;
+                let dirStatus = 'BALANCED';
+                if (inRatio > 70.0) dirStatus = 'INBOUND HEAVY';
+                else if (outRatio > 70.0) dirStatus = 'OUTBOUND HEAVY';
+                else if (inRatio > 55.0) dirStatus = 'INBOUND SLIGHT';
+                else if (outRatio > 55.0) dirStatus = 'OUTBOUND SLIGHT';
+
+                const pAd = Number(sum.passenger_adult || 0);
+                const pCh = Number(sum.passenger_child || 0);
+                const pInf = Number(sum.passenger_infant || 0);
+                const pSum = totP > 0 ? totP : (pAd + pCh + pInf);
+                const adPct = pSum > 0 ? Math.round((pAd / pSum) * 1000) / 10 : 0;
+                const chPct = pSum > 0 ? Math.round((pCh / pSum) * 1000) / 10 : 0;
+                const infPct = pSum > 0 ? Math.round((pInf / pSum) * 1000) / 10 : 0;
+
+                this.dau1Ratios = {
+                    paxPerFlight: paxPerFl,
+                    baggagePerPax: bagPerPx,
+                    cargoDensityTon: cgoPerFlTon,
+                    cargoDensityKg: cgoPerFlKg,
+                    arrMovements: arrM,
+                    depMovements: depM,
+                    totalMovements: totM,
+                    inboundRatio: inRatio,
+                    outboundRatio: outRatio,
+                    isInboundHeavy: isHeavy,
+                    directionalStatus: dirStatus,
+                    adult: pAd,
+                    child: pCh,
+                    infant: pInf,
+                    totalPax: pSum,
+                    adultPct: adPct,
+                    childPct: chPct,
+                    infantPct: infPct
+                };
+            }
+
             // DAU4 Diverging / DAU1 Route Ranking
             const topN = this.filterTopN === 'ALL' ? 50 : Number(this.filterTopN);
             const allAp = Object.values(airportMap);
@@ -4490,6 +5285,63 @@ function dauEnhancedDashboard() {
             return max;
         },
 
+        get top10RouteSharePct() {
+            if (this.dau4Intelligence?.top_n_plus_others?.others) {
+                const oth = Number(this.dau4Intelligence.top_n_plus_others.others.share_pct || 0);
+                return Math.max(0, Math.round((100 - oth) * 10) / 10);
+            }
+            const arr = this.dau4Diverging.top_arrival || [];
+            const totalTop = arr.slice(0, 10).reduce((s, r) => s + (this.selectedMetric === 'passenger' ? Number(r.passenger_arrival || 0) : Number(r.aircraft_arrival || 0)), 0);
+            const totalAll = arr.reduce((s, r) => s + (this.selectedMetric === 'passenger' ? Number(r.passenger_arrival || 0) : Number(r.aircraft_arrival || 0)), 0);
+            return totalAll > 0 ? Math.round((totalTop / totalAll) * 1000) / 10 : 80;
+        },
+
+        get othersRouteSharePct() {
+            return Math.max(0, Math.round((100 - this.top10RouteSharePct) * 10) / 10);
+        },
+
+        get availableDau4aRoutes() {
+            if (this.dau4aMarketShare?.routes && Object.keys(this.dau4aMarketShare.routes).length > 0) {
+                return Object.keys(this.dau4aMarketShare.routes);
+            }
+            return [...new Set(this.filteredRecords.map(r => r.city || r.airport || r.airport_route))].filter(Boolean);
+        },
+
+        get activeDau4aRouteBreakdown() {
+            const rKey = this.dau4aSelectedRoute || (this.availableDau4aRoutes[0] || '');
+            if (!rKey) return null;
+            if (this.dau4aMarketShare?.routes?.[rKey]) {
+                return this.dau4aMarketShare.routes[rKey];
+            }
+            const recs = this.filteredRecords.filter(r => (r.city || r.airport || r.airport_route) === rKey);
+            if (recs.length === 0) return null;
+            const alMap = {};
+            let total = 0;
+            recs.forEach(r => {
+                const al = r.airline || r.operator_name || 'Unknown';
+                const v = this.selectedMetric === 'passenger' ? Number(r.passenger_total || 0) : Number(r.aircraft_total || 1);
+                alMap[al] = (alMap[al] || 0) + v;
+                total += v;
+            });
+            const carriers = Object.entries(alMap).map(([carrier, count]) => ({
+                carrier,
+                movements: count,
+                market_share_pct: total > 0 ? Math.round((count / total) * 1000) / 10 : 0
+            })).sort((a, b) => b.movements - a.movements);
+            return {
+                route: rKey,
+                total_movements: total,
+                dominant_carrier: carriers[0]?.carrier || '—',
+                dominant_share_pct: carriers[0]?.market_share_pct || 0,
+                carriers: carriers
+            };
+        },
+
+        getPaletteColor(idx) {
+            const colors = ['#0284c7', '#2563eb', '#7c3aed', '#f59e0b', '#10b981', '#ec4899', '#f97316', '#06b6d4', '#64748b'];
+            return colors[idx % colors.length];
+        },
+
         get dau4aMax() {
             const k = (this.selectedMetric === 'passenger') ? 'pax' : (this.selectedMetric === 'baggage') ? 'baggage' : (this.selectedMetric === 'cargo') ? 'cargo' : (this.selectedMetric === 'pos') ? 'pos' : 'total';
             return Math.max(...(this.dau4aOperators.map(o => o[k] || 0) || [1]), 1);
@@ -4502,10 +5354,9 @@ function dauEnhancedDashboard() {
         getDau4bColor(city, air) {
             const v = this.getDau4bValue(city, air);
             if (v === 0) return 'transparent';
-            if (v < 3) return 'rgba(147, 197, 253, 0.3)';
-            if (v < 6) return 'rgba(59, 130, 246, 0.5)';
-            if (v < 12) return 'rgba(37, 99, 235, 0.75)';
-            return 'rgba(29, 78, 216, 0.95)';
+            if (v < 5) return 'rgba(56, 189, 248, 0.35)'; // Low: Light Blue
+            if (v < 15) return 'rgba(245, 158, 11, 0.65)'; // Mid: Amber
+            return 'rgba(225, 29, 72, 0.85)'; // Peak: Crimson
         },
 
         getHeatmapValue(term, hour) {
@@ -5065,28 +5916,84 @@ function dauEnhancedDashboard() {
                     const ad = this.activeSummary.passenger_adult || 0;
                     const ch = this.activeSummary.passenger_child || 0;
                     const inf = this.activeSummary.passenger_infant || 0;
+                    const tot = (ad + ch + inf) || 1;
                     this.chartInstances.dau1Payload = new Chart(ctxPayload, {
                         type: 'doughnut',
                         data: {
                             labels: ['Dewasa (Adult)', 'Anak (Child)', 'Bayi (Infant)'],
                             datasets: [{
-                                data: [ad || 1, ch || 0, inf || 0],
-                                backgroundColor: ['#2563eb', '#0284c7', '#a855f7']
+                                data: [ad, ch, inf],
+                                backgroundColor: ['#2563eb', '#10b981', '#f59e0b'],
+                                hoverBackgroundColor: ['#1d4ed8', '#059669', '#d97706'],
+                                borderWidth: 2,
+                                borderColor: document.documentElement.classList.contains('dark') ? '#0f172a' : '#ffffff'
                             }]
                         },
-                        options: { responsive: true, maintainAspectRatio: false }
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            cutout: '68%',
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: {
+                                        boxWidth: 10,
+                                        font: { size: 11, weight: 'bold' },
+                                        padding: 12
+                                    }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(ctx) {
+                                            const v = ctx.parsed || 0;
+                                            const pct = ((v / tot) * 100).toFixed(1);
+                                            return ` ${ctx.label}: ${v.toLocaleString('id-ID')} Pax (${pct}%)`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     });
                 } else {
+                    const bg = this.activeSummary.baggage_total || 0;
+                    const cg = this.activeSummary.cargo_total || 0;
+                    const totKg = (bg + cg) || 1;
                     this.chartInstances.dau1Payload = new Chart(ctxPayload, {
                         type: 'doughnut',
                         data: {
                             labels: ['Baggage (Kg)', 'Cargo (Kg)'],
                             datasets: [{
-                                data: [this.activeSummary.baggage_total || 1, this.activeSummary.cargo_total || 1],
-                                backgroundColor: ['#f43f5e', '#14b8a6']
+                                data: [bg, cg],
+                                backgroundColor: ['#f43f5e', '#0d9488'],
+                                hoverBackgroundColor: ['#e11d48', '#0f766e'],
+                                borderWidth: 2,
+                                borderColor: document.documentElement.classList.contains('dark') ? '#0f172a' : '#ffffff'
                             }]
                         },
-                        options: { responsive: true, maintainAspectRatio: false }
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            cutout: '68%',
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: {
+                                        boxWidth: 10,
+                                        font: { size: 11, weight: 'bold' },
+                                        padding: 12
+                                    }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(ctx) {
+                                            const v = ctx.parsed || 0;
+                                            const pct = ((v / totKg) * 100).toFixed(1);
+                                            return ` ${ctx.label}: ${v.toLocaleString('id-ID')} Kg (${pct}%)`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     });
                 }
             }
@@ -5704,8 +6611,9 @@ function dauEnhancedDashboard() {
             this.filteredRecords.forEach(r => {
                 const val = Number(r.aircraft_total || 1);
                 const cat = String(r.category || '').toUpperCase();
-                if (cat.includes('WIDE')) wb += val;
-                else if (cat.includes('REGIONAL')) reg += val;
+                const type = String(r.aircraft_type || '').toUpperCase();
+                if (cat.includes('WIDE') || type.includes('A330') || type.includes('B777') || type.includes('B787') || type.includes('A350')) wb += val;
+                else if (cat.includes('REGIONAL') || type.includes('ATR') || type.includes('DHC') || type.includes('C208')) reg += val;
                 else nb += val;
 
                 const wtc = String(r.wtc || '').toUpperCase();
@@ -5720,8 +6628,8 @@ function dauEnhancedDashboard() {
                 this.chartInstances.dau6Cat = new Chart(ctxCat, {
                     type: 'doughnut',
                     data: {
-                        labels: ['Narrow Body / Regional', 'Wide Body'],
-                        datasets: [{ data: [(nb + reg) || 1, wb || 0], backgroundColor: ['#0284c7', '#4f46e5'] }]
+                        labels: ['Code C (Narrow-Body)', 'Code D/E/F (Wide-Body)', 'Code A/B (Turboprop/Regional)'],
+                        datasets: [{ data: [nb || 1, wb || 0, reg || 0], backgroundColor: ['#0284c7', '#4f46e5', '#94a3b8'] }]
                     },
                     options: { responsive: true, maintainAspectRatio: false }
                 });
@@ -5739,6 +6647,75 @@ function dauEnhancedDashboard() {
                     options: { responsive: true, maintainAspectRatio: false }
                 });
             }
+        },
+
+        renderDau10Charts() {
+            if (!window.Chart) return;
+            const canvas = document.getElementById('dau10DualPeakChart');
+            if (!canvas) return;
+            if (this.chartInstances.dau10DualPeak) {
+                this.chartInstances.dau10DualPeak.destroy();
+                this.chartInstances.dau10DualPeak = null;
+            }
+            const hours = this.activeHourlyDistribution.map(h => (h.hour ? (h.hour.split(' - ')[0] || h.hour) : ''));
+            const acData = this.activeHourlyDistribution.map(h => Number(h.aircraft_total || 0));
+            const pxData = this.activeHourlyDistribution.map(h => Number(h.passenger_total || 0));
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+            this.chartInstances.dau10DualPeak = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: hours,
+                    datasets: [
+                        {
+                            type: 'bar',
+                            label: 'Aircraft Movements (A/C)',
+                            data: acData,
+                            backgroundColor: 'rgba(245, 158, 11, 0.75)',
+                            borderColor: '#f59e0b',
+                            borderWidth: 1,
+                            yAxisID: 'yAcft',
+                            order: 2
+                        },
+                        {
+                            type: 'line',
+                            label: 'Passenger Volume (PAX)',
+                            data: pxData,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderWidth: 2.5,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#10b981',
+                            tension: 0.3,
+                            yAxisID: 'yPax',
+                            order: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: { ticks: { font: { size: 10 } } },
+                        yAcft: {
+                            type: 'linear',
+                            position: 'left',
+                            beginAtZero: true,
+                            title: { display: true, text: 'Movements (A/C)', font: { size: 10 } }
+                        },
+                        yPax: {
+                            type: 'linear',
+                            position: 'right',
+                            beginAtZero: true,
+                            grid: { drawOnChartArea: false },
+                            title: { display: true, text: 'Passengers (PAX)', font: { size: 10 } }
+                        }
+                    }
+                }
+            });
         },
 
         renderDau10bCharts() {
@@ -5871,6 +6848,7 @@ function dauEnhancedDashboard() {
             else if (this.reportType === 'DAU5B') this.renderDau5bCharts();
             else if (this.reportType === 'DAU5C') this.renderDau5cCharts();
             else if (this.reportType === 'DAU6') this.renderDau6Charts();
+            else if (this.reportType === 'DAU10') this.renderDau10Charts();
             else if (this.reportType === 'DAU10B') this.renderDau10bCharts();
             else if (this.reportType === 'DAU11') this.renderDau11Charts();
             else if (this.reportType === 'DAU12') this.renderDau12Charts();

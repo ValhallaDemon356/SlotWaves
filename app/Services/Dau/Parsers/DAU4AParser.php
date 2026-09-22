@@ -101,18 +101,94 @@ class DAU4AParser extends BaseDauParser
             $summary['pos_total']          += $pos;
         }
 
+        $routeMarketShare = self::calculateRouteMarketShare($records);
+
         return [
-            'report_type'      => 'DAU4A',
-            'report_title'     => 'Data Angkutan Udara Menurut Asal/Tujuan Operator (DAU-04A)',
-            'report_code'      => 'DAU-04A',
-            'meta'             => $meta,
-            'summary'          => $summary,
-            'records_count'    => count($records),
-            'records'          => $records,
-            'columns'          => [
+            'report_type'        => 'DAU4A',
+            'report_title'       => 'Data Angkutan Udara Menurut Asal/Tujuan Operator (DAU-04A)',
+            'report_code'        => 'DAU-04A',
+            'meta'               => $meta,
+            'summary'            => $summary,
+            'route_market_share' => $routeMarketShare,
+            'market_share'       => $routeMarketShare,
+            'records_count'      => count($records),
+            'records'            => $records,
+            'columns'            => [
                 'No', 'Operator', 'Kode', 'Airport', 'Kode IATA', 'Kota', 'Pesawat (DTG/BRK/TOT)',
                 'Penumpang (DTG/BRK/Transit/Transfer/TOT)', 'Awak', 'Bagasi (Kg)', 'Kargo (Kg)', 'POS (Kg)'
             ],
         ];
     }
+
+    /**
+     * Precompute Route Market Share per Airport/Route across Airlines.
+     */
+    public static function calculateRouteMarketShare(array $records): array
+    {
+        $routes = [];
+
+        foreach ($records as $r) {
+            $routeKey = trim($r['airport'] ?? $r['city'] ?? 'Unknown');
+            if ($routeKey === '') continue;
+
+            $airline = trim($r['airline'] ?? $r['operator_name'] ?? 'Unknown');
+            $airlineCode = trim($r['airline_code'] ?? $r['operator_code'] ?? '');
+            $flights = (int)($r['aircraft_total'] ?? 0);
+            $pax = (int)($r['passenger_total'] ?? 0);
+
+            if (!isset($routes[$routeKey])) {
+                $routes[$routeKey] = [
+                    'route'         => $routeKey,
+                    'city'          => $r['city'] ?? $routeKey,
+                    'city_code'     => $r['city_code'] ?? '',
+                    'total_flights' => 0,
+                    'total_pax'     => 0,
+                    'airlines'      => [],
+                ];
+            }
+
+            $routes[$routeKey]['total_flights'] += $flights;
+            $routes[$routeKey]['total_pax']     += $pax;
+
+            if (!isset($routes[$routeKey]['airlines'][$airline])) {
+                $routes[$routeKey]['airlines'][$airline] = [
+                    'airline'      => $airline,
+                    'airline_code' => $airlineCode,
+                    'flights'      => 0,
+                    'pax'          => 0,
+                    'share_pct'    => 0.0,
+                ];
+            }
+
+            $routes[$routeKey]['airlines'][$airline]['flights'] += $flights;
+            $routes[$routeKey]['airlines'][$airline]['pax']     += $pax;
+        }
+
+        // Calculate share and sort airlines descending
+        foreach ($routes as &$rt) {
+            $totF = $rt['total_flights'];
+            $alList = array_values($rt['airlines']);
+            usort($alList, fn($a, $b) => $b['flights'] <=> $a['flights']);
+
+            foreach ($alList as &$al) {
+                $al['share_pct'] = $totF > 0 ? round(($al['flights'] / $totF) * 100, 1) : 0.0;
+            }
+            unset($al);
+
+            $rt['airlines'] = $alList;
+            $rt['dominant_carrier']   = !empty($alList) ? ($alList[0]['airline'] ?? 'N/A') : 'N/A';
+            $rt['dominant_share_pct'] = !empty($alList) ? ($alList[0]['share_pct'] ?? 0.0) : 0.0;
+        }
+        unset($rt);
+
+        // Sort routes by total flight volume
+        uasort($routes, fn($a, $b) => $b['total_flights'] <=> $a['total_flights']);
+
+        return [
+            'routes'        => $routes,
+            'route_keys'    => array_keys($routes),
+            'default_route' => array_key_first($routes) ?? '',
+        ];
+    }
 }
+

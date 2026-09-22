@@ -102,18 +102,103 @@ class DAU10Parser extends BaseDauParser
             $summary['pos_total']          += $pos;
         }
 
+        $peakIntelligence = self::calculatePeakHours($records);
+
         return [
-            'report_type'      => 'DAU10',
-            'report_title'     => 'Data Angkutan Udara Jam Puncak Pesawat/Penumpang (DAU-10)',
-            'report_code'      => 'DAU-10',
-            'meta'             => $meta,
-            'summary'          => $summary,
-            'records_count'    => count($records),
-            'records'          => $records,
-            'columns'          => [
+            'report_type'       => 'DAU10',
+            'report_title'      => 'Data Angkutan Udara Jam Puncak Pesawat/Penumpang (DAU-10)',
+            'report_code'       => 'DAU-10',
+            'meta'              => $meta,
+            'summary'           => $summary,
+            'peak_intelligence' => $peakIntelligence,
+            'peak_hours'        => $peakIntelligence,
+            'records_count'     => count($records),
+            'records'           => $records,
+            'columns'           => [
                 'No', 'Jam (Period)', 'Terminal', 'Pesawat (DTG/BRK/TOT)', 'Penumpang (DTG/BRK/Transit/Transfer/TOT)',
                 'Awak (Crew/Ex Crew/TOT)', 'Bagasi (Kg)', 'Kargo (Kg)', 'POS (Kg)'
             ],
         ];
     }
+
+    /**
+     * Precompute Top 3 Peak Hours for Aircraft Movements and Passengers.
+     */
+    public static function calculatePeakHours(array $records): array
+    {
+        $hourlyMap = [];
+
+        foreach ($records as $r) {
+            $h = trim($r['hour'] ?? $r['period'] ?? '');
+            if ($h === '') continue;
+
+            if (!isset($hourlyMap[$h])) {
+                $hourlyMap[$h] = [
+                    'hour'                => $h,
+                    'aircraft_arrival'    => 0,
+                    'aircraft_departure'  => 0,
+                    'aircraft_total'      => 0,
+                    'passenger_arrival'   => 0,
+                    'passenger_departure' => 0,
+                    'passenger_total'     => 0,
+                ];
+            }
+
+            $hourlyMap[$h]['aircraft_arrival']    += (int)($r['aircraft_arrival'] ?? 0);
+            $hourlyMap[$h]['aircraft_departure']  += (int)($r['aircraft_departure'] ?? 0);
+            $hourlyMap[$h]['aircraft_total']      += (int)($r['aircraft_total'] ?? 0);
+            $hourlyMap[$h]['passenger_arrival']   += (int)($r['passenger_arrival'] ?? 0);
+            $hourlyMap[$h]['passenger_departure'] += (int)($r['passenger_departure'] ?? 0);
+            $hourlyMap[$h]['passenger_total']     += (int)($r['passenger_total'] ?? 0);
+        }
+
+        $allHours = array_values($hourlyMap);
+
+        // Sort for Top 3 Aircraft Peak Hours
+        $byAcft = $allHours;
+        usort($byAcft, fn($a, $b) => $b['aircraft_total'] <=> $a['aircraft_total']);
+        $top3Acft = array_slice($byAcft, 0, 3);
+
+        // Sort for Top 3 Passenger Peak Hours
+        $byPax = $allHours;
+        usort($byPax, fn($a, $b) => $b['passenger_total'] <=> $a['passenger_total']);
+        $top3Pax = array_slice($byPax, 0, 3);
+
+        // Format Rank 1, 2, 3 Badges
+        $rankLabels = ['1st Peak', '2nd Peak', '3rd Peak'];
+        $acftBadges = [];
+        foreach ($top3Acft as $idx => $item) {
+            $acftBadges[] = [
+                'rank'   => $idx + 1,
+                'label'  => $rankLabels[$idx] ?? ("#" . ($idx + 1)),
+                'hour'   => $item['hour'],
+                'value'  => $item['aircraft_total'],
+                'volume' => $item['aircraft_total'],
+                'arr'    => $item['aircraft_arrival'],
+                'dep'    => $item['aircraft_departure'],
+            ];
+        }
+
+        $paxBadges = [];
+        foreach ($top3Pax as $idx => $item) {
+            $paxBadges[] = [
+                'rank'   => $idx + 1,
+                'label'  => $rankLabels[$idx] ?? ("#" . ($idx + 1)),
+                'hour'   => $item['hour'],
+                'value'  => $item['passenger_total'],
+                'volume' => $item['passenger_total'],
+                'arr'    => $item['passenger_arrival'],
+                'dep'    => $item['passenger_departure'],
+            ];
+        }
+
+        return [
+            'top3_aircraft_peaks'  => $acftBadges,
+            'top3_aircraft'        => $acftBadges,
+            'top3_passenger_peaks' => $paxBadges,
+            'top3_passengers'      => $paxBadges,
+            'hourly_timeline'      => $allHours,
+        ];
+    }
 }
+

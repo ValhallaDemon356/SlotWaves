@@ -92,12 +92,15 @@ class DAU12Parser extends BaseDauParser
             $summary['passenger_total']    += $pTot;
         }
 
+        $trafficMatrix = self::calculateTrafficMatrix($records, $summary);
+
         return [
             'report_type'      => 'DAU12',
             'report_title'     => 'Data Statistik Angkutan Udara 2 (DAU-12)',
             'report_code'      => 'DAU-12',
             'meta'             => $meta,
             'summary'          => $summary,
+            'traffic_matrix'   => $trafficMatrix,
             'records_count'    => count($records),
             'records'          => $records,
             'columns'          => [
@@ -106,4 +109,122 @@ class DAU12Parser extends BaseDauParser
             ],
         ];
     }
+
+    /**
+     * Precompute 2x2 Operational Traffic Matrix (Dom/Int x Arr/Dep) and CIQ Facility Demand.
+     */
+    public static function calculateTrafficMatrix(array $records, array $summary): array
+    {
+        $domArrAcft = 0; $domArrPax = 0;
+        $domDepAcft = 0; $domDepPax = 0;
+        $intArrAcft = 0; $intArrPax = 0;
+        $intDepAcft = 0; $intDepPax = 0;
+
+        foreach ($records as $r) {
+            $domArrAcft += (int)($r['aircraft_arr_domestic'] ?? 0);
+            $domDepAcft += (int)($r['aircraft_dep_domestic'] ?? 0);
+            $intArrAcft += (int)($r['aircraft_arr_int'] ?? 0);
+            $intDepAcft += (int)($r['aircraft_dep_int'] ?? 0);
+
+            $domArrPax  += (int)($r['passenger_arr_domestic'] ?? 0);
+            $domDepPax  += (int)($r['passenger_dep_domestic'] ?? 0);
+            $intArrPax  += (int)($r['passenger_arr_int'] ?? 0);
+            $intDepPax  += (int)($r['passenger_dep_int'] ?? 0);
+        }
+
+        $totAcft = $domArrAcft + $domDepAcft + $intArrAcft + $intDepAcft;
+        $totPax  = $domArrPax + $domDepPax + $intArrPax + $intDepPax;
+
+        $intAcftTot = $intArrAcft + $intDepAcft;
+        $intPaxTot  = $intArrPax + $intDepPax;
+        $domAcftTot = $domArrAcft + $domDepAcft;
+        $domPaxTot  = $domArrPax + $domDepPax;
+
+        $ciqPaxPct = $totPax > 0 ? round(($intPaxTot / $totPax) * 100, 1) : 0.0;
+        $ciqAcftPct = $totAcft > 0 ? round(($intAcftTot / $totAcft) * 100, 1) : 0.0;
+
+        if ($ciqPaxPct < 15.0) {
+            $ciqLevel = 'Rendah (Normal Standar)';
+            $ciqClass = 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
+            $ciqDesc = 'Kebutuhan loket Bea Cukai, Imigrasi, dan Karantina (CIQ) berada pada tingkat beban dasar.';
+        } elseif ($ciqPaxPct <= 30.0) {
+            $ciqLevel = 'Moderat (Shift Standar)';
+            $ciqClass = 'bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300 border-sky-200 dark:border-sky-800';
+            $ciqDesc = 'Beban operasional CIQ moderat. Disarankan membuka 60-75% loket paspor.';
+        } elseif ($ciqPaxPct <= 50.0) {
+            $ciqLevel = 'Tinggi (High Demand CIQ)';
+            $ciqClass = 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border-amber-200 dark:border-amber-800';
+            $ciqDesc = 'Beban CIQ tinggi. Seluruh gerbang autogate & konter manual imigrasi harus siaga.';
+        } else {
+            $ciqLevel = 'Kritis (Peak CIQ Saturation)';
+            $ciqClass = 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border-rose-200 dark:border-rose-800';
+            $ciqDesc = 'Arus internasional mendominasi. Potensi antrean panjang verifikasi paspor & custom clearance.';
+        }
+
+        return [
+            'quadrants' => [
+                'dom_arr' => [
+                    'title'       => 'Domestik Arrival (DTG)',
+                    'scope'       => 'Domestic',
+                    'direction'   => 'Arrival',
+                    'aircraft'    => $domArrAcft,
+                    'passengers'  => $domArrPax,
+                    'acft_share'  => $totAcft > 0 ? round(($domArrAcft / $totAcft) * 100, 1) : 0,
+                    'pax_share'   => $totPax > 0 ? round(($domArrPax / $totPax) * 100, 1) : 0,
+                ],
+                'dom_dep' => [
+                    'title'       => 'Domestik Departure (BRK)',
+                    'scope'       => 'Domestic',
+                    'direction'   => 'Departure',
+                    'aircraft'    => $domDepAcft,
+                    'passengers'  => $domDepPax,
+                    'acft_share'  => $totAcft > 0 ? round(($domDepAcft / $totAcft) * 100, 1) : 0,
+                    'pax_share'   => $totPax > 0 ? round(($domDepPax / $totPax) * 100, 1) : 0,
+                ],
+                'int_arr' => [
+                    'title'       => 'Internasional Arrival (DTG)',
+                    'scope'       => 'International',
+                    'direction'   => 'Arrival',
+                    'aircraft'    => $intArrAcft,
+                    'passengers'  => $intArrPax,
+                    'acft_share'  => $totAcft > 0 ? round(($intArrAcft / $totAcft) * 100, 1) : 0,
+                    'pax_share'   => $totPax > 0 ? round(($intArrPax / $totPax) * 100, 1) : 0,
+                ],
+                'int_dep' => [
+                    'title'       => 'Internasional Departure (BRK)',
+                    'scope'       => 'International',
+                    'direction'   => 'Departure',
+                    'aircraft'    => $intDepAcft,
+                    'passengers'  => $intDepPax,
+                    'acft_share'  => $totAcft > 0 ? round(($intDepAcft / $totAcft) * 100, 1) : 0,
+                    'pax_share'   => $totPax > 0 ? round(($intDepPax / $totPax) * 100, 1) : 0,
+                ],
+            ],
+            'ciq_demand' => [
+                'ciq_pax_share_pct'  => $ciqPaxPct,
+                'ciq_acft_share_pct' => $ciqAcftPct,
+                'int_passengers'     => $intPaxTot,
+                'dom_passengers'     => $domPaxTot,
+                'int_movements'      => $intAcftTot,
+                'dom_movements'      => $domAcftTot,
+                'level'              => $ciqLevel,
+                'demand_status'      => $ciqLevel,
+                'class'              => $ciqClass,
+                'description'        => $ciqDesc,
+            ],
+            'ciq' => [
+                'ciq_pax_share_pct'  => $ciqPaxPct,
+                'ciq_acft_share_pct' => $ciqAcftPct,
+                'int_passengers'     => $intPaxTot,
+                'dom_passengers'     => $domPaxTot,
+                'int_movements'      => $intAcftTot,
+                'dom_movements'      => $domAcftTot,
+                'level'              => $ciqLevel,
+                'demand_status'      => $ciqLevel,
+                'class'              => $ciqClass,
+                'description'        => $ciqDesc,
+            ],
+        ];
+    }
 }
+

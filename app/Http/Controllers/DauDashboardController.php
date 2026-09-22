@@ -152,6 +152,20 @@ class DauDashboardController extends Controller
         $hourlyDistribution = $analytics['hourly_distribution'];
         $terminalComparison = $analytics['terminal_comparison'];
         $dau2Comparative = $analytics['dau2_comparative'] ?? [];
+        $dau1Ratios = $analytics['dau1_ratios'] ?? [];
+        $dau3Regularity = $analytics['dau3_regularity'] ?? [];
+        $dau4Intelligence = $analytics['dau4_intelligence'] ?? [];
+        $dau4aMarketShare = $analytics['dau4a_market_share'] ?? [];
+        $dau4bIntelligence = $analytics['dau4b_intelligence'] ?? [];
+        $dau5ParetoIntel = $analytics['dau5_pareto_intel'] ?? [];
+        $dau5aOps = $analytics['dau5a_ops'] ?? [];
+        $dau5bAllocation = $analytics['dau5b_allocation'] ?? [];
+        $dau5cEfficiency = $analytics['dau5c_efficiency'] ?? [];
+        $dau6Aerodrome = $analytics['dau6_aerodrome'] ?? [];
+        $dau10PeakIntel = $analytics['dau10_peak_intel'] ?? [];
+        $dau10bDwell = $analytics['dau10b_dwell'] ?? [];
+        $dau11TrafficMatrix = $analytics['dau11_matrix'] ?? [];
+        $dau12TrafficMatrix = $analytics['dau12_matrix'] ?? [];
         $columns = $data['columns'] ?? [];
         $matrixRecords = $data['records'] ?? [];
 
@@ -260,6 +274,20 @@ class DauDashboardController extends Controller
             'matrixRecords',
             'analytics',
             'dau2Comparative',
+            'dau1Ratios',
+            'dau3Regularity',
+            'dau4Intelligence',
+            'dau4aMarketShare',
+            'dau4bIntelligence',
+            'dau5ParetoIntel',
+            'dau5aOps',
+            'dau5bAllocation',
+            'dau5cEfficiency',
+            'dau6Aerodrome',
+            'dau10PeakIntel',
+            'dau10bDwell',
+            'dau11TrafficMatrix',
+            'dau12TrafficMatrix',
             'filters',
             'initialNac',
             'initialArrivalCapacity',
@@ -1418,6 +1446,9 @@ class DauDashboardController extends Controller
         });
         $topRoutes = array_slice(array_values($airportBuckets), 0, 10);
 
+        // DAU1 Operational Intelligence Derived Ratios
+        $dau1Ratios = \App\Services\Dau\Parsers\DAU1Parser::calculateRatios($summary);
+
         // DAU2: Dom vs Int Stacked Data & Comparative Breakdown
         $dau2Distribution = [
             'domestic' => [
@@ -1755,6 +1786,21 @@ class DauDashboardController extends Controller
             $dau12Matrix['passenger']['dep_int'] += (int)($r['passenger_dep_int'] ?? 0);
         }
 
+        // Advanced Operational Intelligence Precomputations for All DAU Reports
+        $dau3Regularity = ($reportType === 'DAU3') ? \App\Services\Dau\Parsers\DAU3Parser::calculateRegularity($filtered, $summary) : [];
+        $dau4Intelligence = ($reportType === 'DAU4') ? \App\Services\Dau\Parsers\DAU4Parser::calculateRouteIntelligence($filtered, $summary, $limitN) : [];
+        $dau4aMarketShare = ($reportType === 'DAU4A') ? \App\Services\Dau\Parsers\DAU4AParser::calculateRouteMarketShare($filtered) : [];
+        $dau4bIntelligence = ($reportType === 'DAU4B') ? \App\Services\Dau\Parsers\DAU4BParser::calculateHeatmapMatrix($filtered, $dau4bMatrix['airlines'] ?? []) : [];
+        $dau5ParetoIntel = ($reportType === 'DAU5') ? \App\Services\Dau\Parsers\DAU5Parser::calculatePareto($filtered, $summary) : [];
+        $dau5aOps = ($reportType === 'DAU5A') ? \App\Services\Dau\Parsers\DAU5AParser::calculateOperatorOps($filtered) : [];
+        $dau5bAllocation = ($reportType === 'DAU5B') ? \App\Services\Dau\Parsers\DAU5BParser::calculateTerminalAllocation($filtered) : [];
+        $dau5cEfficiency = ($reportType === 'DAU5C') ? \App\Services\Dau\Parsers\DAU5CParser::calculateCarrierEfficiency($filtered) : [];
+        $dau6Aerodrome = ($reportType === 'DAU6') ? \App\Services\Dau\Parsers\DAU6Parser::calculateAerodromeProfile($filtered, $summary) : [];
+        $dau10PeakIntel = ($reportType === 'DAU10') ? \App\Services\Dau\Parsers\DAU10Parser::calculatePeakHours($filtered) : [];
+        $dau10bDwell = ($reportType === 'DAU10B') ? \App\Services\Dau\Parsers\DAU10BParser::calculateApronDwell($filtered) : [];
+        $dau11Matrix = ($reportType === 'DAU11') ? \App\Services\Dau\Parsers\DAU11Parser::calculateTrafficMatrix($filtered, $summary) : [];
+        $dau12Matrix = ($reportType === 'DAU12') ? \App\Services\Dau\Parsers\DAU12Parser::calculateTrafficMatrix($filtered, $summary) : [];
+
         return [
             'filtered_records'    => $filtered,
             'summary'             => $summary,
@@ -1763,16 +1809,29 @@ class DauDashboardController extends Controller
             'terminal_comparison' => $terminalComparison,
             'heatmap_matrix'      => $heatmapMatrix,
             'dau1_routes'         => $topRoutes,
+            'dau1_ratios'         => $dau1Ratios,
             'dau2_distribution'   => $dau2Distribution,
             'dau2_comparative'    => $dau2Comparative,
             'dau3_status'         => $dau3Status,
+            'dau3_regularity'     => $dau3Regularity,
             'dau4_diverging'      => $dau4Diverging,
+            'dau4_intelligence'   => $dau4Intelligence,
+            'dau4a_market_share'  => $dau4aMarketShare,
             'dau4b_matrix'        => $dau4bMatrix,
+            'dau4b_intelligence'  => $dau4bIntelligence,
             'dau5_pareto'         => $dau5Pareto,
+            'dau5_pareto_intel'   => $dau5ParetoIntel,
             'dau5a_crew'          => $dau5aCrew,
+            'dau5a_ops'           => $dau5aOps,
             'dau5b_terminals'     => $dau5bTerminals,
+            'dau5b_allocation'    => $dau5bAllocation,
+            'dau5c_efficiency'    => $dau5cEfficiency,
             'dau6_fleet'          => $dau6Fleet,
+            'dau6_aerodrome'      => $dau6Aerodrome,
+            'dau10_peak_intel'    => $dau10PeakIntel,
+            'dau10b_dwell'        => $dau10bDwell,
             'dau11_flow'          => $dau11Flow,
+            'dau11_matrix'        => $dau11Matrix,
             'dau12_matrix'        => $dau12Matrix,
             'filters'             => $filters,
         ];

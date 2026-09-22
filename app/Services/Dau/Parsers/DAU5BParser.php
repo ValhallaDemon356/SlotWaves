@@ -102,18 +102,90 @@ class DAU5BParser extends BaseDauParser
             $summary['pos_total']          += $pos;
         }
 
+        $terminalAllocation = self::calculateTerminalAllocation($records);
+
         return [
-            'report_type'      => 'DAU5B',
-            'report_title'     => 'Data Angkutan Udara Menurut Terminal & Airline (DAU-05B)',
-            'report_code'      => 'DAU-05B',
-            'meta'             => $meta,
-            'summary'          => $summary,
-            'records_count'    => count($records),
-            'records'          => $records,
-            'columns'          => [
+            'report_type'         => 'DAU5B',
+            'report_title'        => 'Data Angkutan Udara Menurut Terminal & Airline (DAU-05B)',
+            'report_code'         => 'DAU-05B',
+            'meta'                => $meta,
+            'summary'             => $summary,
+            'terminal_allocation' => $terminalAllocation,
+            'records_count'       => count($records),
+            'records'             => $records,
+            'columns'             => [
                 'No', 'Terminal', 'Airline / Operator', 'Pesawat (DTG/BRK/TOT)', 'Penumpang (DTG/BRK/Transit/Transfer/TOT)',
                 'Awak (Crew/Arr E.Crew/Dep E.Crew/Total)', 'Bagasi (Kg)', 'Kargo (Kg)', 'POS (Kg)'
             ],
         ];
     }
+
+    /**
+     * Precompute Terminal Workload Allocation across Airlines (100% Stacked Bar structure).
+     */
+    public static function calculateTerminalAllocation(array $records): array
+    {
+        $terminals = [];
+        $airlineTotals = [];
+
+        foreach ($records as $r) {
+            $term = trim($r['terminal'] ?? 'Unknown');
+            $al = trim($r['airline'] ?? 'Unknown');
+            $mv = (int)($r['aircraft_total'] ?? 0);
+            $px = (int)($r['passenger_total'] ?? 0);
+
+            if (!isset($terminals[$term])) {
+                $terminals[$term] = [
+                    'terminal'        => $term,
+                    'total_movements' => 0,
+                    'total_pax'       => 0,
+                    'airlines'        => [],
+                ];
+            }
+
+            $terminals[$term]['total_movements'] += $mv;
+            $terminals[$term]['total_pax']       += $px;
+
+            if (!isset($terminals[$term]['airlines'][$al])) {
+                $terminals[$term]['airlines'][$al] = [
+                    'airline'   => $al,
+                    'movements' => 0,
+                    'pax'       => 0,
+                    'share_pct' => 0.0,
+                ];
+            }
+            $terminals[$term]['airlines'][$al]['movements'] += $mv;
+            $terminals[$term]['airlines'][$al]['pax']       += $px;
+
+            $airlineTotals[$al] = ($airlineTotals[$al] ?? 0) + $mv;
+        }
+
+        // Calculate 100% stacked proportions
+        foreach ($terminals as &$tData) {
+            $tot = $tData['total_movements'];
+            $alList = array_values($tData['airlines']);
+            usort($alList, fn($a, $b) => $b['movements'] <=> $a['movements']);
+
+            foreach ($alList as &$alItem) {
+                $alItem['share_pct'] = $tot > 0 ? round(($alItem['movements'] / $tot) * 100, 1) : 0.0;
+            }
+            unset($alItem);
+
+            $tData['airlines'] = $alList;
+        }
+        unset($tData);
+
+        // Sort terminals alphabetically or naturally
+        ksort($terminals);
+
+        // Top airlines overall
+        arsort($airlineTotals);
+        $topAirlines = array_slice(array_keys($airlineTotals), 0, 10);
+
+        return [
+            'terminals'    => $terminals,
+            'top_airlines' => $topAirlines,
+        ];
+    }
 }
+

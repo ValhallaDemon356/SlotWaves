@@ -128,17 +128,93 @@ class DAU4BParser extends BaseDauParser
             ];
         }
 
+        $heatmapIntelligence = self::calculateHeatmapMatrix($records, $airlines);
+
         return [
-            'report_type'      => 'DAU4B',
-            'report_title'     => 'Asal/Tujuan Menurut Airline/Operator Matrix (DAU-04B)',
-            'report_code'      => 'DAU-04B',
-            'meta'             => $meta,
-            'summary'          => $summary,
-            'matrix_airlines'  => $airlines,
-            'records_count'    => count($records),
-            'records'          => $records,
-            'normalized_pairs' => $normalizedPairs,
-            'columns'          => ['No', 'Kota Asal/Tujuan', 'Kode IATA', 'Total Pesawat', 'Total Penumpang', 'Airline Breakdown'],
+            'report_type'          => 'DAU4B',
+            'report_title'         => 'Asal/Tujuan Menurut Airline/Operator Matrix (DAU-04B)',
+            'report_code'          => 'DAU-04B',
+            'meta'                 => $meta,
+            'summary'              => $summary,
+            'matrix_airlines'      => $airlines,
+            'heatmap_intelligence' => $heatmapIntelligence,
+            'heatmap_matrix'       => $heatmapIntelligence,
+            'records_count'        => count($records),
+            'records'              => $records,
+            'normalized_pairs'     => $normalizedPairs,
+            'columns'              => ['No', 'Kota Asal/Tujuan', 'Kode IATA', 'Total Pesawat', 'Total Penumpang', 'Airline Breakdown'],
+        ];
+    }
+
+    /**
+     * Precompute Airport x Airline Density Heatmap Matrix.
+     */
+    public static function calculateHeatmapMatrix(array $records, array $matrixAirlines, int $maxRoutes = 20, int $maxAirlines = 15): array
+    {
+        // Sort routes by total flights
+        $sortedRecords = $records;
+        usort($sortedRecords, fn($a, $b) => ($b['aircraft_total'] ?? 0) <=> ($a['aircraft_total'] ?? 0));
+        $topRoutes = array_slice($sortedRecords, 0, $maxRoutes);
+
+        // Aggregate airline totals to find top active airlines
+        $airlineTotals = [];
+        foreach ($matrixAirlines as $ma) {
+            $code = $ma['code'];
+            $airlineTotals[$code] = [
+                'code'  => $code,
+                'name'  => $ma['name'],
+                'total' => 0,
+            ];
+        }
+
+        foreach ($records as $r) {
+            foreach (($r['airlines'] ?? []) as $code => $ad) {
+                if (!isset($airlineTotals[$code])) {
+                    $airlineTotals[$code] = [
+                        'code'  => $code,
+                        'name'  => $ad['airline'] ?? $code,
+                        'total' => 0,
+                    ];
+                }
+                $airlineTotals[$code]['total'] += (int)($ad['aircraft_total'] ?? 0);
+            }
+        }
+
+        // Filter and sort airlines with flights > 0
+        $activeAirlines = array_filter($airlineTotals, fn($a) => $a['total'] > 0);
+        usort($activeAirlines, fn($a, $b) => $b['total'] <=> $a['total']);
+        $topAirlines = array_slice($activeAirlines, 0, $maxAirlines);
+
+        // Build grid & calculate max cell value
+        $maxVal = 0;
+        $grid = [];
+        $routeLabels = [];
+
+        foreach ($topRoutes as $r) {
+            $rKey = $r['city_code'] ? "{$r['city']} ({$r['city_code']})" : $r['city'];
+            $routeLabels[] = [
+                'label'     => $rKey,
+                'city'      => $r['city'],
+                'city_code' => $r['city_code'],
+                'total'     => $r['aircraft_total'] ?? 0,
+            ];
+
+            $grid[$rKey] = [];
+            foreach ($topAirlines as $al) {
+                $code = $al['code'];
+                $val = (int)($r['airlines'][$code]['aircraft_total'] ?? 0);
+                if ($val > $maxVal) $maxVal = $val;
+                $grid[$rKey][$code] = $val;
+            }
+        }
+
+        return [
+            'routes'       => $routeLabels,
+            'airlines'     => $topAirlines,
+            'grid'         => $grid,
+            'matrix'       => $grid,
+            'max_value'    => $maxVal,
         ];
     }
 }
+

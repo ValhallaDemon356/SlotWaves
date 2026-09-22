@@ -158,12 +158,15 @@ class DAU1Parser extends BaseDauParser
             $summary['pos_total']          += $pos;
         }
 
+        $ratios = self::calculateRatios($summary);
+
         return [
             'report_type'      => 'DAU1',
             'report_title'     => 'Data Lalu Lintas Angkutan Udara (DAU-01)',
             'report_code'      => 'DAU-01',
             'meta'             => $meta,
             'summary'          => $summary,
+            'ratios'           => $ratios,
             'records_count'    => count($records),
             'records'          => $records,
             'columns'          => [
@@ -171,6 +174,85 @@ class DAU1Parser extends BaseDauParser
                 'Kapasitas Kursi', 'Pesawat (DTG/BRK/TOT)', 'Penumpang (DTG/BRK/TOT)',
                 'Bagasi (Kg)', 'Kargo (Kg)', 'POS (Kg)'
             ],
+        ];
+    }
+
+    /**
+     * Compute operational ratios and derived metrics from DAU-01 summary dataset.
+     */
+    public static function calculateRatios(array $summary): array
+    {
+        $totM = (int)($summary['total_movements'] ?? ($summary['aircraft_total'] ?? 0));
+        $totP = (int)($summary['passenger_total'] ?? 0);
+        $totB = (int)($summary['baggage_total'] ?? 0);
+        $totC = (int)($summary['cargo_total'] ?? 0);
+        $arrM = (int)($summary['aircraft_arrival'] ?? 0);
+        $depM = (int)($summary['aircraft_departure'] ?? 0);
+        $mSum = $arrM + $depM;
+
+        $paxPerFlight    = $totM > 0 ? round($totP / $totM, 1) : 0.0;
+        $baggagePerPax   = $totP > 0 ? round($totB / $totP, 1) : 0.0;
+        $cargoDensityTon = $totM > 0 ? round(($totC / 1000) / $totM, 2) : 0.0;
+        $cargoDensityKg  = $totM > 0 ? round($totC / $totM, 1) : 0.0;
+
+        $inboundRatio    = $mSum > 0 ? round(($arrM / $mSum) * 100, 1) : 50.0;
+        $outboundRatio   = $mSum > 0 ? round(($depM / $mSum) * 100, 1) : 50.0;
+        $isInboundHeavy  = $inboundRatio > 70.0;
+
+        $directionalStatus = 'BALANCED';
+        if ($inboundRatio > 70.0) {
+            $directionalStatus = 'INBOUND HEAVY';
+        } elseif ($outboundRatio > 70.0) {
+            $directionalStatus = 'OUTBOUND HEAVY';
+        } elseif ($inboundRatio > 55.0) {
+            $directionalStatus = 'INBOUND SLIGHT';
+        } elseif ($outboundRatio > 55.0) {
+            $directionalStatus = 'OUTBOUND SLIGHT';
+        }
+
+        $pAdult = (int)($summary['passenger_adult'] ?? 0);
+        $pChild = (int)($summary['passenger_child'] ?? 0);
+        $pInfant= (int)($summary['passenger_infant'] ?? 0);
+        $pSum   = $totP > 0 ? $totP : ($pAdult + $pChild + $pInfant);
+
+        $adultPct  = $pSum > 0 ? round(($pAdult / $pSum) * 100, 1) : 0.0;
+        $childPct  = $pSum > 0 ? round(($pChild / $pSum) * 100, 1) : 0.0;
+        $infantPct = $pSum > 0 ? round(($pInfant / $pSum) * 100, 1) : 0.0;
+
+        return [
+            'pax_per_flight'      => $paxPerFlight,
+            'paxPerFlight'        => $paxPerFlight,
+            'baggage_per_pax'     => $baggagePerPax,
+            'baggagePerPax'       => $baggagePerPax,
+            'cargo_density_ton'   => $cargoDensityTon,
+            'cargoDensityTon'     => $cargoDensityTon,
+            'cargo_density_kg'    => $cargoDensityKg,
+            'cargoDensityKg'      => $cargoDensityKg,
+            'arr_movements'       => $arrM,
+            'arrMovements'        => $arrM,
+            'dep_movements'       => $depM,
+            'depMovements'        => $depM,
+            'total_movements'     => $totM,
+            'totalMovements'      => $totM,
+            'inbound_ratio'       => $inboundRatio,
+            'inboundRatio'        => $inboundRatio,
+            'outbound_ratio'      => $outboundRatio,
+            'outboundRatio'       => $outboundRatio,
+            'is_inbound_heavy'    => $isInboundHeavy,
+            'isInboundHeavy'      => $isInboundHeavy,
+            'directional_status'  => $directionalStatus,
+            'directionalStatus'   => $directionalStatus,
+            'adult'               => $pAdult,
+            'child'               => $pChild,
+            'infant'              => $pInfant,
+            'total_pax'           => $pSum,
+            'totalPax'            => $pSum,
+            'adult_pct'           => $adultPct,
+            'adultPct'            => $adultPct,
+            'child_pct'           => $childPct,
+            'childPct'            => $childPct,
+            'infant_pct'          => $infantPct,
+            'infantPct'           => $infantPct,
         ];
     }
 }

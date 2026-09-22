@@ -101,12 +101,15 @@ class DAU5AParser extends BaseDauParser
             $summary['pos_total']          += $pos;
         }
 
+        $operatorOps = self::calculateOperatorOps($records);
+
         return [
             'report_type'      => 'DAU5A',
             'report_title'     => 'Data Angkutan Udara Menurut Airline/Operator Extended Crew (DAU-05A)',
             'report_code'      => 'DAU-05A',
             'meta'             => $meta,
             'summary'          => $summary,
+            'operator_ops'     => $operatorOps,
             'records_count'    => count($records),
             'records'          => $records,
             'columns'          => [
@@ -115,4 +118,50 @@ class DAU5AParser extends BaseDauParser
             ],
         ];
     }
+
+    /**
+     * Precompute Operator Operations: Movements, Passengers, and Crew Ratios.
+     */
+    public static function calculateOperatorOps(array $records): array
+    {
+        $sorted = $records;
+        usort($sorted, fn($a, $b) => ($b['aircraft_total'] ?? 0) <=> ($a['aircraft_total'] ?? 0));
+
+        $opsList = [];
+        foreach ($sorted as $r) {
+            $mv = (int)($r['aircraft_total'] ?? 0);
+            $px = (int)($r['passenger_total'] ?? 0);
+            $opCrw = (int)($r['crew'] ?? 0);
+            $exCrw = (int)($r['extra_crew'] ?? 0);
+            $totCrw = (int)($r['crew_total'] ?? ($opCrw + $exCrw));
+
+            $opsList[] = [
+                'airline'          => $r['airline'],
+                'movements'        => $mv,
+                'passengers'       => $px,
+                'operating_crew'   => $opCrw,
+                'extra_crew'       => $exCrw,
+                'total_crew'       => $totCrw,
+                'crew_per_flight'  => $mv > 0 ? round($totCrw / $mv, 1) : 0,
+                'pax_per_flight'   => $mv > 0 ? round($px / $mv, 1) : 0,
+            ];
+        }
+
+        $totMv = array_sum(array_column($opsList, 'movements'));
+        $totOpCrw = array_sum(array_column($opsList, 'operating_crew'));
+        $totExCrw = array_sum(array_column($opsList, 'extra_crew'));
+        $totCrw = array_sum(array_column($opsList, 'total_crew'));
+
+        return [
+            'operators'            => $opsList,
+            'top_10'               => array_slice($opsList, 0, 10),
+            'total_movements'      => $totMv,
+            'total_operating_crew' => $totOpCrw,
+            'total_extra_crew'     => $totExCrw,
+            'operating_crew_ratio' => $totMv > 0 ? round($totOpCrw / $totMv, 1) : 0.0,
+            'extra_crew_ratio'     => $totMv > 0 ? round($totExCrw / $totMv, 1) : 0.0,
+            'total_crew_ratio'     => $totMv > 0 ? round($totCrw / $totMv, 1) : 0.0,
+        ];
+    }
 }
+

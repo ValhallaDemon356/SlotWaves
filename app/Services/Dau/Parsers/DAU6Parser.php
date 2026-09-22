@@ -64,22 +64,27 @@ class DAU6Parser extends BaseDauParser
             $upperType = strtoupper($second);
             $category = 'Narrow Body';
             $wtc = 'Medium';
+            $icaoCode = 'Code C';
 
             if (preg_match('/(330|340|350|380|747|767|777|787)/', $upperType)) {
                 $category = 'Wide Body';
                 $wtc = 'Heavy';
+                $icaoCode = 'Code D/E/F';
             } elseif (preg_match('/(ATR|CRJ|ERJ|EMB|FOKKER|DASH|DHC|Q400|PROP)/', $upperType)) {
                 $category = 'Regional / Turboprop';
                 $wtc = 'Medium';
+                $icaoCode = 'Code A/B';
             } elseif (preg_match('/(C208|CESSNA|OTTER|CARAVAN|PILATUS|BEECH)/', $upperType)) {
                 $category = 'Light Aircraft';
                 $wtc = 'Light';
+                $icaoCode = 'Code A/B';
             }
 
             $rec = [
                 'no'                  => $this->toInt($first),
                 'aircraft_type'       => $second,
                 'category'            => $category,
+                'icao_code'           => $icaoCode,
                 'wtc'                 => $wtc,
                 'aircraft_arrival'    => $arrAc,
                 'aircraft_departure'  => $depAc,
@@ -112,18 +117,118 @@ class DAU6Parser extends BaseDauParser
             $summary['pos_total']          += $pos;
         }
 
+        $aerodromeIntelligence = self::calculateAerodromeProfile($records, $summary);
+
         return [
-            'report_type'      => 'DAU6',
-            'report_title'     => 'Data Angkutan Udara Menurut Tipe Pesawat (DAU-06)',
-            'report_code'      => 'DAU-06',
-            'meta'             => $meta,
-            'summary'          => $summary,
-            'records_count'    => count($records),
-            'records'          => $records,
-            'columns'          => [
+            'report_type'            => 'DAU6',
+            'report_title'           => 'Data Angkutan Udara Menurut Tipe Pesawat (DAU-06)',
+            'report_code'            => 'DAU-06',
+            'meta'                   => $meta,
+            'summary'                => $summary,
+            'aerodrome_intelligence' => $aerodromeIntelligence,
+            'aerodrome_profile'      => $aerodromeIntelligence,
+            'records_count'          => count($records),
+            'records'                => $records,
+            'columns'                => [
                 'No', 'Tipe Pesawat', 'Pesawat (DTG/BRK/TOT)', 'Penumpang (DTG/BRK/Transit/Transfer/TOT)',
                 'Awak (Crew/Ex Crew/TOT)', 'Bagasi (Kg)', 'Kargo (Kg)', 'POS (Kg)'
             ],
         ];
     }
+
+    /**
+     * Precompute ICAO Aerodrome Code Breakdown and WTC Safety Profile.
+     */
+    public static function calculateAerodromeProfile(array $records, array $summary): array
+    {
+        $totalMovements = (int)($summary['total_movements'] ?? 0);
+        $totalPax = (int)($summary['passenger_total'] ?? 0);
+
+        $icaoCodes = [
+            'Code C' => [
+                'label'       => 'Code C (Narrow-Body)',
+                'description' => 'A320, B737 family, MD-80 (Standar Runway 45m)',
+                'movements'   => 0,
+                'passengers'  => 0,
+                'share_pct'   => 0.0,
+            ],
+            'Code D/E/F' => [
+                'label'       => 'Code D/E/F (Wide-Body)',
+                'description' => 'A330, B777, B787, A350, B747 (Heavy Long-Haul)',
+                'movements'   => 0,
+                'passengers'  => 0,
+                'share_pct'   => 0.0,
+            ],
+            'Code A/B' => [
+                'label'       => 'Code A/B (Turboprop / Regional)',
+                'description' => 'ATR-72, Twin Otter, Caravan (Short Feeder)',
+                'movements'   => 0,
+                'passengers'  => 0,
+                'share_pct'   => 0.0,
+            ],
+        ];
+
+        $wtcProfile = [
+            'Heavy' => [
+                'label'       => 'Heavy (H)',
+                'description' => 'MTOW ≥ 136.000 Kg (Separasi Wake Turbulensi Maksimal)',
+                'movements'   => 0,
+                'share_pct'   => 0.0,
+                'color'       => '#6366f1', // indigo
+            ],
+            'Medium' => [
+                'label'       => 'Medium (M)',
+                'description' => '7.000 Kg < MTOW < 136.000 Kg (Separasi Standar 5 NM / 2-3 Menit)',
+                'movements'   => 0,
+                'share_pct'   => 0.0,
+                'color'       => '#0ea5e9', // sky
+            ],
+            'Light' => [
+                'label'       => 'Light (L)',
+                'description' => 'MTOW ≤ 7.000 Kg (Separasi Ekstra di Belakang Heavy/Medium)',
+                'movements'   => 0,
+                'share_pct'   => 0.0,
+                'color'       => '#10b981', // emerald
+            ],
+        ];
+
+        foreach ($records as $r) {
+            $code = $r['icao_code'] ?? 'Code C';
+            $wtc = $r['wtc'] ?? 'Medium';
+            $mv = (int)($r['aircraft_total'] ?? 0);
+            $px = (int)($r['passenger_total'] ?? 0);
+
+            if (isset($icaoCodes[$code])) {
+                $icaoCodes[$code]['movements'] += $mv;
+                $icaoCodes[$code]['passengers'] += $px;
+            }
+
+            if (isset($wtcProfile[$wtc])) {
+                $wtcProfile[$wtc]['movements'] += $mv;
+            }
+        }
+
+        foreach ($icaoCodes as &$ic) {
+            $ic['share_pct'] = $totalMovements > 0 ? round(($ic['movements'] / $totalMovements) * 100, 1) : 0.0;
+        }
+        unset($ic);
+
+        foreach ($wtcProfile as &$wp) {
+            $wp['share_pct'] = $totalMovements > 0 ? round(($wp['movements'] / $totalMovements) * 100, 1) : 0.0;
+        }
+        $icaoCodes['code_c']   = $icaoCodes['Code C'];
+        $icaoCodes['code_def'] = $icaoCodes['Code D/E/F'];
+        $icaoCodes['code_ab']  = $icaoCodes['Code A/B'];
+
+        $wtcProfile['heavy']  = $wtcProfile['Heavy'];
+        $wtcProfile['medium'] = $wtcProfile['Medium'];
+        $wtcProfile['light']  = $wtcProfile['Light'];
+
+        return [
+            'icao_codes'   => $icaoCodes,
+            'wtc_profile'  => $wtcProfile,
+            'wtc_profiles' => $wtcProfile,
+        ];
+    }
 }
+

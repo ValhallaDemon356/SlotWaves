@@ -94,18 +94,96 @@ class DAU5Parser extends BaseDauParser
             $summary['pos_total']          += $pos;
         }
 
+        $paretoIntelligence = self::calculatePareto($records, $summary);
+
         return [
-            'report_type'      => 'DAU5',
-            'report_title'     => 'Data Angkutan Udara Menurut Airline/Operator (DAU-05)',
-            'report_code'      => 'DAU-05',
-            'meta'             => $meta,
-            'summary'          => $summary,
-            'records_count'    => count($records),
-            'records'          => $records,
-            'columns'          => [
+            'report_type'         => 'DAU5',
+            'report_title'        => 'Data Angkutan Udara Menurut Airline/Operator (DAU-05)',
+            'report_code'         => 'DAU-05',
+            'meta'                => $meta,
+            'summary'             => $summary,
+            'pareto_intelligence'=> $paretoIntelligence,
+            'pareto'              => $paretoIntelligence,
+            'records_count'       => count($records),
+            'records'             => $records,
+            'columns'             => [
                 'No', 'Airline / Operator', 'Pesawat (DTG/BRK/TOT)', 'Penumpang (DTG/BRK/Transit/Transfer/TOT)',
                 'Awak (Crew/Ex Crew/TOT)', 'Bagasi (Kg)', 'Kargo (Kg)', 'POS (Kg)'
             ],
         ];
     }
+
+    /**
+     * Precompute 80/20 Pareto distribution, Tier-1 Anchor Carriers, and HHI Concentration.
+     */
+    public static function calculatePareto(array $records, array $summary): array
+    {
+        $totalMovements = (int)($summary['total_movements'] ?? 0);
+        if ($totalMovements <= 0) {
+            foreach ($records as $r) {
+                $totalMovements += (int)($r['aircraft_total'] ?? 0);
+            }
+        }
+
+        $sorted = $records;
+        usort($sorted, fn($a, $b) => ($b['aircraft_total'] ?? 0) <=> ($a['aircraft_total'] ?? 0));
+
+        $cumVal = 0;
+        $paretoItems = [];
+        $anchorAirlines = [];
+        $hhiSum = 0.0;
+
+        foreach ($sorted as $r) {
+            $val = (int)($r['aircraft_total'] ?? 0);
+            $cumVal += $val;
+            $sharePct = $totalMovements > 0 ? round(($val / $totalMovements) * 100, 2) : 0.0;
+            $cumPct = $totalMovements > 0 ? round(($cumVal / $totalMovements) * 100, 1) : 0.0;
+            $hhiSum += pow($sharePct, 2);
+
+            // Anchor carrier is any airline contributing to the first 80% cumulative threshold
+            $isAnchor = ($cumVal - $val) < ($totalMovements * 0.80);
+
+            $item = [
+                'airline'        => $r['airline'] ?? ($r['operator_name'] ?? 'Unknown'),
+                'movements'      => $val,
+                'passengers'     => (int)($r['passenger_total'] ?? 0),
+                'share_pct'      => $sharePct,
+                'cumulative_pct' => $cumPct,
+                'is_anchor'      => $isAnchor,
+            ];
+            $paretoItems[] = $item;
+
+            if ($isAnchor) {
+                $anchorAirlines[] = $item;
+            }
+        }
+
+        $hhi = (int) round($hhiSum);
+        if ($hhi < 1500) {
+            $hhiCat = 'Kompetitif / Diversified';
+            $hhiClass = 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
+            $hhiDesc = 'Struktur maskapai terdistribusi sehat dengan diversifikasi risiko operasional yang merata.';
+        } elseif ($hhi <= 2500) {
+            $hhiCat = 'Konsentrasi Sedang';
+            $hhiClass = 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border-amber-200 dark:border-amber-800';
+            $hhiDesc = 'Konsentrasi maskapai tingkat moderat. Terdapat beberapa operator jangkar dominan.';
+        } else {
+            $hhiCat = 'Konsentrasi Tinggi (Dominant Carrier Risk)';
+            $hhiClass = 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border-rose-200 dark:border-rose-800';
+            $hhiDesc = 'Bandara sangat bergantung pada 1-2 maskapai dominan. Sensitif terhadap disrupsi operasional.';
+        }
+
+        return [
+            'pareto_airlines'       => $paretoItems,
+            'anchor_airlines'       => $anchorAirlines,
+            'tier1_anchor_airlines' => $anchorAirlines,
+            'anchor_count'          => count($anchorAirlines),
+            'hhi_index'             => $hhi,
+            'hhi'                   => $hhi,
+            'hhi_category'          => $hhiCat,
+            'hhi_class'             => $hhiClass,
+            'hhi_description'       => $hhiDesc,
+        ];
+    }
 }
+
