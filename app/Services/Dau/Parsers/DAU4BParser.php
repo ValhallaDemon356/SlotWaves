@@ -159,10 +159,16 @@ class DAU4BParser extends BaseDauParser
         // Aggregate airline totals to find top active airlines
         $airlineTotals = [];
         foreach ($matrixAirlines as $ma) {
-            $code = $ma['code'];
+            if (is_array($ma)) {
+                $code = $ma['code'] ?? ($ma['name'] ?? 'Unknown');
+                $name = $ma['name'] ?? $code;
+            } else {
+                $code = (string)$ma;
+                $name = (string)$ma;
+            }
             $airlineTotals[$code] = [
                 'code'  => $code,
-                'name'  => $ma['name'],
+                'name'  => $name,
                 'total' => 0,
             ];
         }
@@ -172,37 +178,38 @@ class DAU4BParser extends BaseDauParser
                 if (!isset($airlineTotals[$code])) {
                     $airlineTotals[$code] = [
                         'code'  => $code,
-                        'name'  => $ad['airline'] ?? $code,
+                        'name'  => is_array($ad) ? ($ad['airline'] ?? $code) : (string)$code,
                         'total' => 0,
                     ];
                 }
-                $airlineTotals[$code]['total'] += (int)($ad['aircraft_total'] ?? 0);
+                $airlineTotals[$code]['total'] += is_array($ad) ? (int)($ad['aircraft_total'] ?? 0) : (int)$ad;
             }
         }
 
-        // Filter and sort airlines with flights > 0
-        $activeAirlines = array_filter($airlineTotals, fn($a) => $a['total'] > 0);
-        usort($activeAirlines, fn($a, $b) => $b['total'] <=> $a['total']);
-        $topAirlines = array_slice($activeAirlines, 0, $maxAirlines);
+        uasort($airlineTotals, fn($a, $b) => $b['total'] <=> $a['total']);
+        $topAirlines = array_slice(array_values($airlineTotals), 0, $maxAirlines);
 
-        // Build grid & calculate max cell value
+        // Build grid
         $maxVal = 0;
         $grid = [];
         $routeLabels = [];
 
         foreach ($topRoutes as $r) {
-            $rKey = $r['city_code'] ? "{$r['city']} ({$r['city_code']})" : $r['city'];
+            $city = $r['city'] ?? ($r['airport'] ?? 'Unknown');
+            $cc = $r['city_code'] ?? '';
+            $rKey = $cc !== '' ? "{$city} ({$cc})" : $city;
             $routeLabels[] = [
                 'label'     => $rKey,
-                'city'      => $r['city'],
-                'city_code' => $r['city_code'],
+                'city'      => $city,
+                'city_code' => $cc,
                 'total'     => $r['aircraft_total'] ?? 0,
             ];
 
             $grid[$rKey] = [];
             foreach ($topAirlines as $al) {
-                $code = $al['code'];
-                $val = (int)($r['airlines'][$code]['aircraft_total'] ?? 0);
+                $code = is_array($al) ? ($al['code'] ?? '') : (string)$al;
+                $ad = $r['airlines'][$code] ?? 0;
+                $val = is_array($ad) ? (int)($ad['aircraft_total'] ?? 0) : (int)$ad;
                 if ($val > $maxVal) $maxVal = $val;
                 $grid[$rKey][$code] = $val;
             }

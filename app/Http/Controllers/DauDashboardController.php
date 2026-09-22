@@ -1798,8 +1798,10 @@ class DauDashboardController extends Controller
         $dau6Aerodrome = ($reportType === 'DAU6') ? \App\Services\Dau\Parsers\DAU6Parser::calculateAerodromeProfile($filtered, $summary) : [];
         $dau10PeakIntel = ($reportType === 'DAU10') ? \App\Services\Dau\Parsers\DAU10Parser::calculatePeakHours($filtered) : [];
         $dau10bDwell = ($reportType === 'DAU10B') ? \App\Services\Dau\Parsers\DAU10BParser::calculateApronDwell($filtered) : [];
-        $dau11Matrix = ($reportType === 'DAU11') ? \App\Services\Dau\Parsers\DAU11Parser::calculateTrafficMatrix($filtered, $summary) : [];
-        $dau12Matrix = ($reportType === 'DAU12') ? \App\Services\Dau\Parsers\DAU12Parser::calculateTrafficMatrix($filtered, $summary) : [];
+        $dau11Operational = ($reportType === 'DAU11') ? \App\Services\Dau\Parsers\DAU11Parser::calculateTrafficMatrix($filtered, $summary) : [];
+        $dau11Matrix = array_merge(['flow' => $dau11Flow], $dau11Operational);
+        $dau12Operational = ($reportType === 'DAU12') ? \App\Services\Dau\Parsers\DAU12Parser::calculateTrafficMatrix($filtered, $summary) : [];
+        $dau12Matrix = array_merge($dau12Matrix, $dau12Operational);
 
         return [
             'filtered_records'    => $filtered,

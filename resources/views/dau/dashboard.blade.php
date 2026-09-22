@@ -1155,7 +1155,7 @@
                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
                         <div>
                             <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Bi-Directional Route Intelligence</div>
-                            <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">TOP 10 ORIGIN (ARRIVAL) VS TOP 10 DESTINATION (DEPARTURE)</h2>
+                            <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">TOP ORIGIN (ARRIVAL) VS TOP DESTINATION (DEPARTURE)</h2>
                         </div>
                         <div class="flex items-center gap-3 text-xs font-mono">
                             <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-amber-500"></span> Origin / ARR</span>
@@ -1715,6 +1715,17 @@
         {{-- DAU-10: JAM PUNCAK --}}
         @if ($reportType === 'DAU10')
             <div class="space-y-6">
+                {{-- Peak Hour Analysis Header --}}
+                <div class="glass-card p-4 sm:p-5 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800">
+                    <div>
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">PEAK HOUR ANALYSIS</div>
+                        <h2 class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">JAM PUNCAK PESAWAT/PENUMPANG (DAU-10)</h2>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs font-mono text-slate-500">
+                        <span>Terminal &amp; Runway Saturation Intelligence</span>
+                    </div>
+                </div>
+
                 {{-- 1. Top 3 Peak Hour Badges for Aircraft Movements and Passengers --}}
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {{-- Aircraft Movement Peaks --}}
