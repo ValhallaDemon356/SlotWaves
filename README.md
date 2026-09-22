@@ -2,15 +2,20 @@
 
 > **Airport Operational Slot & Flight Intelligence Platform**
 
-SlotWaves is a web-based airport operations and report-generation platform designed to transform flight schedules and OASYS DAU datasets into structured operational dashboards, interactive analytics, and exportable reports.
+SlotWaves is a Laravel-based web application for turning airport operational data and OASYS DAU reports into structured, interactive dashboards, operational analytics, and export-ready reports.
 
-The application combines **Airport Slot Schedule intelligence** with **Data Angkutan Udara (DAU) analytics** in a single workflow. Users choose the report type, upload the required source file, validate the template, generate the report, analyze the resulting dashboard, and export the final report.
+The application combines two main workflows:
+
+- **Airport Slot Schedule** — PDF-based flight schedule ingestion, matching, timeline, capacity, parking-stand occupancy, and operational analysis.
+- **DAU Analytics** — report-specific Excel ingestion for **DAU-01 through DAU-12**, with dashboards, filters, visual analytics, historical comparison, and exports.
 
 ---
 
-## 🎯 Core Concept
+## 🎯 What SlotWaves Does
 
-SlotWaves follows a unified report-generation workflow:
+SlotWaves is designed to reduce manual work when processing operational aviation data.
+
+### Unified workflow
 
 ```text
 SELECT TYPE DATA TO GENERATE
@@ -35,147 +40,123 @@ SELECT TYPE DATA TO GENERATE
         └── CSV
 ```
 
-The important principle is:
+The application follows a **report-driven** approach:
 
-- **The user's selected report type determines the pipeline.**
-- **The uploaded file content determines whether the template is valid.**
-- **The filename is not used as the source of truth.**
-
-For example, a valid DAU-1 workbook renamed to another filename can still be accepted when its actual structure matches the DAU-1 schema.
-
----
-
-## 🚀 Main Features
-
-### Unified Report Generator
-
-The Home page acts as the entry point for all reporting workflows.
-
-Users can select:
-
-1. Airport Slot Schedule
-2. DAU1 — Arus Lalu Lintas
-3. DAU2 — Secara Total
-4. DAU3 — Status Penerbangan
-5. DAU4 — Asal/Tujuan
-6. DAU4A — Asal/Tujuan
-7. DAU4B — Asal/Tujuan (Airline/Operator)
-8. DAU5 — Airline Operator
-9. DAU5A — Airline Operator (A)
-10. DAU5B — Airline Operator (B)
-11. DAU5C — Airline Operator (C)
-12. DAU6 — Tipe Pesawat
-13. DAU10 — Jam Puncak Pesawat/Penumpang
-14. DAU10A — Jam Puncak Pesawat/Penumpang (Terminal)
-15. DAU10B — Jam Puncak Pesawat/Penumpang (Block On/Off)
-16. DAU11 — Data Statistik 1 (ARR/DEP/DOM/INT)
-17. DAU12 — Data Statistik 2 (ARR/DEP/DOM/INT)
+- The user selects the report type first.
+- The selected report determines the parser and validation rules.
+- The uploaded file is checked against the expected structure.
+- The filename is not treated as the source of truth.
+- Dashboard, KPI, charts, tables, and supported exports are derived from the processed dataset.
 
 ---
 
-# 📥 Input & Template Validation
+# 🚀 Main Features
 
-Each report type has its own required source format.
+## 1. Unified Report Generator
 
-| Report | Required Source |
+From the Home page, users can choose:
+
+| # | Report Type | Focus |
+|---:|---|---|
+| 1 | **Airport Slot Schedule** | Flight schedule, timeline & capacity |
+| 2 | **DAU-01** | Arus Lalu Lintas |
+| 3 | **DAU-02** | Secara Total / Historical Comparison |
+| 4 | **DAU-03** | Status Penerbangan |
+| 5 | **DAU-04** | Asal / Tujuan |
+| 6 | **DAU-04A** | Asal / Tujuan |
+| 7 | **DAU-04B** | Asal / Tujuan (Airline / Operator) |
+| 8 | **DAU-05** | Airline / Operator |
+| 9 | **DAU-05A** | Airline / Operator (A) |
+| 10 | **DAU-05B** | Airline / Operator (B) |
+| 11 | **DAU-05C** | Airline / Operator (C) |
+| 12 | **DAU-06** | Tipe Pesawat |
+| 13 | **DAU-10** | Jam Puncak Pesawat / Penumpang |
+| 14 | **DAU-10A** | Jam Puncak Pesawat / Penumpang (Terminal) |
+| 15 | **DAU-10B** | Jam Puncak Pesawat / Penumpang (Block On/Off) |
+| 16 | **DAU-11** | Data Statistik 1 (ARR/DEP/DOM/INT) |
+| 17 | **DAU-12** | Data Statistik 2 (ARR/DEP/DOM/INT) |
+
+---
+
+# 📥 Upload & Template Validation
+
+Each report type has its own expected source format.
+
+| Report | Expected Input |
 |---|---|
-| Airport Slot Schedule | Existing Airport Slot Schedule PDF format |
-| DAU1 | DAU-1 Excel template/schema |
-| DAU2 | DAU-2 Excel template/schema |
-| DAU3 | DAU-3 Excel template/schema |
-| DAU4 | DAU-4 Excel template/schema |
-| DAU4A | DAU-4A Excel template/schema |
-| DAU4B | DAU-4B Excel template/schema |
-| DAU5 | DAU-5 Excel template/schema |
-| DAU5A | DAU-5A Excel template/schema |
-| DAU5B | DAU-5B Excel template/schema |
-| DAU5C | DAU-5C Excel template/schema |
-| DAU6 | DAU-6 Excel template/schema |
-| DAU10 | DAU-10 Excel template/schema |
-| DAU10A | DAU-10A Excel template/schema |
-| DAU10B | DAU-10B Excel template/schema |
-| DAU11 | DAU-11 Excel template/schema |
-| DAU12 | DAU-12 Excel template/schema |
+| Airport Slot Schedule | Existing Slot Schedule PDF format |
+| DAU-01 to DAU-12 | Corresponding DAU Excel template/schema |
 
-### Strict Validation
+Validation is based on file structure and source content, including where applicable:
 
-SlotWaves validates uploaded files by their actual content and structure.
-
-Validation can include:
-
-- file extension
-- workbook/file signature
-- expected header structure
-- required columns
-- grouped/multi-row headers
-- data sections
+- extension / file signature
+- required sheets
+- expected headers
+- grouped or multi-row headers
+- required fields
+- report-specific sections
 - data types
-- report-specific compatibility
-
-Wrong templates are rejected before generation.
+- template compatibility
 
 Example:
 
 ```text
 Selected:
-DAU1 — Arus Lalu Lintas
+DAU-01
 
 Uploaded:
-DAU-5 workbook
+DAU-04B workbook
 
-Result:
-❌ INVALID TEMPLATE
-
-Expected:
-DAU-1 structure
+→ INVALID TEMPLATE
 ```
+
+Large DAU workbooks are supported by the report ingestion pipeline, including multi-month datasets where the underlying template remains compatible.
 
 ---
 
 # ✈️ Airport Slot Schedule
 
-Airport Slot Schedule is the original operational workflow of SlotWaves and remains separate from the DAU reporting pipeline.
+Airport Slot Schedule is the original operational workflow of SlotWaves.
 
-### Pipeline
+## Pipeline
 
 ```text
 PDF
  ↓
-Read
+READ
  ↓
-Extract
+EXTRACT
  ↓
-Match
+MATCH
  ↓
-Timeline
+TIMELINE
  ↓
-Capacity
+CAPACITY
  ↓
-Export
+EXPORT
 ```
 
-### Main Operational Features
+## Main capabilities
 
-- Arrival / Departure analysis
-- Flight number and airline identification
+- Arrival / Departure schedule analysis
+- Airline and flight-number extraction
 - Aircraft type matching
-- Airport matching
+- Airport / route matching
 - DOM / INT classification
 - Flight pairing
 - RON (Remain Over Night)
 - OPC (Occupancy Parking Stand)
 - Manual Aircraft Capacity / NAC
 - Operating Hours
-- 24-hour timeline
-- Local / UTC display
+- 24-hour operational timeline
+- Local (WIB) / UTC view
 - Capacity status
-- Cargo handling rules
 - PDF export
 - JPG export
 
-### Aircraft Capacity Logic
+## Aircraft Capacity
 
-For the operational Slot Schedule dashboard, the established overall aircraft-demand rule is:
+Operational aircraft demand is evaluated using:
 
 ```text
 Aircraft Demand = Arrival + Departure + OPC
@@ -188,418 +169,31 @@ Arrival   = 7
 Departure = 6
 OPC       = 2
 
-Aircraft Demand = 15
+Demand = 15 A/C
 
-NAC = 6
+NAC = 6 A/C
 
 15 / 6 A/C
-250%
-
-Status = OVER CAPACITY
+→ OVER CAPACITY
 ```
 
-OPC represents aircraft occupying parking stands, such as RON aircraft, and is not treated as a normal flight movement for the Total Movements figure.
+OPC is used for parking-stand occupancy analysis and is not counted as a normal flight movement in the main Total Movements figure.
 
----
+### Independent ARR / DEP status
 
-# 📊 DAU Analytics
-
-DAU dashboards are designed around the actual meaning and structure of each report instead of rendering every report as the same generic table.
-
-## DAU1 — Arus Lalu Lintas
-
-**Purpose:** Flight and traffic-volume analysis.
-
-### Recommended dashboard
-
-- Total aircraft movement
-- Arrival / Departure
-- Passenger
-- Baggage
-- Cargo
-- POS
-- Origin / Destination analysis
-- Flight-level detail table
-
-### Main visualization
-
-**Combo Chart**
-
-- Grouped bars → Aircraft Arrival vs Departure
-- Line → Total Passenger
-
-Additional cargo/baggage composition visualization can be shown when compatible source data exists.
-
-### Filters
-
-- Direction
-- Airport / route
-- Traffic category where the source supports it
-- Search by IATA / city / airport
-
----
-
-## DAU2 — Secara Total
-
-**Purpose:** Domestic vs International comparison.
-
-### Main visualization
-
-**100% Stacked Horizontal Bar**
-
-Metrics may include:
-
-- Aircraft
-- Passenger
-- Baggage
-- Cargo
-
-### Filters
-
-- Metric
-- Absolute / Percentage display
-
----
-
-## DAU3 — Status Penerbangan
-
-**Purpose:** Analyze flight status/classification.
-
-### Main visualization
-
-**Nested Donut / Status Distribution**
-
-The actual categories must come from the source data. The dashboard must not fabricate categories that are not available in the source or a valid enrichment source.
-
-### Filters
-
-- Status / category
-- Arrival / Departure
-- Flight type where supported
-
----
-
-## DAU4 — Asal/Tujuan
-
-**Purpose:** Origin and destination analysis.
-
-### Main visualization
-
-**Bi-Directional Diverging Bar**
-
-- Left → Top Origin / Arrival
-- Right → Top Destination / Departure
-
-### Filters
-
-- Top 5 / 10 / 20
-- Aircraft / Passenger
-- Direction
-- Airport search
-- DOM / INT where supported
-
----
-
-## DAU4A — Operator × Airport
-
-**Purpose:** Analyze operator relationships with airports.
-
-### Main visualization
-
-**Hierarchical Treemap** or nested bars.
-
-Hierarchy:
+Arrival and Departure are evaluated independently.
 
 ```text
-Operator
-   ↓
-Airport
-   ↓
-Traffic Volume
+ARR < ARR CAP → AVAILABLE
+ARR = ARR CAP → MAX
+ARR > ARR CAP → OVER
 ```
-
-### Filters
-
-- Operator
-- Airport
-- Region / city where available
-- DOM / INT where supported
-
----
-
-## DAU4B — Airport × Airline / Operator
-
-**Purpose:** Matrix analysis between airports and airlines/operators.
-
-### Main visualization
-
-**Matrix Heatmap**
-
-- Rows → Airport
-- Columns → Airline / Operator
-- Cell intensity → flight frequency / traffic volume
-
-### Filters
-
-- Minimum flight threshold
-- DOM / INT
-- Airport search
-- Airline search
-
-A matrix cell can be used for drill-down into the underlying airport/operator records.
-
----
-
-## DAU5 — Airline Operator
-
-**Purpose:** Airline performance and distribution.
-
-### Main visualization
-
-**Pareto Chart**
-
-- Bars → Airline traffic volume
-- Cumulative line → percentage
-
-### Ranking metrics
-
-- Aircraft
-- Passenger
-- Baggage
-- Cargo
-- POS where supported
-
-### Filters
-
-- Ranking metric
-- Airline
-- Direction
-- DOM / INT where supported
-
----
-
-## DAU5A — Airline Operator (A)
-
-**Purpose:** Airline and Extra Crew analysis.
-
-### Main visualization
-
-**Grouped Horizontal Bar**
-
-Compare available source metrics such as:
-
-- Operating Crew
-- Extra Crew
-- Arrival
-- Departure
-- Total
-
-### Filters
-
-- Airline
-- ARR
-- DEP
-- TOTAL
-
----
-
-## DAU5B — Airline Operator (B)
-
-**Purpose:** Terminal × Airline analysis.
-
-### Main visualization
-
-**Stacked Bar by Terminal**
-
-- X-axis → Terminal
-- Stacks → Airline
-- Height → traffic volume
-
-### Filters
-
-- Terminal
-- Airline where supported
-
-Example:
 
 ```text
-Terminal 2F
+DEP < DEP CAP → AVAILABLE
+DEP = DEP CAP → MAX
+DEP > DEP CAP → OVER
 ```
-
-The KPI, charts and detail table must update to the selected terminal only.
-
----
-
-## DAU5C — Airline Operator (C)
-
-**Purpose:** Airline profile analysis.
-
-The dashboard should first inspect the actual DAU5C schema and use only supported fields.
-
-Where source data supports both Seat Capacity and Passenger, the application can calculate:
-
-```text
-Load Factor = Passenger / Seat Capacity × 100
-```
-
-If those fields are not available, the dashboard must not fabricate Load Factor.
-
----
-
-# 🛫 DAU6 — Tipe Pesawat
-
-**Purpose:** Aircraft fleet mix analysis.
-
-### Main visualization
-
-**Aircraft Type Ranking**
-
-Example categories can include actual types such as:
-
-- A320
-- B737-800
-- ATR72
-- B777
-
-The dashboard may also provide fleet-category or WTC analysis only when the necessary source/master data exists.
-
-### Filters
-
-- Aircraft Type
-- Aircraft category where available
-- WTC where available
-- Sort by Aircraft / Passenger
-
----
-
-# ⏱️ DAU10 — Jam Puncak Pesawat/Penumpang
-
-**Purpose:** Hourly peak analysis.
-
-### KPI
-
-- Peak Aircraft
-- Peak Passenger
-- Peak Hour
-- Total Aircraft
-- Total Passenger
-
-### Main visualizations
-
-1. Hourly Aircraft Movement
-2. Hourly Passenger Movement
-3. Peak Hour Analysis
-
-### Filters
-
-- Date
-- Flight type
-- Hour
-- Terminal where supported
-- Metric
-
----
-
-# 🏢 DAU10A — Jam Puncak Menurut Terminal
-
-DAU10A focuses on **Time × Terminal** analysis.
-
-It provides two complementary views.
-
-## View 1 — TIME × TERMINAL HEATMAP
-
-Rows:
-
-```text
-Terminal
-```
-
-Columns:
-
-```text
-Hour
-```
-
-Metric can be switched between available source metrics such as:
-
-- Aircraft
-- Passenger
-- Crew
-- Baggage
-- Cargo
-- POS
-
----
-
-## View 2 — DISTRIBUSI PER JAM
-
-The Distribution Per Hour view provides an airport-wide or selected-terminal operational capacity analysis.
-
-### Terminal filter
-
-```text
-Terminal:
-[ ALL TERMINALS ▼ ]
-```
-
-When a terminal such as `2F` is selected:
-
-- KPI uses Terminal 2F
-- Chart uses Terminal 2F
-- Tooltip uses Terminal 2F
-- Table uses Terminal 2F
-- PDF uses Terminal 2F
-
-All values must come from the same filtered dataset.
-
----
-
-## DAU10A Operational Capacity Envelope
-
-The Distribution Per Hour chart uses a two-direction operational layout:
-
-```text
-                 ARRIVAL CAPACITY
-                        +8
-            ╔══════════════════════════╗
-            ║       ARRIVAL ↑          ║
-            ║        ███               ║
-06:00 ───── ║────── TIME / HOUR ──────║ ───── 21:00
-            ║        ███               ║
-            ║      DEPARTURE ↓         ║
-            ╚══════════════════════════╝
-                        -8
-                DEPARTURE CAPACITY
-```
-
-The envelope is one connected dashed rectangle:
-
-- **Top** → Arrival Capacity
-- **Bottom** → Departure Capacity
-- **Left** → Operating Hours Start
-- **Right** → Operating Hours End
-
-Arrival and Departure capacities remain independently editable.
-
-### Directional status rules
-
-Arrival:
-
-```text
-ARR < ARR CAP  → no badge / Available
-ARR = ARR CAP  → MAX
-ARR > ARR CAP  → OVER
-```
-
-Departure:
-
-```text
-DEP < DEP CAP  → no badge / Available
-DEP = DEP CAP  → MAX
-DEP > DEP CAP  → OVER
-```
-
-Arrival status must never affect Departure status, and Departure status must never affect Arrival status.
 
 Example:
 
@@ -607,268 +201,569 @@ Example:
 ARR CAP = 30
 DEP CAP = 30
 
-ARR = 30
-DEP = 45
-
-ARR → 30/30 → MAX
-DEP → 45/30 → OVER
+ARR = 30 → MAX
+DEP = 45 → OVER
 ```
 
-Available bars do not display a badge.
+One direction never changes the status of the other.
 
-### Cursor tooltip
+---
 
-When hovering over a bar, SlotWaves displays a small cursor-following tooltip containing the actual generated value, the current capacity, scope, hour and status.
+# 📊 DAU Analytics
+
+DAU dashboards are **report-specific**. Each DAU has a dedicated parser and its own analytical presentation.
+
+## DAU-01 — Arus Lalu Lintas
+
+Focuses on traffic volume and movement detail.
+
+Typical analytics include:
+
+- Aircraft Movement
+- Passenger Movement
+- Baggage
+- Cargo
+- POS / mail where available
+- Arrival / Departure
+- Origin / Destination
+- Flight-level operational records
+
+### Passenger breakdown
+
+When the source provides the required fields, Passenger mode can distinguish categories such as:
+
+- Adult / Dewasa
+- Child / Anak
+- Infant / Bayi
+
+The visual analytics should switch to passenger values instead of reusing aircraft values.
+
+---
+
+## DAU-02 — Secara Total
+
+DAU-02 supports two workflows:
+
+### Single Report
+
+```text
+1 DAU-02 file
+      ↓
+Generate
+      ↓
+Dashboard
+```
+
+### Historical Comparison
+
+Multiple DAU-02 files can be compared when their periods are compatible.
 
 Example:
 
 ```text
-08:00–08:59 (WIB)
-🟠 ARRIVAL
-
-Aircraft
-31 / 8 A/C
-
-Scope
-ALL TERMINALS
-
-OVER CAPACITY
+Period A → 2020
+Period B → 2021
+Period C → 2022
+Period D → 2023
+Period E → 2024
+Period F → 2025
 ```
 
-The tooltip is rendered above the chart so it is not hidden behind bars or clipped by the chart container.
+The historical comparison page contains:
 
----
+1. **Baseline Period controls**
+2. **Kinerja Operasional Bandara**
+3. **Data Pergerakan Historis**
+4. **Historical comparison table**
+5. **PDF / CSV export**
 
-# 🧭 DAU10B — Jam Puncak Pesawat/Penumpang (Block On/Off)
+### Baseline Period
 
-**Purpose:** Block On / Block Off analysis where the actual DAU10B source provides those dimensions.
+The Baseline Period is the reference period for comparison calculations.
 
-### Main visualization
+For six periods, choosing Period A means the comparison set contains the other five periods.
 
-- Block On vs Block Off hourly comparison
-- Hourly aircraft/passenger distribution where supported
+The baseline setting belongs to the comparison logic and must not replace the actual period values used by the operational charts.
 
-### Filters
+### Kinerja Operasional Bandara
 
-- Block operation
-- Terminal
-- Hour
-- Flight type
-- Metric
+This section uses **three independent combo charts**:
 
-The dashboard must inspect the real DAU10B schema and must not invent Block On/Off values that are not present in the source.
+1. **Pergerakan Penumpang**
+   - Bar = actual passenger value
+   - Line + points = passenger trend
 
----
+2. **Pergerakan Pesawat**
+   - Bar = actual aircraft movement
+   - Line + points = aircraft trend
 
-# 📈 DAU11 — Data Statistik 1
+3. **Pergerakan Kargo**
+   - Bar = actual cargo value
+   - Line + points = cargo trend
 
-**Purpose:** Aggregate ARR/DEP and DOM/INT statistics.
+Each chart has its own scale and its own metric.
 
-Where the source contains enough relationships, the dashboard can use a **Sankey Flow** to show passenger/traffic flow between categories such as:
+### Data Pergerakan Historis
+
+This section focuses on historical period-by-period distribution and supports:
+
+- **Scope:** ALL / DOMESTIC / INTERNATIONAL
+- **Direction:** ALL / ARRIVAL / DEPARTURE
+
+Metric colors are semantically consistent:
 
 ```text
-TOTAL
-  ↓
-DOM / INT
-  ↓
-ARR / DEP
-  ↓
-DIRECT / TRANSIT / TRANSFER
+Passenger → Blue family
+Aircraft  → Green family
+Cargo     → Orange family
 ```
 
-The exact flow is limited to relationships actually supported by the source.
-
-### Filters
-
-- Arrival / Departure
-- Passenger type where available
-- Domestic / International
+Domestic and International are distinguished using shades within the corresponding metric color family.
 
 ---
 
-# 📊 DAU12 — Data Statistik 2
+## DAU-03 — Status Penerbangan
 
-**Purpose:** ARR/DEP × DOM/INT comparison.
+Focuses on status / flight classification from the actual source data.
 
-### Main visualization
+Visualizations depend on the fields available in the source report.
 
-**Grouped Column Chart**
+Typical filters can include:
+
+- status/category
+- arrival/departure
+- supported flight classification
+
+---
+
+## DAU-04 — Asal / Tujuan
+
+Focuses on origin and destination distribution.
+
+Typical analytics:
+
+- top origin / arrival
+- top destination / departure
+- aircraft-based comparison
+- passenger-based comparison
+
+Filters can include:
+
+- top N
+- direction
+- airport search
+- supported domestic / international scope
+
+---
+
+## DAU-04A — Asal / Tujuan
+
+Provides an operator-to-airport / route relationship view using the fields present in the source.
+
+Typical visualization:
+
+- hierarchical distribution
+- route/operator comparison
+
+Filters should visibly affect the corresponding analytical output and detail records.
+
+---
+
+## DAU-04B — Asal / Tujuan (Airline / Operator)
+
+Provides an Airport × Airline / Operator relationship view.
+
+Typical visualization:
 
 ```text
-ARRIVAL
- ├── DOM
- └── INT
-
-DEPARTURE
- ├── DOM
- └── INT
+Airport × Airline / Operator
+        ↓
+Traffic / Flight Volume
 ```
 
-### Metric toggle
+A matrix / heatmap representation can be used when supported by the source data.
+
+---
+
+## DAU-05 — Airline / Operator
+
+Focuses on airline/operator distribution.
+
+The main visualization uses a **Pareto-style analysis**:
+
+- bars → airline/operator volume
+- cumulative line → cumulative share
+
+Depending on the available fields, the metric can represent:
+
+- aircraft
+- passenger
+- baggage
+- cargo
+- POS
+
+---
+
+## DAU-05A — Airline / Operator (A)
+
+Focuses on airline/operator operational data such as crew and movement fields when provided by the source.
+
+Typical visualization:
+
+- grouped bar comparison
+
+Typical filters:
+
+- airline/operator
+- ARR
+- DEP
+- TOTAL
+
+---
+
+## DAU-05B — Airline / Operator (B)
+
+Focuses on terminal × airline/operator distribution.
+
+Typical visualization:
+
+**Stacked Bar by Terminal**
+
+```text
+Terminal
+  ↓
+Airline / Operator
+  ↓
+Traffic volume
+```
+
+Selecting a terminal should update the related KPI, chart, and detail records.
+
+---
+
+## DAU-05C — Airline / Operator (C)
+
+Focuses on airline/operator comparison profiles using the actual DAU-05C schema.
+
+The dashboard should only calculate metrics that are supported by the uploaded source.
+
+If both Passenger and Seat Capacity are available, Load Factor can be derived as:
+
+```text
+Load Factor =
+Passenger / Seat Capacity × 100
+```
+
+If Seat Capacity is not available, Load Factor must not be fabricated.
+
+---
+
+# 🛫 DAU-06 — Tipe Pesawat
+
+Focuses on aircraft type distribution.
+
+Typical analysis:
+
+- aircraft type volume
+- passenger volume by aircraft type
+- supported WTC information
+- fleet distribution where source/master data permits
+
+Aircraft Category (Regional) is not part of the current dashboard presentation.
+
+---
+
+# ⏱️ DAU-10 — Jam Puncak Pesawat / Penumpang
+
+Focuses on hourly peak analysis.
+
+Typical output:
+
+- peak aircraft hour
+- peak passenger hour
+- total aircraft
+- total passenger
+- hourly distribution
+
+Filters depend on the report schema and may include:
+
+- scope
+- direction
+- hour
+- terminal where supported
+- flight type
+
+The current dashboard separates Aircraft and Passenger visual analysis instead of forcing them into one metric display.
+
+---
+
+# 🏢 DAU-10A — Jam Puncak Menurut Terminal
+
+DAU-10A is designed for **Time × Terminal** and operational hourly analysis.
+
+## Metric modes
+
+Available source metrics may include:
+
+- Aircraft
+- Passenger
+- Crew
+
+The dashboard must switch to the selected metric's own source fields.
+
+### Aircraft mode
+
+Aircraft mode supports:
+
+- Aircraft Arrival
+- Aircraft Departure
+- Aircraft Capacity / NAC
+- Operating Hours
+- MAX / OVER / AVAILABLE
+- Capacity envelope
+- hourly capacity analysis
+
+### Passenger / Crew mode
+
+Passenger and Crew modes use their own source data and do not inherit aircraft capacity fields.
+
+---
+
+## DAU-10A — Distribusi Per Jam
+
+The hourly chart uses a two-direction operational layout:
+
+```text
+        ARRIVAL
+           ↑
+
+     hourly demand
+
+────── TIME AXIS ──────
+
+     hourly demand
+
+           ↓
+       DEPARTURE
+```
+
+### Capacity envelope
+
+One connected dashed operational envelope represents:
+
+- **Top** → Arrival Capacity
+- **Bottom** → Departure Capacity
+- **Left** → Operating Hours Start
+- **Right** → Operating Hours End
+
+Arrival and Departure capacity values are independently editable.
+
+### Terminal filter
+
+The chart can be scoped to:
+
+- ALL TERMINALS
+- selected terminal
+
+The selected terminal affects the analytical dataset consistently.
+
+### Average By Days
+
+Aircraft Distribution Per Hour also supports average-by-days analysis for multi-day data:
+
+- Original Data
+- 5 Days
+- 15 Days
+- 30 Days
+- 60 Days
+- Custom
+
+The transformation is applied to the hourly aircraft values while preserving the original source data.
+
+The averaging rule uses upward rounding:
+
+```text
+average = ceil(hourlyValue / N)
+```
+
+Example:
+
+```text
+338.9 → 339
+```
+
+Reset returns the chart to the original data.
+
+---
+
+# 🧭 DAU-10B — Block On / Block Off
+
+Focuses on hourly:
+
+**BLOCK ON (DTG) vs BLOCK OFF (BRK)**
+
+Typical visualization:
+
+- grouped hourly bars
+- peak-hour indicators
+- hourly summary table
+
+The dashboard can support metric-specific data modes where the source contains the corresponding passenger / aircraft fields.
+
+Filters may include:
+
+- metric
+- terminal
+- hour
+- operation
+- direction
+- domestic / international where supported
+
+Rapid filter changes are handled so the latest selected state remains the authoritative chart state.
+
+---
+
+# 📈 DAU-11 — Data Statistik 1
+
+Focuses on statistical ARR / DEP / DOM / INT analysis using the actual DAU-11 fields.
+
+Normalized fields are maintained so the same filter and aggregation engine can operate consistently.
+
+---
+
+# 📊 DAU-12 — Data Statistik 2
+
+Focuses on:
+
+```text
+ARRIVAL vs DEPARTURE
++
+DOMESTIC vs INTERNATIONAL
+```
+
+The dashboard supports metric-specific visualization where the source provides:
 
 - Aircraft
 - Passenger
 
-### Display mode
-
-- Absolute
-- Percentage
-
-### Summary table
-
-```text
-               DOM      INT      TOTAL
-ARRIVAL
-DEPARTURE
-```
-
-Aircraft and Passenger metrics must remain separate.
+and can present grouped comparisons across ARR/DEP and DOM/INT.
 
 ---
 
-# 🔎 Interactive Analytics
+# 🔎 Universal Filter Architecture
 
-SlotWaves uses a reusable filtering approach so that the dashboard remains synchronized.
-
-Conceptually:
+SlotWaves uses a common analytical pipeline:
 
 ```text
-reportData
-    ↓
-selectedFilters
-    ↓
-filteredData
-    ├── KPI
-    ├── Charts
-    ├── Tables
-    ├── Tooltips
-    └── PDF
+Raw Parsed Records
+        ↓
+Selected Filters
+        ↓
+Filtered Dataset
+        ├── KPI
+        ├── Charts
+        ├── Tables
+        ├── Tooltips
+        └── Supported Exports
 ```
 
-Changing a filter should not create a second inconsistent dataset.
+The objective is to keep the visible dashboard synchronized.
 
-Supported filters vary by report and can include:
+Typical filters across DAU dashboards include:
 
-- Date
-- Flight Type
-- Direction
-- Airport
-- Origin
-- Destination
-- Airline
-- Terminal
-- Aircraft Type
-- Hour
 - Metric
-- Status
+- Direction
+- Domestic / International
+- Airline / Operator
+- Airport / Route
+- Aircraft Type
+- Terminal
+- Hour
+- Operation
+- Search
+
+Active filters should be visibly distinguishable from the default state.
 
 ---
 
-# 📤 Export System
+# 📤 Export
 
-Generated reports can be exported according to the report type.
+Where supported by a report, SlotWaves provides:
 
-### PDF
+- **PDF**
+- **CSV**
+- **Excel**
 
-PDF reports include, where applicable:
+## PDF principles
 
-- Report title
-- DAU number
-- Airport
-- Date range
-- Flight scope
-- Terminal scope
-- KPI summary
-- Charts / diagrams
-- Detail tables
-- Active filters
-- Generated timestamp
-- Page numbering
+PDF export should preserve:
 
-For filtered dashboards, the PDF must represent the same filtered dataset shown on screen.
+- report metadata
+- filters / scope
+- KPI summaries
+- charts / visual analytics
+- detail tables
+- comparison information
+- report context
 
-### Excel / CSV
-
-Export is available where supported by the report and existing implementation.
+The exported values must come from the same analytical dataset used by the dashboard.
 
 ---
 
 # 🗄️ Database
 
-SlotWaves uses PostgreSQL through Supabase for production data.
+SlotWaves uses **PostgreSQL via Supabase** for production persistence.
 
-The application is designed around a non-destructive database approach.
+The application follows a non-destructive database approach and evolves the schema through migrations.
 
-Existing operational tables remain available for data such as:
-
-```text
-airlines
-airports
-cache
-cache_locks
-exports
-flight_pairings
-flights
-migrations
-sessions
-timeline_positions
-timeline_settings
-uploads
-```
-
-The `uploads` record can associate a generated report with its report type and normalized report data.
-
-The project must not reset or recreate the whole production database just to add DAU functionality.
+Production data must not be replaced simply to introduce or modify a report type.
 
 ---
 
-# 🏗️ Application Architecture
-
-Simplified architecture:
+# 🏗️ Architecture
 
 ```text
                     ┌───────────────────────────┐
-                    │          HOME             │
+                    │           HOME            │
                     │ Select Type to Generate   │
                     └─────────────┬─────────────┘
                                   │
-                     ┌────────────┴────────────┐
-                     │                         │
-                     ▼                         ▼
-            Airport Slot Schedule             DAU
-                     │                         │
-                    PDF                  DAU1–DAU12
-                     │                         │
-                     ▼                         ▼
-                 Validator                 Validator
-                     │                         │
-                     ▼                         ▼
-                  Parser                    Parser
-                     │                         │
-                     ▼                         ▼
-                 Timeline                 Normalize
-                     │                         │
-                     ▼                         ▼
-                 Capacity                 Aggregate
-                     │                         │
-                     └────────────┬────────────┘
-                                  ▼
-                              DASHBOARD
-                                  │
-                           ┌──────┴──────┐
-                           ▼             ▼
-                        FILTER        ANALYZE
-                           │             │
-                           └──────┬──────┘
-                                  ▼
-                               EXPORT
+                 ┌────────────────┴────────────────┐
+                 │                                 │
+                 ▼                                 ▼
+        Airport Slot Schedule                     DAU
+                 │                          DAU-01 … DAU-12
+                 ▼                                 │
+          Template Validator                        ▼
+                 │                           Template Validator
+                 ▼                                 │
+            PDF Parser                             ▼
+                 │                           Report-specific
+                 ▼                               Parser
+              Matching                             │
+                 │                                 ▼
+                 ▼                              Normalize
+             Timeline                              │
+                 │                                 ▼
+                 ▼                              Aggregate
+             Capacity                              │
+                 │                                 │
+                 └───────────────┬─────────────────┘
+                                 ▼
+                             DASHBOARD
+                                 │
+                       ┌─────────┴─────────┐
+                       ▼                   ▼
+                    FILTER             ANALYTICS
+                       │                   │
+                       └─────────┬─────────┘
+                                 ▼
+                              EXPORT
 ```
 
 ---
 
 # 📁 Project Structure
-
-The project follows a modular Laravel architecture.
 
 ```text
 SlotWaves/
@@ -932,89 +827,116 @@ SlotWaves/
 
 # 🧩 Key Components
 
-## `DauDashboardController.php`
+### `DauDashboardController.php`
 
-Controls DAU dashboard/report flow and connects parsed report data to dashboard views and exports.
+Connects report data, filtering, dashboard views, and supported exports.
 
-## `TemplateValidator.php`
+### `TemplateValidator.php`
 
-Validates uploaded files against the selected report type and its expected structure.
+Validates source files against the selected report type.
 
-## `ReportTemplateRegistry.php`
+### `ReportTemplateRegistry.php`
 
-Central registry for report types, templates, validation rules, parsers, dashboards, and export behavior.
+Central registry for report types, template rules, parsers, dashboards, and report capabilities.
 
-## `app/Services/Dau/Parsers/`
+### `app/Services/Dau/Parsers/`
 
-Contains report-specific parsers. Each DAU parser understands its own source layout instead of forcing every source into a generic spreadsheet schema.
+Contains report-specific parser implementations.
+
+Each DAU parser is responsible for understanding its own source structure.
 
 ---
 
 # 🛠️ Technology Stack
 
-### Backend
+## Backend
 
 - PHP
 - Laravel
 - Laravel Blade
 - Laravel Breeze where authentication scaffolding is used
 
-### Frontend
+## Frontend
 
 - Blade
 - Tailwind CSS
 - Alpine.js
-- Vite
 - JavaScript
+- Vite
 
-### Database
+## Data & Reporting
+
+- Excel ingestion for DAU reports
+- PDF ingestion for Airport Slot Schedule
+- PDF / CSV / Excel export where supported
+
+## Database
 
 - PostgreSQL
 - Supabase
 
-### Deployment
+## Deployment
 
 - Vercel
-
-### Reporting / Data Processing
-
-- Excel template parsing for DAU reports
-- PDF ingestion for Airport Slot Schedule
-- PDF / Excel / CSV export according to report type
+- GitHub
 
 ---
 
 # 🔐 Data Integrity Principles
 
-SlotWaves follows several rules to keep generated reports trustworthy.
+SlotWaves is designed around a few important rules.
 
-### 1. Source data is authoritative
+### 1. Source-first
 
-Dashboard metrics must come from the actual uploaded source or a deterministic enrichment source.
+Dashboard values should originate from the uploaded source data or a deterministic enrichment source.
 
-### 2. No fabricated values
+### 2. No fabricated analytics
 
-If a metric is absent from the source and cannot be legitimately derived, the dashboard should show `N/A` or omit that metric.
+If a value is not present and cannot be derived legitimately, the application should represent it as unavailable rather than inventing it.
 
-### 3. Filter consistency
+### 3. One analytical dataset
 
-The same filtered dataset must feed KPI, charts, tables, tooltips, and exports.
+The same filtered dataset should drive:
 
-### 4. No parser cross-contamination
+- KPI
+- charts
+- tables
+- tooltips
+- supported exports
 
-A DAU10 parser should not silently replace the structure of DAU10A, and a DAU report must not be parsed as Airport Slot Schedule.
+### 4. Report-specific parsing
 
-### 5. Existing operational logic is preserved
+Different DAU reports must not be forced into a single generic source schema when their structures differ.
 
-The addition of DAU analytics must not break the existing Airport Slot Schedule workflow.
+### 5. Preserve stable workflows
+
+DAU development should not unnecessarily break Airport Slot Schedule functionality.
 
 ---
 
-# 🧪 Testing
+# 🧪 Testing & Validation
 
-The project includes validation for parser behavior, capacity logic, dashboard calculations, and production-oriented regressions.
+The repository contains report-specific and regression-oriented validation.
 
-The development workflow should include:
+Important test areas include:
+
+- Airport Slot Schedule ingestion
+- Arrival / Departure parsing
+- Flight pairing
+- RON
+- OPC
+- Aircraft Capacity / NAC
+- Operating Hours
+- DAU template validation
+- DAU parser behavior
+- Filter synchronization
+- Dashboard calculations
+- DAU-10A metric separation
+- DAU-10B filter stability
+- DAU-12 visual analytics
+- PDF export
+
+Typical local verification commands:
 
 ```bash
 php artisan optimize:clear
@@ -1025,70 +947,40 @@ npm ci
 npm run build
 ```
 
-Where project-specific verification scripts exist, run them as part of the regression process.
-
-Important regression areas:
-
-- Airport Slot Schedule PDF ingestion
-- Arrival / Departure parsing
-- Flight pairing
-- RON
-- OPC
-- Aircraft Capacity / NAC
-- Operating Hours
-- LOCAL / UTC
-- DAU template validation
-- DAU1–DAU12 parsing
-- Filters
-- Dashboard totals
-- PDF export
-
 ---
 
 # 🚀 Local Development
 
 ## Requirements
 
-Recommended development environment:
-
-- PHP 8.x compatible with the project's Laravel version
+- PHP compatible with the project's Laravel version
 - Composer
 - Node.js / npm
-- PostgreSQL-compatible database or Supabase
+- PostgreSQL or Supabase
 - Git
 
-## Installation
+## Setup
 
 ```bash
 git clone https://github.com/ValhallaDemon356/SlotWaves.git
 cd SlotWaves
 ```
 
-Install PHP dependencies:
+Install dependencies:
 
 ```bash
 composer install
-```
-
-Install frontend dependencies:
-
-```bash
 npm ci
 ```
 
-Create environment file:
+Create environment configuration:
 
 ```bash
 cp .env.example .env
-```
-
-Generate application key if needed:
-
-```bash
 php artisan key:generate
 ```
 
-Configure the database through environment variables.
+Configure database credentials through environment variables.
 
 Run migrations:
 
@@ -1096,25 +988,23 @@ Run migrations:
 php artisan migrate
 ```
 
-Build frontend assets:
+Build assets:
 
 ```bash
 npm run build
 ```
 
-Run the application:
+Run locally:
 
 ```bash
 php artisan serve
 ```
 
-In a separate terminal, use the project's preferred Vite development workflow when actively developing frontend assets.
-
 ---
 
-# ☁️ Production Architecture
+# ☁️ Production
 
-The production environment is designed around:
+Current production architecture:
 
 ```text
 GitHub
@@ -1126,42 +1016,39 @@ Laravel Application
 Supabase PostgreSQL
 ```
 
-The application should keep secrets in environment variables instead of committing them to Git.
+Keep secrets in environment variables.
 
 Never commit:
 
 ```text
 .env
-.env.production
 .env.local
+.env.production
 ```
 
-or any credential such as:
+Never commit:
 
 - database passwords
-- Supabase service-role keys
-- Supabase secret keys
+- Supabase secret/service keys
 - JWT secrets
 - Vercel tokens
 - GitHub tokens
-- application secrets
+- other application credentials
 
 ---
 
 # 📦 Deployment Checklist
-
-Before production deployment:
 
 ```text
 [ ] Environment variables configured
 [ ] Database connection verified
 [ ] Migrations verified
 [ ] Composer dependencies installed
-[ ] npm dependencies installed
-[ ] Vite production build succeeds
+[ ] Frontend dependencies installed
+[ ] Production build succeeds
 [ ] Routes verified
-[ ] DAU template validation tested
-[ ] Airport Slot Schedule regression tested
+[ ] DAU templates validated
+[ ] Airport Slot Schedule tested
 [ ] PDF export tested
 [ ] Master Data tested
 [ ] No secrets committed
@@ -1172,11 +1059,11 @@ Before production deployment:
 
 ---
 
-# 🛡️ Non-Destructive Database Policy
+# 🛡️ Database Safety
 
-SlotWaves should use migrations for schema evolution.
+SlotWaves uses migrations for schema evolution.
 
-Do not perform production operations such as:
+Avoid destructive production actions such as:
 
 ```text
 DROP DATABASE
@@ -1185,54 +1072,68 @@ TRUNCATE production data
 Recreate the entire Supabase project
 ```
 
-unless explicitly required and separately approved.
+unless explicitly approved and required.
 
-The DAU feature is intended to extend the existing system rather than replace the operational database.
+---
+
+# 📌 Recent Development Highlights
+
+Recent work in the repository has focused on:
+
+- DAU-02 Single Report and Historical Comparison
+- DAU-02 Baseline, historical filters, and PDF visual output
+- DAU-02 three independent Passenger / Aircraft / Cargo combo charts
+- DAU-02 historical chart color consistency
+- large DAU Excel upload handling
+- DAU-05 series visual analytics
+- DAU-05C analytics repair
+- DAU-10A Average By Days
+- DAU-10A terminal capacity analysis
+- DAU-10B Block On / Block Off analytics and rapid-filter stability
+- DAU-12 visual analytics repair
+- universal DAU filter and synchronization fixes
 
 ---
 
 # 🔭 Roadmap
 
-Potential future improvements include:
+Potential future work:
 
-- More DAU analytics and drill-down views
-- Advanced terminal analytics
-- Historical report comparison
-- Scheduled report generation
-- Report versioning
-- Role-based access control
-- Audit trail for report changes
-- More advanced airport capacity analytics
-- More export formats
-- Additional OASYS report templates
+- deeper DAU drill-down
+- additional OASYS template coverage
+- richer terminal analytics
+- report versioning
+- audit trail
+- role-based access control
+- scheduled report generation
+- advanced capacity analytics
+- more export formats
 
 ---
 
 # 🤝 Development Principles
 
-SlotWaves is built around the following principles:
-
 ### Accuracy over decoration
 
-A chart is useful only when its values can be traced back to the source data.
+A chart is useful only when the values can be traced back to the source data.
 
 ### Report-specific analytics
 
-Different DAU reports represent different operational questions and therefore need different visualizations.
-
-### Preserve working functionality
-
-New functionality should extend the existing Airport Slot Schedule and DAU systems without unnecessarily rewriting stable logic.
+Different reports answer different operational questions and therefore require different visualizations.
 
 ### One source of truth
 
-The report type, normalized data, filter state, dashboard, and exported report must remain synchronized.
+The report type, parsed data, filter state, dashboard, and export should remain synchronized.
+
+### Incremental development
+
+New features should extend stable functionality rather than unnecessarily rewriting it.
 
 ---
 
 # 📄 License
 
-Add the project's intended license here before publishing a formal open-source release.
+This repository currently does not declare a formal open-source license. Add a license file before distributing the project under explicit open-source terms.
 
 ---
 
@@ -1241,8 +1142,6 @@ Add the project's intended license here before publishing a formal open-source r
 **SlotWaves**  
 Airport Operational Slot & Flight Intelligence
 
-Repository: `ValhallaDemon356/SlotWaves`
+Repository: https://github.com/ValhallaDemon356/SlotWaves
 
----
-
-> **SlotWaves transforms operational flight data into readable, interactive, and report-ready airport intelligence.**
+> **SlotWaves transforms operational aviation data into readable, interactive, and report-ready airport intelligence.**
