@@ -5,6 +5,7 @@ use App\Http\Controllers\TimelineController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MasterDataViewController;
 use App\Http\Controllers\DauComparisonController;
+use App\Http\Controllers\FlightDailyReportController;
 use App\Http\Controllers\Api\MasterDataController;
 use Illuminate\Support\Facades\Route;
 
@@ -43,6 +44,19 @@ Route::prefix('dau/{upload}')->group(function () {
     Route::match(['POST', 'PATCH'], '/operational-settings', [\App\Http\Controllers\DauDashboardController::class, 'saveOperationalSettings'])->name('dau.operational-settings.save');
     Route::get('/export/pdf',   [\App\Http\Controllers\DauDashboardController::class, 'exportPdf'])->name('dau.export.pdf');
     Route::get('/export/excel', [\App\Http\Controllers\DauDashboardController::class, 'exportExcel'])->name('dau.export.excel');
+});
+
+// ── Flight Daily Report (FDR) Analytical Intelligence ───────────────────────
+Route::prefix('fdr')->name('fdr.')->group(function () {
+    Route::get('/',                           [FlightDailyReportController::class, 'configRedirect'])->name('index');
+    Route::get('/config/{upload?}',           [FlightDailyReportController::class, 'config'])->name('config');
+    Route::post('/upload',                    [FlightDailyReportController::class, 'store'])->name('upload');
+    Route::post('/use-reference',             [FlightDailyReportController::class, 'useReference'])->name('use-reference');
+    Route::get('/{upload}/dashboard',         [FlightDailyReportController::class, 'dashboard'])->name('dashboard');
+    Route::get('/{upload}/filter',            [FlightDailyReportController::class, 'filterApi'])->name('filter');
+    Route::get('/{upload}/flight/{flightIndex}', [FlightDailyReportController::class, 'flightDetails'])->name('flight-details');
+    Route::get('/{upload}/export/csv',        [FlightDailyReportController::class, 'exportCsv'])->name('export.csv');
+    Route::get('/{upload}/export/pdf',        [FlightDailyReportController::class, 'exportPdf'])->name('export.pdf');
 });
 
 // ── Master Reference Data Web View ─────────────────────────────────────────

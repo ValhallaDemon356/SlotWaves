@@ -1,0 +1,7478 @@
+<title>&nbsp;OASYS Flight Daily Report</title>
+<CENTER><B>FLIGHT DAILY REPORT (LAPORAN HARIAN PENERBANGAN)
+<BR>TANGERANG BANTEN - SOEKARNO HATTA (CGK)<BR>TANGGAL 2026-08-01 s/d 2026-08-31<br>OPERATOR: ALL AIRLINE<br>REALISASI: YES<br>TIPE DATA: OPERATIONAL DATA</B></CENTER>
+<BR>
+<table width="100%" border="1" cellspacing="0" cellpadding="3" class="table">
+  <tr bgcolor="#F1F5F9">
+    <th>NO</th>
+    <th>AIR LINE</th>
+    <th>FLIGHT NO</th>
+    <th>PAIRED NO</th>
+    <th>SIBT</th>
+    <th>SOBT</th>
+    <th>AIBT</th>
+    <th>AOBT</th>
+    <th>LEG</th>
+    <th>CITY 1</th>
+    <th>CITY 2</th>
+    <th>MTOW</th>
+    <th>REG. NO</th>
+    <th>CAP.</th>
+    <th>LOAD</th>
+    <th>ADULT</th>
+    <th>CHILD</th>
+    <th>INFANT</th>
+    <th>TRANSIT</th>
+    <th>TRANSFER</th>
+    <th>DIVERT</th>
+    <th>MISS</th>
+    <th>CRW</th>
+    <th>EX. CRW</th>
+    <th>CAR. (KG)</th>
+    <th>BAGG. (KG)</th>
+    <th>POS (KG)</th>
+    <th>STAND</th>
+    <th>RUN WAY</th>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>1</td>
+    <td>Citilink</td>
+    <td>QG101</td>
+    <td>QG102</td>
+    <td>2026-08-02 07:13:00</td>
+    <td></td>
+    <td>2026-08-02 07:20:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>DPS</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-BDH</td>
+    <td>180</td>
+    <td>173</td>
+    <td>152</td>
+    <td>17</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1960</td>
+    <td>2249</td>
+    <td>0</td>
+    <td>B02</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>2</td>
+    <td>Lion Air</td>
+    <td>JT102</td>
+    <td>JT103</td>
+    <td></td>
+    <td>2026-08-03 14:26:00</td>
+    <td></td>
+    <td>2026-08-03 14:26:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>KNO</td>
+    <td>79000</td>
+    <td>PK-CGO</td>
+    <td>189</td>
+    <td>127</td>
+    <td>112</td>
+    <td>13</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1701</td>
+    <td>1524</td>
+    <td>0</td>
+    <td>B04</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>3</td>
+    <td>Batik Air</td>
+    <td>ID103</td>
+    <td>ID104</td>
+    <td>2026-08-04 21:39:00</td>
+    <td></td>
+    <td>2026-08-04 21:32:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>UPG</td>
+    <td>CGK</td>
+    <td>75500</td>
+    <td>PK-DJV</td>
+    <td>156</td>
+    <td>136</td>
+    <td>120</td>
+    <td>14</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3105</td>
+    <td>2448</td>
+    <td>0</td>
+    <td>B12</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>4</td>
+    <td>Super Air Jet</td>
+    <td>IU104</td>
+    <td>IU105</td>
+    <td></td>
+    <td>2026-08-05 04:52:00</td>
+    <td></td>
+    <td>2026-08-05 05:04:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BDO</td>
+    <td>73500</td>
+    <td>PK-EMC</td>
+    <td>180</td>
+    <td>155</td>
+    <td>136</td>
+    <td>16</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3167</td>
+    <td>2015</td>
+    <td>0</td>
+    <td>B14</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>5</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ105</td>
+    <td>SJ106</td>
+    <td>2026-08-06 11:05:00</td>
+    <td></td>
+    <td>2026-08-06 11:19:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>JOG</td>
+    <td>CGK</td>
+    <td>68000</td>
+    <td>PK-FPJ</td>
+    <td>148</td>
+    <td>105</td>
+    <td>92</td>
+    <td>11</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3173</td>
+    <td>1470</td>
+    <td>305</td>
+    <td>C03</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>6</td>
+    <td>Pelita Air</td>
+    <td>IP106</td>
+    <td>IP107</td>
+    <td></td>
+    <td>2026-08-07 18:18:00</td>
+    <td></td>
+    <td>2026-08-07 18:24:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>SRG</td>
+    <td>73500</td>
+    <td>PK-GSQ</td>
+    <td>180</td>
+    <td>151</td>
+    <td>133</td>
+    <td>15</td>
+    <td>2</td>
+    <td>15</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>997</td>
+    <td>1661</td>
+    <td>0</td>
+    <td>D21</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>7</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ107</td>
+    <td>QZ108</td>
+    <td>2026-08-08 01:31:00</td>
+    <td></td>
+    <td>2026-08-08 02:22:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BPN</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-HVX</td>
+    <td>180</td>
+    <td>173</td>
+    <td>152</td>
+    <td>17</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2996</td>
+    <td>2422</td>
+    <td>0</td>
+    <td>D24</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>8</td>
+    <td>Singapore Airlines</td>
+    <td>SQ108</td>
+    <td>SQ109</td>
+    <td></td>
+    <td>2026-08-09 08:44:00</td>
+    <td></td>
+    <td>2026-08-09 08:35:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BKK</td>
+    <td>242000</td>
+    <td>9V-SHI</td>
+    <td>295</td>
+    <td>263</td>
+    <td>231</td>
+    <td>26</td>
+    <td>1</td>
+    <td>0</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>2979</td>
+    <td>3156</td>
+    <td>0</td>
+    <td>E05</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>9</td>
+    <td>Garuda Indonesia</td>
+    <td>GA109</td>
+    <td>GA110</td>
+    <td>2026-08-10 15:57:00</td>
+    <td></td>
+    <td>2026-08-10 16:06:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>MDC</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-JBL</td>
+    <td>162</td>
+    <td>159</td>
+    <td>140</td>
+    <td>16</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3875</td>
+    <td>2703</td>
+    <td>0</td>
+    <td>F02</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>10</td>
+    <td>Citilink</td>
+    <td>QG110</td>
+    <td>QG111</td>
+    <td></td>
+    <td>2026-08-11 22:10:00</td>
+    <td></td>
+    <td>2026-08-11 22:18:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>LOP</td>
+    <td>73500</td>
+    <td>PK-KES</td>
+    <td>180</td>
+    <td>151</td>
+    <td>133</td>
+    <td>15</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>751</td>
+    <td>1963</td>
+    <td>499</td>
+    <td>R01</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>11</td>
+    <td>Lion Air</td>
+    <td>JT111</td>
+    <td>JT112</td>
+    <td>2026-08-12 05:23:00</td>
+    <td></td>
+    <td>2026-08-12 05:24:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>PLM</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-LHZ</td>
+    <td>189</td>
+    <td>185</td>
+    <td>163</td>
+    <td>19</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1334</td>
+    <td>2405</td>
+    <td>0</td>
+    <td>R04</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>12</td>
+    <td>Batik Air</td>
+    <td>ID112</td>
+    <td>ID113</td>
+    <td></td>
+    <td>2026-08-13 12:36:00</td>
+    <td></td>
+    <td>2026-08-13 12:34:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BTJ</td>
+    <td>75500</td>
+    <td>PK-MKG</td>
+    <td>156</td>
+    <td>126</td>
+    <td>111</td>
+    <td>13</td>
+    <td>1</td>
+    <td>9</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>2</td>
+    <td>3504</td>
+    <td>2142</td>
+    <td>0</td>
+    <td>T3-01</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>13</td>
+    <td>Super Air Jet</td>
+    <td>IU113</td>
+    <td>IU114</td>
+    <td>2026-08-14 19:49:00</td>
+    <td></td>
+    <td>2026-08-14 19:50:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>PKU</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-NNN</td>
+    <td>180</td>
+    <td>151</td>
+    <td>133</td>
+    <td>15</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1130</td>
+    <td>2416</td>
+    <td>0</td>
+    <td>T3-12</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>14</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ114</td>
+    <td>SJ115</td>
+    <td></td>
+    <td>2026-08-15 02:02:00</td>
+    <td></td>
+    <td>2026-08-15 02:35:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>PDG</td>
+    <td>68000</td>
+    <td>PK-OQU</td>
+    <td>148</td>
+    <td>127</td>
+    <td>112</td>
+    <td>13</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2797</td>
+    <td>1905</td>
+    <td>0</td>
+    <td>T3-24</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>15</td>
+    <td>Pelita Air</td>
+    <td>IP115</td>
+    <td>IP116</td>
+    <td>2026-08-16 09:15:00</td>
+    <td></td>
+    <td>2026-08-16 09:14:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>HND</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-PTB</td>
+    <td>180</td>
+    <td>119</td>
+    <td>105</td>
+    <td>12</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3286</td>
+    <td>1666</td>
+    <td>238</td>
+    <td>B01</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>16</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ116</td>
+    <td>QZ117</td>
+    <td></td>
+    <td>2026-08-17 16:28:00</td>
+    <td></td>
+    <td>2026-08-17 16:34:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>DPS</td>
+    <td>73500</td>
+    <td>PK-QWI</td>
+    <td>180</td>
+    <td>160</td>
+    <td>141</td>
+    <td>16</td>
+    <td>4</td>
+    <td>0</td>
+    <td>12</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1403</td>
+    <td>2560</td>
+    <td>0</td>
+    <td>B02</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>17</td>
+    <td>Singapore Airlines</td>
+    <td>SQ117</td>
+    <td>SQ118</td>
+    <td>2026-08-18 23:41:00</td>
+    <td></td>
+    <td>2026-08-18 23:34:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>DXB</td>
+    <td>CGK</td>
+    <td>242000</td>
+    <td>9V-SHR</td>
+    <td>295</td>
+    <td>254</td>
+    <td>224</td>
+    <td>25</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>930</td>
+    <td>3556</td>
+    <td>0</td>
+    <td>B04</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>18</td>
+    <td>Garuda Indonesia</td>
+    <td>GA118</td>
+    <td>GA119</td>
+    <td></td>
+    <td>2026-08-19 06:54:00</td>
+    <td></td>
+    <td>2026-08-19 06:59:00</td>
+    <td>D UNSCHED</td>
+    <td>CGK</td>
+    <td>UPG</td>
+    <td>79000</td>
+    <td>PK-SCW</td>
+    <td>162</td>
+    <td>107</td>
+    <td>94</td>
+    <td>11</td>
+    <td>2</td>
+    <td>9</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4767</td>
+    <td>1498</td>
+    <td>0</td>
+    <td>B12</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>19</td>
+    <td>Citilink</td>
+    <td>QG119</td>
+    <td>QG120</td>
+    <td>2026-08-20 13:07:00</td>
+    <td></td>
+    <td>2026-08-20 13:08:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BDO</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-TFD</td>
+    <td>180</td>
+    <td>142</td>
+    <td>125</td>
+    <td>14</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4496</td>
+    <td>1704</td>
+    <td>0</td>
+    <td>B14</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>20</td>
+    <td>Lion Air</td>
+    <td>JT120</td>
+    <td>JT121</td>
+    <td></td>
+    <td>2026-08-21 20:20:00</td>
+    <td></td>
+    <td>2026-08-21 20:10:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>JOG</td>
+    <td>79000</td>
+    <td>PK-UIK</td>
+    <td>189</td>
+    <td>132</td>
+    <td>116</td>
+    <td>13</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2997</td>
+    <td>1848</td>
+    <td>594</td>
+    <td>C03</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>21</td>
+    <td>Batik Air</td>
+    <td>ID121</td>
+    <td>ID122</td>
+    <td>2026-08-22 03:33:00</td>
+    <td></td>
+    <td>2026-08-22 04:27:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>SRG</td>
+    <td>CGK</td>
+    <td>75500</td>
+    <td>PK-VLR</td>
+    <td>156</td>
+    <td>125</td>
+    <td>110</td>
+    <td>13</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1851</td>
+    <td>2000</td>
+    <td>0</td>
+    <td>D21</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>22</td>
+    <td>Super Air Jet</td>
+    <td>IU122</td>
+    <td>IU123</td>
+    <td></td>
+    <td>2026-08-23 10:46:00</td>
+    <td></td>
+    <td>2026-08-23 10:51:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BPN</td>
+    <td>73500</td>
+    <td>PK-WOY</td>
+    <td>180</td>
+    <td>162</td>
+    <td>143</td>
+    <td>16</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2652</td>
+    <td>2916</td>
+    <td>0</td>
+    <td>D24</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>23</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ123</td>
+    <td>SJ124</td>
+    <td>2026-08-24 17:59:00</td>
+    <td></td>
+    <td>2026-08-24 18:59:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BDJ</td>
+    <td>CGK</td>
+    <td>68000</td>
+    <td>PK-XRF</td>
+    <td>148</td>
+    <td>142</td>
+    <td>125</td>
+    <td>14</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3531</td>
+    <td>2414</td>
+    <td>0</td>
+    <td>E05</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>24</td>
+    <td>Pelita Air</td>
+    <td>IP124</td>
+    <td>IP125</td>
+    <td></td>
+    <td>2026-08-25 00:12:00</td>
+    <td></td>
+    <td>2026-08-25 00:02:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>MDC</td>
+    <td>73500</td>
+    <td>PK-YUM</td>
+    <td>180</td>
+    <td>122</td>
+    <td>107</td>
+    <td>12</td>
+    <td>4</td>
+    <td>7</td>
+    <td>10</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>2</td>
+    <td>1547</td>
+    <td>1708</td>
+    <td>0</td>
+    <td>F02</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>25</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ125</td>
+    <td>QZ126</td>
+    <td>2026-08-26 07:25:00</td>
+    <td></td>
+    <td>2026-08-26 07:33:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>LOP</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-ZXT</td>
+    <td>180</td>
+    <td>81</td>
+    <td>71</td>
+    <td>8</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2331</td>
+    <td>1215</td>
+    <td>510</td>
+    <td>R01</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>26</td>
+    <td>Singapore Airlines</td>
+    <td>SQ126</td>
+    <td>SQ127</td>
+    <td></td>
+    <td>2026-08-27 14:38:00</td>
+    <td></td>
+    <td>2026-08-27 14:51:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BKK</td>
+    <td>242000</td>
+    <td>9V-SHA</td>
+    <td>295</td>
+    <td>239</td>
+    <td>210</td>
+    <td>24</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>1366</td>
+    <td>2629</td>
+    <td>0</td>
+    <td>R04</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>27</td>
+    <td>Garuda Indonesia</td>
+    <td>GA127</td>
+    <td>GA128</td>
+    <td>2026-08-28 21:51:00</td>
+    <td></td>
+    <td>2026-08-28 21:46:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BTJ</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-BDH</td>
+    <td>162</td>
+    <td>159</td>
+    <td>140</td>
+    <td>16</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1446</td>
+    <td>2067</td>
+    <td>0</td>
+    <td>T3-01</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>28</td>
+    <td>Citilink</td>
+    <td>QG128</td>
+    <td>QG129</td>
+    <td></td>
+    <td>2026-08-29 04:04:00</td>
+    <td></td>
+    <td>2026-08-29 04:38:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>PKU</td>
+    <td>73500</td>
+    <td>PK-CGO</td>
+    <td>180</td>
+    <td>139</td>
+    <td>122</td>
+    <td>14</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1871</td>
+    <td>1807</td>
+    <td>0</td>
+    <td>T3-12</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>29</td>
+    <td>Lion Air</td>
+    <td>JT129</td>
+    <td>JT130</td>
+    <td>2026-08-30 11:17:00</td>
+    <td></td>
+    <td>2026-08-30 11:28:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>PDG</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-DJV</td>
+    <td>189</td>
+    <td>157</td>
+    <td>138</td>
+    <td>16</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3899</td>
+    <td>2669</td>
+    <td>0</td>
+    <td>T3-24</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>30</td>
+    <td>Batik Air</td>
+    <td>ID130A</td>
+    <td>ID131</td>
+    <td></td>
+    <td>2026-08-31 18:30:00</td>
+    <td></td>
+    <td>2026-08-31 18:23:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>SIN</td>
+    <td>75500</td>
+    <td>PK-EMC</td>
+    <td>156</td>
+    <td>126</td>
+    <td>111</td>
+    <td>13</td>
+    <td>2</td>
+    <td>9</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4441</td>
+    <td>2268</td>
+    <td>306</td>
+    <td>B01</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>31</td>
+    <td>Super Air Jet</td>
+    <td>IU131</td>
+    <td>IU132</td>
+    <td>2026-08-01 01:43:00</td>
+    <td></td>
+    <td>2026-08-01 01:51:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>DPS</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-FPJ</td>
+    <td>180</td>
+    <td>167</td>
+    <td>147</td>
+    <td>17</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4710</td>
+    <td>2839</td>
+    <td>0</td>
+    <td>B02</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>32</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ132</td>
+    <td>SJ133</td>
+    <td></td>
+    <td>2026-08-02 08:56:00</td>
+    <td></td>
+    <td>2026-08-02 08:46:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>KNO</td>
+    <td>68000</td>
+    <td>PK-GSQ</td>
+    <td>148</td>
+    <td>107</td>
+    <td>94</td>
+    <td>11</td>
+    <td>3</td>
+    <td>0</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2382</td>
+    <td>1926</td>
+    <td>0</td>
+    <td>B04</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>33</td>
+    <td>Pelita Air</td>
+    <td>IP133</td>
+    <td>IP134</td>
+    <td>2026-08-03 15:09:00</td>
+    <td></td>
+    <td>2026-08-03 15:08:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>UPG</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-HVX</td>
+    <td>180</td>
+    <td>167</td>
+    <td>147</td>
+    <td>17</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>887</td>
+    <td>2171</td>
+    <td>0</td>
+    <td>B12</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>34</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ134</td>
+    <td>QZ135</td>
+    <td></td>
+    <td>2026-08-04 22:22:00</td>
+    <td></td>
+    <td>2026-08-04 22:35:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BDO</td>
+    <td>73500</td>
+    <td>PK-IYE</td>
+    <td>180</td>
+    <td>149</td>
+    <td>131</td>
+    <td>15</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2986</td>
+    <td>1639</td>
+    <td>0</td>
+    <td>B14</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>35</td>
+    <td>Singapore Airlines</td>
+    <td>SQ135</td>
+    <td>SQ136</td>
+    <td>2026-08-05 05:35:00</td>
+    <td></td>
+    <td>2026-08-05 06:27:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>DXB</td>
+    <td>CGK</td>
+    <td>242000</td>
+    <td>9V-SHJ</td>
+    <td>295</td>
+    <td>212</td>
+    <td>187</td>
+    <td>21</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>2256</td>
+    <td>3392</td>
+    <td>603</td>
+    <td>C03</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>36</td>
+    <td>Garuda Indonesia</td>
+    <td>GA136</td>
+    <td>GA137</td>
+    <td></td>
+    <td>2026-08-06 12:48:00</td>
+    <td></td>
+    <td>2026-08-06 12:42:00</td>
+    <td>D UNSCHED</td>
+    <td>CGK</td>
+    <td>SRG</td>
+    <td>79000</td>
+    <td>PK-KES</td>
+    <td>162</td>
+    <td>144</td>
+    <td>127</td>
+    <td>14</td>
+    <td>5</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>2</td>
+    <td>2470</td>
+    <td>1728</td>
+    <td>0</td>
+    <td>D21</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>37</td>
+    <td>Citilink</td>
+    <td>QG137</td>
+    <td>QG138</td>
+    <td>2026-08-07 19:01:00</td>
+    <td></td>
+    <td>2026-08-07 18:57:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BPN</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-LHZ</td>
+    <td>180</td>
+    <td>131</td>
+    <td>115</td>
+    <td>13</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2199</td>
+    <td>2358</td>
+    <td>0</td>
+    <td>D24</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>38</td>
+    <td>Lion Air</td>
+    <td>JT138</td>
+    <td>JT139</td>
+    <td></td>
+    <td>2026-08-08 02:14:00</td>
+    <td></td>
+    <td>2026-08-08 02:23:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BDJ</td>
+    <td>79000</td>
+    <td>PK-MKG</td>
+    <td>189</td>
+    <td>142</td>
+    <td>125</td>
+    <td>14</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2943</td>
+    <td>2556</td>
+    <td>0</td>
+    <td>E05</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>39</td>
+    <td>Batik Air</td>
+    <td>ID139</td>
+    <td>ID140</td>
+    <td>2026-08-09 09:27:00</td>
+    <td></td>
+    <td>2026-08-09 09:36:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>MDC</td>
+    <td>CGK</td>
+    <td>75500</td>
+    <td>PK-NNN</td>
+    <td>156</td>
+    <td>150</td>
+    <td>132</td>
+    <td>15</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>921</td>
+    <td>2550</td>
+    <td>0</td>
+    <td>F02</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>40</td>
+    <td>Super Air Jet</td>
+    <td>IU140</td>
+    <td>IU141</td>
+    <td></td>
+    <td>2026-08-10 16:40:00</td>
+    <td></td>
+    <td>2026-08-10 16:33:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>LOP</td>
+    <td>73500</td>
+    <td>PK-OQU</td>
+    <td>180</td>
+    <td>142</td>
+    <td>125</td>
+    <td>14</td>
+    <td>3</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2534</td>
+    <td>2130</td>
+    <td>94</td>
+    <td>R01</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>41</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ141</td>
+    <td>SJ142</td>
+    <td>2026-08-11 23:53:00</td>
+    <td></td>
+    <td>2026-08-11 23:58:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>PLM</td>
+    <td>CGK</td>
+    <td>68000</td>
+    <td>PK-PTB</td>
+    <td>148</td>
+    <td>126</td>
+    <td>111</td>
+    <td>13</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2880</td>
+    <td>1764</td>
+    <td>0</td>
+    <td>R04</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>42</td>
+    <td>Pelita Air</td>
+    <td>IP142</td>
+    <td>IP143</td>
+    <td></td>
+    <td>2026-08-12 06:06:00</td>
+    <td></td>
+    <td>2026-08-12 06:55:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BTJ</td>
+    <td>73500</td>
+    <td>PK-QWI</td>
+    <td>180</td>
+    <td>173</td>
+    <td>152</td>
+    <td>17</td>
+    <td>5</td>
+    <td>10</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2041</td>
+    <td>2595</td>
+    <td>0</td>
+    <td>T3-01</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>43</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ143</td>
+    <td>QZ144</td>
+    <td>2026-08-13 13:19:00</td>
+    <td></td>
+    <td>2026-08-13 13:09:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>PKU</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-RZP</td>
+    <td>180</td>
+    <td>126</td>
+    <td>111</td>
+    <td>13</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4207</td>
+    <td>1764</td>
+    <td>0</td>
+    <td>T3-12</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>44</td>
+    <td>Singapore Airlines</td>
+    <td>SQ144</td>
+    <td>SQ145</td>
+    <td></td>
+    <td>2026-08-14 20:32:00</td>
+    <td></td>
+    <td>2026-08-14 20:42:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BKK</td>
+    <td>242000</td>
+    <td>9V-SHS</td>
+    <td>295</td>
+    <td>230</td>
+    <td>202</td>
+    <td>23</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>1455</td>
+    <td>4140</td>
+    <td>0</td>
+    <td>T3-24</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>45</td>
+    <td>Garuda Indonesia</td>
+    <td>GA145</td>
+    <td>GA146</td>
+    <td>2026-08-15 03:45:00</td>
+    <td></td>
+    <td>2026-08-15 03:41:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>HND</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-TFD</td>
+    <td>162</td>
+    <td>144</td>
+    <td>127</td>
+    <td>14</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2969</td>
+    <td>2448</td>
+    <td>450</td>
+    <td>B01</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>46</td>
+    <td>Citilink</td>
+    <td>QG146</td>
+    <td>QG147</td>
+    <td></td>
+    <td>2026-08-16 10:58:00</td>
+    <td></td>
+    <td>2026-08-16 12:26:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>DPS</td>
+    <td>73500</td>
+    <td>PK-UIK</td>
+    <td>180</td>
+    <td>131</td>
+    <td>115</td>
+    <td>13</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4464</td>
+    <td>2096</td>
+    <td>0</td>
+    <td>B02</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>47</td>
+    <td>Lion Air</td>
+    <td>JT147</td>
+    <td>JT148</td>
+    <td>2026-08-17 17:11:00</td>
+    <td></td>
+    <td>2026-08-17 17:01:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>KNO</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-VLR</td>
+    <td>189</td>
+    <td>170</td>
+    <td>150</td>
+    <td>17</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>1</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>B04</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>48</td>
+    <td>Batik Air</td>
+    <td>ID148</td>
+    <td>ID149</td>
+    <td></td>
+    <td>2026-08-18 00:24:00</td>
+    <td></td>
+    <td>2026-08-18 00:18:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>UPG</td>
+    <td>75500</td>
+    <td>PK-WOY</td>
+    <td>156</td>
+    <td>108</td>
+    <td>95</td>
+    <td>11</td>
+    <td>1</td>
+    <td>11</td>
+    <td>7</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>2</td>
+    <td>2886</td>
+    <td>1188</td>
+    <td>0</td>
+    <td>B12</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>49</td>
+    <td>Super Air Jet</td>
+    <td>IU149</td>
+    <td>IU150</td>
+    <td>2026-08-19 07:37:00</td>
+    <td></td>
+    <td>2026-08-19 08:06:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BDO</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-XRF</td>
+    <td>180</td>
+    <td>139</td>
+    <td>122</td>
+    <td>14</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2179</td>
+    <td>1668</td>
+    <td>0</td>
+    <td>B14</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>50</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ150</td>
+    <td>SJ151</td>
+    <td></td>
+    <td>2026-08-20 14:50:00</td>
+    <td></td>
+    <td>2026-08-20 15:03:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>JOG</td>
+    <td>68000</td>
+    <td>PK-YUM</td>
+    <td>148</td>
+    <td>67</td>
+    <td>59</td>
+    <td>7</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2547</td>
+    <td>1072</td>
+    <td>421</td>
+    <td>C03</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>51</td>
+    <td>Pelita Air</td>
+    <td>IP151</td>
+    <td>IP152</td>
+    <td>2026-08-21 21:03:00</td>
+    <td></td>
+    <td>2026-08-21 21:10:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>SRG</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-ZXT</td>
+    <td>180</td>
+    <td>169</td>
+    <td>149</td>
+    <td>17</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2276</td>
+    <td>1859</td>
+    <td>0</td>
+    <td>D21</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>52</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ152</td>
+    <td>QZ153</td>
+    <td></td>
+    <td>2026-08-22 04:16:00</td>
+    <td></td>
+    <td>2026-08-22 04:08:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BPN</td>
+    <td>73500</td>
+    <td>PK-AAA</td>
+    <td>180</td>
+    <td>117</td>
+    <td>103</td>
+    <td>12</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>709</td>
+    <td>1638</td>
+    <td>0</td>
+    <td>D24</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>53</td>
+    <td>Singapore Airlines</td>
+    <td>SQ153</td>
+    <td>SQ154</td>
+    <td>2026-08-23 11:29:00</td>
+    <td></td>
+    <td>2026-08-23 11:27:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>DXB</td>
+    <td>CGK</td>
+    <td>242000</td>
+    <td>9V-SHB</td>
+    <td>295</td>
+    <td>215</td>
+    <td>189</td>
+    <td>22</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>2481</td>
+    <td>2365</td>
+    <td>0</td>
+    <td>E05</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>54</td>
+    <td>Garuda Indonesia</td>
+    <td>GA154</td>
+    <td>GA155</td>
+    <td></td>
+    <td>2026-08-24 18:42:00</td>
+    <td></td>
+    <td>2026-08-24 18:48:00</td>
+    <td>D UNSCHED</td>
+    <td>CGK</td>
+    <td>MDC</td>
+    <td>79000</td>
+    <td>PK-CGO</td>
+    <td>162</td>
+    <td>112</td>
+    <td>99</td>
+    <td>11</td>
+    <td>4</td>
+    <td>12</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4060</td>
+    <td>1232</td>
+    <td>0</td>
+    <td>F02</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>55</td>
+    <td>Citilink</td>
+    <td>QG155</td>
+    <td>QG156</td>
+    <td>2026-08-25 01:55:00</td>
+    <td></td>
+    <td>2026-08-25 01:51:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>LOP</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-DJV</td>
+    <td>180</td>
+    <td>148</td>
+    <td>130</td>
+    <td>15</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>949</td>
+    <td>2516</td>
+    <td>175</td>
+    <td>R01</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>56</td>
+    <td>Lion Air</td>
+    <td>JT156</td>
+    <td>JT157</td>
+    <td></td>
+    <td>2026-08-26 08:08:00</td>
+    <td></td>
+    <td>2026-08-26 08:31:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>PLM</td>
+    <td>79000</td>
+    <td>PK-EMC</td>
+    <td>189</td>
+    <td>130</td>
+    <td>114</td>
+    <td>13</td>
+    <td>5</td>
+    <td>0</td>
+    <td>8</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4285</td>
+    <td>1560</td>
+    <td>0</td>
+    <td>R04</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>57</td>
+    <td>Batik Air</td>
+    <td>ID157</td>
+    <td>ID158</td>
+    <td>2026-08-27 15:21:00</td>
+    <td></td>
+    <td>2026-08-27 15:12:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BTJ</td>
+    <td>CGK</td>
+    <td>75500</td>
+    <td>PK-FPJ</td>
+    <td>156</td>
+    <td>115</td>
+    <td>101</td>
+    <td>12</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4082</td>
+    <td>1840</td>
+    <td>0</td>
+    <td>T3-01</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>58</td>
+    <td>Super Air Jet</td>
+    <td>IU158</td>
+    <td>IU159</td>
+    <td></td>
+    <td>2026-08-28 22:34:00</td>
+    <td></td>
+    <td>2026-08-28 22:36:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>PKU</td>
+    <td>73500</td>
+    <td>PK-GSQ</td>
+    <td>180</td>
+    <td>175</td>
+    <td>154</td>
+    <td>18</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4622</td>
+    <td>2275</td>
+    <td>0</td>
+    <td>T3-12</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>59</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ159</td>
+    <td>SJ160</td>
+    <td>2026-08-29 05:47:00</td>
+    <td></td>
+    <td>2026-08-29 05:52:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>PDG</td>
+    <td>CGK</td>
+    <td>68000</td>
+    <td>PK-HVX</td>
+    <td>148</td>
+    <td>108</td>
+    <td>95</td>
+    <td>11</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1468</td>
+    <td>1728</td>
+    <td>0</td>
+    <td>T3-24</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>60</td>
+    <td>Pelita Air</td>
+    <td>IP160A</td>
+    <td>IP161</td>
+    <td></td>
+    <td>2026-08-30 12:00:00</td>
+    <td></td>
+    <td>2026-08-30 12:00:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>SIN</td>
+    <td>73500</td>
+    <td>PK-IYE</td>
+    <td>180</td>
+    <td>128</td>
+    <td>113</td>
+    <td>13</td>
+    <td>6</td>
+    <td>12</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>2</td>
+    <td>4411</td>
+    <td>2048</td>
+    <td>623</td>
+    <td>B01</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>61</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ161</td>
+    <td>QZ162</td>
+    <td>2026-08-31 19:13:00</td>
+    <td></td>
+    <td>2026-08-31 19:25:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>DPS</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-JBL</td>
+    <td>180</td>
+    <td>133</td>
+    <td>117</td>
+    <td>13</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2226</td>
+    <td>1463</td>
+    <td>0</td>
+    <td>B02</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>62</td>
+    <td>Singapore Airlines</td>
+    <td>SQ162</td>
+    <td>SQ163</td>
+    <td></td>
+    <td>2026-08-01 02:26:00</td>
+    <td></td>
+    <td>2026-08-01 02:40:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BKK</td>
+    <td>242000</td>
+    <td>9V-SHK</td>
+    <td>295</td>
+    <td>280</td>
+    <td>246</td>
+    <td>28</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>3193</td>
+    <td>4200</td>
+    <td>0</td>
+    <td>B04</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>63</td>
+    <td>Garuda Indonesia</td>
+    <td>GA163</td>
+    <td>GA164</td>
+    <td>2026-08-02 09:39:00</td>
+    <td></td>
+    <td>2026-08-02 10:13:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>UPG</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-LHZ</td>
+    <td>162</td>
+    <td>159</td>
+    <td>140</td>
+    <td>16</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4383</td>
+    <td>2226</td>
+    <td>0</td>
+    <td>B12</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>64</td>
+    <td>Citilink</td>
+    <td>QG164</td>
+    <td>QG165</td>
+    <td></td>
+    <td>2026-08-03 16:52:00</td>
+    <td></td>
+    <td>2026-08-03 16:45:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BDO</td>
+    <td>73500</td>
+    <td>PK-MKG</td>
+    <td>180</td>
+    <td>122</td>
+    <td>107</td>
+    <td>12</td>
+    <td>5</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3999</td>
+    <td>1708</td>
+    <td>0</td>
+    <td>B14</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>65</td>
+    <td>Lion Air</td>
+    <td>JT165</td>
+    <td>JT166</td>
+    <td>2026-08-04 23:05:00</td>
+    <td></td>
+    <td>2026-08-04 23:08:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>JOG</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-NNN</td>
+    <td>189</td>
+    <td>180</td>
+    <td>158</td>
+    <td>18</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3046</td>
+    <td>1980</td>
+    <td>218</td>
+    <td>C03</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>66</td>
+    <td>Batik Air</td>
+    <td>ID166</td>
+    <td>ID167</td>
+    <td></td>
+    <td>2026-08-05 06:18:00</td>
+    <td></td>
+    <td>2026-08-05 06:12:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>SRG</td>
+    <td>75500</td>
+    <td>PK-OQU</td>
+    <td>156</td>
+    <td>114</td>
+    <td>100</td>
+    <td>11</td>
+    <td>6</td>
+    <td>15</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>586</td>
+    <td>1482</td>
+    <td>0</td>
+    <td>D21</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>67</td>
+    <td>Super Air Jet</td>
+    <td>IU167</td>
+    <td>IU168</td>
+    <td>2026-08-06 13:31:00</td>
+    <td></td>
+    <td>2026-08-06 13:23:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BPN</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-PTB</td>
+    <td>180</td>
+    <td>146</td>
+    <td>128</td>
+    <td>15</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2469</td>
+    <td>2482</td>
+    <td>0</td>
+    <td>D24</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>68</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ168</td>
+    <td>SJ169</td>
+    <td></td>
+    <td>2026-08-07 20:44:00</td>
+    <td></td>
+    <td>2026-08-07 20:51:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BDJ</td>
+    <td>68000</td>
+    <td>PK-QWI</td>
+    <td>148</td>
+    <td>142</td>
+    <td>125</td>
+    <td>14</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1751</td>
+    <td>2414</td>
+    <td>0</td>
+    <td>E05</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>69</td>
+    <td>Pelita Air</td>
+    <td>IP169</td>
+    <td>IP170</td>
+    <td>2026-08-08 03:57:00</td>
+    <td></td>
+    <td>2026-08-08 05:08:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>MDC</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-RZP</td>
+    <td>180</td>
+    <td>133</td>
+    <td>117</td>
+    <td>13</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3874</td>
+    <td>1463</td>
+    <td>0</td>
+    <td>F02</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>70</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ170</td>
+    <td>QZ171</td>
+    <td></td>
+    <td>2026-08-09 10:10:00</td>
+    <td></td>
+    <td>2026-08-09 10:45:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>LOP</td>
+    <td>73500</td>
+    <td>PK-SCW</td>
+    <td>180</td>
+    <td>148</td>
+    <td>130</td>
+    <td>15</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4776</td>
+    <td>1628</td>
+    <td>140</td>
+    <td>R01</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>71</td>
+    <td>Singapore Airlines</td>
+    <td>SQ171</td>
+    <td>SQ172</td>
+    <td>2026-08-10 17:23:00</td>
+    <td></td>
+    <td>2026-08-10 17:29:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>DXB</td>
+    <td>CGK</td>
+    <td>242000</td>
+    <td>9V-SHT</td>
+    <td>295</td>
+    <td>289</td>
+    <td>254</td>
+    <td>29</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>1731</td>
+    <td>5202</td>
+    <td>0</td>
+    <td>R04</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>72</td>
+    <td>Garuda Indonesia</td>
+    <td>GA172</td>
+    <td>GA173</td>
+    <td></td>
+    <td>2026-08-11 00:36:00</td>
+    <td></td>
+    <td>2026-08-11 00:50:00</td>
+    <td>D UNSCHED</td>
+    <td>CGK</td>
+    <td>BTJ</td>
+    <td>79000</td>
+    <td>PK-UIK</td>
+    <td>162</td>
+    <td>147</td>
+    <td>129</td>
+    <td>15</td>
+    <td>3</td>
+    <td>13</td>
+    <td>9</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>2</td>
+    <td>1814</td>
+    <td>2646</td>
+    <td>0</td>
+    <td>T3-01</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>73</td>
+    <td>Citilink</td>
+    <td>QG173</td>
+    <td>QG174</td>
+    <td>2026-08-12 07:49:00</td>
+    <td></td>
+    <td>2026-08-12 07:42:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>PKU</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-VLR</td>
+    <td>180</td>
+    <td>157</td>
+    <td>138</td>
+    <td>16</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>502</td>
+    <td>2512</td>
+    <td>0</td>
+    <td>T3-12</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>74</td>
+    <td>Lion Air</td>
+    <td>JT174</td>
+    <td>JT175</td>
+    <td></td>
+    <td>2026-08-13 14:02:00</td>
+    <td></td>
+    <td>2026-08-13 14:01:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>PDG</td>
+    <td>79000</td>
+    <td>PK-WOY</td>
+    <td>189</td>
+    <td>164</td>
+    <td>144</td>
+    <td>16</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3027</td>
+    <td>2132</td>
+    <td>0</td>
+    <td>T3-24</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>75</td>
+    <td>Batik Air</td>
+    <td>ID175</td>
+    <td>ID176</td>
+    <td>2026-08-14 21:15:00</td>
+    <td></td>
+    <td>2026-08-14 21:17:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>HND</td>
+    <td>CGK</td>
+    <td>75500</td>
+    <td>PK-XRF</td>
+    <td>156</td>
+    <td>70</td>
+    <td>62</td>
+    <td>7</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3833</td>
+    <td>1260</td>
+    <td>223</td>
+    <td>B01</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>76</td>
+    <td>Super Air Jet</td>
+    <td>IU176</td>
+    <td>IU177</td>
+    <td></td>
+    <td>2026-08-15 04:28:00</td>
+    <td></td>
+    <td>2026-08-15 04:20:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>DPS</td>
+    <td>73500</td>
+    <td>PK-YUM</td>
+    <td>180</td>
+    <td>171</td>
+    <td>150</td>
+    <td>17</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2093</td>
+    <td>1881</td>
+    <td>0</td>
+    <td>B02</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>77</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ177</td>
+    <td>SJ178</td>
+    <td>2026-08-16 11:41:00</td>
+    <td></td>
+    <td>2026-08-16 12:07:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>KNO</td>
+    <td>CGK</td>
+    <td>68000</td>
+    <td>PK-ZXT</td>
+    <td>148</td>
+    <td>120</td>
+    <td>106</td>
+    <td>12</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4546</td>
+    <td>2160</td>
+    <td>0</td>
+    <td>B04</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>78</td>
+    <td>Pelita Air</td>
+    <td>IP178</td>
+    <td>IP179</td>
+    <td></td>
+    <td>2026-08-17 18:54:00</td>
+    <td></td>
+    <td>2026-08-17 18:58:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>UPG</td>
+    <td>73500</td>
+    <td>PK-AAA</td>
+    <td>180</td>
+    <td>130</td>
+    <td>114</td>
+    <td>13</td>
+    <td>4</td>
+    <td>12</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1856</td>
+    <td>2340</td>
+    <td>0</td>
+    <td>B12</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>79</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ179</td>
+    <td>QZ180</td>
+    <td>2026-08-18 01:07:00</td>
+    <td></td>
+    <td>2026-08-18 00:57:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BDO</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-BDH</td>
+    <td>180</td>
+    <td>121</td>
+    <td>106</td>
+    <td>12</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1751</td>
+    <td>1694</td>
+    <td>0</td>
+    <td>B14</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>80</td>
+    <td>Singapore Airlines</td>
+    <td>SQ180</td>
+    <td>SQ181</td>
+    <td></td>
+    <td>2026-08-19 08:20:00</td>
+    <td></td>
+    <td>2026-08-19 08:16:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BKK</td>
+    <td>242000</td>
+    <td>9V-SHC</td>
+    <td>295</td>
+    <td>218</td>
+    <td>192</td>
+    <td>22</td>
+    <td>3</td>
+    <td>0</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>3307</td>
+    <td>3924</td>
+    <td>440</td>
+    <td>C03</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>81</td>
+    <td>Garuda Indonesia</td>
+    <td>GA181</td>
+    <td>GA182</td>
+    <td>2026-08-20 15:33:00</td>
+    <td></td>
+    <td>2026-08-20 15:37:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>SRG</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-DJV</td>
+    <td>162</td>
+    <td>112</td>
+    <td>99</td>
+    <td>11</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4113</td>
+    <td>2016</td>
+    <td>0</td>
+    <td>D21</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>82</td>
+    <td>Citilink</td>
+    <td>QG182</td>
+    <td>QG183</td>
+    <td></td>
+    <td>2026-08-21 22:46:00</td>
+    <td></td>
+    <td>2026-08-21 22:59:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BPN</td>
+    <td>73500</td>
+    <td>PK-EMC</td>
+    <td>180</td>
+    <td>133</td>
+    <td>117</td>
+    <td>13</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1557</td>
+    <td>1729</td>
+    <td>0</td>
+    <td>D24</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>83</td>
+    <td>Lion Air</td>
+    <td>JT183</td>
+    <td>JT184</td>
+    <td>2026-08-22 05:59:00</td>
+    <td></td>
+    <td>2026-08-22 06:11:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BDJ</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-FPJ</td>
+    <td>189</td>
+    <td>149</td>
+    <td>131</td>
+    <td>15</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2247</td>
+    <td>2384</td>
+    <td>0</td>
+    <td>E05</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>84</td>
+    <td>Batik Air</td>
+    <td>ID184</td>
+    <td>ID185</td>
+    <td></td>
+    <td>2026-08-23 12:12:00</td>
+    <td></td>
+    <td>2026-08-23 12:33:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>MDC</td>
+    <td>75500</td>
+    <td>PK-GSQ</td>
+    <td>156</td>
+    <td>153</td>
+    <td>135</td>
+    <td>15</td>
+    <td>3</td>
+    <td>12</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>2</td>
+    <td>1598</td>
+    <td>2754</td>
+    <td>0</td>
+    <td>F02</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>85</td>
+    <td>Super Air Jet</td>
+    <td>IU185</td>
+    <td>IU186</td>
+    <td>2026-08-24 19:25:00</td>
+    <td></td>
+    <td>2026-08-24 19:35:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>LOP</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-HVX</td>
+    <td>180</td>
+    <td>153</td>
+    <td>135</td>
+    <td>15</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1160</td>
+    <td>2448</td>
+    <td>441</td>
+    <td>R01</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>86</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ186</td>
+    <td>SJ187</td>
+    <td></td>
+    <td>2026-08-25 02:38:00</td>
+    <td></td>
+    <td>2026-08-25 02:51:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>PLM</td>
+    <td>68000</td>
+    <td>PK-IYE</td>
+    <td>148</td>
+    <td>129</td>
+    <td>114</td>
+    <td>13</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3051</td>
+    <td>1935</td>
+    <td>0</td>
+    <td>R04</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>87</td>
+    <td>Pelita Air</td>
+    <td>IP187</td>
+    <td>IP188</td>
+    <td>2026-08-26 09:51:00</td>
+    <td></td>
+    <td>2026-08-26 09:44:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BTJ</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-JBL</td>
+    <td>180</td>
+    <td>146</td>
+    <td>128</td>
+    <td>15</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3485</td>
+    <td>2044</td>
+    <td>0</td>
+    <td>T3-01</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>88</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ188</td>
+    <td>QZ189</td>
+    <td></td>
+    <td>2026-08-27 16:04:00</td>
+    <td></td>
+    <td>2026-08-27 16:02:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>PKU</td>
+    <td>73500</td>
+    <td>PK-KES</td>
+    <td>180</td>
+    <td>158</td>
+    <td>139</td>
+    <td>16</td>
+    <td>3</td>
+    <td>0</td>
+    <td>8</td>
+    <td>0</td>
+    <td>1</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>T3-12</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>89</td>
+    <td>Singapore Airlines</td>
+    <td>SQ189</td>
+    <td>SQ190</td>
+    <td>2026-08-28 23:17:00</td>
+    <td></td>
+    <td>2026-08-28 23:17:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>DXB</td>
+    <td>CGK</td>
+    <td>242000</td>
+    <td>9V-SHL</td>
+    <td>295</td>
+    <td>242</td>
+    <td>213</td>
+    <td>24</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>1697</td>
+    <td>3630</td>
+    <td>0</td>
+    <td>T3-24</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>90</td>
+    <td>Garuda Indonesia</td>
+    <td>GA190A</td>
+    <td>GA191</td>
+    <td></td>
+    <td>2026-08-29 06:30:00</td>
+    <td></td>
+    <td>2026-08-29 06:29:00</td>
+    <td>D UNSCHED</td>
+    <td>CGK</td>
+    <td>SIN</td>
+    <td>79000</td>
+    <td>PK-MKG</td>
+    <td>162</td>
+    <td>131</td>
+    <td>115</td>
+    <td>13</td>
+    <td>2</td>
+    <td>15</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>400</td>
+    <td>1441</td>
+    <td>209</td>
+    <td>B01</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>91</td>
+    <td>Citilink</td>
+    <td>QG191</td>
+    <td>QG192</td>
+    <td>2026-08-30 13:43:00</td>
+    <td></td>
+    <td>2026-08-30 14:38:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>DPS</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-NNN</td>
+    <td>180</td>
+    <td>124</td>
+    <td>109</td>
+    <td>12</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2250</td>
+    <td>1860</td>
+    <td>0</td>
+    <td>B02</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>92</td>
+    <td>Lion Air</td>
+    <td>JT192</td>
+    <td>JT193</td>
+    <td></td>
+    <td>2026-08-31 20:56:00</td>
+    <td></td>
+    <td>2026-08-31 21:58:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>KNO</td>
+    <td>79000</td>
+    <td>PK-OQU</td>
+    <td>189</td>
+    <td>172</td>
+    <td>151</td>
+    <td>17</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3256</td>
+    <td>2408</td>
+    <td>0</td>
+    <td>B04</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>93</td>
+    <td>Batik Air</td>
+    <td>ID193</td>
+    <td>ID194</td>
+    <td>2026-08-01 03:09:00</td>
+    <td></td>
+    <td>2026-08-01 03:06:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>UPG</td>
+    <td>CGK</td>
+    <td>75500</td>
+    <td>PK-PTB</td>
+    <td>156</td>
+    <td>145</td>
+    <td>128</td>
+    <td>15</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2671</td>
+    <td>2465</td>
+    <td>0</td>
+    <td>B12</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>94</td>
+    <td>Super Air Jet</td>
+    <td>IU194</td>
+    <td>IU195</td>
+    <td></td>
+    <td>2026-08-02 10:22:00</td>
+    <td></td>
+    <td>2026-08-02 10:32:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BDO</td>
+    <td>73500</td>
+    <td>PK-QWI</td>
+    <td>180</td>
+    <td>169</td>
+    <td>149</td>
+    <td>17</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>672</td>
+    <td>2028</td>
+    <td>0</td>
+    <td>B14</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>95</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ195</td>
+    <td>SJ196</td>
+    <td>2026-08-03 17:35:00</td>
+    <td></td>
+    <td>2026-08-03 17:49:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>JOG</td>
+    <td>CGK</td>
+    <td>68000</td>
+    <td>PK-RZP</td>
+    <td>148</td>
+    <td>139</td>
+    <td>122</td>
+    <td>14</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3461</td>
+    <td>1668</td>
+    <td>188</td>
+    <td>C03</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>96</td>
+    <td>Pelita Air</td>
+    <td>IP196</td>
+    <td>IP197</td>
+    <td></td>
+    <td>2026-08-04 00:48:00</td>
+    <td></td>
+    <td>2026-08-04 00:50:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>SRG</td>
+    <td>73500</td>
+    <td>PK-SCW</td>
+    <td>180</td>
+    <td>162</td>
+    <td>143</td>
+    <td>16</td>
+    <td>4</td>
+    <td>8</td>
+    <td>8</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>2</td>
+    <td>972</td>
+    <td>2592</td>
+    <td>0</td>
+    <td>D21</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>97</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ197</td>
+    <td>QZ198</td>
+    <td>2026-08-05 07:01:00</td>
+    <td></td>
+    <td>2026-08-05 07:05:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BPN</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-TFD</td>
+    <td>180</td>
+    <td>133</td>
+    <td>117</td>
+    <td>13</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1563</td>
+    <td>1596</td>
+    <td>0</td>
+    <td>D24</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>98</td>
+    <td>Singapore Airlines</td>
+    <td>SQ198</td>
+    <td>SQ199</td>
+    <td></td>
+    <td>2026-08-06 14:14:00</td>
+    <td></td>
+    <td>2026-08-06 14:31:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BKK</td>
+    <td>242000</td>
+    <td>9V-SHU</td>
+    <td>295</td>
+    <td>266</td>
+    <td>234</td>
+    <td>27</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>880</td>
+    <td>2926</td>
+    <td>0</td>
+    <td>E05</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>99</td>
+    <td>Garuda Indonesia</td>
+    <td>GA199</td>
+    <td>GA200</td>
+    <td>2026-08-07 21:27:00</td>
+    <td></td>
+    <td>2026-08-07 21:28:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>MDC</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-VLR</td>
+    <td>162</td>
+    <td>147</td>
+    <td>129</td>
+    <td>15</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4597</td>
+    <td>2499</td>
+    <td>0</td>
+    <td>F02</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>100</td>
+    <td>Citilink</td>
+    <td>QG200</td>
+    <td>QG201</td>
+    <td></td>
+    <td>2026-08-08 04:40:00</td>
+    <td></td>
+    <td>2026-08-08 04:43:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>LOP</td>
+    <td>73500</td>
+    <td>PK-WOY</td>
+    <td>180</td>
+    <td>81</td>
+    <td>71</td>
+    <td>8</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1084</td>
+    <td>1053</td>
+    <td>471</td>
+    <td>R01</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>101</td>
+    <td>Lion Air</td>
+    <td>JT201</td>
+    <td>JT202</td>
+    <td>2026-08-09 11:53:00</td>
+    <td></td>
+    <td>2026-08-09 11:49:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>PLM</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-XRF</td>
+    <td>189</td>
+    <td>178</td>
+    <td>157</td>
+    <td>18</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4114</td>
+    <td>2136</td>
+    <td>0</td>
+    <td>R04</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>102</td>
+    <td>Batik Air</td>
+    <td>ID202</td>
+    <td>ID203</td>
+    <td></td>
+    <td>2026-08-10 18:06:00</td>
+    <td></td>
+    <td>2026-08-10 18:02:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BTJ</td>
+    <td>75500</td>
+    <td>PK-YUM</td>
+    <td>156</td>
+    <td>108</td>
+    <td>95</td>
+    <td>11</td>
+    <td>6</td>
+    <td>14</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2812</td>
+    <td>1188</td>
+    <td>0</td>
+    <td>T3-01</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>103</td>
+    <td>Super Air Jet</td>
+    <td>IU203</td>
+    <td>IU204</td>
+    <td>2026-08-11 01:19:00</td>
+    <td></td>
+    <td>2026-08-11 01:12:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>PKU</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-ZXT</td>
+    <td>180</td>
+    <td>166</td>
+    <td>146</td>
+    <td>17</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3208</td>
+    <td>2656</td>
+    <td>0</td>
+    <td>T3-12</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>104</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ204</td>
+    <td>SJ205</td>
+    <td></td>
+    <td>2026-08-12 08:32:00</td>
+    <td></td>
+    <td>2026-08-12 08:41:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>PDG</td>
+    <td>68000</td>
+    <td>PK-AAA</td>
+    <td>148</td>
+    <td>141</td>
+    <td>124</td>
+    <td>14</td>
+    <td>1</td>
+    <td>0</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3241</td>
+    <td>1692</td>
+    <td>0</td>
+    <td>T3-24</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>105</td>
+    <td>Pelita Air</td>
+    <td>IP205</td>
+    <td>IP206</td>
+    <td>2026-08-13 15:45:00</td>
+    <td></td>
+    <td>2026-08-13 16:26:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>HND</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-BDH</td>
+    <td>180</td>
+    <td>140</td>
+    <td>123</td>
+    <td>14</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4035</td>
+    <td>2240</td>
+    <td>320</td>
+    <td>B01</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>106</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ206</td>
+    <td>QZ207</td>
+    <td></td>
+    <td>2026-08-14 22:58:00</td>
+    <td></td>
+    <td>2026-08-14 22:53:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>DPS</td>
+    <td>73500</td>
+    <td>PK-CGO</td>
+    <td>180</td>
+    <td>137</td>
+    <td>121</td>
+    <td>14</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4004</td>
+    <td>2055</td>
+    <td>0</td>
+    <td>B02</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>107</td>
+    <td>Singapore Airlines</td>
+    <td>SQ207</td>
+    <td>SQ208</td>
+    <td>2026-08-15 05:11:00</td>
+    <td></td>
+    <td>2026-08-15 05:08:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>DXB</td>
+    <td>CGK</td>
+    <td>242000</td>
+    <td>9V-SHD</td>
+    <td>295</td>
+    <td>230</td>
+    <td>202</td>
+    <td>23</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>558</td>
+    <td>2530</td>
+    <td>0</td>
+    <td>B04</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>108</td>
+    <td>Garuda Indonesia</td>
+    <td>GA208</td>
+    <td>GA209</td>
+    <td></td>
+    <td>2026-08-16 12:24:00</td>
+    <td></td>
+    <td>2026-08-16 12:31:00</td>
+    <td>D UNSCHED</td>
+    <td>CGK</td>
+    <td>UPG</td>
+    <td>79000</td>
+    <td>PK-EMC</td>
+    <td>162</td>
+    <td>152</td>
+    <td>134</td>
+    <td>15</td>
+    <td>6</td>
+    <td>12</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>2</td>
+    <td>4466</td>
+    <td>1976</td>
+    <td>0</td>
+    <td>B12</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>109</td>
+    <td>Citilink</td>
+    <td>QG209</td>
+    <td>QG210</td>
+    <td>2026-08-17 19:37:00</td>
+    <td></td>
+    <td>2026-08-17 19:40:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BDO</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-FPJ</td>
+    <td>180</td>
+    <td>128</td>
+    <td>113</td>
+    <td>13</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2632</td>
+    <td>1920</td>
+    <td>0</td>
+    <td>B14</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>110</td>
+    <td>Lion Air</td>
+    <td>JT210</td>
+    <td>JT211</td>
+    <td></td>
+    <td>2026-08-18 02:50:00</td>
+    <td></td>
+    <td>2026-08-18 02:53:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>JOG</td>
+    <td>79000</td>
+    <td>PK-GSQ</td>
+    <td>189</td>
+    <td>170</td>
+    <td>150</td>
+    <td>17</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3208</td>
+    <td>2890</td>
+    <td>636</td>
+    <td>C03</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>111</td>
+    <td>Batik Air</td>
+    <td>ID211</td>
+    <td>ID212</td>
+    <td>2026-08-19 09:03:00</td>
+    <td></td>
+    <td>2026-08-19 09:16:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>SRG</td>
+    <td>CGK</td>
+    <td>75500</td>
+    <td>PK-HVX</td>
+    <td>156</td>
+    <td>148</td>
+    <td>130</td>
+    <td>15</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3244</td>
+    <td>2368</td>
+    <td>0</td>
+    <td>D21</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>112</td>
+    <td>Super Air Jet</td>
+    <td>IU212</td>
+    <td>IU213</td>
+    <td></td>
+    <td>2026-08-20 16:16:00</td>
+    <td></td>
+    <td>2026-08-20 17:10:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BPN</td>
+    <td>73500</td>
+    <td>PK-IYE</td>
+    <td>180</td>
+    <td>175</td>
+    <td>154</td>
+    <td>18</td>
+    <td>5</td>
+    <td>0</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3610</td>
+    <td>3150</td>
+    <td>0</td>
+    <td>D24</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>113</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ213</td>
+    <td>SJ214</td>
+    <td>2026-08-21 23:29:00</td>
+    <td></td>
+    <td>2026-08-21 23:42:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BDJ</td>
+    <td>CGK</td>
+    <td>68000</td>
+    <td>PK-JBL</td>
+    <td>148</td>
+    <td>115</td>
+    <td>101</td>
+    <td>12</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2607</td>
+    <td>1840</td>
+    <td>0</td>
+    <td>E05</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>114</td>
+    <td>Pelita Air</td>
+    <td>IP214</td>
+    <td>IP215</td>
+    <td></td>
+    <td>2026-08-22 06:42:00</td>
+    <td></td>
+    <td>2026-08-22 06:41:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>MDC</td>
+    <td>73500</td>
+    <td>PK-KES</td>
+    <td>180</td>
+    <td>171</td>
+    <td>150</td>
+    <td>17</td>
+    <td>6</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2071</td>
+    <td>2394</td>
+    <td>0</td>
+    <td>F02</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>115</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ215</td>
+    <td>QZ216</td>
+    <td>2026-08-23 13:55:00</td>
+    <td></td>
+    <td>2026-08-23 15:16:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>LOP</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-LHZ</td>
+    <td>180</td>
+    <td>175</td>
+    <td>154</td>
+    <td>18</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>600</td>
+    <td>2100</td>
+    <td>610</td>
+    <td>R01</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>116</td>
+    <td>Singapore Airlines</td>
+    <td>SQ216</td>
+    <td>SQ217</td>
+    <td></td>
+    <td>2026-08-24 20:08:00</td>
+    <td></td>
+    <td>2026-08-24 20:22:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BKK</td>
+    <td>242000</td>
+    <td>9V-SHM</td>
+    <td>295</td>
+    <td>239</td>
+    <td>210</td>
+    <td>24</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>2014</td>
+    <td>3346</td>
+    <td>0</td>
+    <td>R04</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>117</td>
+    <td>Garuda Indonesia</td>
+    <td>GA217</td>
+    <td>GA218</td>
+    <td>2026-08-25 03:21:00</td>
+    <td></td>
+    <td>2026-08-25 03:26:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BTJ</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-NNN</td>
+    <td>162</td>
+    <td>118</td>
+    <td>104</td>
+    <td>12</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1769</td>
+    <td>1298</td>
+    <td>0</td>
+    <td>T3-01</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>118</td>
+    <td>Citilink</td>
+    <td>QG218</td>
+    <td>QG219</td>
+    <td></td>
+    <td>2026-08-26 10:34:00</td>
+    <td></td>
+    <td>2026-08-26 10:40:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>PKU</td>
+    <td>73500</td>
+    <td>PK-OQU</td>
+    <td>180</td>
+    <td>130</td>
+    <td>114</td>
+    <td>13</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1116</td>
+    <td>2080</td>
+    <td>0</td>
+    <td>T3-12</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>119</td>
+    <td>Lion Air</td>
+    <td>JT219</td>
+    <td>JT220</td>
+    <td>2026-08-27 17:47:00</td>
+    <td></td>
+    <td>2026-08-27 18:10:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>PDG</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-PTB</td>
+    <td>189</td>
+    <td>146</td>
+    <td>128</td>
+    <td>15</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2556</td>
+    <td>2190</td>
+    <td>0</td>
+    <td>T3-24</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>120</td>
+    <td>Batik Air</td>
+    <td>ID220A</td>
+    <td>ID221</td>
+    <td></td>
+    <td>2026-08-28 00:00:00</td>
+    <td></td>
+    <td>2026-08-28 00:11:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>SIN</td>
+    <td>75500</td>
+    <td>PK-QWI</td>
+    <td>156</td>
+    <td>147</td>
+    <td>129</td>
+    <td>15</td>
+    <td>5</td>
+    <td>10</td>
+    <td>9</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>2</td>
+    <td>3972</td>
+    <td>2205</td>
+    <td>474</td>
+    <td>B01</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>121</td>
+    <td>Super Air Jet</td>
+    <td>IU221</td>
+    <td>IU222</td>
+    <td>2026-08-29 07:13:00</td>
+    <td></td>
+    <td>2026-08-29 07:07:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>DPS</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-RZP</td>
+    <td>180</td>
+    <td>167</td>
+    <td>147</td>
+    <td>17</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3095</td>
+    <td>2004</td>
+    <td>0</td>
+    <td>B02</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>122</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ222</td>
+    <td>SJ223</td>
+    <td></td>
+    <td>2026-08-30 14:26:00</td>
+    <td></td>
+    <td>2026-08-30 14:39:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>KNO</td>
+    <td>68000</td>
+    <td>PK-SCW</td>
+    <td>148</td>
+    <td>117</td>
+    <td>103</td>
+    <td>12</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1251</td>
+    <td>1287</td>
+    <td>0</td>
+    <td>B04</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>123</td>
+    <td>Pelita Air</td>
+    <td>IP223</td>
+    <td>IP224</td>
+    <td>2026-08-31 21:39:00</td>
+    <td></td>
+    <td>2026-08-31 21:41:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>UPG</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-TFD</td>
+    <td>180</td>
+    <td>133</td>
+    <td>117</td>
+    <td>13</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4755</td>
+    <td>2261</td>
+    <td>0</td>
+    <td>B12</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>124</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ224</td>
+    <td>QZ225</td>
+    <td></td>
+    <td>2026-08-01 04:52:00</td>
+    <td></td>
+    <td>2026-08-01 04:47:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BDO</td>
+    <td>73500</td>
+    <td>PK-UIK</td>
+    <td>180</td>
+    <td>169</td>
+    <td>149</td>
+    <td>17</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1020</td>
+    <td>2366</td>
+    <td>0</td>
+    <td>B14</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>125</td>
+    <td>Singapore Airlines</td>
+    <td>SQ225</td>
+    <td>SQ226</td>
+    <td>2026-08-02 11:05:00</td>
+    <td></td>
+    <td>2026-08-02 11:09:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>DXB</td>
+    <td>CGK</td>
+    <td>242000</td>
+    <td>9V-SHV</td>
+    <td>295</td>
+    <td>133</td>
+    <td>117</td>
+    <td>13</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>2667</td>
+    <td>1596</td>
+    <td>498</td>
+    <td>C03</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>126</td>
+    <td>Garuda Indonesia</td>
+    <td>GA226</td>
+    <td>GA227</td>
+    <td></td>
+    <td>2026-08-03 18:18:00</td>
+    <td></td>
+    <td>2026-08-03 18:46:00</td>
+    <td>D UNSCHED</td>
+    <td>CGK</td>
+    <td>SRG</td>
+    <td>79000</td>
+    <td>PK-WOY</td>
+    <td>162</td>
+    <td>138</td>
+    <td>121</td>
+    <td>14</td>
+    <td>4</td>
+    <td>7</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2011</td>
+    <td>2208</td>
+    <td>0</td>
+    <td>D21</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>127</td>
+    <td>Citilink</td>
+    <td>QG227</td>
+    <td>QG228</td>
+    <td>2026-08-04 01:31:00</td>
+    <td></td>
+    <td>2026-08-04 01:29:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BPN</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-XRF</td>
+    <td>180</td>
+    <td>167</td>
+    <td>147</td>
+    <td>17</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>648</td>
+    <td>2672</td>
+    <td>0</td>
+    <td>D24</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>128</td>
+    <td>Lion Air</td>
+    <td>JT228</td>
+    <td>JT229</td>
+    <td></td>
+    <td>2026-08-05 08:44:00</td>
+    <td></td>
+    <td>2026-08-05 08:45:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BDJ</td>
+    <td>79000</td>
+    <td>PK-YUM</td>
+    <td>189</td>
+    <td>132</td>
+    <td>116</td>
+    <td>13</td>
+    <td>2</td>
+    <td>0</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1828</td>
+    <td>1584</td>
+    <td>0</td>
+    <td>E05</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>129</td>
+    <td>Batik Air</td>
+    <td>ID229</td>
+    <td>ID230</td>
+    <td>2026-08-06 15:57:00</td>
+    <td></td>
+    <td>2026-08-06 16:02:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>MDC</td>
+    <td>CGK</td>
+    <td>75500</td>
+    <td>PK-ZXT</td>
+    <td>156</td>
+    <td>108</td>
+    <td>95</td>
+    <td>11</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3044</td>
+    <td>1188</td>
+    <td>0</td>
+    <td>F02</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>130</td>
+    <td>Super Air Jet</td>
+    <td>IU230</td>
+    <td>IU231</td>
+    <td></td>
+    <td>2026-08-07 22:10:00</td>
+    <td></td>
+    <td>2026-08-07 22:03:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>LOP</td>
+    <td>73500</td>
+    <td>PK-AAA</td>
+    <td>180</td>
+    <td>131</td>
+    <td>115</td>
+    <td>13</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3247</td>
+    <td>2358</td>
+    <td>279</td>
+    <td>R01</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>131</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ231</td>
+    <td>SJ232</td>
+    <td>2026-08-08 05:23:00</td>
+    <td></td>
+    <td>2026-08-08 05:30:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>PLM</td>
+    <td>CGK</td>
+    <td>68000</td>
+    <td>PK-BDH</td>
+    <td>148</td>
+    <td>117</td>
+    <td>103</td>
+    <td>12</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4519</td>
+    <td>1638</td>
+    <td>0</td>
+    <td>R04</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>132</td>
+    <td>Pelita Air</td>
+    <td>IP232</td>
+    <td>IP233</td>
+    <td></td>
+    <td>2026-08-09 12:36:00</td>
+    <td></td>
+    <td>2026-08-09 12:26:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BTJ</td>
+    <td>73500</td>
+    <td>PK-CGO</td>
+    <td>180</td>
+    <td>144</td>
+    <td>127</td>
+    <td>14</td>
+    <td>1</td>
+    <td>13</td>
+    <td>0</td>
+    <td>1</td>
+    <td>0</td>
+    <td>6</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>T3-01</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>133</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ233</td>
+    <td>QZ234</td>
+    <td>2026-08-10 19:49:00</td>
+    <td></td>
+    <td>2026-08-10 20:20:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>PKU</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-DJV</td>
+    <td>180</td>
+    <td>155</td>
+    <td>136</td>
+    <td>16</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1607</td>
+    <td>2170</td>
+    <td>0</td>
+    <td>T3-12</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>134</td>
+    <td>Singapore Airlines</td>
+    <td>SQ234</td>
+    <td>SQ235</td>
+    <td></td>
+    <td>2026-08-11 02:02:00</td>
+    <td></td>
+    <td>2026-08-11 01:52:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BKK</td>
+    <td>242000</td>
+    <td>9V-SHE</td>
+    <td>295</td>
+    <td>286</td>
+    <td>252</td>
+    <td>29</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>4069</td>
+    <td>3718</td>
+    <td>0</td>
+    <td>T3-24</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>135</td>
+    <td>Garuda Indonesia</td>
+    <td>GA235</td>
+    <td>GA236</td>
+    <td>2026-08-12 09:15:00</td>
+    <td></td>
+    <td>2026-08-12 09:28:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>HND</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-FPJ</td>
+    <td>162</td>
+    <td>117</td>
+    <td>103</td>
+    <td>12</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1416</td>
+    <td>1287</td>
+    <td>146</td>
+    <td>B01</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>136</td>
+    <td>Citilink</td>
+    <td>QG236</td>
+    <td>QG237</td>
+    <td></td>
+    <td>2026-08-13 16:28:00</td>
+    <td></td>
+    <td>2026-08-13 16:19:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>DPS</td>
+    <td>73500</td>
+    <td>PK-GSQ</td>
+    <td>180</td>
+    <td>124</td>
+    <td>109</td>
+    <td>12</td>
+    <td>6</td>
+    <td>0</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3895</td>
+    <td>1736</td>
+    <td>0</td>
+    <td>B02</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>137</td>
+    <td>Lion Air</td>
+    <td>JT237</td>
+    <td>JT238</td>
+    <td>2026-08-14 23:41:00</td>
+    <td></td>
+    <td>2026-08-14 23:44:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>KNO</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-HVX</td>
+    <td>189</td>
+    <td>147</td>
+    <td>129</td>
+    <td>15</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1507</td>
+    <td>1911</td>
+    <td>0</td>
+    <td>B04</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>138</td>
+    <td>Batik Air</td>
+    <td>ID238</td>
+    <td>ID239</td>
+    <td></td>
+    <td>2026-08-15 06:54:00</td>
+    <td></td>
+    <td>2026-08-15 08:07:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>UPG</td>
+    <td>75500</td>
+    <td>PK-IYE</td>
+    <td>156</td>
+    <td>101</td>
+    <td>89</td>
+    <td>10</td>
+    <td>3</td>
+    <td>13</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4154</td>
+    <td>1818</td>
+    <td>0</td>
+    <td>B12</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>139</td>
+    <td>Super Air Jet</td>
+    <td>IU239</td>
+    <td>IU240</td>
+    <td>2026-08-16 13:07:00</td>
+    <td></td>
+    <td>2026-08-16 13:06:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BDO</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-JBL</td>
+    <td>180</td>
+    <td>155</td>
+    <td>136</td>
+    <td>16</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>911</td>
+    <td>2480</td>
+    <td>0</td>
+    <td>B14</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>140</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ240</td>
+    <td>SJ241</td>
+    <td></td>
+    <td>2026-08-17 20:20:00</td>
+    <td></td>
+    <td>2026-08-17 20:45:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>JOG</td>
+    <td>68000</td>
+    <td>PK-KES</td>
+    <td>148</td>
+    <td>117</td>
+    <td>103</td>
+    <td>12</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2748</td>
+    <td>1638</td>
+    <td>596</td>
+    <td>C03</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>141</td>
+    <td>Pelita Air</td>
+    <td>IP241</td>
+    <td>IP242</td>
+    <td>2026-08-18 03:33:00</td>
+    <td></td>
+    <td>2026-08-18 03:46:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>SRG</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-LHZ</td>
+    <td>180</td>
+    <td>126</td>
+    <td>111</td>
+    <td>13</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1849</td>
+    <td>1890</td>
+    <td>0</td>
+    <td>D21</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>142</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ242</td>
+    <td>QZ243</td>
+    <td></td>
+    <td>2026-08-19 10:46:00</td>
+    <td></td>
+    <td>2026-08-19 10:52:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BPN</td>
+    <td>73500</td>
+    <td>PK-MKG</td>
+    <td>180</td>
+    <td>133</td>
+    <td>117</td>
+    <td>13</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2044</td>
+    <td>1995</td>
+    <td>0</td>
+    <td>D24</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>143</td>
+    <td>Singapore Airlines</td>
+    <td>SQ243</td>
+    <td>SQ244</td>
+    <td>2026-08-20 17:59:00</td>
+    <td></td>
+    <td>2026-08-20 18:11:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>DXB</td>
+    <td>CGK</td>
+    <td>242000</td>
+    <td>9V-SHN</td>
+    <td>295</td>
+    <td>207</td>
+    <td>182</td>
+    <td>21</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>4303</td>
+    <td>2277</td>
+    <td>0</td>
+    <td>E05</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>144</td>
+    <td>Garuda Indonesia</td>
+    <td>GA244</td>
+    <td>GA245</td>
+    <td></td>
+    <td>2026-08-21 00:12:00</td>
+    <td></td>
+    <td>2026-08-21 00:25:00</td>
+    <td>D UNSCHED</td>
+    <td>CGK</td>
+    <td>MDC</td>
+    <td>79000</td>
+    <td>PK-OQU</td>
+    <td>162</td>
+    <td>117</td>
+    <td>103</td>
+    <td>12</td>
+    <td>3</td>
+    <td>3</td>
+    <td>7</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>2</td>
+    <td>786</td>
+    <td>1638</td>
+    <td>0</td>
+    <td>F02</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>145</td>
+    <td>Citilink</td>
+    <td>QG245</td>
+    <td>QG246</td>
+    <td>2026-08-22 07:25:00</td>
+    <td></td>
+    <td>2026-08-22 07:36:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>LOP</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-PTB</td>
+    <td>180</td>
+    <td>149</td>
+    <td>131</td>
+    <td>15</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3325</td>
+    <td>2682</td>
+    <td>648</td>
+    <td>R01</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>146</td>
+    <td>Lion Air</td>
+    <td>JT246</td>
+    <td>JT247</td>
+    <td></td>
+    <td>2026-08-23 14:38:00</td>
+    <td></td>
+    <td>2026-08-23 14:38:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>PLM</td>
+    <td>79000</td>
+    <td>PK-QWI</td>
+    <td>189</td>
+    <td>140</td>
+    <td>123</td>
+    <td>14</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3425</td>
+    <td>1540</td>
+    <td>0</td>
+    <td>R04</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>147</td>
+    <td>Batik Air</td>
+    <td>ID247</td>
+    <td>ID248</td>
+    <td>2026-08-24 21:51:00</td>
+    <td></td>
+    <td>2026-08-24 22:21:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BTJ</td>
+    <td>CGK</td>
+    <td>75500</td>
+    <td>PK-RZP</td>
+    <td>156</td>
+    <td>145</td>
+    <td>128</td>
+    <td>15</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4293</td>
+    <td>1885</td>
+    <td>0</td>
+    <td>T3-01</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>148</td>
+    <td>Super Air Jet</td>
+    <td>IU248</td>
+    <td>IU249</td>
+    <td></td>
+    <td>2026-08-25 04:04:00</td>
+    <td></td>
+    <td>2026-08-25 04:09:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>PKU</td>
+    <td>73500</td>
+    <td>PK-SCW</td>
+    <td>180</td>
+    <td>162</td>
+    <td>143</td>
+    <td>16</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1578</td>
+    <td>2592</td>
+    <td>0</td>
+    <td>T3-12</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>149</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ249</td>
+    <td>SJ250</td>
+    <td>2026-08-26 11:17:00</td>
+    <td></td>
+    <td>2026-08-26 11:24:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>PDG</td>
+    <td>CGK</td>
+    <td>68000</td>
+    <td>PK-TFD</td>
+    <td>148</td>
+    <td>104</td>
+    <td>92</td>
+    <td>10</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>601</td>
+    <td>1560</td>
+    <td>0</td>
+    <td>T3-24</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>150</td>
+    <td>Pelita Air</td>
+    <td>IP250A</td>
+    <td>IP251</td>
+    <td></td>
+    <td>2026-08-27 18:30:00</td>
+    <td></td>
+    <td>2026-08-27 18:22:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>SIN</td>
+    <td>73500</td>
+    <td>PK-UIK</td>
+    <td>180</td>
+    <td>81</td>
+    <td>71</td>
+    <td>8</td>
+    <td>1</td>
+    <td>14</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3582</td>
+    <td>1215</td>
+    <td>533</td>
+    <td>B01</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>151</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ251</td>
+    <td>QZ252</td>
+    <td>2026-08-28 01:43:00</td>
+    <td></td>
+    <td>2026-08-28 01:47:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>DPS</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-VLR</td>
+    <td>180</td>
+    <td>140</td>
+    <td>123</td>
+    <td>14</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4287</td>
+    <td>1960</td>
+    <td>0</td>
+    <td>B02</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>152</td>
+    <td>Singapore Airlines</td>
+    <td>SQ252</td>
+    <td>SQ253</td>
+    <td></td>
+    <td>2026-08-29 08:56:00</td>
+    <td></td>
+    <td>2026-08-29 09:05:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BKK</td>
+    <td>242000</td>
+    <td>9V-SHW</td>
+    <td>295</td>
+    <td>286</td>
+    <td>252</td>
+    <td>29</td>
+    <td>6</td>
+    <td>0</td>
+    <td>8</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>3243</td>
+    <td>3432</td>
+    <td>0</td>
+    <td>B04</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>153</td>
+    <td>Garuda Indonesia</td>
+    <td>GA253</td>
+    <td>GA254</td>
+    <td>2026-08-30 15:09:00</td>
+    <td></td>
+    <td>2026-08-30 15:23:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>UPG</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-XRF</td>
+    <td>162</td>
+    <td>143</td>
+    <td>126</td>
+    <td>14</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2119</td>
+    <td>1859</td>
+    <td>0</td>
+    <td>B12</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>154</td>
+    <td>Citilink</td>
+    <td>QG254</td>
+    <td>QG255</td>
+    <td></td>
+    <td>2026-08-31 22:22:00</td>
+    <td></td>
+    <td>2026-08-31 23:13:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BDO</td>
+    <td>73500</td>
+    <td>PK-YUM</td>
+    <td>180</td>
+    <td>142</td>
+    <td>125</td>
+    <td>14</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4302</td>
+    <td>2130</td>
+    <td>0</td>
+    <td>B14</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>155</td>
+    <td>Lion Air</td>
+    <td>JT255</td>
+    <td>JT256</td>
+    <td>2026-08-01 05:35:00</td>
+    <td></td>
+    <td>2026-08-01 05:46:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>JOG</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-ZXT</td>
+    <td>189</td>
+    <td>180</td>
+    <td>158</td>
+    <td>18</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1268</td>
+    <td>1980</td>
+    <td>530</td>
+    <td>C03</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>156</td>
+    <td>Batik Air</td>
+    <td>ID256</td>
+    <td>ID257</td>
+    <td></td>
+    <td>2026-08-02 12:48:00</td>
+    <td></td>
+    <td>2026-08-02 12:50:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>SRG</td>
+    <td>75500</td>
+    <td>PK-AAA</td>
+    <td>156</td>
+    <td>151</td>
+    <td>133</td>
+    <td>15</td>
+    <td>2</td>
+    <td>10</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>2</td>
+    <td>4776</td>
+    <td>2416</td>
+    <td>0</td>
+    <td>D21</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>157</td>
+    <td>Super Air Jet</td>
+    <td>IU257</td>
+    <td>IU258</td>
+    <td>2026-08-03 19:01:00</td>
+    <td></td>
+    <td>2026-08-03 18:57:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BPN</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-BDH</td>
+    <td>180</td>
+    <td>119</td>
+    <td>105</td>
+    <td>12</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1638</td>
+    <td>2023</td>
+    <td>0</td>
+    <td>D24</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>158</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ258</td>
+    <td>SJ259</td>
+    <td></td>
+    <td>2026-08-04 02:14:00</td>
+    <td></td>
+    <td>2026-08-04 02:25:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BDJ</td>
+    <td>68000</td>
+    <td>PK-CGO</td>
+    <td>148</td>
+    <td>96</td>
+    <td>84</td>
+    <td>10</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1030</td>
+    <td>1632</td>
+    <td>0</td>
+    <td>E05</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>159</td>
+    <td>Pelita Air</td>
+    <td>IP259</td>
+    <td>IP260</td>
+    <td>2026-08-05 09:27:00</td>
+    <td></td>
+    <td>2026-08-05 09:29:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>MDC</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-DJV</td>
+    <td>180</td>
+    <td>175</td>
+    <td>154</td>
+    <td>18</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2850</td>
+    <td>2450</td>
+    <td>0</td>
+    <td>F02</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>160</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ260</td>
+    <td>QZ261</td>
+    <td></td>
+    <td>2026-08-06 16:40:00</td>
+    <td></td>
+    <td>2026-08-06 16:32:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>LOP</td>
+    <td>73500</td>
+    <td>PK-EMC</td>
+    <td>180</td>
+    <td>124</td>
+    <td>109</td>
+    <td>12</td>
+    <td>2</td>
+    <td>0</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2837</td>
+    <td>1860</td>
+    <td>99</td>
+    <td>R01</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>161</td>
+    <td>Singapore Airlines</td>
+    <td>SQ261</td>
+    <td>SQ262</td>
+    <td>2026-08-07 23:53:00</td>
+    <td></td>
+    <td>2026-08-08 00:18:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>DXB</td>
+    <td>CGK</td>
+    <td>242000</td>
+    <td>9V-SHF</td>
+    <td>295</td>
+    <td>215</td>
+    <td>189</td>
+    <td>22</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>4278</td>
+    <td>2580</td>
+    <td>0</td>
+    <td>R04</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>162</td>
+    <td>Garuda Indonesia</td>
+    <td>GA262</td>
+    <td>GA263</td>
+    <td></td>
+    <td>2026-08-08 06:06:00</td>
+    <td></td>
+    <td>2026-08-08 06:09:00</td>
+    <td>D UNSCHED</td>
+    <td>CGK</td>
+    <td>BTJ</td>
+    <td>79000</td>
+    <td>PK-GSQ</td>
+    <td>162</td>
+    <td>131</td>
+    <td>115</td>
+    <td>13</td>
+    <td>5</td>
+    <td>14</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>815</td>
+    <td>1703</td>
+    <td>0</td>
+    <td>T3-01</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>163</td>
+    <td>Citilink</td>
+    <td>QG263</td>
+    <td>QG264</td>
+    <td>2026-08-09 13:19:00</td>
+    <td></td>
+    <td>2026-08-09 13:10:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>PKU</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-HVX</td>
+    <td>180</td>
+    <td>148</td>
+    <td>130</td>
+    <td>15</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>523</td>
+    <td>2368</td>
+    <td>0</td>
+    <td>T3-12</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>164</td>
+    <td>Lion Air</td>
+    <td>JT264</td>
+    <td>JT265</td>
+    <td></td>
+    <td>2026-08-10 20:32:00</td>
+    <td></td>
+    <td>2026-08-10 20:43:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>PDG</td>
+    <td>79000</td>
+    <td>PK-IYE</td>
+    <td>189</td>
+    <td>183</td>
+    <td>161</td>
+    <td>18</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4385</td>
+    <td>2013</td>
+    <td>0</td>
+    <td>T3-24</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>165</td>
+    <td>Batik Air</td>
+    <td>ID265</td>
+    <td>ID266</td>
+    <td>2026-08-11 03:45:00</td>
+    <td></td>
+    <td>2026-08-11 03:49:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>HND</td>
+    <td>CGK</td>
+    <td>75500</td>
+    <td>PK-JBL</td>
+    <td>156</td>
+    <td>125</td>
+    <td>110</td>
+    <td>13</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2828</td>
+    <td>1750</td>
+    <td>342</td>
+    <td>B01</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>166</td>
+    <td>Super Air Jet</td>
+    <td>IU266</td>
+    <td>IU267</td>
+    <td></td>
+    <td>2026-08-12 10:58:00</td>
+    <td></td>
+    <td>2026-08-12 10:52:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>DPS</td>
+    <td>73500</td>
+    <td>PK-KES</td>
+    <td>180</td>
+    <td>131</td>
+    <td>115</td>
+    <td>13</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>460</td>
+    <td>2227</td>
+    <td>0</td>
+    <td>B02</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>167</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ267</td>
+    <td>SJ268</td>
+    <td>2026-08-13 17:11:00</td>
+    <td></td>
+    <td>2026-08-13 17:25:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>KNO</td>
+    <td>CGK</td>
+    <td>68000</td>
+    <td>PK-LHZ</td>
+    <td>148</td>
+    <td>107</td>
+    <td>94</td>
+    <td>11</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1751</td>
+    <td>1819</td>
+    <td>0</td>
+    <td>B04</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>168</td>
+    <td>Pelita Air</td>
+    <td>IP268</td>
+    <td>IP269</td>
+    <td></td>
+    <td>2026-08-14 00:24:00</td>
+    <td></td>
+    <td>2026-08-14 01:17:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>UPG</td>
+    <td>73500</td>
+    <td>PK-MKG</td>
+    <td>180</td>
+    <td>167</td>
+    <td>147</td>
+    <td>17</td>
+    <td>3</td>
+    <td>15</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>2</td>
+    <td>2308</td>
+    <td>2672</td>
+    <td>0</td>
+    <td>B12</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>169</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ269</td>
+    <td>QZ270</td>
+    <td>2026-08-15 07:37:00</td>
+    <td></td>
+    <td>2026-08-15 07:31:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BDO</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-NNN</td>
+    <td>180</td>
+    <td>119</td>
+    <td>105</td>
+    <td>12</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1857</td>
+    <td>1785</td>
+    <td>0</td>
+    <td>B14</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>170</td>
+    <td>Singapore Airlines</td>
+    <td>SQ270</td>
+    <td>SQ271</td>
+    <td></td>
+    <td>2026-08-16 14:50:00</td>
+    <td></td>
+    <td>2026-08-16 14:52:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BKK</td>
+    <td>242000</td>
+    <td>9V-SHO</td>
+    <td>295</td>
+    <td>268</td>
+    <td>236</td>
+    <td>27</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>3845</td>
+    <td>3484</td>
+    <td>116</td>
+    <td>C03</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>171</td>
+    <td>Garuda Indonesia</td>
+    <td>GA271</td>
+    <td>GA272</td>
+    <td>2026-08-17 21:03:00</td>
+    <td></td>
+    <td>2026-08-17 21:16:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>SRG</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-PTB</td>
+    <td>162</td>
+    <td>117</td>
+    <td>103</td>
+    <td>12</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1465</td>
+    <td>1638</td>
+    <td>0</td>
+    <td>D21</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>172</td>
+    <td>Citilink</td>
+    <td>QG272</td>
+    <td>QG273</td>
+    <td></td>
+    <td>2026-08-18 04:16:00</td>
+    <td></td>
+    <td>2026-08-18 04:11:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BPN</td>
+    <td>73500</td>
+    <td>PK-QWI</td>
+    <td>180</td>
+    <td>146</td>
+    <td>128</td>
+    <td>15</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3737</td>
+    <td>2336</td>
+    <td>0</td>
+    <td>D24</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>173</td>
+    <td>Lion Air</td>
+    <td>JT273</td>
+    <td>JT274</td>
+    <td>2026-08-19 11:29:00</td>
+    <td></td>
+    <td>2026-08-19 11:35:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BDJ</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-RZP</td>
+    <td>189</td>
+    <td>166</td>
+    <td>146</td>
+    <td>17</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2073</td>
+    <td>2490</td>
+    <td>0</td>
+    <td>E05</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>174</td>
+    <td>Batik Air</td>
+    <td>ID274</td>
+    <td>ID275</td>
+    <td></td>
+    <td>2026-08-20 18:42:00</td>
+    <td></td>
+    <td>2026-08-20 18:37:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>MDC</td>
+    <td>75500</td>
+    <td>PK-SCW</td>
+    <td>156</td>
+    <td>120</td>
+    <td>106</td>
+    <td>12</td>
+    <td>3</td>
+    <td>8</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2645</td>
+    <td>2160</td>
+    <td>0</td>
+    <td>F02</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>175</td>
+    <td>Super Air Jet</td>
+    <td>IU275</td>
+    <td>IU276</td>
+    <td>2026-08-21 01:55:00</td>
+    <td></td>
+    <td>2026-08-21 02:48:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>LOP</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-TFD</td>
+    <td>180</td>
+    <td>81</td>
+    <td>71</td>
+    <td>8</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2668</td>
+    <td>1215</td>
+    <td>453</td>
+    <td>R01</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>176</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ276</td>
+    <td>SJ277</td>
+    <td></td>
+    <td>2026-08-22 08:08:00</td>
+    <td></td>
+    <td>2026-08-22 08:16:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>PLM</td>
+    <td>68000</td>
+    <td>PK-UIK</td>
+    <td>148</td>
+    <td>105</td>
+    <td>92</td>
+    <td>11</td>
+    <td>4</td>
+    <td>0</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1735</td>
+    <td>1785</td>
+    <td>0</td>
+    <td>R04</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>177</td>
+    <td>Pelita Air</td>
+    <td>IP277</td>
+    <td>IP278</td>
+    <td>2026-08-23 15:21:00</td>
+    <td></td>
+    <td>2026-08-23 15:29:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BTJ</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-VLR</td>
+    <td>180</td>
+    <td>167</td>
+    <td>147</td>
+    <td>17</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1550</td>
+    <td>2839</td>
+    <td>0</td>
+    <td>T3-01</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>178</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ278</td>
+    <td>QZ279</td>
+    <td></td>
+    <td>2026-08-24 22:34:00</td>
+    <td></td>
+    <td>2026-08-24 22:42:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>PKU</td>
+    <td>73500</td>
+    <td>PK-WOY</td>
+    <td>180</td>
+    <td>171</td>
+    <td>150</td>
+    <td>17</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3889</td>
+    <td>2223</td>
+    <td>0</td>
+    <td>T3-12</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>179</td>
+    <td>Singapore Airlines</td>
+    <td>SQ279</td>
+    <td>SQ280</td>
+    <td>2026-08-25 05:47:00</td>
+    <td></td>
+    <td>2026-08-25 05:37:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>DXB</td>
+    <td>CGK</td>
+    <td>242000</td>
+    <td>9V-SHX</td>
+    <td>295</td>
+    <td>221</td>
+    <td>194</td>
+    <td>22</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>2597</td>
+    <td>3094</td>
+    <td>0</td>
+    <td>T3-24</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>180</td>
+    <td>Garuda Indonesia</td>
+    <td>GA280A</td>
+    <td>GA281</td>
+    <td></td>
+    <td>2026-08-26 12:00:00</td>
+    <td></td>
+    <td>2026-08-26 12:05:00</td>
+    <td>D UNSCHED</td>
+    <td>CGK</td>
+    <td>SIN</td>
+    <td>79000</td>
+    <td>PK-YUM</td>
+    <td>162</td>
+    <td>146</td>
+    <td>128</td>
+    <td>15</td>
+    <td>2</td>
+    <td>13</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>2</td>
+    <td>2922</td>
+    <td>2044</td>
+    <td>514</td>
+    <td>B01</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>181</td>
+    <td>Citilink</td>
+    <td>QG281</td>
+    <td>QG282</td>
+    <td>2026-08-27 19:13:00</td>
+    <td></td>
+    <td>2026-08-27 19:21:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>DPS</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-ZXT</td>
+    <td>180</td>
+    <td>149</td>
+    <td>131</td>
+    <td>15</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3326</td>
+    <td>2086</td>
+    <td>0</td>
+    <td>B02</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>182</td>
+    <td>Lion Air</td>
+    <td>JT282</td>
+    <td>JT283</td>
+    <td></td>
+    <td>2026-08-28 02:26:00</td>
+    <td></td>
+    <td>2026-08-28 03:09:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>KNO</td>
+    <td>79000</td>
+    <td>PK-AAA</td>
+    <td>189</td>
+    <td>151</td>
+    <td>133</td>
+    <td>15</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1416</td>
+    <td>2114</td>
+    <td>0</td>
+    <td>B04</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>183</td>
+    <td>Batik Air</td>
+    <td>ID283</td>
+    <td>ID284</td>
+    <td>2026-08-29 09:39:00</td>
+    <td></td>
+    <td>2026-08-29 09:50:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>UPG</td>
+    <td>CGK</td>
+    <td>75500</td>
+    <td>PK-BDH</td>
+    <td>156</td>
+    <td>112</td>
+    <td>99</td>
+    <td>11</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4610</td>
+    <td>1232</td>
+    <td>0</td>
+    <td>B12</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>184</td>
+    <td>Super Air Jet</td>
+    <td>IU284</td>
+    <td>IU285</td>
+    <td></td>
+    <td>2026-08-30 16:52:00</td>
+    <td></td>
+    <td>2026-08-30 18:23:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BDO</td>
+    <td>73500</td>
+    <td>PK-CGO</td>
+    <td>180</td>
+    <td>169</td>
+    <td>149</td>
+    <td>17</td>
+    <td>3</td>
+    <td>0</td>
+    <td>11</td>
+    <td>0</td>
+    <td>1</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>B14</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>185</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ285</td>
+    <td>SJ286</td>
+    <td>2026-08-31 23:05:00</td>
+    <td></td>
+    <td>2026-08-31 23:11:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>JOG</td>
+    <td>CGK</td>
+    <td>68000</td>
+    <td>PK-DJV</td>
+    <td>148</td>
+    <td>129</td>
+    <td>114</td>
+    <td>13</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4450</td>
+    <td>1935</td>
+    <td>590</td>
+    <td>C03</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>186</td>
+    <td>Pelita Air</td>
+    <td>IP286</td>
+    <td>IP287</td>
+    <td></td>
+    <td>2026-08-01 06:18:00</td>
+    <td></td>
+    <td>2026-08-01 06:18:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>SRG</td>
+    <td>73500</td>
+    <td>PK-EMC</td>
+    <td>180</td>
+    <td>137</td>
+    <td>121</td>
+    <td>14</td>
+    <td>2</td>
+    <td>12</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1374</td>
+    <td>2192</td>
+    <td>0</td>
+    <td>D21</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>187</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ287</td>
+    <td>QZ288</td>
+    <td>2026-08-02 13:31:00</td>
+    <td></td>
+    <td>2026-08-02 13:35:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BPN</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-FPJ</td>
+    <td>180</td>
+    <td>139</td>
+    <td>122</td>
+    <td>14</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>615</td>
+    <td>1807</td>
+    <td>0</td>
+    <td>D24</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>188</td>
+    <td>Singapore Airlines</td>
+    <td>SQ288</td>
+    <td>SQ289</td>
+    <td></td>
+    <td>2026-08-03 20:44:00</td>
+    <td></td>
+    <td>2026-08-03 20:51:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BKK</td>
+    <td>242000</td>
+    <td>9V-SHG</td>
+    <td>295</td>
+    <td>192</td>
+    <td>169</td>
+    <td>19</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>1336</td>
+    <td>2304</td>
+    <td>0</td>
+    <td>E05</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>189</td>
+    <td>Garuda Indonesia</td>
+    <td>GA289</td>
+    <td>GA290</td>
+    <td>2026-08-04 03:57:00</td>
+    <td></td>
+    <td>2026-08-04 04:30:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>MDC</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-HVX</td>
+    <td>162</td>
+    <td>143</td>
+    <td>126</td>
+    <td>14</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2378</td>
+    <td>1859</td>
+    <td>0</td>
+    <td>F02</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>190</td>
+    <td>Citilink</td>
+    <td>QG290</td>
+    <td>QG291</td>
+    <td></td>
+    <td>2026-08-05 10:10:00</td>
+    <td></td>
+    <td>2026-08-05 10:16:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>LOP</td>
+    <td>73500</td>
+    <td>PK-IYE</td>
+    <td>180</td>
+    <td>128</td>
+    <td>113</td>
+    <td>13</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1699</td>
+    <td>1408</td>
+    <td>311</td>
+    <td>R01</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>191</td>
+    <td>Lion Air</td>
+    <td>JT291</td>
+    <td>JT292</td>
+    <td>2026-08-06 17:23:00</td>
+    <td></td>
+    <td>2026-08-06 17:20:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>PLM</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-JBL</td>
+    <td>189</td>
+    <td>166</td>
+    <td>146</td>
+    <td>17</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1278</td>
+    <td>1826</td>
+    <td>0</td>
+    <td>R04</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>192</td>
+    <td>Batik Air</td>
+    <td>ID292</td>
+    <td>ID293</td>
+    <td></td>
+    <td>2026-08-07 00:36:00</td>
+    <td></td>
+    <td>2026-08-07 00:47:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BTJ</td>
+    <td>75500</td>
+    <td>PK-KES</td>
+    <td>156</td>
+    <td>117</td>
+    <td>103</td>
+    <td>12</td>
+    <td>4</td>
+    <td>7</td>
+    <td>9</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>2</td>
+    <td>2200</td>
+    <td>1521</td>
+    <td>0</td>
+    <td>T3-01</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>193</td>
+    <td>Super Air Jet</td>
+    <td>IU293</td>
+    <td>IU294</td>
+    <td>2026-08-08 07:49:00</td>
+    <td></td>
+    <td>2026-08-08 07:56:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>PKU</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-LHZ</td>
+    <td>180</td>
+    <td>117</td>
+    <td>103</td>
+    <td>12</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2031</td>
+    <td>1404</td>
+    <td>0</td>
+    <td>T3-12</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>194</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ294</td>
+    <td>SJ295</td>
+    <td></td>
+    <td>2026-08-09 14:02:00</td>
+    <td></td>
+    <td>2026-08-09 14:04:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>PDG</td>
+    <td>68000</td>
+    <td>PK-MKG</td>
+    <td>148</td>
+    <td>123</td>
+    <td>108</td>
+    <td>12</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3060</td>
+    <td>1845</td>
+    <td>0</td>
+    <td>T3-24</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>195</td>
+    <td>Pelita Air</td>
+    <td>IP295</td>
+    <td>IP296</td>
+    <td>2026-08-10 21:15:00</td>
+    <td></td>
+    <td>2026-08-10 21:07:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>HND</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-NNN</td>
+    <td>180</td>
+    <td>167</td>
+    <td>147</td>
+    <td>17</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4350</td>
+    <td>1837</td>
+    <td>81</td>
+    <td>B01</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>196</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ296</td>
+    <td>QZ297</td>
+    <td></td>
+    <td>2026-08-11 04:28:00</td>
+    <td></td>
+    <td>2026-08-11 05:22:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>DPS</td>
+    <td>73500</td>
+    <td>PK-OQU</td>
+    <td>180</td>
+    <td>146</td>
+    <td>128</td>
+    <td>15</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>922</td>
+    <td>2190</td>
+    <td>0</td>
+    <td>B02</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>197</td>
+    <td>Singapore Airlines</td>
+    <td>SQ297</td>
+    <td>SQ298</td>
+    <td>2026-08-12 11:41:00</td>
+    <td></td>
+    <td>2026-08-12 11:33:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>DXB</td>
+    <td>CGK</td>
+    <td>242000</td>
+    <td>9V-SHP</td>
+    <td>295</td>
+    <td>204</td>
+    <td>180</td>
+    <td>20</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>1896</td>
+    <td>2448</td>
+    <td>0</td>
+    <td>B04</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>198</td>
+    <td>Garuda Indonesia</td>
+    <td>GA298</td>
+    <td>GA299</td>
+    <td></td>
+    <td>2026-08-13 18:54:00</td>
+    <td></td>
+    <td>2026-08-13 18:47:00</td>
+    <td>D UNSCHED</td>
+    <td>CGK</td>
+    <td>UPG</td>
+    <td>79000</td>
+    <td>PK-QWI</td>
+    <td>162</td>
+    <td>151</td>
+    <td>133</td>
+    <td>15</td>
+    <td>3</td>
+    <td>10</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>433</td>
+    <td>1661</td>
+    <td>0</td>
+    <td>B12</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>199</td>
+    <td>Citilink</td>
+    <td>QG299</td>
+    <td>QG300</td>
+    <td>2026-08-14 01:07:00</td>
+    <td></td>
+    <td>2026-08-14 01:16:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BDO</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-RZP</td>
+    <td>180</td>
+    <td>157</td>
+    <td>138</td>
+    <td>16</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4326</td>
+    <td>2355</td>
+    <td>0</td>
+    <td>B14</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>200</td>
+    <td>Lion Air</td>
+    <td>JT300</td>
+    <td>JT301</td>
+    <td></td>
+    <td>2026-08-15 08:20:00</td>
+    <td></td>
+    <td>2026-08-15 08:31:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>JOG</td>
+    <td>79000</td>
+    <td>PK-SCW</td>
+    <td>189</td>
+    <td>85</td>
+    <td>75</td>
+    <td>9</td>
+    <td>3</td>
+    <td>0</td>
+    <td>9</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>491</td>
+    <td>1530</td>
+    <td>231</td>
+    <td>C03</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>201</td>
+    <td>Batik Air</td>
+    <td>ID301</td>
+    <td>ID302</td>
+    <td>2026-08-16 15:33:00</td>
+    <td></td>
+    <td>2026-08-16 15:27:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>SRG</td>
+    <td>CGK</td>
+    <td>75500</td>
+    <td>PK-TFD</td>
+    <td>156</td>
+    <td>129</td>
+    <td>114</td>
+    <td>13</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>519</td>
+    <td>1548</td>
+    <td>0</td>
+    <td>D21</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>202</td>
+    <td>Super Air Jet</td>
+    <td>IU302</td>
+    <td>IU303</td>
+    <td></td>
+    <td>2026-08-17 22:46:00</td>
+    <td></td>
+    <td>2026-08-17 22:54:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BPN</td>
+    <td>73500</td>
+    <td>PK-UIK</td>
+    <td>180</td>
+    <td>133</td>
+    <td>117</td>
+    <td>13</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1535</td>
+    <td>1729</td>
+    <td>0</td>
+    <td>D24</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>203</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ303</td>
+    <td>SJ304</td>
+    <td>2026-08-18 05:59:00</td>
+    <td></td>
+    <td>2026-08-18 06:17:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BDJ</td>
+    <td>CGK</td>
+    <td>68000</td>
+    <td>PK-VLR</td>
+    <td>148</td>
+    <td>139</td>
+    <td>122</td>
+    <td>14</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3900</td>
+    <td>2224</td>
+    <td>0</td>
+    <td>E05</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>204</td>
+    <td>Pelita Air</td>
+    <td>IP304</td>
+    <td>IP305</td>
+    <td></td>
+    <td>2026-08-19 12:12:00</td>
+    <td></td>
+    <td>2026-08-19 12:11:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>MDC</td>
+    <td>73500</td>
+    <td>PK-WOY</td>
+    <td>180</td>
+    <td>167</td>
+    <td>147</td>
+    <td>17</td>
+    <td>4</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>2</td>
+    <td>1028</td>
+    <td>1837</td>
+    <td>0</td>
+    <td>F02</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>205</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ305</td>
+    <td>QZ306</td>
+    <td>2026-08-20 19:25:00</td>
+    <td></td>
+    <td>2026-08-20 19:36:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>LOP</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-XRF</td>
+    <td>180</td>
+    <td>162</td>
+    <td>143</td>
+    <td>16</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3381</td>
+    <td>2754</td>
+    <td>420</td>
+    <td>R01</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>206</td>
+    <td>Singapore Airlines</td>
+    <td>SQ306</td>
+    <td>SQ307</td>
+    <td></td>
+    <td>2026-08-21 02:38:00</td>
+    <td></td>
+    <td>2026-08-21 02:44:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BKK</td>
+    <td>242000</td>
+    <td>9V-SHY</td>
+    <td>295</td>
+    <td>209</td>
+    <td>184</td>
+    <td>21</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>3856</td>
+    <td>2717</td>
+    <td>0</td>
+    <td>R04</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>207</td>
+    <td>Garuda Indonesia</td>
+    <td>GA307</td>
+    <td>GA308</td>
+    <td>2026-08-22 09:51:00</td>
+    <td></td>
+    <td>2026-08-22 11:21:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BTJ</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-ZXT</td>
+    <td>162</td>
+    <td>141</td>
+    <td>124</td>
+    <td>14</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>962</td>
+    <td>1974</td>
+    <td>0</td>
+    <td>T3-01</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>208</td>
+    <td>Citilink</td>
+    <td>QG308</td>
+    <td>QG309</td>
+    <td></td>
+    <td>2026-08-23 16:04:00</td>
+    <td></td>
+    <td>2026-08-23 15:58:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>PKU</td>
+    <td>73500</td>
+    <td>PK-AAA</td>
+    <td>180</td>
+    <td>126</td>
+    <td>111</td>
+    <td>13</td>
+    <td>4</td>
+    <td>0</td>
+    <td>9</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1869</td>
+    <td>2016</td>
+    <td>0</td>
+    <td>T3-12</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>209</td>
+    <td>Lion Air</td>
+    <td>JT309</td>
+    <td>JT310</td>
+    <td>2026-08-24 23:17:00</td>
+    <td></td>
+    <td>2026-08-24 23:26:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>PDG</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-BDH</td>
+    <td>189</td>
+    <td>127</td>
+    <td>112</td>
+    <td>13</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4018</td>
+    <td>1524</td>
+    <td>0</td>
+    <td>T3-24</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>210</td>
+    <td>Batik Air</td>
+    <td>ID310A</td>
+    <td>ID311</td>
+    <td></td>
+    <td>2026-08-25 06:30:00</td>
+    <td></td>
+    <td>2026-08-25 06:49:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>SIN</td>
+    <td>75500</td>
+    <td>PK-CGO</td>
+    <td>156</td>
+    <td>117</td>
+    <td>103</td>
+    <td>12</td>
+    <td>2</td>
+    <td>9</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2774</td>
+    <td>1989</td>
+    <td>279</td>
+    <td>B01</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>211</td>
+    <td>Super Air Jet</td>
+    <td>IU311</td>
+    <td>IU312</td>
+    <td>2026-08-26 13:43:00</td>
+    <td></td>
+    <td>2026-08-26 13:42:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>DPS</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-DJV</td>
+    <td>180</td>
+    <td>139</td>
+    <td>122</td>
+    <td>14</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4740</td>
+    <td>1529</td>
+    <td>0</td>
+    <td>B02</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>212</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ312</td>
+    <td>SJ313</td>
+    <td></td>
+    <td>2026-08-27 20:56:00</td>
+    <td></td>
+    <td>2026-08-27 20:50:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>KNO</td>
+    <td>68000</td>
+    <td>PK-EMC</td>
+    <td>148</td>
+    <td>114</td>
+    <td>100</td>
+    <td>11</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>803</td>
+    <td>2052</td>
+    <td>0</td>
+    <td>B04</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>213</td>
+    <td>Pelita Air</td>
+    <td>IP313</td>
+    <td>IP314</td>
+    <td>2026-08-28 03:09:00</td>
+    <td></td>
+    <td>2026-08-28 03:12:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>UPG</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-FPJ</td>
+    <td>180</td>
+    <td>130</td>
+    <td>114</td>
+    <td>13</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2436</td>
+    <td>1820</td>
+    <td>0</td>
+    <td>B12</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>214</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ314</td>
+    <td>QZ315</td>
+    <td></td>
+    <td>2026-08-29 10:22:00</td>
+    <td></td>
+    <td>2026-08-29 10:16:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BDO</td>
+    <td>73500</td>
+    <td>PK-GSQ</td>
+    <td>180</td>
+    <td>124</td>
+    <td>109</td>
+    <td>12</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4509</td>
+    <td>1860</td>
+    <td>0</td>
+    <td>B14</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>215</td>
+    <td>Singapore Airlines</td>
+    <td>SQ315</td>
+    <td>SQ316</td>
+    <td>2026-08-30 17:35:00</td>
+    <td></td>
+    <td>2026-08-30 17:42:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>DXB</td>
+    <td>CGK</td>
+    <td>242000</td>
+    <td>9V-SHH</td>
+    <td>295</td>
+    <td>257</td>
+    <td>226</td>
+    <td>26</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>2900</td>
+    <td>3341</td>
+    <td>132</td>
+    <td>C03</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>216</td>
+    <td>Garuda Indonesia</td>
+    <td>GA316</td>
+    <td>GA317</td>
+    <td></td>
+    <td>2026-08-31 00:48:00</td>
+    <td></td>
+    <td>2026-08-31 00:39:00</td>
+    <td>D UNSCHED</td>
+    <td>CGK</td>
+    <td>SRG</td>
+    <td>79000</td>
+    <td>PK-IYE</td>
+    <td>162</td>
+    <td>128</td>
+    <td>113</td>
+    <td>13</td>
+    <td>5</td>
+    <td>14</td>
+    <td>10</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>2</td>
+    <td>837</td>
+    <td>2304</td>
+    <td>0</td>
+    <td>D21</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>217</td>
+    <td>Citilink</td>
+    <td>QG317</td>
+    <td>QG318</td>
+    <td>2026-08-01 07:01:00</td>
+    <td></td>
+    <td>2026-08-01 07:55:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BPN</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-JBL</td>
+    <td>180</td>
+    <td>160</td>
+    <td>141</td>
+    <td>16</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2047</td>
+    <td>2880</td>
+    <td>0</td>
+    <td>D24</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>218</td>
+    <td>Lion Air</td>
+    <td>JT318</td>
+    <td>JT319</td>
+    <td></td>
+    <td>2026-08-02 14:14:00</td>
+    <td></td>
+    <td>2026-08-02 14:22:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BDJ</td>
+    <td>79000</td>
+    <td>PK-KES</td>
+    <td>189</td>
+    <td>174</td>
+    <td>153</td>
+    <td>17</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3438</td>
+    <td>1914</td>
+    <td>0</td>
+    <td>E05</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>219</td>
+    <td>Batik Air</td>
+    <td>ID319</td>
+    <td>ID320</td>
+    <td>2026-08-03 21:27:00</td>
+    <td></td>
+    <td>2026-08-03 21:33:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>MDC</td>
+    <td>CGK</td>
+    <td>75500</td>
+    <td>PK-LHZ</td>
+    <td>156</td>
+    <td>109</td>
+    <td>96</td>
+    <td>11</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>886</td>
+    <td>1635</td>
+    <td>0</td>
+    <td>F02</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>220</td>
+    <td>Super Air Jet</td>
+    <td>IU320</td>
+    <td>IU321</td>
+    <td></td>
+    <td>2026-08-04 04:40:00</td>
+    <td></td>
+    <td>2026-08-04 04:31:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>LOP</td>
+    <td>73500</td>
+    <td>PK-MKG</td>
+    <td>180</td>
+    <td>148</td>
+    <td>130</td>
+    <td>15</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1267</td>
+    <td>1924</td>
+    <td>100</td>
+    <td>R01</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>221</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ321</td>
+    <td>SJ322</td>
+    <td>2026-08-05 11:53:00</td>
+    <td></td>
+    <td>2026-08-05 12:07:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>PLM</td>
+    <td>CGK</td>
+    <td>68000</td>
+    <td>PK-NNN</td>
+    <td>148</td>
+    <td>132</td>
+    <td>116</td>
+    <td>13</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1137</td>
+    <td>1584</td>
+    <td>0</td>
+    <td>R04</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>222</td>
+    <td>Pelita Air</td>
+    <td>IP322</td>
+    <td>IP323</td>
+    <td></td>
+    <td>2026-08-06 18:06:00</td>
+    <td></td>
+    <td>2026-08-06 18:14:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BTJ</td>
+    <td>73500</td>
+    <td>PK-OQU</td>
+    <td>180</td>
+    <td>151</td>
+    <td>133</td>
+    <td>15</td>
+    <td>3</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4348</td>
+    <td>2265</td>
+    <td>0</td>
+    <td>T3-01</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>223</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ323</td>
+    <td>QZ324</td>
+    <td>2026-08-07 01:19:00</td>
+    <td></td>
+    <td>2026-08-07 01:20:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>PKU</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-PTB</td>
+    <td>180</td>
+    <td>144</td>
+    <td>127</td>
+    <td>14</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4332</td>
+    <td>1728</td>
+    <td>0</td>
+    <td>T3-12</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>224</td>
+    <td>Singapore Airlines</td>
+    <td>SQ324</td>
+    <td>SQ325</td>
+    <td></td>
+    <td>2026-08-08 08:32:00</td>
+    <td></td>
+    <td>2026-08-08 08:48:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BKK</td>
+    <td>242000</td>
+    <td>9V-SHQ</td>
+    <td>295</td>
+    <td>218</td>
+    <td>192</td>
+    <td>22</td>
+    <td>2</td>
+    <td>0</td>
+    <td>8</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>2473</td>
+    <td>2398</td>
+    <td>0</td>
+    <td>T3-24</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>225</td>
+    <td>Garuda Indonesia</td>
+    <td>GA325</td>
+    <td>GA326</td>
+    <td>2026-08-09 15:45:00</td>
+    <td></td>
+    <td>2026-08-09 15:59:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>HND</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-RZP</td>
+    <td>162</td>
+    <td>73</td>
+    <td>64</td>
+    <td>7</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4502</td>
+    <td>1168</td>
+    <td>319</td>
+    <td>B01</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>226</td>
+    <td>Citilink</td>
+    <td>QG326</td>
+    <td>QG327</td>
+    <td></td>
+    <td>2026-08-10 22:58:00</td>
+    <td></td>
+    <td>2026-08-10 22:58:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>DPS</td>
+    <td>73500</td>
+    <td>PK-SCW</td>
+    <td>180</td>
+    <td>144</td>
+    <td>127</td>
+    <td>14</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3122</td>
+    <td>2592</td>
+    <td>0</td>
+    <td>B02</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>227</td>
+    <td>Lion Air</td>
+    <td>JT327</td>
+    <td>JT328</td>
+    <td>2026-08-11 05:11:00</td>
+    <td></td>
+    <td>2026-08-11 05:19:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>KNO</td>
+    <td>CGK</td>
+    <td>79000</td>
+    <td>PK-TFD</td>
+    <td>189</td>
+    <td>146</td>
+    <td>128</td>
+    <td>15</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1423</td>
+    <td>1606</td>
+    <td>0</td>
+    <td>B04</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>228</td>
+    <td>Batik Air</td>
+    <td>ID328</td>
+    <td>ID329</td>
+    <td></td>
+    <td>2026-08-12 12:24:00</td>
+    <td></td>
+    <td>2026-08-12 12:31:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>UPG</td>
+    <td>75500</td>
+    <td>PK-UIK</td>
+    <td>156</td>
+    <td>111</td>
+    <td>98</td>
+    <td>11</td>
+    <td>3</td>
+    <td>10</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>2</td>
+    <td>872</td>
+    <td>1887</td>
+    <td>0</td>
+    <td>B12</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>229</td>
+    <td>Super Air Jet</td>
+    <td>IU329</td>
+    <td>IU330</td>
+    <td>2026-08-13 19:37:00</td>
+    <td></td>
+    <td>2026-08-13 19:30:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BDO</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-VLR</td>
+    <td>180</td>
+    <td>131</td>
+    <td>115</td>
+    <td>13</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3552</td>
+    <td>2096</td>
+    <td>0</td>
+    <td>B14</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>230</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ330</td>
+    <td>SJ331</td>
+    <td></td>
+    <td>2026-08-14 02:50:00</td>
+    <td></td>
+    <td>2026-08-14 04:03:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>JOG</td>
+    <td>68000</td>
+    <td>PK-WOY</td>
+    <td>148</td>
+    <td>142</td>
+    <td>125</td>
+    <td>14</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4296</td>
+    <td>2556</td>
+    <td>137</td>
+    <td>C03</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>231</td>
+    <td>Pelita Air</td>
+    <td>IP331</td>
+    <td>IP332</td>
+    <td>2026-08-15 09:03:00</td>
+    <td></td>
+    <td>2026-08-15 09:23:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>SRG</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-XRF</td>
+    <td>180</td>
+    <td>158</td>
+    <td>139</td>
+    <td>16</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>376</td>
+    <td>2844</td>
+    <td>0</td>
+    <td>D21</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>232</td>
+    <td>AirAsia Indonesia</td>
+    <td>QZ332</td>
+    <td>QZ333</td>
+    <td></td>
+    <td>2026-08-16 16:16:00</td>
+    <td></td>
+    <td>2026-08-16 16:06:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>BPN</td>
+    <td>73500</td>
+    <td>PK-YUM</td>
+    <td>180</td>
+    <td>164</td>
+    <td>144</td>
+    <td>16</td>
+    <td>3</td>
+    <td>0</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1490</td>
+    <td>2624</td>
+    <td>0</td>
+    <td>D24</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>233</td>
+    <td>Singapore Airlines</td>
+    <td>SQ333</td>
+    <td>SQ334</td>
+    <td>2026-08-17 23:29:00</td>
+    <td></td>
+    <td>2026-08-17 23:38:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>DXB</td>
+    <td>CGK</td>
+    <td>242000</td>
+    <td>9V-SHZ</td>
+    <td>295</td>
+    <td>198</td>
+    <td>174</td>
+    <td>20</td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>10</td>
+    <td>0</td>
+    <td>453</td>
+    <td>2376</td>
+    <td>0</td>
+    <td>E05</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>234</td>
+    <td>Garuda Indonesia</td>
+    <td>GA334</td>
+    <td>GA335</td>
+    <td></td>
+    <td>2026-08-18 06:42:00</td>
+    <td></td>
+    <td>2026-08-18 06:54:00</td>
+    <td>D UNSCHED</td>
+    <td>CGK</td>
+    <td>MDC</td>
+    <td>79000</td>
+    <td>PK-AAA</td>
+    <td>162</td>
+    <td>126</td>
+    <td>111</td>
+    <td>13</td>
+    <td>3</td>
+    <td>12</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>2774</td>
+    <td>2268</td>
+    <td>0</td>
+    <td>F02</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>235</td>
+    <td>Citilink</td>
+    <td>QG335</td>
+    <td>QG336</td>
+    <td>2026-08-19 13:55:00</td>
+    <td></td>
+    <td>2026-08-19 14:07:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>LOP</td>
+    <td>CGK</td>
+    <td>73500</td>
+    <td>PK-BDH</td>
+    <td>180</td>
+    <td>131</td>
+    <td>115</td>
+    <td>13</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>3930</td>
+    <td>1572</td>
+    <td>533</td>
+    <td>R01</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>236</td>
+    <td>Lion Air</td>
+    <td>JT336</td>
+    <td>JT337</td>
+    <td></td>
+    <td>2026-08-20 20:08:00</td>
+    <td></td>
+    <td>2026-08-20 20:03:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>PLM</td>
+    <td>79000</td>
+    <td>PK-CGO</td>
+    <td>189</td>
+    <td>138</td>
+    <td>121</td>
+    <td>14</td>
+    <td>5</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1308</td>
+    <td>1656</td>
+    <td>0</td>
+    <td>R04</td>
+    <td>07L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>237</td>
+    <td>Batik Air</td>
+    <td>ID337</td>
+    <td>ID338</td>
+    <td>2026-08-21 03:21:00</td>
+    <td></td>
+    <td>2026-08-21 03:26:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>BTJ</td>
+    <td>CGK</td>
+    <td>75500</td>
+    <td>PK-DJV</td>
+    <td>156</td>
+    <td>106</td>
+    <td>93</td>
+    <td>11</td>
+    <td>3</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1543</td>
+    <td>1590</td>
+    <td>0</td>
+    <td>T3-01</td>
+    <td>25R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>238</td>
+    <td>Super Air Jet</td>
+    <td>IU338</td>
+    <td>IU339</td>
+    <td></td>
+    <td>2026-08-22 10:34:00</td>
+    <td></td>
+    <td>2026-08-22 11:09:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>PKU</td>
+    <td>73500</td>
+    <td>PK-EMC</td>
+    <td>180</td>
+    <td>117</td>
+    <td>103</td>
+    <td>12</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>4298</td>
+    <td>1521</td>
+    <td>0</td>
+    <td>T3-12</td>
+    <td>07R</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>239</td>
+    <td>Sriwijaya Air</td>
+    <td>SJ339</td>
+    <td>SJ340</td>
+    <td>2026-08-23 17:47:00</td>
+    <td></td>
+    <td>2026-08-23 17:59:00</td>
+    <td></td>
+    <td>A SCHED</td>
+    <td>PDG</td>
+    <td>CGK</td>
+    <td>68000</td>
+    <td>PK-FPJ</td>
+    <td>148</td>
+    <td>108</td>
+    <td>95</td>
+    <td>11</td>
+    <td>6</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>0</td>
+    <td>1417</td>
+    <td>1512</td>
+    <td>0</td>
+    <td>T3-24</td>
+    <td>25L</td>
+  </tr>
+  <tr bgcolor="#FFFFFF">
+    <td>240</td>
+    <td>Pelita Air</td>
+    <td>IP340A</td>
+    <td>IP341</td>
+    <td></td>
+    <td>2026-08-24 00:00:00</td>
+    <td></td>
+    <td>2026-08-24 00:12:00</td>
+    <td>D SCHED</td>
+    <td>CGK</td>
+    <td>SIN</td>
+    <td>73500</td>
+    <td>PK-GSQ</td>
+    <td>180</td>
+    <td>176</td>
+    <td>155</td>
+    <td>18</td>
+    <td>2</td>
+    <td>5</td>
+    <td>10</td>
+    <td>0</td>
+    <td>0</td>
+    <td>6</td>
+    <td>2</td>
+    <td>579</td>
+    <td>1936</td>
+    <td>339</td>
+    <td>B01</td>
+    <td>07L</td>
+  </tr>
+
+</table>
