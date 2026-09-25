@@ -13,8 +13,12 @@ class FlightDailyReportValidator
 
     /**
      * Validate an FDR source file strictly.
+     *
+     * @param string $filePath Absolute path to source or temporary file
+     * @param string|null $originalFilename Client original filename (if uploaded via HTTP)
+     * @return array
      */
-    public function validate(string $filePath): array
+    public function validate(string $filePath, ?string $originalFilename = null): array
     {
         if (!file_exists($filePath)) {
             return [
@@ -25,14 +29,40 @@ class FlightDailyReportValidator
             ];
         }
 
-        $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+        // Determine extension from original filename if provided, or from filePath
+        $nameToInspect = $originalFilename ?: basename($filePath);
+        $extension = '';
+        if (preg_match('/\.([a-zA-Z0-9]+)$/', trim($nameToInspect), $m)) {
+            $extension = strtolower($m[1]);
+        }
+
+        // If extension is missing or temporary (e.g. .tmp from php upload), detect by magic bytes
+        if (empty($extension) || $extension === 'tmp') {
+            $handle = @fopen($filePath, 'rb');
+            if ($handle) {
+                $header = fread($handle, 2048);
+                fclose($handle);
+
+                if (strncmp($header, "\xD0\xCF\x11\xE0", 4) === 0) {
+                    $extension = 'xls';
+                } elseif (strncmp($header, "PK\x03\x04", 4) === 0) {
+                    $extension = 'xlsx';
+                } elseif (stripos($header, '<html') !== false || stripos($header, '<table') !== false || stripos($header, '<center') !== false || stripos($header, '<title') !== false || stripos($header, 'oasys') !== false) {
+                    $extension = 'xls';
+                } elseif (strpos($header, ',') !== false || strpos($header, ';') !== false) {
+                    $extension = 'csv';
+                }
+            }
+        }
+
         $validExtensions = ['xls', 'xlsx', 'csv', 'html'];
         if (!in_array($extension, $validExtensions)) {
+            $displayExt = (!empty($extension) && $extension !== 'tmp') ? ".{$extension}" : '(unknown)';
             return [
                 'valid'          => false,
                 'category'       => 'INVALID_EXTENSION',
                 'category_title' => 'UNSUPPORTED FILE TYPE',
-                'errors'         => ["Unsupported file extension .{$extension}. Please upload an OASYS FDR (.xls, .xlsx, or .csv) file."],
+                'errors'         => ["Unsupported file extension {$displayExt}. Please upload an OASYS FDR (.xls, .xlsx, or .csv) file."],
             ];
         }
 

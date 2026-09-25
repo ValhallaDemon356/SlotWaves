@@ -229,7 +229,7 @@
                                 </div>
                             </template>
 
-                            <input id="source_file" name="file" type="file" :accept="selectedReportConfig ? selectedReportConfig.extensions.map(e => '.' + e).join(',') : '*'" class="hidden" @change="handleFileSelect($event)"/>
+                            <input id="source_file" name="file" type="file" :accept="selectedReport === 'fdr' ? '.xls,.xlsx,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/octet-stream,text/csv' : (selectedReportConfig ? selectedReportConfig.extensions.map(e => '.' + e).join(',') : '*')" class="hidden" @change="handleFileSelect($event)"/>
                         </label>
                     </div>
 
@@ -1057,26 +1057,28 @@ function unifiedReportPortal() {
 
         formatErrors(data) {
             if (!data) return ['An unknown error occurred during validation.'];
-            if (typeof data === 'string') return [data];
+            const cleanErr = (str) => String(str).replace(/extension\s*\.\./gi, 'extension (unknown)');
+
+            if (typeof data === 'string') return [cleanErr(data)];
             
             const errors = [];
             if (data.errors) {
                 if (Array.isArray(data.errors)) {
                     data.errors.forEach(e => {
                         if (typeof e === 'object' && e !== null) {
-                            errors.push(e.message || JSON.stringify(e));
+                            errors.push(cleanErr(e.message || JSON.stringify(e)));
                         } else {
-                            errors.push(String(e));
+                            errors.push(cleanErr(e));
                         }
                     });
                 } else if (typeof data.errors === 'object') {
                     Object.entries(data.errors).forEach(([field, val]) => {
                         if (Array.isArray(val)) {
-                            val.forEach(item => errors.push(String(item)));
+                            val.forEach(item => errors.push(cleanErr(item)));
                         } else if (typeof val === 'object' && val !== null) {
-                            errors.push(val.message || JSON.stringify(val));
+                            errors.push(cleanErr(val.message || JSON.stringify(val)));
                         } else {
-                            errors.push(String(val));
+                            errors.push(cleanErr(val));
                         }
                     });
                 }
@@ -1084,10 +1086,10 @@ function unifiedReportPortal() {
             if (errors.length > 0) return errors;
 
             if (data.error && typeof data.error === 'string') {
-                return [data.error];
+                return [cleanErr(data.error)];
             }
             if (data.message && typeof data.message === 'string') {
-                return [data.message];
+                return [cleanErr(data.message)];
             }
             return ['Validation failed. Please verify the template structure.'];
         },
@@ -1109,8 +1111,16 @@ function unifiedReportPortal() {
         },
 
         async stageFileForValidation(file) {
+            if (!file) return;
+
+            // Extract extension directly using regex from file.name.trim()
+            const fileName = (file.name || '').trim();
+            const extMatch = fileName.match(/\.([a-zA-Z0-9]+)$/);
+            const fileExt = extMatch ? extMatch[1].toLowerCase() : '';
+            const fileMime = (file.type || '').toLowerCase();
+
             this.selectedFile = file;
-            this.selectedFileName = file.name;
+            this.selectedFileName = fileName;
             this.selectedFileSize = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
             this.isValidating = true;
             this.validationStatus = 'validating';
@@ -1128,6 +1138,41 @@ function unifiedReportPortal() {
                 return;
             }
 
+            // FDR Upload Zone validation
+            if (this.selectedReport === 'fdr') {
+                const acceptedExtensions = ['xls', 'xlsx', 'csv'];
+                if (!acceptedExtensions.includes(fileExt)) {
+                    this.isValidating = false;
+                    this.validationStatus = 'invalid';
+                    this.errorCategoryTitle = 'UNSUPPORTED FILE TYPE';
+                    this.errorBadge = 'REJECTED';
+                    const displayExt = fileExt ? `.${fileExt}` : '(unknown)';
+                    this.validationErrors = [`Unsupported file extension ${displayExt}. Please upload an OASYS FDR (.xls, .xlsx, or .csv) file.`];
+                    return;
+                }
+
+                // If file extension is xls, xlsx, or csv, bypass strict MIME validation (allow "", application/octet-stream, application/x-msexcel, application/vnd.ms-excel)
+                const allowedMimes = [
+                    '',
+                    'application/octet-stream',
+                    'application/x-msexcel',
+                    'application/vnd.ms-excel',
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'text/csv',
+                    'text/html',
+                    'text/plain',
+                    'application/csv'
+                ];
+                if (fileMime && !allowedMimes.includes(fileMime) && !acceptedExtensions.includes(fileExt)) {
+                    this.isValidating = false;
+                    this.validationStatus = 'invalid';
+                    this.errorCategoryTitle = 'UNSUPPORTED FILE TYPE';
+                    this.errorBadge = 'REJECTED';
+                    this.validationErrors = [`Unsupported MIME type ${fileMime}. Please upload an OASYS FDR (.xls, .xlsx, or .csv) file.`];
+                    return;
+                }
+            }
+
             const csrfToken = document.querySelector('input[name="_token"]')?.value ||
                               document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
@@ -1135,8 +1180,8 @@ function unifiedReportPortal() {
             formData.append('report_type', this.selectedReport);
             formData.append('_token', csrfToken);
 
-            // Probe mode for large files: slice first 256 KB for instant structural inspection
-            const isLargeFile = file.size > 2 * 1024 * 1024 && this.selectedReport !== 'slot_schedule';
+            // Probe mode for large files: slice first 256 KB for instant structural inspection (exclude binary workbooks like FDR)
+            const isLargeFile = file.size > 2 * 1024 * 1024 && this.selectedReport !== 'slot_schedule' && this.selectedReport !== 'fdr';
             if (isLargeFile) {
                 const probeSlice = file.slice(0, 262144);
                 formData.append('file', probeSlice, file.name);
@@ -1272,6 +1317,9 @@ function unifiedReportPortal() {
                 formData.append('report_type', this.selectedReport);
                 if (this.selectedReport === 'slot_schedule') {
                     formData.append('schedule_pdf', this.selectedFile);
+                } else if (this.selectedReport === 'fdr') {
+                    formData.append('fdr_file', this.selectedFile);
+                    formData.append('file', this.selectedFile);
                 } else {
                     formData.append('dau_file', this.selectedFile);
                     formData.append('file', this.selectedFile);

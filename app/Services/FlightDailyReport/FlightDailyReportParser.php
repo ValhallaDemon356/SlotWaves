@@ -94,10 +94,16 @@ class FlightDailyReportParser
      */
     public function isHtmlTable(string $content): bool
     {
+        // OLE2 Binary (.xls) and OpenXML (.xlsx) containers are never HTML tables
+        if (strncmp($content, "\xD0\xCF\x11\xE0", 4) === 0 || strncmp($content, "PK\x03\x04", 4) === 0) {
+            return false;
+        }
+
         $head = substr($content, 0, 2048);
         return (stripos($head, '<html') !== false
             || stripos($head, '<table') !== false
             || stripos($head, '<center') !== false
+            || stripos($head, '<title') !== false
             || stripos($head, '<td') !== false
             || stripos($head, 'oasys') !== false);
     }
@@ -220,7 +226,9 @@ class FlightDailyReportParser
     protected function parseSpreadsheet(string $filePath): array
     {
         try {
-            $spreadsheet = IOFactory::load($filePath);
+            $reader = IOFactory::createReaderForFile($filePath);
+            $reader->setReadDataOnly(true);
+            $spreadsheet = $reader->load($filePath);
             $sheet = $spreadsheet->getActiveSheet();
             $data = $sheet->toArray(null, true, true, false);
 

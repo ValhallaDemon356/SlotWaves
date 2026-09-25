@@ -162,11 +162,21 @@ class FlightDailyReportController extends Controller
         }
 
         $origName = $file->getClientOriginalName();
+        $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+        if (!in_array($ext, ['xls', 'xlsx', 'csv'])) {
+            $displayExt = $ext ? ".{$ext}" : '(unknown)';
+            $err = "Unsupported file extension {$displayExt}. Please upload an OASYS FDR (.xls, .xlsx, or .csv) file.";
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'error' => $err], 422);
+            }
+            return back()->withErrors(['fdr_file' => $err])->withInput();
+        }
+
         $storedPath = $file->store('uploads/fdr', 'local');
         $fullPath = Storage::disk('local')->path($storedPath);
 
         // Validate strictly
-        $validation = $this->validator->validate($fullPath);
+        $validation = $this->validator->validate($fullPath, $origName);
         if (!$validation['valid']) {
             Storage::disk('local')->delete($storedPath);
             return back()->withErrors(['fdr_file' => implode('; ', $validation['errors'])])->withInput();

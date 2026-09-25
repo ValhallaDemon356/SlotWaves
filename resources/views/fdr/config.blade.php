@@ -362,7 +362,7 @@
             <form method="POST" action="{{ route('fdr.upload') }}" enctype="multipart/form-data" class="space-y-4">
                 @csrf
                 <div class="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-6 text-center hover:border-aviation-500 transition cursor-pointer">
-                    <input type="file" name="fdr_file" accept=".xls,.xlsx,.csv" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-aviation-50 file:text-aviation-700 hover:file:bg-aviation-100 cursor-pointer" required>
+                    <input type="file" name="fdr_file" accept=".xls,.xlsx,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/octet-stream,text/csv" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-aviation-50 file:text-aviation-700 hover:file:bg-aviation-100 cursor-pointer" required>
                     <p class="text-[11px] text-slate-400 mt-2">Accepted formats: OASYS HTML (.xls), Excel (.xlsx), CSV</p>
                 </div>
 

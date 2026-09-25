@@ -128,7 +128,7 @@ class TemplateValidator
         // ── Check 2.5: Flight Daily Report (FDR) Module Validation ────────────
         if (strcasecmp($selectedReportType, 'fdr') === 0) {
             $fdrValidator = new \App\Services\FlightDailyReport\FlightDailyReportValidator();
-            $fdrResult = $fdrValidator->validate($filePath);
+            $fdrResult = $fdrValidator->validate($filePath, $originalFilename);
 
             if (!$fdrResult['valid']) {
                 return [

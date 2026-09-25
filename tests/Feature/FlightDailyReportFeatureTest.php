@@ -146,6 +146,38 @@ class FlightDailyReportFeatureTest extends TestCase
         ]);
     }
 
+    public function test_upload_validate_template_for_btj_cgk_bdo_fdr(): void
+    {
+        $files = [
+            'BTJ FDR.xls' => storage_path('app/templates/BTJ FDR.xls'),
+            'CGK FDR.xls' => storage_path('app/templates/CGK FDR.xls'),
+            'BDO FDR.xls' => storage_path('app/templates/BDO FDR.xls'),
+        ];
+
+        foreach ($files as $name => $path) {
+            if (!file_exists($path)) continue;
+
+            // Simulate real browser upload with temp file ending in .tmp
+            $tempPath = tempnam(sys_get_temp_dir(), 'php_up_') . '.tmp';
+            copy($path, $tempPath);
+            $file = new UploadedFile($tempPath, $name, 'application/octet-stream', null, true);
+
+            $response = $this->postJson(route('upload.validate-template'), [
+                'report_type' => 'fdr',
+                'file'        => $file,
+            ]);
+
+            @unlink($tempPath);
+
+            $response->assertStatus(200);
+            $response->assertJson([
+                'valid'            => true,
+                'detectedTemplate' => 'fdr',
+            ]);
+            $this->assertGreaterThan(0, $response->json('records_count'));
+        }
+    }
+
     public function test_upload_store_for_fdr_redirects_to_config(): void
     {
         $templatePath = storage_path('app/templates/OASYS-FDR-TEMPLATE.xls');
@@ -165,6 +197,32 @@ class FlightDailyReportFeatureTest extends TestCase
         ]);
         $this->assertEquals('fdr', $response->json('report_type'));
         $this->assertStringContainsString('/fdr/config/', $response->json('redirect_url'));
+    }
+
+    public function test_upload_store_for_btj_fdr_workbooks(): void
+    {
+        $path = storage_path('app/templates/BTJ FDR.xls');
+        if (file_exists($path)) {
+            $tempPath = tempnam(sys_get_temp_dir(), 'php_up_') . '.tmp';
+            copy($path, $tempPath);
+            $file = new UploadedFile($tempPath, 'BTJ FDR.xls', 'application/octet-stream', null, true);
+
+            $response = $this->postJson(route('upload.store'), [
+                'report_type' => 'fdr',
+                'file'        => $file,
+            ]);
+
+            @unlink($tempPath);
+
+            $response->assertStatus(200);
+            $response->assertJsonStructure([
+                'success',
+                'upload_id',
+                'report_type',
+                'redirect_url',
+            ]);
+            $this->assertEquals('fdr', $response->json('report_type'));
+        }
     }
 
     public function test_download_template_for_fdr(): void
