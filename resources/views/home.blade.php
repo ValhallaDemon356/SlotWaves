@@ -82,36 +82,6 @@
                     </p>
                 </div>
 
-                {{-- ══ DEDICATED INDEPENDENT FLIGHT DAILY REPORT (FDR) PIPELINE ══ --}}
-                <div class="mb-6 p-4 sm:p-5 rounded-2xl border-2 border-aviation-500/50 bg-gradient-to-r from-aviation-50/90 via-white to-blue-50/70 dark:from-navy-900 dark:via-navy-900/90 dark:to-aviation-950/40 shadow-sm">
-                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <div class="flex items-center gap-3.5">
-                            <div class="w-12 h-12 rounded-xl bg-aviation-600 text-white flex items-center justify-center font-black text-sm shadow-md shadow-aviation-600/20 shrink-0">
-                                FDR
-                            </div>
-                            <div>
-                                <div class="flex items-center gap-2">
-                                    <h3 class="text-sm sm:text-base font-black text-slate-900 dark:text-white">
-                                        Flight Daily Report (FDR)
-                                    </h3>
-                                    <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-aviation-600 text-white uppercase">
-                                        OASYS System
-                                    </span>
-                                </div>
-                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-xl">
-                                    Operational Flight Daily Report analytics with 24-hour mentor charts, load factor analysis, and data reconciliation engine.
-                                </p>
-                            </div>
-                        </div>
-
-                        <a href="{{ route('fdr.config') }}"
-                           class="w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-xs text-white bg-aviation-600 hover:bg-aviation-700 shadow-md shadow-aviation-600/25 transition flex items-center justify-center gap-2 cursor-pointer shrink-0">
-                            <span>Open FDR Config</span>
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
-                        </a>
-                    </div>
-                </div>
-
                 {{-- Report Types Organized by Category --}}
                 <div class="space-y-5">
                     @foreach ($reportTypesGrouped as $categoryName => $types)
@@ -364,7 +334,17 @@
                                 <div :class="progressPercent >= 98 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''">✓ Export</div>
                             </div>
                         </template>
-                        <template x-if="selectedReport !== 'slot_schedule'">
+                        <template x-if="selectedReport === 'fdr'">
+                            <div class="grid grid-cols-6 gap-1 pt-0.5 text-[9.5px] font-mono text-slate-500 dark:text-slate-400 text-center">
+                                <div :class="progressPercent >= 15 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''">✓ Read</div>
+                                <div :class="progressPercent >= 35 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''">✓ Extract</div>
+                                <div :class="progressPercent >= 55 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''">✓ Validate</div>
+                                <div :class="progressPercent >= 75 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''">✓ Movements</div>
+                                <div :class="progressPercent >= 90 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''">✓ Metadata</div>
+                                <div :class="progressPercent >= 98 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''">✓ Config</div>
+                            </div>
+                        </template>
+                        <template x-if="selectedReport !== 'slot_schedule' && selectedReport !== 'fdr'">
                             <div class="grid grid-cols-6 gap-1 pt-0.5 text-[9.5px] font-mono text-slate-500 dark:text-slate-400 text-center">
                                 <div :class="progressPercent >= 15 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''">✓ Read</div>
                                 <div :class="progressPercent >= 35 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''">✓ Extract</div>
@@ -812,7 +792,7 @@ function unifiedReportPortal() {
     return {
         theme: localStorage.getItem('slotwaves-theme') || 'light',
         currentStep: 'select', // 'select' | 'dau_mode' | 'upload' | 'dau_compare_upload'
-        selectedReport: 'slot_schedule',
+        selectedReport: '{{ request()->query("report", "slot_schedule") }}',
         reportRegistry: @json($allReportTypes),
 
         // DAU-02 Generation Mode: 'single' | 'compare'
@@ -1368,7 +1348,7 @@ function unifiedReportPortal() {
                 setTimeout(() => {
                     window.location.href = procData.redirect_url || (this.selectedReport === 'slot_schedule'
                         ? `/schedule/${uploadId}/dashboard`
-                        : `/dau/${uploadId}/dashboard`);
+                        : (this.selectedReport === 'fdr' ? `/fdr/config/${uploadId}` : `/dau/${uploadId}/dashboard`));
                 }, 300);
 
             } catch (err) {

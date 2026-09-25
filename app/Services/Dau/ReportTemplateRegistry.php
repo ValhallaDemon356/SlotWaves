@@ -280,6 +280,22 @@ class ReportTemplateRegistry
             'description'        => 'Daily time-series matrix organized by Arrival (Dom/Int/Tot) and Departure (Dom/Int/Tot) for aircraft and passengers.',
             'detected_columns'   => ['Tanggal', 'Pesawat Arrival (Dom/Int/Tot)', 'Pesawat Departure (Dom/Int/Tot)', 'Total Pesawat', 'Penumpang Arrival & Departure', 'Total Penumpang'],
         ],
+        'fdr' => [
+            'id'                 => 'fdr',
+            'code'               => 'FDR',
+            'number'             => 'FDR',
+            'name'               => 'Flight Daily Report (FDR)',
+            'title'              => 'Flight Daily Report (FDR)',
+            'category'           => 'Operational Reporting System (OASYS)',
+            'extensions'         => ['xls', 'xlsx'],
+            'mime_types'         => ['application/vnd.ms-excel', 'text/html', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+            'template_filename'  => 'OASYS-FDR-TEMPLATE.xls',
+            'template_label'     => 'OASYS Flight Daily Report Excel',
+            'parser_class'       => \App\Services\FlightDailyReport\FlightDailyReportParser::class,
+            'is_pdf'             => false,
+            'description'        => 'Operational flight daily movement, load factor, and traffic analytics.',
+            'detected_columns'   => ['AIR LINE', 'FLIGHT NO', 'PAIRED NO', 'SIBT', 'SOBT', 'AIBT', 'AOBT', 'LEG', 'CITY 1', 'CITY 2', 'CAP.', 'LOAD'],
+        ],
     ];
 
     /**
@@ -346,6 +362,10 @@ class ReportTemplateRegistry
         // 2. Check resources/templates/dau
         $p2 = resource_path('templates/dau/' . $filename);
         if (file_exists($p2)) return $p2;
+
+        // 3. Check resources/templates/fdr
+        $p3 = resource_path('templates/fdr/' . $filename);
+        if (file_exists($p3)) return $p3;
 
         return null;
     }

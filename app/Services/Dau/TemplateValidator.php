@@ -125,6 +125,39 @@ class TemplateValidator
             ];
         }
 
+        // ── Check 2.5: Flight Daily Report (FDR) Module Validation ────────────
+        if (strcasecmp($selectedReportType, 'fdr') === 0) {
+            $fdrValidator = new \App\Services\FlightDailyReport\FlightDailyReportValidator();
+            $fdrResult = $fdrValidator->validate($filePath);
+
+            if (!$fdrResult['valid']) {
+                return [
+                    'valid'            => false,
+                    'category'         => $fdrResult['category'] ?? 'INVALID_TEMPLATE',
+                    'category_title'   => $fdrResult['category_title'] ?? 'INVALID FDR TEMPLATE',
+                    'detectedTemplate' => 'Invalid FDR File',
+                    'expectedTemplate' => $conf['template_label'],
+                    'errors'           => $fdrResult['errors'] ?? ['The uploaded file does not match the Flight Daily Report format.'],
+                    'error'            => implode('; ', $fdrResult['errors'] ?? ['The uploaded file does not match the Flight Daily Report format.']),
+                    'warnings'         => [],
+                ];
+            }
+
+            return [
+                'valid'            => true,
+                'category'         => null,
+                'category_title'   => null,
+                'detectedTemplate' => 'fdr',
+                'expectedTemplate' => $conf['template_filename'],
+                'records_count'    => $fdrResult['records_count'] ?? 0,
+                'detected_columns' => $conf['detected_columns'],
+                'summary'          => $fdrResult['summary'] ?? [],
+                'meta'             => $fdrResult['meta'] ?? [],
+                'errors'           => [],
+                'warnings'         => [],
+            ];
+        }
+
         // ── Check 3: Content Fingerprinting across DAU types ───────────────────
         $detectedDau = $this->detectDauTemplateType($filePath);
 
@@ -307,6 +340,12 @@ class TemplateValidator
         // Read header section (first 256 KB) — all OASYS template titles and columns are within the first 64 KB
         $content = file_get_contents($filePath, false, null, 0, 262144);
         $upper = strtoupper($content);
+
+        // 0. Flight Daily Report (FDR) OASYS Template
+        if (str_contains($upper, 'FLIGHT DAILY REPORT') ||
+            (str_contains($upper, 'AIR LINE') && str_contains($upper, 'PAIRED NO') && (str_contains($upper, 'SIBT') || str_contains($upper, 'SOBT')))) {
+            return 'fdr';
+        }
 
         // 1. Exact OASYS report titles in <title> or <CENTER><B>
         if (preg_match('/(?:OASYS\s+REPORT-01|DAU-01\)|DAU-1\b|DATA\s+LALU\s+LINTAS\s+ANGKUTAN\s+UDARA)/i', $upper) &&

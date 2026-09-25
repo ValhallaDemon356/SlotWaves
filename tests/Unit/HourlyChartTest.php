@@ -102,12 +102,12 @@ class HourlyChartTest extends TestCase
         $this->assertArrayHasKey('tooltip', $h13);
         $tooltip = $h13['tooltip'];
 
-        // Format: 13:00–13:59 | Plan: XX A/C | Irregular: XX A/C | Runway Capacity: XX A/C | Difference: XX A/C | Status: AVAILABLE / FULL / OVER
+        // Format: HH:00–HH:59 | Plan: XX | Irregular: XX | Capacity: XX | Delta: XX | Status: AVAILABLE / FULL / OVER
         $this->assertStringContainsString('13:00–13:59', $tooltip);
         $this->assertStringContainsString('Plan:', $tooltip);
         $this->assertStringContainsString('Irregular:', $tooltip);
-        $this->assertStringContainsString('Runway Capacity:', $tooltip);
-        $this->assertStringContainsString('Difference:', $tooltip);
+        $this->assertStringContainsString('Capacity:', $tooltip);
+        $this->assertStringContainsString('Delta:', $tooltip);
         $this->assertMatchesRegularExpression('/Status:\s*(AVAILABLE|FULL|OVER)/', $tooltip);
     }
 

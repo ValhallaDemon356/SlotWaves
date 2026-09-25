@@ -95,8 +95,9 @@ class HourlyChartService
             }
 
             $row['difference'] = $diff;
+            $row['delta'] = $diff;
             $row['status'] = $status;
-            $row['tooltip'] = "{$row['time_range']} | Plan: {$plan} A/C | Irregular: {$irreg} A/C | Runway Capacity: {$cap} A/C | Difference: {$diff} A/C | Status: {$status}";
+            $row['tooltip'] = "{$row['time_range']} | Plan: {$plan} | Irregular: {$irreg} | Capacity: {$cap} | Delta: {$diff} | Status: {$status}";
         }
 
         // Construct 3 distinct chart payloads

@@ -342,8 +342,7 @@
                 <div class="flex items-center gap-3 w-full sm:w-auto">
                     <button type="submit" :disabled="!hasValidUpload"
                             class="w-full sm:w-auto py-3 px-8 rounded-xl font-bold text-xs sm:text-sm text-white bg-aviation-600 hover:bg-aviation-700 shadow-md shadow-aviation-600/25 flex items-center justify-center gap-2 transition duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                        <span>Generate FDR Dashboard</span>
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+                        <span>Generate FDR Dashboard &rarr;</span>
                     </button>
                 </div>
             </div>

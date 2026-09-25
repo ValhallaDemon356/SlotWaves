@@ -120,6 +120,60 @@ class FlightDailyReportFeatureTest extends TestCase
         $response->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
     }
 
+    public function test_landing_page_renders_fdr_card_below_dau_categories(): void
+    {
+        $response = $this->get(route('home'));
+        $response->assertStatus(200);
+        $response->assertSee('Flight Daily Report (FDR)');
+        $response->assertSee('Operational flight daily movement, load factor, and traffic analytics.');
+        $response->assertDontSee('Open FDR Config'); // Hero banner was removed
+    }
+
+    public function test_upload_validate_template_for_fdr(): void
+    {
+        $templatePath = storage_path('app/templates/OASYS-FDR-TEMPLATE.xls');
+        $file = new UploadedFile($templatePath, 'OASYS-FDR-TEMPLATE.xls', 'application/vnd.ms-excel', null, true);
+
+        $response = $this->postJson(route('upload.validate-template'), [
+            'report_type' => 'fdr',
+            'file'        => $file,
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'valid'            => true,
+            'detectedTemplate' => 'fdr',
+        ]);
+    }
+
+    public function test_upload_store_for_fdr_redirects_to_config(): void
+    {
+        $templatePath = storage_path('app/templates/OASYS-FDR-TEMPLATE.xls');
+        $file = new UploadedFile($templatePath, 'OASYS-FDR-TEMPLATE.xls', 'application/vnd.ms-excel', null, true);
+
+        $response = $this->postJson(route('upload.store'), [
+            'report_type' => 'fdr',
+            'file'        => $file,
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonStructure([
+            'success',
+            'upload_id',
+            'report_type',
+            'redirect_url',
+        ]);
+        $this->assertEquals('fdr', $response->json('report_type'));
+        $this->assertStringContainsString('/fdr/config/', $response->json('redirect_url'));
+    }
+
+    public function test_download_template_for_fdr(): void
+    {
+        $response = $this->get(route('templates.download', 'fdr'));
+        $response->assertStatus(200);
+        $this->assertStringContainsString('OASYS-FDR-TEMPLATE.xls', $response->headers->get('content-disposition'));
+    }
+
     public function test_fdr_export_pdf_downloads_valid_pdf(): void
     {
         $response = $this->get(route('fdr.export.pdf', $this->upload->id));

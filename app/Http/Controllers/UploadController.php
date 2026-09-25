@@ -62,6 +62,9 @@ class UploadController extends Controller
                 if ($upload->report_type === 'slot_schedule' || empty($upload->report_type)) {
                     return redirect()->route('schedule.dashboard', $upload->id);
                 }
+                if ($upload->report_type === 'fdr') {
+                    return redirect()->route('fdr.config', $upload->id);
+                }
                 return redirect()->route('dau.dashboard', $upload->id);
             }
         }
@@ -365,6 +368,41 @@ class UploadController extends Controller
         $airportCode = $validationResult['meta']['airport_code'] ?? 'CGK';
         $airport = \App\Models\Airport::findByIata($airportCode) ?? \App\Models\Airport::findByIata('CGK');
 
+        if (strcasecmp($reportType, 'fdr') === 0) {
+            $fdrParser = new \App\Services\FlightDailyReport\FlightDailyReportParser();
+            $parsed = $fdrParser->parse($assembledAbsolutePath);
+
+            $upload = Upload::create([
+                'original_filename'  => $filename,
+                'stored_path'        => $assembledRelativePath,
+                'status'             => 'completed',
+                'report_type'        => 'fdr',
+                'total_rows'         => count($parsed['records']),
+                'valid_rows'         => count($parsed['records']),
+                'invalid_rows'       => 0,
+                'duplicate_rows'     => 0,
+                'parsing_confidence' => 1.0,
+                'validation_summary' => $validationResult,
+                'report_data'        => $parsed,
+                'airport_id'         => $airport?->id,
+            ]);
+
+            session(['fdr_active_upload_id' => $upload->id]);
+            session(['active_upload_id' => $upload->id]);
+
+            return response()->json([
+                'success'      => true,
+                'completed'    => true,
+                'upload_id'    => $upload->id,
+                'report_type'  => 'fdr',
+                'status'       => 'completed',
+                'total_rows'   => $upload->total_rows,
+                'valid_rows'   => $upload->valid_rows,
+                'redirect_url' => route('fdr.config', $upload->id),
+                'message'      => "Flight Daily Report uploaded and processed successfully ({$upload->valid_rows} records).",
+            ]);
+        }
+
         $upload = Upload::create([
             'original_filename' => $filename,
             'stored_path'       => $assembledRelativePath,
@@ -477,7 +515,84 @@ class UploadController extends Controller
         }
 
         // ═════════════════════════════════════════════════════════════════════
-        // PIPELINE 2: DAU TYPE-SPECIFIC REPORT INGESTION
+        // PIPELINE 2: FLIGHT DAILY REPORT (FDR) OPERATIONAL MODULE
+        // ═════════════════════════════════════════════════════════════════════
+        if (strcasecmp($reportType, 'fdr') === 0) {
+            $file = $request->file('fdr_file') ?? $request->file('file') ?? $request->file('dau_file') ?? $request->file('uploaded_file');
+            if (!$file) {
+                return response()->json([
+                    'success'        => false,
+                    'category'       => 'CORRUPTED_FILE',
+                    'category_title' => 'NO FILE RECEIVED',
+                    'error'          => 'No file provided for Flight Daily Report upload.',
+                ], 422);
+            }
+
+            $origName = $file->getClientOriginalName();
+            $storedPath = $file->store('uploads/fdr', 'local');
+            $fullPath = Storage::disk('local')->path($storedPath);
+
+            $fdrValidator = new \App\Services\FlightDailyReport\FlightDailyReportValidator();
+            $validation = $fdrValidator->validate($fullPath);
+
+            if (!$validation['valid']) {
+                Storage::disk('local')->delete($storedPath);
+                if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success'        => false,
+                        'category'       => $validation['category'] ?? 'INVALID_TEMPLATE',
+                        'category_title' => $validation['category_title'] ?? 'INVALID FDR TEMPLATE',
+                        'error'          => implode('; ', $validation['errors'] ?? []),
+                        'errors'         => $validation['errors'] ?? [],
+                    ], 422);
+                }
+                return redirect()->route('home')->withErrors([
+                    'fdr' => implode('; ', $validation['errors'] ?? [])
+                ]);
+            }
+
+            $fdrParser = new \App\Services\FlightDailyReport\FlightDailyReportParser();
+            $parsed = $fdrParser->parse($fullPath);
+
+            $airportCode = $parsed['meta']['airport'] ?? 'CGK';
+            $airport = \App\Models\Airport::findByIata($airportCode) ?? \App\Models\Airport::findByIata('CGK');
+
+            $upload = Upload::create([
+                'original_filename'  => $origName,
+                'stored_path'        => $storedPath,
+                'status'             => 'completed',
+                'report_type'        => 'fdr',
+                'total_rows'         => count($parsed['records']),
+                'valid_rows'         => count($parsed['records']),
+                'invalid_rows'       => 0,
+                'duplicate_rows'     => 0,
+                'parsing_confidence' => 1.0,
+                'validation_summary' => $validation,
+                'report_data'        => $parsed,
+                'airport_id'         => $airport?->id,
+            ]);
+
+            session(['fdr_active_upload_id' => $upload->id]);
+            session(['active_upload_id' => $upload->id]);
+
+            if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success'      => true,
+                    'upload_id'    => $upload->id,
+                    'report_type'  => 'fdr',
+                    'status'       => 'completed',
+                    'total_rows'   => $upload->total_rows,
+                    'valid_rows'   => $upload->valid_rows,
+                    'redirect_url' => route('fdr.config', $upload->id),
+                    'message'      => "Flight Daily Report uploaded and validated successfully ({$upload->valid_rows} movements).",
+                ]);
+            }
+
+            return redirect()->route('fdr.config', $upload->id);
+        }
+
+        // ═════════════════════════════════════════════════════════════════════
+        // PIPELINE 3: DAU TYPE-SPECIFIC REPORT INGESTION
         // ═════════════════════════════════════════════════════════════════════
         $conf = ReportTemplateRegistry::find($reportType);
         if (!$conf) {
@@ -575,6 +690,10 @@ class UploadController extends Controller
     {
         if ($upload->report_type === 'slot_schedule' || empty($upload->report_type)) {
             return $this->executeProcessing($upload);
+        }
+
+        if ($upload->report_type === 'fdr') {
+            return redirect()->route('fdr.config', $upload->id);
         }
 
         return $this->executeDauProcessing($upload);
