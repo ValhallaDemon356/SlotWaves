@@ -159,16 +159,28 @@
                 <div class="mb-5 p-4 rounded-xl bg-slate-50 dark:bg-navy-950/80 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
                         <div class="text-[10px] font-bold uppercase tracking-wider text-aviation-600 dark:text-aviation-400">Required Source Format</div>
-                        <div class="text-sm font-black text-slate-900 dark:text-white mt-0.5" x-text="selectedReportConfig ? selectedReportConfig.template_label : ''"></div>
+                        <div class="text-sm font-black text-slate-900 dark:text-white mt-0.5" x-text="selectedReport === 'fdr' ? 'OASYS FLIGHT DAILY REPORT' : (selectedReportConfig ? selectedReportConfig.template_label : '')"></div>
                         <div class="flex items-center gap-3 text-xs text-slate-500 mt-1 font-mono">
                             <span>Accepted: <strong class="text-slate-700 dark:text-slate-300" x-text="selectedReportConfig ? selectedReportConfig.extensions.map(e => '.' + e).join(', ') : ''"></strong></span>
                             <span>•</span>
-                            <span>Template: <strong class="text-slate-700 dark:text-slate-300" x-text="selectedReportConfig ? selectedReportConfig.template_filename : ''"></strong></span>
+                            <template x-if="selectedReport === 'fdr'">
+                                <span>Validation: <strong class="text-slate-700 dark:text-slate-300">OASYS Flight Daily Report structure</strong></span>
+                            </template>
+                            <template x-if="selectedReport !== 'fdr'">
+                                <span>Template: <strong class="text-slate-700 dark:text-slate-300" x-text="selectedReportConfig ? selectedReportConfig.template_filename : ''"></strong></span>
+                            </template>
                         </div>
                     </div>
 
-                    {{-- Download Reference Template Button (For DAU reports) --}}
-                    <template x-if="selectedReportConfig && !selectedReportConfig.is_pdf">
+                    {{-- Download Reference Template / View FDR Format Button --}}
+                    <template x-if="selectedReport === 'fdr'">
+                        <a href="{{ route('fdr.config') }}"
+                           class="shrink-0 px-3.5 py-2 rounded-lg text-xs font-bold bg-white dark:bg-navy-800 border border-slate-200 dark:border-slate-700 text-aviation-600 dark:text-aviation-400 hover:bg-aviation-50 dark:hover:bg-navy-700 transition flex items-center gap-2 shadow-2xs">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span>View FDR Format</span>
+                        </a>
+                    </template>
+                    <template x-if="selectedReportConfig && !selectedReportConfig.is_pdf && selectedReport !== 'fdr'">
                         <a :href="'/templates/download/' + selectedReport" download
                            class="shrink-0 px-3.5 py-2 rounded-lg text-xs font-bold bg-white dark:bg-navy-800 border border-slate-200 dark:border-slate-700 text-aviation-600 dark:text-aviation-400 hover:bg-aviation-50 dark:hover:bg-navy-700 transition flex items-center gap-2 shadow-2xs">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
@@ -198,7 +210,7 @@
                                         </svg>
                                     </div>
                                     <div class="text-sm font-bold text-slate-800 dark:text-slate-200">
-                                        Drag &amp; Drop <span x-text="selectedReportConfig ? selectedReportConfig.template_filename : 'File'"></span>
+                                        Drag &amp; Drop <span x-text="selectedReport === 'fdr' ? 'OASYS Flight Daily Report' : (selectedReportConfig ? selectedReportConfig.template_filename : 'File')"></span>
                                     </div>
                                     <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                                         or <span class="text-aviation-600 dark:text-aviation-400 font-semibold underline underline-offset-2">Browse from your computer</span>
@@ -235,64 +247,105 @@
 
                     {{-- ══ REAL-TIME PREVIEW VALIDATION CARD (MATCHED) ════════════════ --}}
                     <template x-if="validationStatus === 'valid'">
-                        <div class="mt-4 p-4 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 space-y-2 text-xs">
-                            <div class="flex items-center justify-between">
-                                <div class="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
-                                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                    <span>DATA VALIDATION — READY TO GENERATE</span>
-                                </div>
-                                <span class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-bold font-mono text-[10px]">
-                                    ✓ MATCHED
-                                </span>
-                            </div>
-
-                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 font-mono text-[11px]">
-                                <div class="p-2 rounded-lg bg-white/80 dark:bg-navy-900/80 border border-emerald-100 dark:border-emerald-900/40">
-                                    <div class="text-[10px] text-slate-400 font-sans">Report:</div>
-                                    <div class="font-bold text-slate-800 dark:text-slate-200 truncate" x-text="selectedReportConfig.name"></div>
-                                </div>
-                                <div class="p-2 rounded-lg bg-white/80 dark:bg-navy-900/80 border border-emerald-100 dark:border-emerald-900/40">
-                                    <div class="text-[10px] text-slate-400 font-sans">Records Detected:</div>
-                                    <div class="font-bold text-emerald-600 dark:text-emerald-400" x-text="validationResult.records_count ? (typeof validationResult.records_count === 'number' ? validationResult.records_count + ' records' : validationResult.records_count) : 'Verified'"></div>
-                                </div>
-                                <div class="p-2 rounded-lg bg-white/80 dark:bg-navy-900/80 border border-emerald-100 dark:border-emerald-900/40 col-span-2 sm:col-span-1">
-                                    <div class="text-[10px] text-slate-400 font-sans">Template Check:</div>
-                                    <div class="font-bold text-slate-800 dark:text-slate-200 truncate" x-text="validationResult.expectedTemplate"></div>
-                                </div>
-                            </div>
-
-                            {{-- FDR Operational Scope & Metadata Badge Box --}}
+                        <div class="mt-4 p-4 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 space-y-3 text-xs">
+                            {{-- FDR Dedicated Validation Success Card --}}
                             <template x-if="selectedReport === 'fdr'">
-                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 font-mono text-[11px] border-t border-emerald-200/70 dark:border-emerald-900/40 mt-2">
-                                    <div class="p-2 rounded-lg bg-white/90 dark:bg-navy-900/90 border border-emerald-200 dark:border-emerald-900/60">
-                                        <div class="text-[9.5px] text-slate-400 font-sans font-medium uppercase tracking-wider">Dataset</div>
-                                        <div class="font-bold text-slate-800 dark:text-slate-100 truncate" x-text="validationResult.dataset || selectedFileName"></div>
+                                <div>
+                                    <div class="flex items-center justify-between pb-2 border-b border-emerald-200/80 dark:border-emerald-800/60">
+                                        <div class="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
+                                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                            <span>DATA VALIDATION</span>
+                                        </div>
+                                        <span class="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-bold font-mono text-[10px]">
+                                            READY TO GENERATE
+                                        </span>
                                     </div>
-                                    <div class="p-2 rounded-lg bg-white/90 dark:bg-navy-900/90 border border-emerald-200 dark:border-emerald-900/60">
-                                        <div class="text-[9.5px] text-slate-400 font-sans font-medium uppercase tracking-wider">Airport</div>
-                                        <div class="font-bold text-aviation-600 dark:text-aviation-400 truncate" x-text="validationResult.airport || 'CGK — Soekarno-Hatta'"></div>
-                                    </div>
-                                    <div class="p-2 rounded-lg bg-white/90 dark:bg-navy-900/90 border border-emerald-200 dark:border-emerald-900/60">
-                                        <div class="text-[9.5px] text-slate-400 font-sans font-medium uppercase tracking-wider">Operator</div>
-                                        <div class="font-bold text-slate-800 dark:text-slate-100 truncate" x-text="validationResult.operator || 'Garuda Indonesia / ALL AIRLINE'"></div>
-                                    </div>
-                                    <div class="p-2 rounded-lg bg-white/90 dark:bg-navy-900/90 border border-emerald-200 dark:border-emerald-900/60">
-                                        <div class="text-[9.5px] text-slate-400 font-sans font-medium uppercase tracking-wider">Records</div>
-                                        <div class="font-bold text-emerald-600 dark:text-emerald-400 truncate" x-text="(validationResult.records_count || 0).toLocaleString() + ' rows'"></div>
+
+                                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2.5 font-mono text-[11px]">
+                                        <div class="p-2.5 rounded-lg bg-white/90 dark:bg-navy-900/90 border border-emerald-200 dark:border-emerald-900/60">
+                                            <div class="text-[9.5px] text-slate-400 font-sans font-medium uppercase tracking-wider">File:</div>
+                                            <div class="font-bold text-slate-800 dark:text-slate-100 truncate" x-text="validationResult.file_name || selectedFileName"></div>
+                                        </div>
+                                        <div class="p-2.5 rounded-lg bg-white/90 dark:bg-navy-900/90 border border-emerald-200 dark:border-emerald-900/60">
+                                            <div class="text-[9.5px] text-slate-400 font-sans font-medium uppercase tracking-wider">Detected Format:</div>
+                                            <div class="font-bold text-aviation-600 dark:text-aviation-400 truncate" x-text="validationResult.detected_format || 'OASYS HTML XLS'"></div>
+                                        </div>
+                                        <div class="p-2.5 rounded-lg bg-white/90 dark:bg-navy-900/90 border border-emerald-200 dark:border-emerald-900/60">
+                                            <div class="text-[9.5px] text-slate-400 font-sans font-medium uppercase tracking-wider">Airport:</div>
+                                            <div class="font-bold text-aviation-600 dark:text-aviation-400 truncate" x-text="validationResult.airport || 'CGK'"></div>
+                                        </div>
+                                        <div class="p-2.5 rounded-lg bg-white/90 dark:bg-navy-900/90 border border-emerald-200 dark:border-emerald-900/60">
+                                            <div class="text-[9.5px] text-slate-400 font-sans font-medium uppercase tracking-wider">Date:</div>
+                                            <div class="font-bold text-slate-800 dark:text-slate-100 truncate" x-text="validationResult.period_label || validationResult.date_range || '01-08-2026 s/d 31-08-2026'"></div>
+                                        </div>
+                                        <div class="p-2.5 rounded-lg bg-white/90 dark:bg-navy-900/90 border border-emerald-200 dark:border-emerald-900/60">
+                                            <div class="text-[9.5px] text-slate-400 font-sans font-medium uppercase tracking-wider">Operator:</div>
+                                            <div class="font-bold text-slate-800 dark:text-slate-100 truncate" x-text="validationResult.operator || 'ALL AIRLINE'"></div>
+                                        </div>
+                                        <div class="p-2.5 rounded-lg bg-white/90 dark:bg-navy-900/90 border border-emerald-200 dark:border-emerald-900/60">
+                                            <div class="text-[9.5px] text-slate-400 font-sans font-medium uppercase tracking-wider">Leg:</div>
+                                            <div class="font-bold text-slate-800 dark:text-slate-100 truncate" x-text="validationResult.leg || 'ALL'"></div>
+                                        </div>
+                                        <div class="p-2.5 rounded-lg bg-white/90 dark:bg-navy-900/90 border border-emerald-200 dark:border-emerald-900/60">
+                                            <div class="text-[9.5px] text-slate-400 font-sans font-medium uppercase tracking-wider">Route Type:</div>
+                                            <div class="font-bold text-slate-800 dark:text-slate-100 truncate" x-text="validationResult.route_type || 'ALL'"></div>
+                                        </div>
+                                        <div class="p-2.5 rounded-lg bg-white/90 dark:bg-navy-900/90 border border-emerald-200 dark:border-emerald-900/60">
+                                            <div class="text-[9.5px] text-slate-400 font-sans font-medium uppercase tracking-wider">Realization:</div>
+                                            <div class="font-bold text-slate-800 dark:text-slate-100 truncate" x-text="validationResult.realization || 'YES'"></div>
+                                        </div>
+                                        <div class="p-2.5 rounded-lg bg-white/90 dark:bg-navy-900/90 border border-emerald-200 dark:border-emerald-900/60">
+                                            <div class="text-[9.5px] text-slate-400 font-sans font-medium uppercase tracking-wider">Flight Rows:</div>
+                                            <div class="font-bold text-emerald-600 dark:text-emerald-400 truncate" x-text="(validationResult.records_count || 0).toLocaleString() + ' rows'"></div>
+                                        </div>
+                                        <div class="p-2.5 rounded-lg bg-white/90 dark:bg-navy-900/90 border border-emerald-200 dark:border-emerald-900/60">
+                                            <div class="text-[9.5px] text-slate-400 font-sans font-medium uppercase tracking-wider">Status:</div>
+                                            <div class="font-bold text-emerald-600 dark:text-emerald-400 truncate">READY TO GENERATE</div>
+                                        </div>
                                     </div>
                                 </div>
                             </template>
 
-                            <template x-if="validationResult.detected_columns && validationResult.detected_columns.length">
-                                <div class="pt-1">
-                                    <div class="text-[10px] text-slate-500 dark:text-slate-400 font-bold">Detected Column Schema:</div>
-                                    <div class="flex flex-wrap gap-1 mt-1">
-                                        <template x-for="col in validationResult.detected_columns" :key="col">
-                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/90 dark:bg-navy-900 text-slate-700 dark:text-slate-300 border border-emerald-200 dark:border-emerald-900 text-[10px] font-mono">
-                                                <span class="text-emerald-500 font-bold">✓</span> <span x-text="col"></span>
-                                            </span>
-                                        </template>
+                            {{-- Standard Report Validation Card (For DAU / Schedule) --}}
+                            <template x-if="selectedReport !== 'fdr'">
+                                <div>
+                                    <div class="flex items-center justify-between">
+                                        <div class="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
+                                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                            <span>DATA VALIDATION — READY TO GENERATE</span>
+                                        </div>
+                                        <span class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-bold font-mono text-[10px]">
+                                            ✓ MATCHED
+                                        </span>
                                     </div>
+
+                                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 font-mono text-[11px]">
+                                        <div class="p-2 rounded-lg bg-white/80 dark:bg-navy-900/80 border border-emerald-100 dark:border-emerald-900/40">
+                                            <div class="text-[10px] text-slate-400 font-sans">Report:</div>
+                                            <div class="font-bold text-slate-800 dark:text-slate-200 truncate" x-text="selectedReportConfig.name"></div>
+                                        </div>
+                                        <div class="p-2 rounded-lg bg-white/80 dark:bg-navy-900/80 border border-emerald-100 dark:border-emerald-900/40">
+                                            <div class="text-[10px] text-slate-400 font-sans">Records Detected:</div>
+                                            <div class="font-bold text-emerald-600 dark:text-emerald-400" x-text="validationResult.records_count ? (typeof validationResult.records_count === 'number' ? validationResult.records_count + ' records' : validationResult.records_count) : 'Verified'"></div>
+                                        </div>
+                                        <div class="p-2 rounded-lg bg-white/80 dark:bg-navy-900/80 border border-emerald-100 dark:border-emerald-900/40 col-span-2 sm:col-span-1">
+                                            <div class="text-[10px] text-slate-400 font-sans">Template Check:</div>
+                                            <div class="font-bold text-slate-800 dark:text-slate-200 truncate" x-text="validationResult.expectedTemplate"></div>
+                                        </div>
+                                    </div>
+
+                                    <template x-if="validationResult.detected_columns && validationResult.detected_columns.length">
+                                        <div class="pt-1">
+                                            <div class="text-[10px] text-slate-500 dark:text-slate-400 font-bold">Detected Column Schema:</div>
+                                            <div class="flex flex-wrap gap-1 mt-1">
+                                                <template x-for="col in validationResult.detected_columns" :key="col">
+                                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/90 dark:bg-navy-900 text-slate-700 dark:text-slate-300 border border-emerald-200 dark:border-emerald-900 text-[10px] font-mono">
+                                                        <span class="text-emerald-500 font-bold">✓</span> <span x-text="col"></span>
+                                                    </span>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </template>
                                 </div>
                             </template>
                         </div>
@@ -1179,28 +1232,79 @@ function unifiedReportPortal() {
             const headText = await headBlob.text();
             const isHtml = /<html|<table|<tr|<center|<title|oasys/i.test(headText);
 
+            const extMatch = fileName.match(/\.([a-zA-Z0-9]+)$/);
+            const fileExt = extMatch ? extMatch[1].toLowerCase() : '';
+            const detectedFormat = isHtml ? 'OASYS HTML XLS' : (fileExt === 'xlsx' ? 'XLSX' : (fileExt === 'csv' ? 'CSV' : 'NATIVE XLS'));
+
             let rowCount = 0;
             let airlineCounts = {};
-            let detectedDateRange = '01-08-2026 to 31-08-2026';
+            let detectedDateRange = '01-08-2026 s/d 31-08-2026';
             let headerFound = false;
+            let detectedLeg = 'ALL';
+            let detectedRouteType = 'ALL';
+            let detectedRealization = 'YES';
+            let operatorFromMeta = null;
 
             if (isHtml) {
                 const fullText = await file.text();
 
-                // Check title or center tags for Airport and Period
+                // Extract hidden inputs metadata
+                const metaMap = {};
+                const inputRegex = /<input[^>]+>/gi;
+                let inMatch;
+                while ((inMatch = inputRegex.exec(fullText)) !== null) {
+                    const tag = inMatch[0];
+                    const nMatch = tag.match(/name=["']?([^"'\s>]+)["']?/i);
+                    const vMatch = tag.match(/value=["']?([^"'>]*)["']?/i);
+                    if (nMatch) {
+                        metaMap[nMatch[1].toUpperCase()] = vMatch ? vMatch[1].trim() : '';
+                    }
+                }
+
+                if (metaMap['BRANCH_CODE']) {
+                    detectedAirportCode = metaMap['BRANCH_CODE'].toUpperCase();
+                }
+                if (metaMap['OPERATOR']) {
+                    operatorFromMeta = metaMap['OPERATOR'].toUpperCase();
+                }
+                if (metaMap['TRANSACTIONS_DATEFDR']) {
+                    detectedDateRange = metaMap['TRANSACTIONS_DATEFDR'];
+                }
+                if (metaMap['LEG']) {
+                    const lg = metaMap['LEG'].toUpperCase();
+                    if (lg.startsWith('A')) detectedLeg = 'ARRIVAL';
+                    else if (lg.startsWith('D')) detectedLeg = 'DEPARTURE';
+                    else detectedLeg = lg;
+                }
+                if (metaMap['CATEGORY_CODE']) {
+                    const cat = metaMap['CATEGORY_CODE'].toUpperCase();
+                    if (cat.includes('DOM')) detectedRouteType = 'DOMESTIC';
+                    else if (cat.includes('INT')) detectedRouteType = 'INTERNATIONAL';
+                    else detectedRouteType = cat;
+                }
+                if (metaMap['REAL']) {
+                    const rVal = metaMap['REAL'].toUpperCase();
+                    detectedRealization = ['NO', 'TIDAK', 'FALSE', '0'].includes(rVal) ? 'NO' : 'YES';
+                }
+
+                // Check title or center tags for Airport and Period fallback
                 const titleMatch = fullText.match(/<center[^>]*>([\s\S]*?)<\/center>/i) || fullText.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
                 if (titleMatch) {
                     const headerStr = titleMatch[1];
-                    for (const [code, fullName] of Object.entries(AIRPORT_MAP)) {
-                        const cityPart = fullName.split('—')[1] || '';
-                        if (new RegExp(code, 'i').test(headerStr) || (cityPart && new RegExp(cityPart.split('(')[0].trim(), 'i').test(headerStr))) {
-                            detectedAirportCode = code;
-                            break;
+                    if (!metaMap['BRANCH_CODE']) {
+                        for (const [code, fullName] of Object.entries(AIRPORT_MAP)) {
+                            const cityPart = fullName.split('—')[1] || '';
+                            if (new RegExp(code, 'i').test(headerStr) || (cityPart && new RegExp(cityPart.split('(')[0].trim(), 'i').test(headerStr))) {
+                                detectedAirportCode = code;
+                                break;
+                            }
                         }
                     }
-                    const dateMatch = headerStr.match(/(\d{1,2}[-\/]\d{1,2}[-\/]\d{4})\s*(?:s\/?d|to|-)\s*(\d{1,2}[-\/]\d{1,2}[-\/]\d{4})/i);
-                    if (dateMatch) {
-                        detectedDateRange = `${dateMatch[1]} to ${dateMatch[2]}`;
+                    if (!metaMap['TRANSACTIONS_DATEFDR']) {
+                        const dateMatch = headerStr.match(/(\d{1,2}[-\/]\d{1,2}[-\/]\d{4})\s*(?:s\/?d|to|-)\s*(\d{1,2}[-\/]\d{1,2}[-\/]\d{4})/i);
+                        if (dateMatch) {
+                            detectedDateRange = `${dateMatch[1]} to ${dateMatch[2]}`;
+                        }
                     }
                 }
 
@@ -1285,6 +1389,15 @@ function unifiedReportPortal() {
                 rowCount = Math.max(1, lines.length - 5);
             }
 
+            if (rowCount === 0) {
+                return {
+                    valid: false,
+                    category: 'NO_VALID_FLIGHT_MOVEMENT_ROWS',
+                    category_title: 'NO VALID FLIGHT MOVEMENT ROWS FOUND',
+                    errors: ['No valid flight movement rows found in the Flight Daily Report.'],
+                };
+            }
+
             // Determine top airline / operator display
             let topAirline = 'Garuda Indonesia';
             let maxCount = 0;
@@ -1296,28 +1409,37 @@ function unifiedReportPortal() {
             }
 
             const totalAirlines = Object.keys(airlineCounts).length;
-            let operatorDisplay = 'ALL AIRLINE';
-            if (totalAirlines === 1 && topAirline) {
-                operatorDisplay = topAirline;
-            } else if (totalAirlines > 1 && topAirline) {
-                operatorDisplay = `${topAirline} / ALL AIRLINE`;
+            let operatorDisplay = operatorFromMeta || 'ALL AIRLINE';
+            if (!operatorFromMeta) {
+                if (totalAirlines === 1 && topAirline) {
+                    operatorDisplay = topAirline;
+                } else if (totalAirlines > 1 && topAirline) {
+                    operatorDisplay = `${topAirline} / ALL AIRLINE`;
+                }
             }
 
-            const airportDisplay = AIRPORT_MAP[detectedAirportCode] || `${detectedAirportCode} — International Airport`;
+            const airportDisplay = AIRPORT_MAP[detectedAirportCode] || detectedAirportCode;
 
             return {
                 valid: true,
                 category: null,
                 category_title: null,
                 detectedTemplate: 'fdr',
-                expectedTemplate: 'OASYS Flight Daily Report Excel',
-                records_count: Math.max(1, rowCount),
+                expectedTemplate: 'OASYS Flight Daily Report structure',
+                detected_format: detectedFormat,
+                file_name: fileName,
+                records_count: rowCount,
                 dataset: `${fileName} (${fileSizeMB})`,
-                airport: airportDisplay,
+                airport: detectedAirportCode,
+                airport_name: airportDisplay,
                 airport_code: detectedAirportCode,
                 operator: operatorDisplay,
                 period_label: detectedDateRange,
-                realization: 'YES',
+                date_range: detectedDateRange,
+                leg: detectedLeg,
+                direction: detectedLeg,
+                route_type: detectedRouteType,
+                realization: detectedRealization,
                 detected_columns: ['AIR LINE', 'FLIGHT NO', 'PAIRED NO', 'SIBT', 'SOBT', 'AIBT', 'AOBT', 'LEG', 'CITY 1', 'CITY 2', 'CAP.', 'LOAD'],
                 client_parsed: true
             };

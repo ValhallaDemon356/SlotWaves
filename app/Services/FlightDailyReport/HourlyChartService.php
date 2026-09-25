@@ -51,7 +51,7 @@ class HourlyChartService
             $isRealized = !empty($r['is_realized']);
 
             // Plan counts (all scheduled movements)
-            if ($r['sched_type'] === 'SCHED') {
+            if ($r['sched_type'] === 'SCHED' || $r['sched_type'] === 'SCHEDULED' || !empty($r['is_scheduled'])) {
                 $hourlyData[$h]['total_plan']++;
                 if ($isArr) {
                     $hourlyData[$h]['arr_plan']++;

@@ -131,7 +131,7 @@ class FlightDailyReportAnalytics
             $diverts += $div;
             $misses += $ms;
 
-            if (($r['sched_type'] ?? '') === 'UNSCHED') {
+            if (in_array($r['sched_type'] ?? '', ['UNSCHED', 'UNSCHEDULED'], true)) {
                 $unscheduled++;
             }
         }
@@ -410,7 +410,7 @@ class FlightDailyReportAnalytics
             if ((int)($r['miss'] ?? 0) > 0) {
                 $irregularDetails['miss_flights'][] = $r;
             }
-            if (($r['sched_type'] ?? '') === 'UNSCHED') {
+            if (in_array($r['sched_type'] ?? '', ['UNSCHED', 'UNSCHEDULED'], true)) {
                 $irregularDetails['unscheduled_flights'][] = $r;
             }
         }

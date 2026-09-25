@@ -298,7 +298,7 @@ class ReportTemplateRegistry
                 'text/plain',
             ],
             'template_filename'  => 'OASYS-FDR-TEMPLATE.xls',
-            'template_label'     => 'OASYS Flight Daily Report Excel',
+            'template_label'     => 'OASYS FLIGHT DAILY REPORT',
             'parser_class'       => \App\Services\FlightDailyReport\FlightDailyReportParser::class,
             'is_pdf'             => false,
             'description'        => 'Operational flight daily movement, load factor, and traffic analytics.',

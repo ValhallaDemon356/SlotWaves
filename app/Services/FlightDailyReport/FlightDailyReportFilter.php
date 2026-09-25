@@ -17,7 +17,7 @@ class FlightDailyReportFilter
         $airport      = strtoupper(trim($filters['airport'] ?? 'ALL'));
         $leg          = strtoupper(trim($filters['leg'] ?? 'ALL'));
         $operator     = trim($filters['operator'] ?? 'ALL');
-        $traffic      = strtoupper(trim($filters['traffic'] ?? 'ALL'));
+        $traffic      = strtoupper(trim($filters['traffic'] ?? ($filters['route_type'] ?? 'ALL')));
         $realization  = strtoupper(trim($filters['realization'] ?? 'ALL'));
         $dataType     = strtoupper(trim($filters['data_type'] ?? 'ALL'));
         $flightNo     = strtoupper(trim($filters['flight_no'] ?? ''));
@@ -117,13 +117,16 @@ class FlightDailyReportFilter
             }
 
             // 7. Date Range Filter
+            // 7. Date Range Filter
             if (!empty($startDate)) {
-                $fd = $r['flight_date'] ?? '';
-                if ($fd !== 'N/A' && $fd < $startDate) continue;
+                $stdStart = $this->standardizeDate($startDate);
+                $fd = $this->standardizeDate($r['flight_date'] ?? '');
+                if ($fd !== 'N/A' && $fd < $stdStart) continue;
             }
             if (!empty($endDate)) {
-                $fd = $r['flight_date'] ?? '';
-                if ($fd !== 'N/A' && $fd > $endDate) continue;
+                $stdEnd = $this->standardizeDate($endDate);
+                $fd = $this->standardizeDate($r['flight_date'] ?? '');
+                if ($fd !== 'N/A' && $fd > $stdEnd) continue;
             }
 
             // 8. Search Filter
@@ -172,5 +175,26 @@ class FlightDailyReportFilter
             ],
             'version'        => $reqVersion,
         ];
+    }
+
+    /**
+     * Standardize date into Y-m-d.
+     */
+    protected function standardizeDate(string $rawDate): string
+    {
+        try {
+            $rawDate = trim(str_replace('/', '-', $rawDate));
+            if (empty($rawDate) || $rawDate === 'N/A') return 'N/A';
+            if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})/', $rawDate, $m)) {
+                return sprintf('%04d-%02d-%02d', (int)$m[1], (int)$m[2], (int)$m[3]);
+            }
+            if (preg_match('/^(\d{1,2})-(\d{1,2})-(\d{4})/', $rawDate, $m)) {
+                return sprintf('%04d-%02d-%02d', (int)$m[3], (int)$m[2], (int)$m[1]);
+            }
+            $ts = strtotime($rawDate);
+            return $ts ? date('Y-m-d', $ts) : $rawDate;
+        } catch (\Throwable $e) {
+            return $rawDate;
+        }
     }
 }

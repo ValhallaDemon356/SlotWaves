@@ -60,8 +60,8 @@ class FlightDailyReportValidator
             $displayExt = (!empty($extension) && $extension !== 'tmp') ? ".{$extension}" : '(unknown)';
             return [
                 'valid'          => false,
-                'category'       => 'INVALID_EXTENSION',
-                'category_title' => 'UNSUPPORTED FILE TYPE',
+                'category'       => 'UNSUPPORTED_FILE_FORMAT',
+                'category_title' => 'UNSUPPORTED FILE FORMAT',
                 'errors'         => ["Unsupported file extension {$displayExt}. Please upload an OASYS FDR (.xls, .xlsx, or .csv) file."],
             ];
         }
@@ -70,43 +70,67 @@ class FlightDailyReportValidator
             $parsed = $this->parser->parse($filePath);
             $records = $parsed['records'] ?? [];
             $meta = $parsed['meta'] ?? [];
+            $detectedFormat = $parsed['detected_format'] ?? 'OASYS HTML XLS';
 
             if (empty($records)) {
                 return [
                     'valid'          => false,
-                    'category'       => 'NO_RECORDS',
-                    'category_title' => 'NO FLIGHT RECORDS FOUND',
-                    'errors'         => ['The workbook does not contain valid Flight Daily Report flight movement rows.'],
+                    'category'       => 'NO_VALID_FLIGHT_MOVEMENT_ROWS',
+                    'category_title' => 'NO VALID FLIGHT MOVEMENT ROWS FOUND',
+                    'errors'         => ['No valid flight movement rows found in the Flight Daily Report.'],
                 ];
             }
 
             // Verify essential headers were found
             $sample = $records[0];
-            $hasFlightNo = ($sample['flight_no'] !== 'N/A' || !empty($sample['flight_no']));
-            $hasAirLine = ($sample['air_line'] !== 'N/A' || !empty($sample['air_line']));
+            $hasFlightNo = ($sample['flight_no'] !== 'N/A' && !empty($sample['flight_no']));
+            $hasAirLine = ($sample['air_line'] !== 'N/A' && !empty($sample['air_line']));
 
             if (!$hasFlightNo && !$hasAirLine) {
                 return [
                     'valid'          => false,
-                    'category'       => 'MISSING_CRITICAL_COLUMNS',
-                    'category_title' => 'MISSING REQUIRED HEADERS',
-                    'errors'         => ['Workbook is missing essential FDR columns (AIR LINE, FLIGHT NO, LEG).'],
+                    'category'       => 'FLIGHT_TABLE_NOT_FOUND',
+                    'category_title' => 'FLIGHT TABLE NOT FOUND',
+                    'errors'         => ['Flight table structure could not be identified (missing AIR LINE and FLIGHT NO columns).'],
                 ];
             }
 
+            // Check date range validity if present
+            if (!empty($meta['period_start']) && !empty($meta['period_end'])) {
+                if ($meta['period_start'] > $meta['period_end']) {
+                    return [
+                        'valid'          => false,
+                        'category'       => 'INVALID_DATE_RANGE',
+                        'category_title' => 'INVALID DATE RANGE',
+                        'errors'         => ['Detected start date is after end date in the Flight Daily Report.'],
+                    ];
+                }
+            }
+
             return [
-                'valid'          => true,
-                'records_count'  => count($records),
-                'meta'           => $meta,
-                'sample'         => array_slice($records, 0, 3),
-                'summary'        => $parsed['summary'] ?? [],
-                'errors'         => [],
+                'valid'            => true,
+                'records_count'    => count($records),
+                'detected_format'  => $detectedFormat,
+                'file_name'        => $fileName ?: basename($filePath),
+                'meta'             => $meta,
+                'airport'          => $meta['airport'] ?? 'CGK',
+                'operator'         => $meta['operator'] ?? 'ALL AIRLINE',
+                'period_label'     => $meta['period_label'] ?? '',
+                'date_start'       => $meta['date_start'] ?? ($meta['period_start'] ?? ''),
+                'date_end'         => $meta['date_end'] ?? ($meta['period_end'] ?? ''),
+                'direction'        => $meta['direction'] ?? 'ALL',
+                'leg'              => $meta['leg'] ?? ($meta['direction'] ?? 'ALL'),
+                'route_type'       => $meta['route_type'] ?? 'ALL',
+                'realization'      => $meta['realization'] ?? 'YES',
+                'sample'           => array_slice($records, 0, 3),
+                'summary'          => $parsed['summary'] ?? [],
+                'errors'           => [],
             ];
         } catch (\Throwable $e) {
             return [
                 'valid'          => false,
-                'category'       => 'PARSING_EXCEPTION',
-                'category_title' => 'PARSER FAILURE',
+                'category'       => 'OASYS_FDR_NOT_DETECTED',
+                'category_title' => 'OASYS FDR FORMAT NOT DETECTED',
                 'errors'         => [$e->getMessage()],
             ];
         }
