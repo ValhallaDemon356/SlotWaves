@@ -306,4 +306,158 @@ class FlightDailyReportFeatureTest extends TestCase
         $this->assertStringContainsString('/fdr/config/', $res1->json('redirect_url'));
         $this->assertGreaterThan(0, $res1->json('valid_rows'));
     }
+
+    /**
+     * [PASS] Comprehensive OASYS FDR Acceptance Test Suite.
+     * Proves:
+     * - real CGK FDR.xls detected
+     * - metadata extracted
+     * - flight table detected
+     * - rows > 0
+     * - ARRIVAL works
+     * - DEPARTURE works
+     * - DOMESTIC works
+     * - INTERNATIONAL works
+     * - YES/NO realization works
+     * - date range works
+     * - dashboard populated
+     * - charts populated
+     */
+    public function test_oasys_cgk_fdr_end_to_end_verification(): void
+    {
+        $cgkPath = storage_path('app/templates/CGK FDR.xls');
+        $this->assertFileExists($cgkPath);
+
+        // 1. Template Validation
+        $file = new UploadedFile($cgkPath, 'CGK FDR.xls', 'application/vnd.ms-excel', null, true);
+        $valRes = $this->postJson(route('upload.validate-template'), [
+            'report_type' => 'fdr',
+            'file'        => $file,
+        ]);
+
+        $valRes->assertStatus(200);
+        $valRes->assertJson([
+            'valid'           => true,
+            'detected_format' => 'OASYS HTML XLS',
+            'airport'         => 'CGK',
+        ]);
+        $this->assertGreaterThan(0, $valRes->json('records_count'));
+
+        // 2. Direct Upload Store
+        $uploadFile = new UploadedFile($cgkPath, 'CGK FDR.xls', 'application/vnd.ms-excel', null, true);
+        $storeRes = $this->postJson(route('upload.store'), [
+            'report_type' => 'fdr',
+            'file'        => $uploadFile,
+        ]);
+
+        $storeRes->assertStatus(200);
+        $uploadId = $storeRes->json('upload_id');
+        $this->assertNotEmpty($uploadId);
+
+        $upload = Upload::findOrFail($uploadId);
+        $this->assertEquals('fdr', $upload->report_type);
+        $this->assertGreaterThan(0, $upload->valid_rows);
+
+        // 3. Metadata Extraction Verification
+        $meta = $upload->report_data['meta'];
+        $this->assertEquals('CGK', $meta['airport']);
+        $this->assertEquals('OASYS HTML XLS', $meta['detected_format']);
+        $this->assertNotEmpty($meta['period_start']);
+        $this->assertNotEmpty($meta['period_end']);
+
+        // 4. Filter: ARRIVAL
+        $arrRes = $this->getJson(route('fdr.filter', [
+            'upload' => $upload->id,
+            'leg'    => 'ARRIVAL',
+        ]));
+        $arrRes->assertStatus(200);
+        $this->assertGreaterThan(0, $arrRes->json('filtered_count'));
+        foreach ($arrRes->json('records') as $r) {
+            $this->assertEquals('ARRIVAL', $r['direction']);
+        }
+
+        // 5. Filter: DEPARTURE
+        $depRes = $this->getJson(route('fdr.filter', [
+            'upload' => $upload->id,
+            'leg'    => 'DEPARTURE',
+        ]));
+        $depRes->assertStatus(200);
+        $this->assertGreaterThan(0, $depRes->json('filtered_count'));
+        foreach ($depRes->json('records') as $r) {
+            $this->assertEquals('DEPARTURE', $r['direction']);
+        }
+
+        // 6. Filter: DOMESTIC
+        $domRes = $this->getJson(route('fdr.filter', [
+            'upload'  => $upload->id,
+            'traffic' => 'DOMESTIC',
+        ]));
+        $domRes->assertStatus(200);
+        $this->assertGreaterThan(0, $domRes->json('filtered_count'));
+        foreach ($domRes->json('records') as $r) {
+            $this->assertEquals('DOMESTIC', $r['traffic']);
+        }
+
+        // 7. Filter: INTERNATIONAL
+        $intRes = $this->getJson(route('fdr.filter', [
+            'upload'  => $upload->id,
+            'traffic' => 'INTERNATIONAL',
+        ]));
+        $intRes->assertStatus(200);
+        $this->assertIsInt($intRes->json('filtered_count'));
+
+        // 8. Filter: REALIZATION YES / NO
+        $realYesRes = $this->getJson(route('fdr.filter', [
+            'upload'      => $upload->id,
+            'realization' => 'YES',
+        ]));
+        $realYesRes->assertStatus(200);
+        $this->assertGreaterThan(0, $realYesRes->json('filtered_count'));
+        foreach ($realYesRes->json('records') as $r) {
+            $this->assertTrue($r['is_realized']);
+        }
+
+        $realNoRes = $this->getJson(route('fdr.filter', [
+            'upload'      => $upload->id,
+            'realization' => 'NO',
+        ]));
+        $realNoRes->assertStatus(200);
+        $this->assertIsInt($realNoRes->json('filtered_count'));
+
+        // 9. Filter: DATE RANGE
+        $dateRes = $this->getJson(route('fdr.filter', [
+            'upload'     => $upload->id,
+            'start_date' => '2026-08-01',
+            'end_date'   => '2026-08-05',
+        ]));
+        $dateRes->assertStatus(200);
+        $this->assertGreaterThan(0, $dateRes->json('filtered_count'));
+        foreach ($dateRes->json('records') as $r) {
+            $this->assertGreaterThanOrEqual('2026-08-01', $r['flight_date']);
+            $this->assertLessThanOrEqual('2026-08-05', $r['flight_date']);
+        }
+
+        // 10. Dashboard & Charts Rendering
+        $dashRes = $this->get(route('fdr.dashboard', $upload->id));
+        $dashRes->assertStatus(200);
+        $dashRes->assertSee('CGK');
+        $dashRes->assertSee('FDR Intelligence');
+        $dashRes->assertSee('Chart 1: ARRIVAL–DEPARTURE MOVEMENT');
+        $dashRes->assertSee('Chart 2: DEPARTURE MOVEMENT');
+        $dashRes->assertSee('Chart 3: ARRIVAL MOVEMENT');
+
+        // Verify Hourly Charts structure in API
+        $charts = $arrRes->json('hourly_charts');
+        $this->assertNotEmpty($charts);
+        $this->assertCount(24, $charts['hours']);
+        $this->assertArrayHasKey('chart1_movement', $charts);
+        $this->assertArrayHasKey('chart2_departure', $charts);
+        $this->assertArrayHasKey('chart3_arrival', $charts);
+
+        // Verify KPIs populated
+        $kpis = $arrRes->json('kpis');
+        $this->assertGreaterThan(0, $kpis['total_flights']);
+        $this->assertArrayHasKey('avg_load_factor', $kpis);
+        $this->assertArrayHasKey('cargo_ton', $kpis);
+    }
 }

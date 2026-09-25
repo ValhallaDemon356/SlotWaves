@@ -111,7 +111,7 @@ class FlightDailyReportValidator
                 'valid'            => true,
                 'records_count'    => count($records),
                 'detected_format'  => $detectedFormat,
-                'file_name'        => $fileName ?: basename($filePath),
+                'file_name'        => $originalFilename ?: basename($filePath),
                 'meta'             => $meta,
                 'airport'          => $meta['airport'] ?? 'CGK',
                 'operator'         => $meta['operator'] ?? 'ALL AIRLINE',
