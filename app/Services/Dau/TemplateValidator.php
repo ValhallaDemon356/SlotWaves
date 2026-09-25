@@ -14,7 +14,7 @@ class TemplateValidator
      * @param UploadedFile|string $file Uploaded file instance or absolute file path
      * @return array
      */
-    public function validate(string $selectedReportType, $file, bool $isProbe = false): array
+    public function validate(string $selectedReportType, $file, bool $isProbe = false, ?string $originalFilename = null): array
     {
         $conf = ReportTemplateRegistry::find($selectedReportType);
         if (!$conf) {
@@ -31,7 +31,7 @@ class TemplateValidator
         }
 
         $filePath = $file instanceof UploadedFile ? $file->getRealPath() : $file;
-        $originalFilename = $file instanceof UploadedFile ? $file->getClientOriginalName() : basename($file);
+        $originalFilename = $originalFilename ?: ($file instanceof UploadedFile ? $file->getClientOriginalName() : basename($file));
 
         if (!file_exists($filePath)) {
             return [

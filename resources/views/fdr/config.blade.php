@@ -359,19 +359,31 @@
                 <button @click="showUploadModal = false" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
             </div>
 
-            <form method="POST" action="{{ route('fdr.upload') }}" enctype="multipart/form-data" class="space-y-4">
+            <form method="POST" action="{{ route('fdr.upload') }}" enctype="multipart/form-data" class="space-y-4" @submit.prevent="handleModalUpload($event)">
                 @csrf
                 <div class="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-6 text-center hover:border-aviation-500 transition cursor-pointer">
                     <input type="file" name="fdr_file" accept=".xls,.xlsx,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/octet-stream,text/csv" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-aviation-50 file:text-aviation-700 hover:file:bg-aviation-100 cursor-pointer" required>
-                    <p class="text-[11px] text-slate-400 mt-2">Accepted formats: OASYS HTML (.xls), Excel (.xlsx), CSV</p>
+                    <p class="text-[11px] text-slate-400 mt-2">Accepted formats: OASYS HTML (.xls), Excel (.xlsx), CSV (Up to 50 MB)</p>
+                </div>
+
+                {{-- Progress Bar during Chunked Transfer --}}
+                <div x-show="isUploadingModal" x-cloak class="space-y-1.5 p-3 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-slate-800 text-xs">
+                    <div class="flex items-center justify-between font-mono text-[10.5px]">
+                        <span class="font-bold text-aviation-600 dark:text-aviation-400" x-text="modalUploadText"></span>
+                        <span class="font-bold" x-text="modalUploadProgress + '%'"></span>
+                    </div>
+                    <div class="w-full bg-slate-200 dark:bg-navy-800 h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-aviation-600 h-full rounded-full transition-all duration-200" :style="'width:' + modalUploadProgress + '%'"></div>
+                    </div>
                 </div>
 
                 <div class="flex items-center justify-between pt-2">
-                    <button type="button" @click="useReferenceDataset()" class="text-xs text-aviation-600 dark:text-aviation-400 font-bold hover:underline">
+                    <button type="button" @click="useReferenceDataset()" :disabled="isUploadingModal" class="text-xs text-aviation-600 dark:text-aviation-400 font-bold hover:underline disabled:opacity-50">
                         Use Reference OASYS FDR Dataset
                     </button>
-                    <button type="submit" class="py-2 px-5 rounded-xl bg-aviation-600 text-white font-bold text-xs hover:bg-aviation-700 shadow-sm transition">
-                        Upload &amp; Parse
+                    <button type="submit" :disabled="isUploadingModal" class="py-2 px-5 rounded-xl bg-aviation-600 text-white font-bold text-xs hover:bg-aviation-700 shadow-sm transition disabled:opacity-50 cursor-pointer">
+                        <span x-show="!isUploadingModal">Upload &amp; Parse</span>
+                        <span x-show="isUploadingModal">Processing...</span>
                     </button>
                 </div>
             </form>
@@ -397,6 +409,80 @@ function fdrConfigForm() {
         selectedMode: 1,
         showUploadModal: false,
         hasValidUpload: {{ $upload ? 'true' : 'false' }},
+
+        isUploadingModal: false,
+        modalUploadProgress: 0,
+        modalUploadText: '',
+
+        async handleModalUpload(event) {
+            const form = event.target;
+            const fileInput = form.querySelector('input[name="fdr_file"]');
+            const file = fileInput?.files?.[0];
+            if (!file) return;
+
+            // If file <= 3.5 MB, standard form submission
+            if (file.size <= 3.5 * 1024 * 1024) {
+                form.submit();
+                return;
+            }
+
+            // For files > 3.5 MB, chunked transfer via /upload/chunk to prevent Vercel 4.5 MB limit
+            this.isUploadingModal = true;
+            this.modalUploadProgress = 10;
+            this.modalUploadText = 'Preparing chunked upload for ' + file.name + '...';
+
+            const csrfToken = document.querySelector('input[name="_token"]')?.value || '{{ csrf_token() }}';
+            const chunkSize = 2.5 * 1024 * 1024;
+            const totalChunks = Math.ceil(file.size / chunkSize);
+            const uploadToken = 'upl_fdr_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+
+            try {
+                for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
+                    const start = chunkIdx * chunkSize;
+                    const end = Math.min(file.size, start + chunkSize);
+                    const chunkBlob = file.slice(start, end);
+
+                    this.modalUploadProgress = Math.round(15 + (chunkIdx / totalChunks) * 80);
+                    this.modalUploadText = `Uploading chunk ${chunkIdx + 1} of ${totalChunks} (${(file.size / 1048576).toFixed(1)} MB)...`;
+
+                    const chunkForm = new FormData();
+                    chunkForm.append('report_type', 'fdr');
+                    chunkForm.append('upload_token', uploadToken);
+                    chunkForm.append('chunk_index', chunkIdx);
+                    chunkForm.append('total_chunks', totalChunks);
+                    chunkForm.append('filename', file.name);
+                    chunkForm.append('chunk', chunkBlob, file.name);
+                    chunkForm.append('_token', csrfToken);
+
+                    const chunkRes = await fetch('{{ route("upload.chunk") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': csrfToken
+                        },
+                        body: chunkForm
+                    });
+
+                    const chunkData = await chunkRes.json();
+                    if (!chunkRes.ok || !chunkData.success) {
+                        throw new Error(chunkData.error || 'Failed to upload chunk ' + (chunkIdx + 1));
+                    }
+
+                    if (chunkData.completed) {
+                        this.modalUploadProgress = 100;
+                        this.modalUploadText = 'Complete! Loading Configuration...';
+                        setTimeout(() => {
+                            window.location.href = chunkData.redirect_url;
+                        }, 250);
+                        return;
+                    }
+                }
+            } catch (err) {
+                this.isUploadingModal = false;
+                alert('Upload failed: ' + (err.message || 'Server error'));
+            }
+        },
 
         async useReferenceDataset() {
             try {

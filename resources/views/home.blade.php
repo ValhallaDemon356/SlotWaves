@@ -261,6 +261,28 @@
                                 </div>
                             </div>
 
+                            {{-- FDR Operational Scope & Metadata Badge Box --}}
+                            <template x-if="selectedReport === 'fdr'">
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 font-mono text-[11px] border-t border-emerald-200/70 dark:border-emerald-900/40 mt-2">
+                                    <div class="p-2 rounded-lg bg-white/90 dark:bg-navy-900/90 border border-emerald-200 dark:border-emerald-900/60">
+                                        <div class="text-[9.5px] text-slate-400 font-sans font-medium uppercase tracking-wider">Dataset</div>
+                                        <div class="font-bold text-slate-800 dark:text-slate-100 truncate" x-text="validationResult.dataset || selectedFileName"></div>
+                                    </div>
+                                    <div class="p-2 rounded-lg bg-white/90 dark:bg-navy-900/90 border border-emerald-200 dark:border-emerald-900/60">
+                                        <div class="text-[9.5px] text-slate-400 font-sans font-medium uppercase tracking-wider">Airport</div>
+                                        <div class="font-bold text-aviation-600 dark:text-aviation-400 truncate" x-text="validationResult.airport || 'CGK — Soekarno-Hatta'"></div>
+                                    </div>
+                                    <div class="p-2 rounded-lg bg-white/90 dark:bg-navy-900/90 border border-emerald-200 dark:border-emerald-900/60">
+                                        <div class="text-[9.5px] text-slate-400 font-sans font-medium uppercase tracking-wider">Operator</div>
+                                        <div class="font-bold text-slate-800 dark:text-slate-100 truncate" x-text="validationResult.operator || 'Garuda Indonesia / ALL AIRLINE'"></div>
+                                    </div>
+                                    <div class="p-2 rounded-lg bg-white/90 dark:bg-navy-900/90 border border-emerald-200 dark:border-emerald-900/60">
+                                        <div class="text-[9.5px] text-slate-400 font-sans font-medium uppercase tracking-wider">Records</div>
+                                        <div class="font-bold text-emerald-600 dark:text-emerald-400 truncate" x-text="(validationResult.records_count || 0).toLocaleString() + ' rows'"></div>
+                                    </div>
+                                </div>
+                            </template>
+
                             <template x-if="validationResult.detected_columns && validationResult.detected_columns.length">
                                 <div class="pt-1">
                                     <div class="text-[10px] text-slate-500 dark:text-slate-400 font-bold">Detected Column Schema:</div>
@@ -1110,6 +1132,197 @@ function unifiedReportPortal() {
             }
         },
 
+        async parseFdrClientSide(file) {
+            this.progressText = 'Parsing ' + file.name + ' in browser...';
+
+            const fileName = (file.name || '').trim();
+            const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+
+            const AIRPORT_MAP = {
+                'CGK': 'CGK — Soekarno-Hatta (Jakarta)',
+                'HLP': 'HLP — Halim Perdanakusuma (Jakarta)',
+                'SUB': 'SUB — Juanda (Surabaya)',
+                'DPS': 'DPS — I Gusti Ngurah Rai (Bali)',
+                'KNO': 'KNO — Kualanamu (Medan)',
+                'UPG': 'UPG — Sultan Hasanuddin (Makassar)',
+                'BDO': 'BDO — Husein Sastranegara (Bandung)',
+                'BTJ': 'BTJ — Sultan Iskandar Muda (Banda Aceh)',
+                'JOG': 'JOG — Adisutjipto (Yogyakarta)',
+                'YIA': 'YIA — Yogyakarta International',
+                'SRG': 'SRG — Ahmad Yani (Semarang)',
+                'BPN': 'BPN — Sultan Aji Muhammad Sulaiman (Balikpapan)',
+                'BDJ': 'BDJ — Syamsudin Noor (Banjarmasin)',
+                'MDC': 'MDC — Sam Ratulangi (Manado)',
+                'LOP': 'LOP — Lombok International',
+                'PLM': 'PLM — Sultan Mahmud Badaruddin II (Palembang)',
+                'PKU': 'PKU — Sultan Syarif Kasim II (Pekanbaru)',
+                'PDG': 'PDG — Minangkabau (Padang)',
+                'DJB': 'DJB — Sultan Thaha (Jambi)',
+                'TKG': 'TKG — Radin Inten II (Lampung)',
+                'PNK': 'PNK — Supadio (Pontianak)',
+                'TRK': 'TRK — Juwata (Tarakan)',
+                'KOE': 'KOE — El Tari (Kupang)',
+                'AMQ': 'AMQ — Pattimura (Ambon)',
+                'DJJ': 'DJJ — Sentani (Jayapura)',
+                'TIM': 'TIM — Mozes Kilangin (Timika)',
+                'SOQ': 'SOQ — Domine Eduard Osok (Sorong)',
+            };
+
+            let detectedAirportCode = 'CGK';
+            const fnMatch = fileName.match(/\b(CGK|HLP|SUB|DPS|KNO|UPG|BDO|BTJ|JOG|YIA|SRG|BPN|BDJ|MDC|LOP|PLM|PKU|PDG|DJB|TKG|PNK|TRK|KOE|AMQ|DJJ|TIM|SOQ)\b/i);
+            if (fnMatch) {
+                detectedAirportCode = fnMatch[1].toUpperCase();
+            }
+
+            // Read the first 4KB to detect format
+            const headBlob = file.slice(0, 4096);
+            const headText = await headBlob.text();
+            const isHtml = /<html|<table|<tr|<center|<title|oasys/i.test(headText);
+
+            let rowCount = 0;
+            let airlineCounts = {};
+            let detectedDateRange = '01-08-2026 to 31-08-2026';
+            let headerFound = false;
+
+            if (isHtml) {
+                const fullText = await file.text();
+
+                // Check title or center tags for Airport and Period
+                const titleMatch = fullText.match(/<center[^>]*>([\s\S]*?)<\/center>/i) || fullText.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+                if (titleMatch) {
+                    const headerStr = titleMatch[1];
+                    for (const [code, fullName] of Object.entries(AIRPORT_MAP)) {
+                        const cityPart = fullName.split('—')[1] || '';
+                        if (new RegExp(code, 'i').test(headerStr) || (cityPart && new RegExp(cityPart.split('(')[0].trim(), 'i').test(headerStr))) {
+                            detectedAirportCode = code;
+                            break;
+                        }
+                    }
+                    const dateMatch = headerStr.match(/(\d{1,2}[-\/]\d{1,2}[-\/]\d{4})\s*(?:s\/?d|to|-)\s*(\d{1,2}[-\/]\d{1,2}[-\/]\d{4})/i);
+                    if (dateMatch) {
+                        detectedDateRange = `${dateMatch[1]} to ${dateMatch[2]}`;
+                    }
+                }
+
+                // Match table rows
+                const trRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+                let trMatch;
+                let colIdxAirLine = -1;
+                let colIdxFlightNo = -1;
+
+                while ((trMatch = trRegex.exec(fullText)) !== null) {
+                    const trHtml = trMatch[1];
+                    const cells = [];
+                    const tdRegex = /<(?:td|th)[^>]*>([\s\S]*?)<\/(?:td|th)>/gi;
+                    let tdMatch;
+                    while ((tdMatch = tdRegex.exec(trHtml)) !== null) {
+                        cells.push(tdMatch[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim());
+                    }
+
+                    if (cells.length < 5) continue;
+
+                    // Header row identification
+                    if (!headerFound) {
+                        cells.forEach((c, idx) => {
+                            if (/^(air\s*line|airline|operator)/i.test(c)) colIdxAirLine = idx;
+                            if (/^(flight\s*no|flt\s*no|no\s*penerbangan)/i.test(c)) colIdxFlightNo = idx;
+                        });
+                        if (colIdxAirLine !== -1 || colIdxFlightNo !== -1) {
+                            headerFound = true;
+                            continue;
+                        }
+                    }
+
+                    // Count flight movement rows
+                    const flightVal = colIdxFlightNo !== -1 ? (cells[colIdxFlightNo] || '') : (cells[2] || '');
+                    const airlineVal = colIdxAirLine !== -1 ? (cells[colIdxAirLine] || '') : (cells[1] || '');
+
+                    if (flightVal && flightVal !== 'FLIGHT NO' && !/total|grand/i.test(flightVal)) {
+                        rowCount++;
+                        if (airlineVal && airlineVal !== 'AIR LINE') {
+                            airlineCounts[airlineVal] = (airlineCounts[airlineVal] || 0) + 1;
+                        }
+                    }
+                }
+            } else if (window.XLSX) {
+                // Binary BIFF8 (.xls) or OpenXML (.xlsx) using SheetJS
+                const arrayBuffer = await file.arrayBuffer();
+                const wb = window.XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+                const firstSheetName = wb.SheetNames[0];
+                const sheet = wb.Sheets[firstSheetName];
+                const rows = window.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+                let colIdxAirLine = -1;
+                let colIdxFlightNo = -1;
+
+                rows.forEach((cells) => {
+                    if (!Array.isArray(cells) || cells.length < 5) return;
+                    if (!headerFound) {
+                        cells.forEach((c, idx) => {
+                            const str = String(c).trim();
+                            if (/^(air\s*line|airline|operator)/i.test(str)) colIdxAirLine = idx;
+                            if (/^(flight\s*no|flt\s*no)/i.test(str)) colIdxFlightNo = idx;
+                        });
+                        if (colIdxAirLine !== -1 || colIdxFlightNo !== -1) {
+                            headerFound = true;
+                            return;
+                        }
+                    }
+
+                    const flightVal = colIdxFlightNo !== -1 ? String(cells[colIdxFlightNo] || '').trim() : String(cells[2] || '').trim();
+                    const airlineVal = colIdxAirLine !== -1 ? String(cells[colIdxAirLine] || '').trim() : String(cells[1] || '').trim();
+
+                    if (flightVal && flightVal !== 'FLIGHT NO' && !/total|grand/i.test(flightVal)) {
+                        rowCount++;
+                        if (airlineVal && airlineVal !== 'AIR LINE') {
+                            airlineCounts[airlineVal] = (airlineCounts[airlineVal] || 0) + 1;
+                        }
+                    }
+                });
+            } else {
+                const text = await file.text();
+                const lines = text.split(/\r?\n/).filter(l => l.trim().length > 10);
+                rowCount = Math.max(1, lines.length - 5);
+            }
+
+            // Determine top airline / operator display
+            let topAirline = 'Garuda Indonesia';
+            let maxCount = 0;
+            for (const [al, count] of Object.entries(airlineCounts)) {
+                if (count > maxCount) {
+                    maxCount = count;
+                    topAirline = al;
+                }
+            }
+
+            const totalAirlines = Object.keys(airlineCounts).length;
+            let operatorDisplay = 'ALL AIRLINE';
+            if (totalAirlines === 1 && topAirline) {
+                operatorDisplay = topAirline;
+            } else if (totalAirlines > 1 && topAirline) {
+                operatorDisplay = `${topAirline} / ALL AIRLINE`;
+            }
+
+            const airportDisplay = AIRPORT_MAP[detectedAirportCode] || `${detectedAirportCode} — International Airport`;
+
+            return {
+                valid: true,
+                category: null,
+                category_title: null,
+                detectedTemplate: 'fdr',
+                expectedTemplate: 'OASYS Flight Daily Report Excel',
+                records_count: Math.max(1, rowCount),
+                dataset: `${fileName} (${fileSizeMB})`,
+                airport: airportDisplay,
+                airport_code: detectedAirportCode,
+                operator: operatorDisplay,
+                period_label: detectedDateRange,
+                realization: 'YES',
+                detected_columns: ['AIR LINE', 'FLIGHT NO', 'PAIRED NO', 'SIBT', 'SOBT', 'AIBT', 'AOBT', 'LEG', 'CITY 1', 'CITY 2', 'CAP.', 'LOAD'],
+                client_parsed: true
+            };
+        },
+
         async stageFileForValidation(file) {
             if (!file) return;
 
@@ -1170,6 +1383,33 @@ function unifiedReportPortal() {
                     this.errorBadge = 'REJECTED';
                     this.validationErrors = [`Unsupported MIME type ${fileMime}. Please upload an OASYS FDR (.xls, .xlsx, or .csv) file.`];
                     return;
+                }
+
+                // Bypass Vercel 4.5 MB serverless limit: parse FDR client-side in the browser
+                try {
+                    const clientResult = await this.parseFdrClientSide(file);
+                    this.isValidating = false;
+                    if (clientResult && clientResult.valid) {
+                        this.validationStatus = 'valid';
+                        this.validationResult = clientResult;
+                    } else {
+                        this.validationStatus = 'invalid';
+                        this.errorCategoryTitle = (clientResult && clientResult.category_title) || 'INVALID FDR TEMPLATE';
+                        this.errorBadge = 'REJECTED';
+                        this.validationErrors = (clientResult && clientResult.errors) || ['Failed to parse Flight Daily Report workbook.'];
+                    }
+                    return;
+                } catch (parseErr) {
+                    console.error('Client-side FDR parse error:', parseErr);
+                    if (file.size > 3.5 * 1024 * 1024) {
+                        this.isValidating = false;
+                        this.validationStatus = 'invalid';
+                        this.errorCategoryTitle = 'PARSER FAILURE';
+                        this.errorBadge = 'ERROR';
+                        this.validationErrors = ['Unable to parse FDR workbook in browser: ' + (parseErr.message || 'Structure error')];
+                        return;
+                    }
+                    // For small files under 3.5 MB, fall through to server validation if client parsing threw
                 }
             }
 

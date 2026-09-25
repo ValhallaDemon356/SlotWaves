@@ -239,4 +239,71 @@ class FlightDailyReportFeatureTest extends TestCase
         $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'application/pdf');
     }
+
+    public function test_upload_chunk_for_fdr_reassembles_and_redirects_to_config(): void
+    {
+        $templatePath = storage_path('app/templates/BTJ FDR.xls');
+        if (!file_exists($templatePath)) {
+            $templatePath = storage_path('app/templates/OASYS-FDR-TEMPLATE.xls');
+        }
+
+        $content = file_get_contents($templatePath);
+        $totalBytes = strlen($content);
+        $half = (int) floor($totalBytes / 2);
+
+        $part1 = substr($content, 0, $half);
+        $part2 = substr($content, $half);
+
+        $token = 'test_token_' . uniqid();
+        $filename = 'BTJ FDR.xls';
+
+        // Chunk 0
+        $tmp1 = tempnam(sys_get_temp_dir(), 'chk0_') . '.tmp';
+        file_put_contents($tmp1, $part1);
+        $chunkFile0 = new UploadedFile($tmp1, 'chunk_0.tmp', 'application/octet-stream', null, true);
+
+        $res0 = $this->post(route('upload.chunk'), [
+            'report_type'  => 'fdr',
+            'upload_token' => $token,
+            'chunk_index'  => 0,
+            'total_chunks' => 2,
+            'filename'     => $filename,
+            'chunk'        => $chunkFile0,
+        ]);
+        @unlink($tmp1);
+
+        $res0->assertStatus(200);
+        $res0->assertJson([
+            'success'      => true,
+            'completed'    => false,
+            'chunk_index'  => 0,
+            'total_chunks' => 2,
+        ]);
+
+        // Chunk 1 (final chunk triggering reassembly)
+        $tmp2 = tempnam(sys_get_temp_dir(), 'chk1_') . '.tmp';
+        file_put_contents($tmp2, $part2);
+        $chunkFile1 = new UploadedFile($tmp2, 'chunk_1.tmp', 'application/octet-stream', null, true);
+
+        $res1 = $this->post(route('upload.chunk'), [
+            'report_type'  => 'fdr',
+            'upload_token' => $token,
+            'chunk_index'  => 1,
+            'total_chunks' => 2,
+            'filename'     => $filename,
+            'chunk'        => $chunkFile1,
+        ]);
+        @unlink($tmp2);
+
+        $res1->assertStatus(200);
+        $res1->assertJson([
+            'success'     => true,
+            'completed'   => true,
+            'report_type' => 'fdr',
+            'status'      => 'completed',
+        ]);
+        $this->assertNotEmpty($res1->json('upload_id'));
+        $this->assertStringContainsString('/fdr/config/', $res1->json('redirect_url'));
+        $this->assertGreaterThan(0, $res1->json('valid_rows'));
+    }
 }

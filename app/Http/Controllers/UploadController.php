@@ -103,9 +103,9 @@ class UploadController extends Controller
             ], 422);
         }
 
-        // File size check: if a non-probe file exceeds 25 MB, prompt to use chunked pipeline
+        // File size check: if a non-probe file exceeds 50 MB, prompt to use chunked pipeline
         $fileSize = $file->getSize();
-        if (!$isProbe && $fileSize > 25 * 1024 * 1024) {
+        if (!$isProbe && $fileSize > 50 * 1024 * 1024) {
             return response()->json([
                 'valid'            => false,
                 'category'         => 'FILE_TOO_LARGE',
@@ -350,7 +350,7 @@ class UploadController extends Controller
 
         // ── Validate Assembled Template ───────────────────────────────────────
         $validator = new TemplateValidator();
-        $validationResult = $validator->validate($reportType, $assembledAbsolutePath);
+        $validationResult = $validator->validate($reportType, $assembledAbsolutePath, false, $filename);
 
         if (!$validationResult['valid']) {
             Storage::disk('local')->delete($assembledRelativePath);
