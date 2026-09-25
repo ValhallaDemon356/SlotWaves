@@ -100,13 +100,15 @@ class FlightDailyReportParser
         }
 
         $head = substr($content, 0, 2048);
-        return (stripos($head, '<html') !== false
-            || stripos($head, '<table') !== false
-            || stripos($head, '<center') !== false
-            || stripos($head, '<title') !== false
-            || stripos($head, '<td') !== false
-            || stripos($head, 'oasys') !== false);
+        $lower = strtolower($head);
+        return (strpos($lower, '<html') !== false
+            || strpos($lower, '<table') !== false
+            || strpos($lower, '<center') !== false
+            || strpos($lower, '<title') !== false
+            || strpos($lower, '<td') !== false
+            || strpos($lower, 'oasys') !== false);
     }
+
 
     /**
      * Parse HTML Table format.
@@ -115,6 +117,23 @@ class FlightDailyReportParser
     {
         $metaHeaders = [];
         $grid = [];
+
+        // Extract hidden input metadata (e.g., <input type="hidden" name="BRANCH_CODE" value="CGK">)
+        if (preg_match_all('/<input[^>]+type=["\']?hidden["\']?[^>]*>/i', $html, $inputMatches)) {
+            foreach ($inputMatches[0] as $input) {
+                $name = '';
+                $value = '';
+                if (preg_match('/name=["\']?([^"\'>\s]+)["\']?/i', $input, $n)) {
+                    $name = $n[1];
+                }
+                if (preg_match('/value=["\']?([^"\'>\s]+)["\']?/i', $input, $v)) {
+                    $value = $v[1];
+                }
+                if ($name !== '' && $value !== '') {
+                    $metaHeaders[] = strtoupper($name) . ': ' . $value;
+                }
+            }
+        }
 
         // Extract any metadata from <center>, <title>, <head>
         if (preg_match_all('/<center[^>]*>(.*?)<\/center>/is', $html, $centerMatches)) {
@@ -264,19 +283,21 @@ class FlightDailyReportParser
         $maxMatched = 0;
         $headerRowIdx = -1;
 
-        // Scan first 15 rows for the table header row
+        // Scan first 15 rows (or total rows) for the table header row
         $limit = min(15, count($rows));
         for ($i = 0; $i < $limit; $i++) {
             $row = $rows[$i];
+            // Skip rows that are mostly empty or have few data columns
+            $nonEmpty = array_filter($row, fn($c) => trim($c) !== '');
+            if (count($nonEmpty) < 3) {
+                continue;
+            }
+
             $currentMap = [];
             $matchedCount = 0;
-
-            foreach ($row as $colIdx => $cellText) {
-                $cleanText = trim((string)$cellText);
-                if ($cleanText === '') continue;
-
-                foreach (self::HEADER_MAPPINGS as $field => $pattern) {
-                    if (!isset($currentMap[$field]) && preg_match($pattern, $cleanText)) {
+            foreach ($row as $colIdx => $cell) {
+                foreach (self::HEADER_MAPPINGS as $field => $regex) {
+                    if (preg_match($regex, $cell)) {
                         $currentMap[$field] = $colIdx;
                         $matchedCount++;
                         break;
@@ -284,7 +305,7 @@ class FlightDailyReportParser
                 }
             }
 
-            // We need at least flight_no and air_line or leg
+            // Require at least flight_no and either air_line or leg
             if ($matchedCount > $maxMatched && (isset($currentMap['flight_no']) || isset($currentMap['air_line']))) {
                 $maxMatched = $matchedCount;
                 $bestMap = $currentMap;
