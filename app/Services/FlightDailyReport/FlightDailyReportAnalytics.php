@@ -20,16 +20,24 @@ class FlightDailyReportAnalytics
     /**
      * Compute comprehensive presentation-ready operational metrics from FDR records.
      */
-    public function compute(array $records, array $meta = [], array $options = []): array
+    public function compute(array $records, array|string $meta = [], array|int $options = []): array
     {
+        if (is_string($meta)) {
+            $meta = ['airport' => $meta];
+        }
+        if (is_int($options)) {
+            $options = ['report_mode' => $options];
+        }
+
         $reportMode = (int)($options['report_mode'] ?? 1);
         $airportCode = $meta['airport'] ?? 'CGK';
 
-        // 1. Top KPI Metric Cards
-        $kpis = $this->computeTopKpis($records);
-
-        // 2. 3 Mentor Hourly Charts
+        // 1. 3 Mentor Hourly Charts
         $hourlyCharts = $this->hourlyChartService->buildHourlyCharts($records, $airportCode);
+
+        // 2. Top KPI Metric Cards (attaching peak hour)
+        $kpis = $this->computeTopKpis($records);
+        $kpis['peak_hour'] = $hourlyCharts['peak_hour'] ?? null;
 
         // 3. Schedule vs Realization Analysis
         $schedVsReal = $this->computeScheduleVsRealization($records);
@@ -62,9 +70,12 @@ class FlightDailyReportAnalytics
             'kpis'                    => $kpis,
             'hourly_charts'           => $hourlyCharts,
             'schedule_vs_realization' => $schedVsReal,
+            'sched_vs_real'           => $schedVsReal,
             'passenger_analytics'     => $paxAnalytics,
+            'pax_analytics'           => $paxAnalytics,
             'airline_route'           => $airlineRoute,
             'ground_operations'       => $groundOps,
+            'ground_ops'              => $groundOps,
             'reconciliation_apps'     => $reconciliationApps,
             'reconciliation_edifly'   => $reconciliationEdifly,
             'mode_payload'            => $modePayload,
@@ -106,14 +117,20 @@ class FlightDailyReportAnalytics
                 $departures++;
             }
 
-            $adult += (int)($r['adult'] ?? 0);
-            $child += (int)($r['child'] ?? 0);
-            $infant += (int)($r['infant'] ?? 0);
-            $transit += (int)($r['transit'] ?? 0);
-            $transfer += (int)($r['transfer'] ?? 0);
+            $rAdult = (int)($r['adult'] ?? ($r['pax_adult'] ?? 0));
+            $rChild = (int)($r['child'] ?? ($r['pax_child'] ?? 0));
+            $rInfant = (int)($r['infant'] ?? ($r['pax_infant'] ?? 0));
+            $rTransit = (int)($r['transit'] ?? ($r['pax_transit'] ?? 0));
+            $rTransfer = (int)($r['transfer'] ?? ($r['pax_transfer'] ?? 0));
 
-            $cap = (int)($r['cap'] ?? 0);
-            $load = (int)($r['load'] ?? 0);
+            $adult += $rAdult;
+            $child += $rChild;
+            $infant += $rInfant;
+            $transit += $rTransit;
+            $transfer += $rTransfer;
+
+            $cap = (int)($r['cap'] ?? ($r['capacity'] ?? 0));
+            $load = (int)($r['load'] ?? ($r['pax_total'] ?? ($rAdult + $rChild + $rInfant)));
             $totalCap += $cap;
             $totalLoad += $load;
 
@@ -136,7 +153,8 @@ class FlightDailyReportAnalytics
             }
         }
 
-        $totalPax = $adult + $child + $infant;
+        $directPax = $adult + $child + $infant;
+        $totalPax = ($totalLoad > 0) ? $totalLoad : ($directPax + $transit + $transfer);
 
         // Load Factor Guardrail: When totalCap = 0, strictly 'N/A'
         $avgLoadFactor = ($totalCap > 0) ? round(($totalLoad / $totalCap) * 100, 1) . '%' : 'N/A';
@@ -157,8 +175,10 @@ class FlightDailyReportAnalytics
             'avg_load_factor'      => $avgLoadFactor,
             'avg_load_factor_num'  => $avgLoadFactorNum,
             'cargo_kg'             => round($cargoKg, 1),
+            'total_cargo_kg'       => round($cargoKg, 1),
             'cargo_ton'            => round($cargoKg / 1000, 2),
             'baggage_kg'           => round($baggageKg, 1),
+            'total_baggage_kg'     => round($baggageKg, 1),
             'pos_kg'               => round($posKg, 1),
             'irregularities'       => [
                 'total'        => ($diverts + $misses + $unscheduled),
@@ -212,8 +232,10 @@ class FlightDailyReportAnalytics
 
         // Scheduled hours distribution
         foreach ($records as $r) {
-            $schedTime = ($r['direction'] === 'ARRIVAL') ? $r['sibt'] : $r['sobt'];
-            if ($schedTime !== 'N/A' && preg_match('/(\d{1,2}):(\d{2})/', $schedTime, $tm)) {
+            $schedTime = (($r['direction'] ?? '') === 'ARRIVAL')
+                ? ($r['sibt'] ?? ($r['arr_sched'] ?? 'N/A'))
+                : ($r['sobt'] ?? ($r['dep_sched'] ?? 'N/A'));
+            if ($schedTime && $schedTime !== 'N/A' && preg_match('/(\d{1,2}):(\d{2})/', $schedTime, $tm)) {
                 $sh = (int)$tm[1];
                 if ($sh >= 0 && $sh < 24) {
                     $hourlyVariances[$sh]['scheduled']++;
@@ -227,14 +249,20 @@ class FlightDailyReportAnalytics
             unset($hourlyVariances[$h]['var_sum']);
         }
 
-        $onTimePct = ($totalEvaluated > 0) ? round(($onTime / $totalEvaluated) * 100, 1) : 100.0;
-        $avgDelay = ($totalEvaluated > 0) ? round($totalDelayMinutes / $totalEvaluated, 1) : 0.0;
+        $hasEvaluated = ($totalEvaluated > 0);
+        $onTimePct = $hasEvaluated ? round(($onTime / $totalEvaluated) * 100, 1) : null;
+        $onTimePctStr = $hasEvaluated ? "{$onTimePct}%" : 'N/A';
+        $avgDelay = $hasEvaluated ? round($totalDelayMinutes / $totalEvaluated, 1) : null;
+        $avgDelayStr = $hasEvaluated ? "{$avgDelay} min" : 'N/A';
 
         return [
-            'evaluated_flights'     => $totalEvaluated,
-            'on_time_percentage'    => "{$onTimePct}%",
-            'on_time_pct_num'       => $onTimePct,
-            'avg_delay_minutes'     => $avgDelay,
+            'has_evaluation'        => $hasEvaluated,
+            'evaluated_flights'     => $hasEvaluated ? $totalEvaluated : 'N/A',
+            'evaluated_count'       => $totalEvaluated,
+            'on_time_percentage'    => $onTimePctStr,
+            'on_time_pct_num'       => $onTimePct ?? 0,
+            'avg_delay_minutes'     => $avgDelayStr,
+            'avg_delay_num'         => $avgDelay ?? 0,
             'early_count'           => $early,
             'on_time_count'         => $onTime,
             'minor_delay_count'     => $minorDelay,
@@ -245,7 +273,7 @@ class FlightDailyReportAnalytics
 
     /**
      * Passenger Analytics & Trend:
-     * - Composition: Stacked bar breakdown (Adult, Child, Infant, Transit, Transfer).
+     * - Composition: Stacked / grouped breakdown (Adult, Child, Infant, Transit, Transfer).
      * - Multi-day Trend: Combo chart (Pax Volume vs Load Factor line).
      */
     public function computePassengerAnalytics(array $records): array
@@ -259,13 +287,26 @@ class FlightDailyReportAnalytics
         ];
 
         $dailyGroups = [];
+        $totalDirect = 0;
+        $totalAll = 0;
+        $totalLoad = 0;
 
         foreach ($records as $r) {
-            $comp['adult'] += (int)($r['adult'] ?? 0);
-            $comp['child'] += (int)($r['child'] ?? 0);
-            $comp['infant'] += (int)($r['infant'] ?? 0);
-            $comp['transit'] += (int)($r['transit'] ?? 0);
-            $comp['transfer'] += (int)($r['transfer'] ?? 0);
+            $a = (int)($r['adult'] ?? ($r['pax_adult'] ?? 0));
+            $c = (int)($r['child'] ?? ($r['pax_child'] ?? 0));
+            $i = (int)($r['infant'] ?? ($r['pax_infant'] ?? 0));
+            $tr = (int)($r['transit'] ?? ($r['pax_transit'] ?? 0));
+            $tf = (int)($r['transfer'] ?? ($r['pax_transfer'] ?? 0));
+            $ld = (int)($r['load'] ?? ($r['pax_total'] ?? ($a + $c + $i)));
+
+            $comp['adult'] += $a;
+            $comp['child'] += $c;
+            $comp['infant'] += $i;
+            $comp['transit'] += $tr;
+            $comp['transfer'] += $tf;
+            $totalDirect += ($a + $c + $i);
+            $totalAll += ($a + $c + $i + $tr + $tf);
+            $totalLoad += $ld;
 
             $date = $r['flight_date'] ?? date('Y-08-01');
             if (!isset($dailyGroups[$date])) {
@@ -279,9 +320,9 @@ class FlightDailyReportAnalytics
             }
 
             $dailyGroups[$date]['flights']++;
-            $dailyGroups[$date]['passengers'] += ((int)($r['adult'] ?? 0) + (int)($r['child'] ?? 0) + (int)($r['infant'] ?? 0));
+            $dailyGroups[$date]['passengers'] += ($a + $c + $i);
             $dailyGroups[$date]['capacity'] += (int)($r['cap'] ?? 0);
-            $dailyGroups[$date]['load'] += (int)($r['load'] ?? 0);
+            $dailyGroups[$date]['load'] += $ld;
         }
 
         ksort($dailyGroups);
@@ -299,9 +340,15 @@ class FlightDailyReportAnalytics
             ];
         }
 
+        $hasBreakdown = ($totalAll > 0);
+
         return [
-            'composition' => $comp,
-            'daily_trend' => $dailyTrend,
+            'composition'     => $comp,
+            'total_direct'    => $totalDirect,
+            'total_all'       => $totalAll,
+            'total_load'      => $totalLoad,
+            'has_breakdown'   => $hasBreakdown,
+            'daily_trend'     => $dailyTrend,
         ];
     }
 

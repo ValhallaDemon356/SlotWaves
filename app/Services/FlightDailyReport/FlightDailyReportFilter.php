@@ -25,11 +25,17 @@ class FlightDailyReportFilter
         $startDate    = trim($filters['start_date'] ?? '');
         $endDate      = trim($filters['end_date'] ?? '');
         $search       = strtolower(trim($filters['search'] ?? ''));
+        $analysisDate = trim($filters['analysis_date'] ?? '');
         $reportMode   = (int)($filters['report_mode'] ?? 1);
         $reqVersion   = $filters['v'] ?? ($filters['req_id'] ?? time());
 
         $activeChips = [];
 
+        if (!empty($analysisDate) && $analysisDate !== 'ALL') {
+            $stdDate = $this->standardizeDate($analysisDate);
+            $displayDate = date('d-m-Y', strtotime($stdDate));
+            $activeChips[] = ['key' => 'analysis_date', 'label' => "Date: {$displayDate}", 'value' => $stdDate];
+        }
         if ($airport !== 'ALL' && !empty($airport)) {
             $activeChips[] = ['key' => 'airport', 'label' => "Airport: {$airport}", 'value' => $airport];
         }
@@ -53,13 +59,23 @@ class FlightDailyReportFilter
         }
         if (!empty($startDate) || !empty($endDate)) {
             $lbl = trim("{$startDate} to {$endDate}");
-            $activeChips[] = ['key' => 'date_range', 'label' => "Date: {$lbl}", 'value' => $lbl];
+            $activeChips[] = ['key' => 'date_range', 'label' => "Range: {$lbl}", 'value' => $lbl];
         }
         if (!empty($search)) {
             $activeChips[] = ['key' => 'search', 'label' => "Query: {$search}", 'value' => $search];
         }
 
+        $stdAnalysisDate = (!empty($analysisDate) && $analysisDate !== 'ALL') ? $this->standardizeDate($analysisDate) : null;
+
         foreach ($records as $r) {
+            // 0. Analysis Date Filter (Single Day Peak Analysis)
+            if ($stdAnalysisDate !== null) {
+                $rDate = $this->standardizeDate($r['flight_date'] ?? '');
+                if ($rDate !== $stdAnalysisDate) {
+                    continue;
+                }
+            }
+
             // 1. Airport Filter
             if ($airport !== 'ALL' && !empty($airport)) {
                 $c1 = strtoupper($r['city_1'] ?? '');
@@ -80,7 +96,7 @@ class FlightDailyReportFilter
 
             // 3. Operator Filter
             if ($operator !== 'ALL' && !empty($operator)) {
-                $al = trim($r['air_line'] ?? '');
+                $al = trim($r['air_line'] ?? ($r['operator'] ?? ''));
                 if (strcasecmp($al, $operator) !== 0 && stripos($al, $operator) === false) {
                     continue;
                 }
@@ -88,15 +104,20 @@ class FlightDailyReportFilter
 
             // 4. Traffic Filter (ALL / DOMESTIC / INTERNATIONAL)
             if ($traffic !== 'ALL' && !empty($traffic)) {
-                $tr = strtoupper($r['traffic'] ?? 'DOMESTIC');
-                if ($tr !== $traffic) {
+                $tr = strtoupper(trim($r['traffic'] ?? ($r['route_type'] ?? 'DOMESTIC')));
+                $matches = ($tr === $traffic);
+                if (!$matches) {
+                    if (($traffic === 'DOM' || $traffic === 'DOMESTIC') && ($tr === 'DOM' || $tr === 'DOMESTIC')) $matches = true;
+                    if (($traffic === 'INT' || $traffic === 'INTERNATIONAL') && ($tr === 'INT' || $tr === 'INTERNATIONAL')) $matches = true;
+                }
+                if (!$matches) {
                     continue;
                 }
             }
 
             // 5. Realization Filter (ALL / YES / NO)
             if ($realization !== 'ALL' && !empty($realization)) {
-                $isRealized = !empty($r['is_realized']);
+                $isRealized = !empty($r['is_realized']) || !empty($r['realization']);
                 if ($realization === 'YES' && !$isRealized) continue;
                 if ($realization === 'NO' && $isRealized) continue;
             }
@@ -116,7 +137,6 @@ class FlightDailyReportFilter
                 }
             }
 
-            // 7. Date Range Filter
             // 7. Date Range Filter
             if (!empty($startDate)) {
                 $stdStart = $this->standardizeDate($startDate);
@@ -159,19 +179,20 @@ class FlightDailyReportFilter
             'counter_text'   => "Showing {$filteredCount} of {$totalCount} records",
             'active_chips'   => $activeChips,
             'filters'        => [
-                'airport'     => $airport,
-                'leg'         => $leg,
-                'operator'    => $operator,
-                'traffic'     => $traffic,
-                'realization' => $realization,
-                'data_type'   => $dataType,
-                'flight_no'   => $flightNo,
-                'suffix'      => $suffix,
-                'start_date'  => $startDate,
-                'end_date'    => $endDate,
-                'search'      => $search,
-                'report_mode' => $reportMode,
-                'v'           => $reqVersion,
+                'analysis_date' => $stdAnalysisDate ?? $analysisDate,
+                'airport'       => $airport,
+                'leg'           => $leg,
+                'operator'      => $operator,
+                'traffic'       => $traffic,
+                'realization'   => $realization,
+                'data_type'     => $dataType,
+                'flight_no'     => $flightNo,
+                'suffix'        => $suffix,
+                'start_date'    => $startDate,
+                'end_date'      => $endDate,
+                'search'        => $search,
+                'report_mode'   => $reportMode,
+                'v'             => $reqVersion,
             ],
             'version'        => $reqVersion,
         ];
@@ -180,9 +201,10 @@ class FlightDailyReportFilter
     /**
      * Standardize date into Y-m-d.
      */
-    protected function standardizeDate(string $rawDate): string
+    public static function standardizeDate(?string $rawDate): string
     {
         try {
+            if ($rawDate === null) return 'N/A';
             $rawDate = trim(str_replace('/', '-', $rawDate));
             if (empty($rawDate) || $rawDate === 'N/A') return 'N/A';
             if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})/', $rawDate, $m)) {
@@ -194,7 +216,23 @@ class FlightDailyReportFilter
             $ts = strtotime($rawDate);
             return $ts ? date('Y-m-d', $ts) : $rawDate;
         } catch (\Throwable $e) {
-            return $rawDate;
+            return $rawDate ?? 'N/A';
         }
+    }
+
+    /**
+     * Convenience method to directly filter records.
+     */
+    public function filterRecords(array $records, array $filters): array
+    {
+        return $this->apply($records, $filters)['records'];
+    }
+
+    /**
+     * Convenience method to extract active filter chips.
+     */
+    public function getActiveFilterChips(array $filters): array
+    {
+        return $this->apply([], $filters)['active_chips'];
     }
 }

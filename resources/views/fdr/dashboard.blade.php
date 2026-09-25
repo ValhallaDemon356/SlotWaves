@@ -63,6 +63,42 @@
     {{-- ══ MAIN DASHBOARD BODY ═════════════════════════════════════════════════ --}}
     <main class="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
 
+        {{-- ══ SOURCE DATASET & ANALYSIS DATE CONTROLS ════════════════════════ --}}
+        <div class="bg-white dark:bg-navy-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="flex items-center gap-2">
+                    <span class="px-2.5 py-1 rounded-lg text-xs font-black bg-aviation-600 text-white tracking-wide uppercase shadow-2xs">PEAK DAILY</span>
+                    <span class="font-black text-slate-900 dark:text-white text-sm" x-text="formatDateHeader(filters.analysis_date)">{{ date('d F Y', strtotime($analysisDate)) }}</span>
+                </div>
+                <span class="hidden sm:inline text-slate-300 dark:text-slate-700">|</span>
+                <div class="flex flex-wrap items-center gap-2 text-xs">
+                    <span class="text-slate-400 font-medium">Source Period:</span>
+                    <span class="font-mono font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-navy-800 px-2.5 py-0.5 rounded-md" x-text="sourceSummary.period_label">{{ $sourceSummary['period_label'] }}</span>
+                    <span class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-aviation-50 text-aviation-700 dark:bg-aviation-950 dark:text-aviation-300 border border-aviation-200 dark:border-aviation-800" x-text="sourceSummary.days_available">{{ $sourceSummary['days_available'] }}</span>
+                    <span class="text-slate-400">&bull;</span>
+                    <span class="text-slate-500 font-medium">Source Flights: <strong class="text-slate-800 dark:text-slate-200 font-mono" x-text="sourceSummary.total_flights.toLocaleString()">{{ number_format($sourceSummary['total_flights']) }}</strong></span>
+                </div>
+            </div>
+
+            {{-- Analysis Date Stepper & Picker --}}
+            <div class="flex items-center gap-2 bg-slate-50 dark:bg-navy-800/80 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 self-stretch md:self-auto justify-between md:justify-start">
+                <span class="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 px-2">Analysis Date:</span>
+                <div class="flex items-center gap-1">
+                    <button type="button" @click="stepAnalysisDate(-1)" class="w-7 h-7 rounded-lg bg-white dark:bg-navy-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-navy-600 font-bold text-xs cursor-pointer shadow-2xs transition" title="Previous Available Day">
+                        &larr;
+                    </button>
+                    <select x-model="filters.analysis_date" @change="triggerFilter()" class="rounded-lg border-0 bg-transparent text-xs font-black text-aviation-700 dark:text-aviation-300 py-1 px-2 focus:ring-0 cursor-pointer">
+                        <template x-for="d in availableDates" :key="d">
+                            <option :value="d" x-text="formatDateOption(d)"></option>
+                        </template>
+                    </select>
+                    <button type="button" @click="stepAnalysisDate(1)" class="w-7 h-7 rounded-lg bg-white dark:bg-navy-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-navy-600 font-bold text-xs cursor-pointer shadow-2xs transition" title="Next Available Day">
+                        &rarr;
+                    </button>
+                </div>
+            </div>
+        </div>
+
         {{-- ══ SECTION 1: FILTER CASCADE & ACTIVE CHIPS BAR ═══════════════════ --}}
         <div class="bg-white dark:bg-navy-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-sm space-y-4">
             
@@ -188,10 +224,15 @@
         {{-- ══ SECTION 2: TOP METRIC CARDS ═════════════════════════════════════ --}}
         <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
 
-            {{-- 1. Total Flights --}}
-            <div class="bg-white dark:bg-navy-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+            {{-- 1. Analysis Day Flights --}}
+            <div class="bg-white dark:bg-navy-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm relative overflow-hidden">
                 <div class="flex items-center justify-between">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Flights</span>
+                    <div>
+                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">Analysis Day Flights</span>
+                        <div class="text-[10px] font-bold text-aviation-600 dark:text-aviation-400 font-mono mt-0.5" x-text="'Source Total: ' + sourceSummary.total_flights.toLocaleString()">
+                            Source Total: {{ number_format($sourceSummary['total_flights']) }}
+                        </div>
+                    </div>
                     <span class="p-1.5 rounded-lg bg-aviation-50 dark:bg-aviation-950 text-aviation-600 dark:text-aviation-400">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
                     </span>
@@ -206,10 +247,10 @@
                 </div>
             </div>
 
-            {{-- 2. Total Passengers --}}
+            {{-- 2. Analysis Day Passengers --}}
             <div class="bg-white dark:bg-navy-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
                 <div class="flex items-center justify-between">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Passengers</span>
+                    <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">Analysis Day Passengers</span>
                     <span class="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                     </span>
@@ -218,14 +259,14 @@
                     {{ number_format($analytics['kpis']['total_passengers']) }}
                 </div>
                 <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 truncate">
-                    Adl: <strong x-text="kpis.adult_passengers.toLocaleString()"></strong> | Chd: <strong x-text="kpis.child_passengers.toLocaleString()"></strong> | Inf: <strong x-text="kpis.infant_passengers.toLocaleString()"></strong>
+                    Adl: <strong x-text="kpis.adult_passengers.toLocaleString()">{{ number_format($analytics['kpis']['adult_passengers']) }}</strong> | Chd: <strong x-text="kpis.child_passengers.toLocaleString()">{{ number_format($analytics['kpis']['child_passengers']) }}</strong> | Inf: <strong x-text="kpis.infant_passengers.toLocaleString()">{{ number_format($analytics['kpis']['infant_passengers']) }}</strong>
                 </div>
             </div>
 
             {{-- 3. Average Load Factor --}}
             <div class="bg-white dark:bg-navy-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
                 <div class="flex items-center justify-between">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Avg Load Factor</span>
+                    <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">Analysis Day Load Factor</span>
                     <span class="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                     </span>
@@ -234,24 +275,25 @@
                     {{ $analytics['kpis']['avg_load_factor'] }}
                 </div>
                 <div class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-mono">
-                    Load: <span x-text="kpis.total_load.toLocaleString()"></span> / Cap: <span x-text="kpis.total_capacity.toLocaleString()"></span>
+                    Load: <span x-text="kpis.total_load.toLocaleString()">{{ number_format($analytics['kpis']['total_load']) }}</span> / Cap: <span x-text="kpis.total_capacity.toLocaleString()">{{ number_format($analytics['kpis']['total_capacity']) }}</span>
                 </div>
             </div>
 
-            {{-- 4. Cargo, Baggage & Irregularities --}}
+            {{-- 4. Peak Hour & Cargo --}}
             <div class="bg-white dark:bg-navy-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
                 <div class="flex items-center justify-between">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Cargo &amp; Irregularities</span>
+                    <span class="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">Peak Hour &amp; Cargo</span>
                     <span class="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </span>
                 </div>
-                <div class="text-2xl font-black text-slate-900 dark:text-white mt-1">
-                    <span x-text="kpis.cargo_ton"></span> <span class="text-xs font-normal text-slate-400">Ton Cargo</span>
+                <div class="text-xl font-black text-amber-600 dark:text-amber-400 mt-1 truncate" x-text="kpis.peak_hour ? kpis.peak_hour.time_range : 'N/A'">
+                    {{ $analytics['kpis']['peak_hour']['time_range'] ?? 'N/A' }}
                 </div>
                 <div class="flex items-center justify-between text-xs mt-1">
-                    <span class="text-slate-500">Bagg: <strong x-text="kpis.baggage_kg.toLocaleString()"></strong> kg</span>
-                    <span class="font-bold text-amber-600 dark:text-amber-400" x-text="kpis.irregularities.total + ' Irreg'"></span>
+                    <span class="font-bold text-slate-700 dark:text-slate-300" x-text="(kpis.peak_hour ? kpis.peak_hour.movements : 0) + ' Mvts'">{{ ($analytics['kpis']['peak_hour']['movements'] ?? 0) }} Mvts</span>
+                    <span class="text-slate-500"><strong x-text="kpis.cargo_ton">{{ $analytics['kpis']['cargo_ton'] }}</strong> t Cargo</span>
+                    <span class="font-bold text-amber-600 dark:text-amber-400" x-text="kpis.irregularities.total + ' Irreg'">{{ $analytics['kpis']['irregularities']['total'] }} Irreg</span>
                 </div>
             </div>
 
@@ -261,16 +303,19 @@
         <div class="bg-white dark:bg-navy-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-sm space-y-6">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div>
-                    <div class="inline-flex items-center gap-1.5 text-xs font-bold text-aviation-600 dark:text-aviation-400 uppercase tracking-wider mb-1">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <span>24-Hour Continuous Timeline (00:00 to 23:59)</span>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="px-2.5 py-0.5 rounded-md font-black text-[10px] bg-aviation-600 text-white uppercase tracking-wider">PEAK DAILY ANALYSIS</span>
+                        <span class="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight" x-text="formatDateHeader(filters.analysis_date)">{{ date('d F Y', strtotime($analysisDate)) }}</span>
                     </div>
-                    <h2 class="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                        3 Mentor Hourly Operational Charts
-                    </h2>
+                    <div class="text-xs text-slate-400">
+                        Source Dataset: <strong class="text-slate-600 dark:text-slate-300 font-mono" x-text="sourceSummary.period_label">{{ $sourceSummary['period_label'] }}</strong> &bull;
+                        3 Mentor Hourly Operational Charts &bull; 24-Hour Continuous Timeline (00:00 to 23:59)
+                    </div>
                 </div>
-                <div class="text-xs text-slate-500 font-mono">
-                    All 24 hours strictly visible &bull; Hover for dynamic capacity differential
+                <div class="flex items-center gap-2">
+                    <span class="px-3 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 font-bold text-xs font-mono">
+                        Peak Hour: <strong x-text="kpis.peak_hour ? kpis.peak_hour.display : 'N/A'">{{ $analytics['kpis']['peak_hour']['display'] ?? 'N/A' }}</strong>
+                    </span>
                 </div>
             </div>
 
@@ -282,6 +327,7 @@
                         <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-white">
                             Chart 1: ARRIVAL–DEPARTURE MOVEMENT
                         </h3>
+                        <span class="text-[11px] font-semibold text-slate-400 font-mono" x-text="'(' + formatDateOption(filters.analysis_date) + ')'"></span>
                     </div>
                     <div class="flex items-center gap-3 text-[11px] text-slate-500">
                         <span class="inline-flex items-center gap-1"><span class="w-3 h-2 rounded bg-[#FDBA74]"></span> Plan (PPRP)</span>
@@ -302,6 +348,7 @@
                         <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-white">
                             Chart 2: DEPARTURE MOVEMENT (Blue Semantic Palette)
                         </h3>
+                        <span class="text-[11px] font-semibold text-slate-400 font-mono" x-text="'(' + formatDateOption(filters.analysis_date) + ')'"></span>
                     </div>
                     <div class="flex items-center gap-3 text-[11px] text-slate-500">
                         <span class="inline-flex items-center gap-1"><span class="w-3 h-2 rounded bg-[#93C5FD]"></span> Plan (PPRP)</span>
@@ -321,6 +368,7 @@
                         <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-white">
                             Chart 3: ARRIVAL MOVEMENT (Salmon/Magenta Palette)
                         </h3>
+                        <span class="text-[11px] font-semibold text-slate-400 font-mono" x-text="'(' + formatDateOption(filters.analysis_date) + ')'"></span>
                     </div>
                     <div class="flex items-center gap-3 text-[11px] text-slate-500">
                         <span class="inline-flex items-center gap-1"><span class="w-3 h-2 rounded bg-[#FDA4AF]"></span> Plan (PPRP)</span>
@@ -346,7 +394,9 @@
                             1. Schedule vs Realization (SIBT/SOBT vs AIBT/AOBT)
                         </h3>
                     </div>
-                    <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" x-text="schedVsReal.on_time_percentage + ' ON-TIME'"></span>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold"
+                          :class="schedVsReal.has_evaluation ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-navy-800 dark:text-slate-400'"
+                          x-text="schedVsReal.has_evaluation ? (schedVsReal.on_time_percentage + ' ON-TIME') : 'N/A'"></span>
                 </div>
 
                 <div class="grid grid-cols-4 gap-2 text-center text-xs">
@@ -356,38 +406,61 @@
                     </div>
                     <div class="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-800">
                         <div class="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400">On-Time</div>
-                        <div class="text-base font-black text-emerald-700 dark:text-emerald-300 mt-0.5" x-text="schedVsReal.on_time_count"></div>
+                        <div class="text-base font-black text-emerald-700 dark:text-emerald-300 mt-0.5" x-text="schedVsReal.has_evaluation ? schedVsReal.on_time_count : 'N/A'"></div>
                     </div>
                     <div class="p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-800">
                         <div class="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400">16-45m Delay</div>
-                        <div class="text-base font-black text-amber-700 dark:text-amber-300 mt-0.5" x-text="schedVsReal.minor_delay_count"></div>
+                        <div class="text-base font-black text-amber-700 dark:text-amber-300 mt-0.5" x-text="schedVsReal.has_evaluation ? schedVsReal.minor_delay_count : 'N/A'"></div>
                     </div>
                     <div class="p-2.5 rounded-xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-800">
                         <div class="text-[10px] font-bold uppercase text-rose-600 dark:text-rose-400">&gt;45m Delay</div>
-                        <div class="text-base font-black text-rose-700 dark:text-rose-300 mt-0.5" x-text="schedVsReal.severe_delay_count"></div>
+                        <div class="text-base font-black text-rose-700 dark:text-rose-300 mt-0.5" x-text="schedVsReal.has_evaluation ? schedVsReal.severe_delay_count : 'N/A'"></div>
                     </div>
                 </div>
 
                 <div class="p-3 rounded-xl bg-slate-50 dark:bg-navy-800/40 border border-slate-100 dark:border-slate-800 text-xs flex items-center justify-between">
                     <span class="text-slate-500">Average Punctuality Variance:</span>
-                    <span class="font-mono font-bold text-slate-900 dark:text-white" x-text="schedVsReal.avg_delay_minutes + ' minutes'"></span>
+                    <span class="font-mono font-bold text-slate-900 dark:text-white" x-text="schedVsReal.avg_delay_minutes"></span>
                 </div>
             </div>
 
-            {{-- MODULE 2: Passenger Analytics & Multi-Day Trend --}}
+            {{-- MODULE 2: Passenger Composition (Selected Analysis Day) --}}
             <div class="bg-white dark:bg-navy-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm space-y-4">
                 <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
                     <div class="flex items-center gap-2">
                         <span class="w-1.5 h-4 rounded-full bg-aviation-600"></span>
                         <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                            2. Passenger Composition &amp; Trend
+                            2. Passenger Composition
                         </h3>
                     </div>
-                    <span class="text-xs text-slate-400 font-mono">Pax vs Load Factor</span>
+                    <span class="text-xs text-slate-400 font-mono" x-text="'Date: ' + formatDateOption(filters.analysis_date)"></span>
                 </div>
 
-                <div class="h-44 w-full relative">
+                <div class="h-32 w-full relative">
                     <canvas id="passengerTrendChart"></canvas>
+                </div>
+
+                <div class="grid grid-cols-5 gap-1.5 text-center text-xs font-mono pt-1">
+                    <div class="p-1.5 rounded-lg bg-slate-50 dark:bg-navy-800 border border-slate-100 dark:border-slate-800">
+                        <div class="text-[9px] uppercase font-bold text-slate-400 font-sans">Adult</div>
+                        <div class="text-xs font-black text-slate-800 dark:text-slate-200" x-text="paxAnalytics.composition.adult.toLocaleString()"></div>
+                    </div>
+                    <div class="p-1.5 rounded-lg bg-slate-50 dark:bg-navy-800 border border-slate-100 dark:border-slate-800">
+                        <div class="text-[9px] uppercase font-bold text-slate-400 font-sans">Child</div>
+                        <div class="text-xs font-black text-slate-800 dark:text-slate-200" x-text="paxAnalytics.composition.child.toLocaleString()"></div>
+                    </div>
+                    <div class="p-1.5 rounded-lg bg-slate-50 dark:bg-navy-800 border border-slate-100 dark:border-slate-800">
+                        <div class="text-[9px] uppercase font-bold text-slate-400 font-sans">Infant</div>
+                        <div class="text-xs font-black text-slate-800 dark:text-slate-200" x-text="paxAnalytics.composition.infant.toLocaleString()"></div>
+                    </div>
+                    <div class="p-1.5 rounded-lg bg-slate-50 dark:bg-navy-800 border border-slate-100 dark:border-slate-800">
+                        <div class="text-[9px] uppercase font-bold text-slate-400 font-sans">Transit</div>
+                        <div class="text-xs font-black text-slate-800 dark:text-slate-200" x-text="paxAnalytics.composition.transit.toLocaleString()"></div>
+                    </div>
+                    <div class="p-1.5 rounded-lg bg-slate-50 dark:bg-navy-800 border border-slate-100 dark:border-slate-800">
+                        <div class="text-[9px] uppercase font-bold text-slate-400 font-sans">Transfer</div>
+                        <div class="text-xs font-black text-slate-800 dark:text-slate-200" x-text="paxAnalytics.composition.transfer.toLocaleString()"></div>
+                    </div>
                 </div>
             </div>
 
@@ -558,9 +631,13 @@
                     <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
                         Detailed Flight Movement Registry
                     </h3>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                          x-text="'Analysis Date: ' + formatDateOption(filters.analysis_date)">
+                        Analysis Date: {{ date('d-m-Y', strtotime($analysisDate)) }}
+                    </span>
                 </div>
                 <div class="text-xs text-slate-400 font-mono">
-                    Click any flight row for full manifest details modal
+                    Showing only movements for selected analysis date &bull; Click row for modal
                 </div>
             </div>
 
@@ -749,7 +826,10 @@
 function fdrDashboardController() {
     return {
         uploadId: {{ $upload->id }},
+        availableDates: @json($availableDates),
+        sourceSummary: @json($sourceSummary),
         filters: {
+            analysis_date: '{{ $filters['analysis_date'] }}',
             airport: '{{ $filters['airport'] }}',
             leg: '{{ $filters['leg'] }}',
             operator: '{{ $filters['operator'] }}',
@@ -789,6 +869,39 @@ function fdrDashboardController() {
             this.$nextTick(() => {
                 this.initCharts();
             });
+        },
+
+        formatDateOption(d) {
+            if (!d) return '';
+            const parts = d.split('-');
+            if (parts.length === 3) {
+                return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+            return d;
+        },
+
+        formatDateHeader(d) {
+            if (!d) return 'ALL DATES';
+            const months = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+            const parts = d.split('-');
+            if (parts.length === 3) {
+                const day = parts[2];
+                const mIdx = parseInt(parts[1], 10) - 1;
+                const year = parts[0];
+                return `${day} ${months[mIdx] || ''} ${year}`;
+            }
+            return d;
+        },
+
+        stepAnalysisDate(step) {
+            if (!this.availableDates || this.availableDates.length === 0) return;
+            let idx = this.availableDates.indexOf(this.filters.analysis_date);
+            if (idx === -1) idx = 0;
+            let newIdx = idx + step;
+            if (newIdx >= 0 && newIdx < this.availableDates.length) {
+                this.filters.analysis_date = this.availableDates[newIdx];
+                this.triggerFilter();
+            }
         },
 
         initCharts() {
@@ -940,45 +1053,51 @@ function fdrDashboardController() {
                 });
             }
 
-            // Passenger Trend Combo Chart
+            // Passenger Composition Chart (Bar breakdown for single analysis date)
             const ctxPax = document.getElementById('passengerTrendChart');
             if (ctxPax) {
-                const dates = (this.paxAnalytics.daily_trend || []).map(d => d.date_label);
-                const volumes = (this.paxAnalytics.daily_trend || []).map(d => d.volume);
-                const lfs = (this.paxAnalytics.daily_trend || []).map(d => d.load_factor);
+                const comp = this.paxAnalytics.composition || { adult: 0, child: 0, infant: 0, transit: 0, transfer: 0 };
+                const hasBreakdown = (comp.adult + comp.child + comp.infant + comp.transit + comp.transfer) > 0;
+
+                const paxLabels = hasBreakdown 
+                    ? ['Adult', 'Child', 'Infant', 'Transit', 'Transfer']
+                    : ['Total Pax'];
+                const paxValues = hasBreakdown
+                    ? [comp.adult, comp.child, comp.infant, comp.transit, comp.transfer]
+                    : [this.paxAnalytics.total_load || this.kpis.total_passengers || 0];
+                const paxColors = hasBreakdown
+                    ? ['#0284C7', '#38BDF8', '#7DD3FC', '#F59E0B', '#10B981']
+                    : ['#0284C7'];
 
                 this.chartInstances.chartPax = new Chart(ctxPax, {
+                    type: 'bar',
                     data: {
-                        labels: dates,
+                        labels: paxLabels,
                         datasets: [
                             {
-                                type: 'line',
-                                label: 'Load Factor (%)',
-                                data: lfs,
-                                yAxisID: 'y1',
-                                borderColor: '#0284C7',
-                                backgroundColor: 'transparent',
-                                borderWidth: 2,
-                                pointRadius: 3
-                            },
-                            {
-                                type: 'bar',
-                                label: 'Passenger Volume',
-                                data: volumes,
-                                yAxisID: 'y',
-                                backgroundColor: '#BAE6FD',
-                                borderRadius: 4
+                                label: 'Passengers',
+                                data: paxValues,
+                                backgroundColor: paxColors,
+                                borderRadius: 5,
+                                borderWidth: 1,
+                                borderColor: paxColors,
                             }
                         ]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => ` ${ctx.parsed.y.toLocaleString()} passengers`
+                                }
+                            }
+                        },
                         scales: {
                             x: { grid: { display: false } },
-                            y: { position: 'left', beginAtZero: true, grid: { color: '#F8FAFC' } },
-                            y1: { position: 'right', min: 0, max: 100, grid: { display: false } }
+                            y: { beginAtZero: true, grid: { color: '#F1F5F9' } }
                         }
                     }
                 });
@@ -991,6 +1110,7 @@ function fdrDashboardController() {
             const currentReqId = ++this.activeRequestId;
 
             const params = new URLSearchParams({
+                analysis_date: this.filters.analysis_date,
                 airport: this.filters.airport,
                 leg: this.filters.leg,
                 operator: this.filters.operator,
@@ -1068,11 +1188,21 @@ function fdrDashboardController() {
                 this.chartInstances.chart3.update();
             }
 
-            // Pax Trend
-            if (this.chartInstances.chartPax && this.paxAnalytics.daily_trend) {
-                this.chartInstances.chartPax.data.labels = this.paxAnalytics.daily_trend.map(d => d.date_label);
-                this.chartInstances.chartPax.data.datasets[0].data = this.paxAnalytics.daily_trend.map(d => d.load_factor);
-                this.chartInstances.chartPax.data.datasets[1].data = this.paxAnalytics.daily_trend.map(d => d.volume);
+            // Pax Composition Chart
+            if (this.chartInstances.chartPax && this.paxAnalytics.composition) {
+                const comp = this.paxAnalytics.composition;
+                const hasBreakdown = (comp.adult + comp.child + comp.infant + comp.transit + comp.transfer) > 0;
+                if (hasBreakdown) {
+                    this.chartInstances.chartPax.data.labels = ['Adult', 'Child', 'Infant', 'Transit', 'Transfer'];
+                    this.chartInstances.chartPax.data.datasets[0].data = [comp.adult, comp.child, comp.infant, comp.transit, comp.transfer];
+                    this.chartInstances.chartPax.data.datasets[0].backgroundColor = ['#0284C7', '#38BDF8', '#7DD3FC', '#F59E0B', '#10B981'];
+                    this.chartInstances.chartPax.data.datasets[0].borderColor = ['#0284C7', '#38BDF8', '#7DD3FC', '#F59E0B', '#10B981'];
+                } else {
+                    this.chartInstances.chartPax.data.labels = ['Total Pax'];
+                    this.chartInstances.chartPax.data.datasets[0].data = [this.paxAnalytics.total_load || this.kpis.total_passengers || 0];
+                    this.chartInstances.chartPax.data.datasets[0].backgroundColor = ['#0284C7'];
+                    this.chartInstances.chartPax.data.datasets[0].borderColor = ['#0284C7'];
+                }
                 this.chartInstances.chartPax.update();
             }
         },
@@ -1084,6 +1214,12 @@ function fdrDashboardController() {
         },
 
         removeFilter(key) {
+            if (key === 'analysis_date') {
+                // reset to first available date
+                if (this.availableDates && this.availableDates.length > 0) {
+                    this.filters.analysis_date = this.availableDates[0];
+                }
+            }
             if (key === 'airport') this.filters.airport = 'ALL';
             if (key === 'leg') this.filters.leg = 'ALL';
             if (key === 'operator') this.filters.operator = 'ALL';
@@ -1100,6 +1236,9 @@ function fdrDashboardController() {
         },
 
         clearAllFilters() {
+            if (this.availableDates && this.availableDates.length > 0) {
+                this.filters.analysis_date = this.availableDates[0];
+            }
             this.filters.airport = 'ALL';
             this.filters.leg = 'ALL';
             this.filters.operator = 'ALL';
@@ -1116,6 +1255,7 @@ function fdrDashboardController() {
 
         getExportUrl(type) {
             const params = new URLSearchParams({
+                analysis_date: this.filters.analysis_date,
                 airport: this.filters.airport,
                 leg: this.filters.leg,
                 operator: this.filters.operator,
@@ -1164,3 +1304,4 @@ function fdrDashboardController() {
 </script>
 @endpush
 @endsection
+

@@ -21,8 +21,9 @@ class ReconciliationEngine
         $oasysCargo = 0;
 
         foreach ($records as $r) {
-            $oasysPax += ($r['adult'] + $r['child'] + $r['infant']);
-            $oasysCargo += $r['cargo_kg'];
+            $pax = (int)($r['pax_total'] ?? (($r['adult'] ?? 0) + ($r['child'] ?? 0) + ($r['infant'] ?? 0)));
+            $oasysPax += $pax;
+            $oasysCargo += (float)($r['cargo_kg'] ?? 0);
         }
 
         // Deterministic APPS simulation based on flight records
@@ -32,11 +33,11 @@ class ReconciliationEngine
         $reconciledFlights = [];
 
         foreach ($records as $idx => $r) {
-            $pax = ($r['adult'] + $r['child'] + $r['infant']);
-            $cargo = $r['cargo_kg'];
+            $pax = (int)($r['pax_total'] ?? (($r['adult'] ?? 0) + ($r['child'] ?? 0) + ($r['infant'] ?? 0)));
+            $cargo = (float)($r['cargo_kg'] ?? 0);
 
             // Deterministic slight variance for demonstration & testing
-            $seed = crc32($r['flight_no'] . ($r['flight_date'] ?? ''));
+            $seed = crc32(($r['flight_no'] ?? '') . ($r['flight_date'] ?? ''));
             $paxVar = ($seed % 30 === 0) ? -2 : (($seed % 45 === 0) ? 1 : 0);
             $cargoVar = ($seed % 25 === 0) ? -15.0 : (($seed % 40 === 0) ? 8.5 : 0.0);
 
@@ -56,10 +57,10 @@ class ReconciliationEngine
 
             if ($idx < 100) { // Keep top 100 rows for view table
                 $reconciledFlights[] = [
-                    'flight_no'    => $r['flight_no'],
-                    'air_line'     => $r['air_line'],
-                    'route'        => $r['route'],
-                    'leg'          => $r['leg'],
+                    'flight_no'    => $r['flight_no'] ?? 'N/A',
+                    'air_line'     => $r['air_line'] ?? ($r['operator'] ?? 'N/A'),
+                    'route'        => $r['route'] ?? 'N/A',
+                    'leg'          => $r['leg'] ?? 'N/A',
                     'oasys_pax'    => $pax,
                     'apps_pax'     => $appsFlightPax,
                     'pax_delta'    => $paxDelta,
@@ -130,9 +131,12 @@ class ReconciliationEngine
         $reconciledFlights = [];
 
         foreach ($records as $idx => $r) {
-            $seed = crc32($r['flight_no'] . ($r['reg_no'] ?? ''));
+            $seed = crc32(($r['flight_no'] ?? '') . ($r['reg_no'] ?? ''));
             // Simulating EDIFLY telex timing consistency
-            $ediflyTime = ($r['direction'] === 'ARRIVAL') ? $r['sibt'] : $r['sobt'];
+            $oasysTime = (($r['direction'] ?? '') === 'ARRIVAL')
+                ? ($r['sibt'] ?? ($r['arr_sched'] ?? 'N/A'))
+                : ($r['sobt'] ?? ($r['dep_sched'] ?? 'N/A'));
+            $ediflyTime = $oasysTime;
             $timeGapMins = 0;
 
             if ($seed % 35 === 0) {
@@ -150,12 +154,12 @@ class ReconciliationEngine
 
             if ($idx < 100) {
                 $reconciledFlights[] = [
-                    'flight_no'    => $r['flight_no'],
-                    'air_line'     => $r['air_line'],
-                    'reg_no'       => $r['reg_no'],
-                    'route'        => $r['route'],
-                    'leg'          => $r['leg'],
-                    'oasys_time'   => ($r['direction'] === 'ARRIVAL') ? $r['sibt'] : $r['sobt'],
+                    'flight_no'    => $r['flight_no'] ?? 'N/A',
+                    'air_line'     => $r['air_line'] ?? ($r['operator'] ?? 'N/A'),
+                    'reg_no'       => $r['reg_no'] ?? 'N/A',
+                    'route'        => $r['route'] ?? 'N/A',
+                    'leg'          => $r['leg'] ?? 'N/A',
+                    'oasys_time'   => $oasysTime,
                     'edifly_time'  => $ediflyTime,
                     'time_gap'     => "{$timeGapMins} min",
                     'status'       => $status,

@@ -178,34 +178,37 @@
             <tr>
                 <td style="width: 60%;">
                     <div class="brand-title">SLOTWAVES — FLIGHT DAILY REPORT (FDR)</div>
-                    <div class="brand-sub">OASYS Operational Intelligence &amp; Movement Analytics</div>
+                    <div class="brand-sub">OASYS Operational Intelligence &amp; Movement Analytics &bull; <strong>PEAK DAILY ANALYSIS</strong></div>
                     <div style="margin-top: 6px;">
                         <span class="meta-pill">AIRPORT: {{ $meta['airport'] ?? 'CGK' }}</span>
-                        <span class="meta-pill">PERIOD: {{ $meta['period_label'] ?? 'N/A' }}</span>
-                        <span class="meta-pill">OPERATOR: {{ $meta['operator'] ?? 'ALL AIRLINE' }}</span>
-                        <span class="meta-pill">REALIZATION: {{ $meta['realization'] ?? 'YES' }}</span>
+                        <span class="meta-pill" style="background-color: #FEF3C7; border-color: #FDE68A; color: #92400E;">ANALYSIS DATE: {{ !empty($analysisDate) ? date('d-m-Y', strtotime($analysisDate)) : 'ALL' }}</span>
+                        <span class="meta-pill">SOURCE PERIOD: {{ $meta['period_label'] ?? 'N/A' }}</span>
+                        <span class="meta-pill">OPERATOR: {{ $filters['operator'] ?: ($meta['operator'] ?? 'ALL AIRLINE') }}</span>
                     </div>
                 </td>
                 <td style="width: 40%; text-align: right;">
                     <div style="font-size: 8px; color: #64748B;">Generated on: <strong>{{ date('d-M-Y H:i:s') }}</strong></div>
                     <div style="font-size: 8px; color: #64748B;">Source System: <strong>OASYS Operational Reporting</strong></div>
-                    <div style="font-size: 8px; color: #0284C7; font-weight: bold; margin-top: 3px;">MODE {{ $reportMode }}: {{ $filters['mode_label'] ?? 'OPERATIONAL ANALYSIS' }}</div>
+                    <div style="font-size: 8px; color: #0284C7; font-weight: bold; margin-top: 3px;">MODE {{ $reportMode }}: {{ $filters['mode_label'] ?? 'PEAK DAILY OPERATIONAL' }}</div>
+                    @if(!empty($peakHour['display']) && $peakHour['display'] !== 'N/A')
+                        <div style="font-size: 7.5px; color: #D97706; font-weight: bold; margin-top: 2px;">PEAK HOUR: {{ $peakHour['display'] }}</div>
+                    @endif
                 </td>
             </tr>
         </table>
     </div>
 
     {{-- 1. TOP METRIC CARDS --}}
-    <div class="section-title">Operational Key Performance Indicators</div>
+    <div class="section-title">Operational Key Performance Indicators ({{ strtoupper($analysisDateFormatted) }})</div>
     <table class="kpi-table">
         <tr>
             <td class="kpi-card">
-                <div class="kpi-label">Total Flights</div>
+                <div class="kpi-label">Analysis Day Flights</div>
                 <div class="kpi-value">{{ number_format($kpis['total_flights']) }}</div>
                 <div class="kpi-sub">Arr: {{ number_format($kpis['arrivals']) }} | Dep: {{ number_format($kpis['departures']) }}</div>
             </td>
             <td class="kpi-card">
-                <div class="kpi-label">Total Passengers</div>
+                <div class="kpi-label">Analysis Day Passengers</div>
                 <div class="kpi-value">{{ number_format($kpis['total_passengers']) }}</div>
                 <div class="kpi-sub">Adult: {{ number_format($kpis['adult_passengers']) }} | Chd: {{ number_format($kpis['child_passengers']) }} | Inf: {{ number_format($kpis['infant_passengers']) }}</div>
             </td>
@@ -215,15 +218,15 @@
                 <div class="kpi-sub">Load: {{ number_format($kpis['total_load']) }} / Cap: {{ number_format($kpis['total_capacity']) }}</div>
             </td>
             <td class="kpi-card">
-                <div class="kpi-label">Cargo &amp; Baggage</div>
-                <div class="kpi-value">{{ number_format($kpis['cargo_ton'], 1) }} <span style="font-size: 10px; font-weight: normal;">Ton</span></div>
-                <div class="kpi-sub">Baggage: {{ number_format($kpis['baggage_kg']) }} KG | POS: {{ number_format($kpis['pos_kg']) }} KG</div>
+                <div class="kpi-label">Peak Hour &amp; Cargo</div>
+                <div class="kpi-value" style="font-size: 11px; margin-top: 3px; color: #D97706;">{{ $peakHour['time_range'] ?? 'N/A' }}</div>
+                <div class="kpi-sub">{{ number_format($kpis['cargo_ton'], 1) }} Ton Cargo &bull; {{ $peakHour['movements'] ?? 0 }} Movements</div>
             </td>
         </tr>
     </table>
 
     {{-- 2. THE 3 MENTOR HOURLY CHARTS (NATIVE VECTOR SVGS) --}}
-    <div class="section-title">Hourly Movement Intelligence (24 Hours 00:00–23:59)</div>
+    <div class="section-title">PEAK DAILY ANALYSIS — {{ strtoupper($analysisDateFormatted) }} (Source: {{ $meta['period_label'] ?? 'N/A' }})</div>
 
     {{-- CHART 1: ARRIVAL-DEPARTURE MOVEMENT --}}
     <div class="chart-box">

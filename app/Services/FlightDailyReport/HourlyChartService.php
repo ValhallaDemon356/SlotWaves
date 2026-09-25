@@ -43,15 +43,26 @@ class HourlyChartService
 
         // Aggregate records into hourly bins
         foreach ($records as $r) {
-            $h = (int)($r['hour'] ?? 12);
+            if (isset($r['hour'])) {
+                $h = (int)$r['hour'];
+            } else {
+                $timeStr = $r['sibt'] ?? ($r['sobt'] ?? ($r['arr_actual'] ?? ($r['dep_actual'] ?? ($r['arr_sched'] ?? ($r['dep_sched'] ?? '')))));
+                if (preg_match('/(\d{1,2}):(\d{2})/', (string)$timeStr, $tm)) {
+                    $h = (int)$tm[1];
+                } else {
+                    $h = 12;
+                }
+            }
             if ($h < 0 || $h > 23) $h = 12;
 
-            $isArr = ($r['direction'] === 'ARRIVAL');
-            $isIrreg = !empty($r['is_irregular']);
-            $isRealized = !empty($r['is_realized']);
+            $isArr = (($r['direction'] ?? '') === 'ARRIVAL' || strtoupper(substr($r['leg'] ?? '', 0, 1)) === 'A');
+            $isIrreg = !empty($r['is_irregular']) || !empty($r['irregular']);
+            $isRealized = !empty($r['is_realized']) || !empty($r['realization']);
 
             // Plan counts (all scheduled movements)
-            if ($r['sched_type'] === 'SCHED' || $r['sched_type'] === 'SCHEDULED' || !empty($r['is_scheduled'])) {
+            $schedType = $r['sched_type'] ?? '';
+            $isSched = !empty($r['is_scheduled']) || ($schedType === 'SCHED') || ($schedType === 'SCHEDULED') || (!$isIrreg && empty($schedType));
+            if ($isSched) {
                 $hourlyData[$h]['total_plan']++;
                 if ($isArr) {
                     $hourlyData[$h]['arr_plan']++;
@@ -100,6 +111,31 @@ class HourlyChartService
             $row['tooltip'] = "{$row['time_range']} | Plan: {$plan} | Irregular: {$irreg} | Capacity: {$cap} | Delta: {$diff} | Status: {$status}";
         }
 
+        // Compute Peak Hour strictly for the filtered operational records
+        $peakHourIndex = 0;
+        $maxMovements = -1;
+        for ($h = 0; $h < 24; $h++) {
+            $totalMovements = $hourlyData[$h]['arr_realized'] + $hourlyData[$h]['dep_realized'];
+            if ($totalMovements > $maxMovements) {
+                $maxMovements = $totalMovements;
+                $peakHourIndex = $h;
+            }
+        }
+
+        $peakHourRow = $hourlyData[$peakHourIndex];
+        $peakHour = [
+            'hour'        => $peakHourIndex,
+            'hour_label'  => $peakHourRow['hour_label'],
+            'time_range'  => $peakHourRow['time_range'],
+            'movements'   => $maxMovements > 0 ? $maxMovements : 0,
+            'arrivals'    => $peakHourRow['arr_realized'],
+            'departures'  => $peakHourRow['dep_realized'],
+            'plan'        => $peakHourRow['total_plan'],
+            'display'     => $maxMovements > 0
+                ? "{$peakHourRow['time_range']} ({$maxMovements} movements)"
+                : "N/A",
+        ];
+
         // Construct 3 distinct chart payloads
         return [
             'hours'                   => array_column($hourlyData, 'hour_label'),
@@ -107,6 +143,8 @@ class HourlyChartService
             'chart1_movement'         => $this->buildChart1Payload($hourlyData),
             'chart2_departure'        => $this->buildChart2Payload($hourlyData),
             'chart3_arrival'          => $this->buildChart3Payload($hourlyData),
+            'peak_hour'               => $peakHour,
+            'max_hourly_movement'     => max(0, $maxMovements),
         ];
     }
 
