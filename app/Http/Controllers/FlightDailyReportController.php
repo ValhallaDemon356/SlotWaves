@@ -93,96 +93,10 @@ class FlightDailyReportController extends Controller
      */
     public function config(Request $request, Upload $upload = null)
     {
-        // If an upload ID was provided or in session
-        if (!$upload || $upload->report_type !== 'fdr') {
-            $activeUploadId = session('fdr_active_upload_id');
-            if ($activeUploadId) {
-                $upload = Upload::where('id', $activeUploadId)
-                    ->where('report_type', 'fdr')
-                    ->where('status', 'completed')
-                    ->first();
-            }
+        if ($upload && $upload->report_type === 'fdr') {
+            return redirect()->route('fdr.dashboard', $upload->id);
         }
-
-        // If still no upload exists, check if we have any completed FDR upload in database
-        if (!$upload) {
-            $upload = Upload::where('report_type', 'fdr')
-                ->where('status', 'completed')
-                ->latest()
-                ->first();
-        }
-
-        // If no upload exists in DB at all, auto-initialize from the standard OASYS FDR reference template
-        if (!$upload) {
-            $templatePath = $this->resolveReferenceTemplatePath();
-            if ($templatePath && file_exists($templatePath)) {
-                $parsed = $this->parser->parse($templatePath);
-                $upload = Upload::create([
-                    'original_filename'  => 'OASYS-FDR-TEMPLATE.xls',
-                    'stored_path'        => 'templates/OASYS-FDR-TEMPLATE.xls',
-                    'status'             => 'completed',
-                    'report_type'        => 'fdr',
-                    'total_rows'         => count($parsed['records']),
-                    'valid_rows'         => count($parsed['records']),
-                    'invalid_rows'       => 0,
-                    'duplicate_rows'     => 0,
-                    'parsing_confidence' => 1.0,
-                    'validation_summary' => ['valid' => true],
-                    'report_data'        => $parsed,
-                ]);
-                session(['fdr_active_upload_id' => $upload->id]);
-            }
-        }
-
-        $meta = $upload ? ($upload->report_data['meta'] ?? []) : [];
-        $records = $upload ? ($upload->report_data['records'] ?? []) : [];
-
-        // Extract available airlines & airports from current dataset or system
-        $availableAirlines = [];
-        $availableAirports = [];
-        $availableFlightNos = [];
-
-        foreach ($records as $r) {
-            if (!empty($r['air_line']) && $r['air_line'] !== 'N/A') {
-                $availableAirlines[$r['air_line']] = true;
-            }
-            if (!empty($r['city_1']) && $r['city_1'] !== 'N/A') {
-                $availableAirports[$r['city_1']] = true;
-            }
-            if (!empty($r['city_2']) && $r['city_2'] !== 'N/A') {
-                $availableAirports[$r['city_2']] = true;
-            }
-            if (!empty($r['flight_no']) && $r['flight_no'] !== 'N/A') {
-                $availableFlightNos[$r['flight_no_base'] ?? $r['flight_no']] = true;
-            }
-        }
-
-        // Merge with major Indonesian airports from DB
-        try {
-            $dbAirports = Airport::select('iata_code', 'name', 'city')->take(50)->get();
-            foreach ($dbAirports as $ap) {
-                if (!empty($ap->iata_code)) {
-                    $availableAirports[$ap->iata_code] = true;
-                }
-            }
-        } catch (\Throwable $e) {}
-
-        ksort($availableAirlines);
-        ksort($availableAirports);
-        ksort($availableFlightNos);
-
-        $airlinesList = array_keys($availableAirlines);
-        $airportsList = array_keys($availableAirports);
-        $flightNosList = array_slice(array_keys($availableFlightNos), 0, 100);
-
-        return view('fdr.config', [
-            'upload'         => $upload,
-            'meta'           => $meta,
-            'airlines'       => $airlinesList,
-            'airports'       => $airportsList,
-            'flightNos'      => $flightNosList,
-            'recordsCount'   => count($records),
-        ]);
+        return $this->configRedirect();
     }
 
     /**
@@ -472,6 +386,7 @@ class FlightDailyReportController extends Controller
             'active_chips'        => $filterResult['active_chips'],
             'kpis'                => $analytics['kpis'],
             'hourly_charts'       => $analytics['hourly_charts'],
+            'combined_trend'      => $analytics['combined_trend'] ?? null,
             'sched_vs_real'       => $analytics['schedule_vs_realization'],
             'pax_analytics'       => $analytics['passenger_analytics'],
             'airline_route'       => $analytics['airline_route'],

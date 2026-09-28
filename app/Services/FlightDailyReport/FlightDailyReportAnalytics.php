@@ -58,16 +58,20 @@ class FlightDailyReportAnalytics
         // 7. Ground Operations Enhanced (stand normalization + turnaround pairing)
         $groundOps = $this->computeGroundOpsEnhanced($records);
 
-        // 8. Reconciliation Engine (Modes 7 & 8)
+        // 8. Primary Combined Trend (Arrivals/Departures bar + Pax/Cargo line)
+        $combinedTrend = $this->computeCombinedTrend($records, $options);
+
+        // 9. Reconciliation Engine (Modes 7 & 8)
         $reconciliationApps   = $this->reconciliationEngine->reconcileOasysVsApps($records);
         $reconciliationEdifly = $this->reconciliationEngine->reconcileOasysVsEdifly($records);
 
-        // 9. Mode Specific Prioritizations
+        // 10. Mode Specific Prioritizations
         $modePayload = $this->buildModePayload($reportMode, $records, [
             'kpis'                  => $kpis,
             'hourly'                => $hourlyCharts,
             'pax'                   => $paxAnalytics,
             'ground'                => $groundOps,
+            'combined_trend'        => $combinedTrend,
             'reconciliation_apps'   => $reconciliationApps,
             'reconciliation_edifly' => $reconciliationEdifly,
         ]);
@@ -76,6 +80,7 @@ class FlightDailyReportAnalytics
             'meta'                    => $meta,
             'kpis'                    => $kpis,
             'hourly_charts'           => $hourlyCharts,
+            'combined_trend'          => $combinedTrend,
             'schedule_vs_realization' => $schedVsReal,
             'sched_vs_real'           => $schedVsReal,
             'passenger_analytics'     => $paxAnalytics,
@@ -119,11 +124,22 @@ class FlightDailyReportAnalytics
         $lfSum = 0.0;
         $lfCount = 0;
 
+        $arrDom = 0;
+        $arrInt = 0;
+        $depDom = 0;
+        $depInt = 0;
+
         foreach ($records as $r) {
-            if ($r['direction'] === 'ARRIVAL') {
+            $isArr = ($r['direction'] ?? '') === 'ARRIVAL';
+            $tr = strtoupper(trim($r['traffic'] ?? ($r['route_type'] ?? 'DOMESTIC')));
+            $isDom = in_array($tr, ['DOM', 'DOMESTIC'], true);
+
+            if ($isArr) {
                 $arrivals++;
+                if ($isDom) $arrDom++; else $arrInt++;
             } else {
                 $departures++;
+                if ($isDom) $depDom++; else $depInt++;
             }
 
             $rAdult = (int)($r['adult'] ?? ($r['pax_adult'] ?? 0));
@@ -178,10 +194,19 @@ class FlightDailyReportAnalytics
         $weightedLoadFactor = ($totalCap > 0) ? round(($totalLoad / $totalCap) * 100, 1) : null;
         $weightedLoadFactorStr = ($weightedLoadFactor !== null) ? "{$weightedLoadFactor}%" : 'N/A';
 
+        $cargoPerFlight = ($totalFlights > 0) ? round(($cargoKg / 1000) / $totalFlights, 2) : 0.0;
+        $baggagePerFlight = ($totalFlights > 0) ? (int)round($baggageKg / $totalFlights) : 0;
+        $irregularTotal = $diverts + $misses + $unscheduled;
+        $irregularRate = ($totalFlights > 0) ? round(($irregularTotal / $totalFlights) * 100, 1) : 0.0;
+
         return [
             'total_flights'            => $totalFlights,
             'arrivals'                 => $arrivals,
             'departures'               => $departures,
+            'arrivals_dom'             => $arrDom,
+            'arrivals_int'             => $arrInt,
+            'departures_dom'           => $depDom,
+            'departures_int'           => $depInt,
             'total_passengers'         => $passengerMovement,
             'passenger_movement'       => $passengerMovement,
             'direct_passengers'        => $passengerMovement,
@@ -203,11 +228,14 @@ class FlightDailyReportAnalytics
             'cargo_kg'                 => round($cargoKg, 1),
             'total_cargo_kg'           => round($cargoKg, 1),
             'cargo_ton'                => round($cargoKg / 1000, 2),
+            'cargo_per_flight_t'       => $cargoPerFlight,
             'baggage_kg'               => round($baggageKg, 1),
             'total_baggage_kg'         => round($baggageKg, 1),
+            'baggage_per_flight_kg'    => $baggagePerFlight,
             'pos_kg'                   => round($posKg, 1),
+            'irregular_rate'           => $irregularRate,
             'irregularities'           => [
-                'total'        => ($diverts + $misses + $unscheduled),
+                'total'        => $irregularTotal,
                 'divert'       => $diverts,
                 'miss'         => $misses,
                 'unscheduled'  => $unscheduled,
@@ -238,17 +266,18 @@ class FlightDailyReportAnalytics
                 'scheduled' => 0, 'actual' => 0, 'avg_variance' => 0, 'var_sum' => 0];
         }
 
-        // Histogram bins: every 10 minutes from -60 to +90
-        $histBins  = [];
-        $binWidth  = 10;
-        $binMin    = -60;
-        $binMax    = 90;
-        for ($b = $binMin; $b < $binMax; $b += $binWidth) {
-            $key = "{$b}";
-            $histBins[$key] = ['label' => ($b >= 0 ? '+' : '') . $b . ' to ' . ($b >= 0 ? '+' : '') . ($b + $binWidth - 1) . ' min', 'count' => 0, 'min' => $b, 'max' => $b + $binWidth];
-        }
-        $histBins['overflow_pos'] = ['label' => "+{$binMax}+ min", 'count' => 0, 'min' => $binMax, 'max' => PHP_INT_MAX];
-        $histBins['overflow_neg'] = ['label' => "{$binMin}- min", 'count' => 0, 'min' => PHP_INT_MIN, 'max' => $binMin];
+        // Histogram bins (9 bins matching Airport Operations Intelligence mockup)
+        $histBins = [
+            '<-60'    => ['label' => '<-60',    'count' => 0, 'min' => PHP_INT_MIN, 'max' => -61],
+            '-60~-31' => ['label' => '-60~-31', 'count' => 0, 'min' => -60,        'max' => -31],
+            '-30~-16' => ['label' => '-30~-16', 'count' => 0, 'min' => -30,        'max' => -16],
+            '-15~-6'  => ['label' => '-15~-6',  'count' => 0, 'min' => -15,        'max' => -6],
+            '-5~5'    => ['label' => '-5~5',    'count' => 0, 'min' => -5,         'max' => 5],
+            '6~15'    => ['label' => '6~15',    'count' => 0, 'min' => 6,          'max' => 15],
+            '16~30'   => ['label' => '16~30',   'count' => 0, 'min' => 16,         'max' => 30],
+            '31~60'   => ['label' => '31~60',   'count' => 0, 'min' => 31,         'max' => 60],
+            '>60'     => ['label' => '>60',     'count' => 0, 'min' => 61,         'max' => PHP_INT_MAX],
+        ];
 
         foreach ($records as $r) {
             $isRealized = !empty($r['is_realized']);
@@ -301,14 +330,25 @@ class FlightDailyReportAnalytics
                 }
             }
 
-            // Histogram
-            if ($delay >= $binMax) {
-                $histBins['overflow_pos']['count']++;
-            } elseif ($delay < $binMin) {
-                $histBins['overflow_neg']['count']++;
+            // Histogram (9 standard operational bins)
+            if ($delay < -60) {
+                $histBins['<-60']['count']++;
+            } elseif ($delay <= -31) {
+                $histBins['-60~-31']['count']++;
+            } elseif ($delay <= -16) {
+                $histBins['-30~-16']['count']++;
+            } elseif ($delay <= -6) {
+                $histBins['-15~-6']['count']++;
+            } elseif ($delay <= 5) {
+                $histBins['-5~5']['count']++;
+            } elseif ($delay <= 15) {
+                $histBins['6~15']['count']++;
+            } elseif ($delay <= 30) {
+                $histBins['16~30']['count']++;
+            } elseif ($delay <= 60) {
+                $histBins['31~60']['count']++;
             } else {
-                $binKey = (string)(intdiv($delay - $binMin, $binWidth) * $binWidth + $binMin);
-                if (isset($histBins[$binKey])) $histBins[$binKey]['count']++;
+                $histBins['>60']['count']++;
             }
         }
 
@@ -409,13 +449,13 @@ class FlightDailyReportAnalytics
 
         foreach ($records as $r) {
             $isArr = ($r['direction'] ?? '') === 'ARRIVAL';
-            $a     = (int)($r['adult']    ?? 0);
-            $c     = (int)($r['child']    ?? 0);
-            $inf   = (int)($r['infant']   ?? 0);
-            $tr    = (int)($r['transit']  ?? 0);
-            $tf    = (int)($r['transfer'] ?? 0);
+            $a     = (int)($r['adult']    ?? ($r['pax_adult'] ?? 0));
+            $c     = (int)($r['child']    ?? ($r['pax_child'] ?? 0));
+            $inf   = (int)($r['infant']   ?? ($r['pax_infant'] ?? 0));
+            $tr    = (int)($r['transit']  ?? ($r['pax_transit'] ?? 0));
+            $tf    = (int)($r['transfer'] ?? ($r['pax_transfer'] ?? 0));
             $crw   = (int)($r['crw']      ?? ($r['crew'] ?? 0));
-            $ld    = (int)($r['load']     ?? ($a + $c + $inf));
+            $ld    = (int)($r['load']     ?? ($r['pax_total'] ?? ($a + $c + $inf)));
 
             $comp['adult']    += $a;
             $comp['child']    += $c;
@@ -1109,4 +1149,143 @@ class FlightDailyReportAnalytics
             'days'      => array_values($days),
         ];
     }
+
+    /**
+     * Flight / Passenger / Cargo Trend (Combination Chart).
+     * Bars: Arrival Flights & Departure Flights.
+     * Lines: Passenger Trend & Cargo Trend.
+     * Granularity: Daily if multiple dates, Hourly (00:00-23:00) if single date.
+     */
+    public function computeCombinedTrend(array $records, array $options = []): array
+    {
+        $timeBasis = $options['time_basis'] ?? 'scheduled';
+
+        // Check date span
+        $dates = [];
+        foreach ($records as $r) {
+            $d = $r['operational_date'] ?? ($r['flight_date'] ?? '');
+            if ($d && $d !== 'N/A') {
+                $dates[$d] = true;
+            }
+        }
+        ksort($dates);
+        $dateKeys = array_keys($dates);
+
+        $labels = [];
+        $fullDates = [];
+        $arrivals = [];
+        $departures = [];
+        $passengers = [];
+        $cargoTon = [];
+        $granularity = 'daily';
+
+        if (count($dateKeys) > 1) {
+            // Multi-day granularity
+            $granularity = 'daily';
+            $dailyMap = [];
+            foreach ($dateKeys as $dk) {
+                $dailyMap[$dk] = [
+                    'arr' => 0,
+                    'dep' => 0,
+                    'pax' => 0,
+                    'cargo_kg' => 0.0,
+                ];
+            }
+
+            foreach ($records as $r) {
+                $d = $r['operational_date'] ?? ($r['flight_date'] ?? '');
+                if (!isset($dailyMap[$d])) continue;
+
+                $isArr = ($r['direction'] ?? '') === 'ARRIVAL';
+                if ($isArr) {
+                    $dailyMap[$d]['arr']++;
+                } else {
+                    $dailyMap[$d]['dep']++;
+                }
+
+                $pax = (int)($r['adult'] ?? 0) + (int)($r['child'] ?? 0) + (int)($r['infant'] ?? 0);
+                if ($pax === 0) {
+                    $pax = (int)($r['load'] ?? ($r['pax_total'] ?? 0));
+                }
+                $dailyMap[$d]['pax'] += $pax;
+                $dailyMap[$d]['cargo_kg'] += (float)($r['cargo_kg'] ?? 0.0);
+            }
+
+            foreach ($dailyMap as $dk => $val) {
+                $labels[] = date('d M', strtotime($dk));
+                $fullDates[] = date('d M Y', strtotime($dk));
+                $arrivals[] = $val['arr'];
+                $departures[] = $val['dep'];
+                $passengers[] = $val['pax'];
+                $cargoTon[] = round($val['cargo_kg'] / 1000, 2);
+            }
+        } else {
+            // Single-day -> Hourly granularity (00:00 to 23:00)
+            $granularity = 'hourly';
+            $hourlyMap = [];
+            for ($h = 0; $h < 24; $h++) {
+                $lbl = str_pad($h, 2, '0', STR_PAD_LEFT) . ':00';
+                $hourlyMap[$h] = [
+                    'label' => $lbl,
+                    'arr' => 0,
+                    'dep' => 0,
+                    'pax' => 0,
+                    'cargo_kg' => 0.0,
+                ];
+            }
+
+            foreach ($records as $r) {
+                $isArr = ($r['direction'] ?? '') === 'ARRIVAL';
+                $ts = '';
+                if ($timeBasis === 'actual') {
+                    $ts = $isArr ? ($r['aibt'] ?? ($r['sibt'] ?? '')) : ($r['aobt'] ?? ($r['sobt'] ?? ''));
+                } else {
+                    $ts = $isArr ? ($r['sibt'] ?? ($r['aibt'] ?? '')) : ($r['sobt'] ?? ($r['aobt'] ?? ''));
+                }
+
+                $h = 0;
+                if ($ts && $ts !== 'N/A' && preg_match('/(\d{1,2}):(\d{2})/', $ts, $m)) {
+                    $h = (int)$m[1];
+                }
+                if ($h < 0 || $h > 23) $h = 0;
+
+                if ($isArr) {
+                    $hourlyMap[$h]['arr']++;
+                } else {
+                    $hourlyMap[$h]['dep']++;
+                }
+
+                $pax = (int)($r['adult'] ?? 0) + (int)($r['child'] ?? 0) + (int)($r['infant'] ?? 0);
+                if ($pax === 0) {
+                    $pax = (int)($r['load'] ?? ($r['pax_total'] ?? 0));
+                }
+                $hourlyMap[$h]['pax'] += $pax;
+                $hourlyMap[$h]['cargo_kg'] += (float)($r['cargo_kg'] ?? 0.0);
+            }
+
+            for ($h = 0; $h < 24; $h++) {
+                $labels[] = $hourlyMap[$h]['label'];
+                $fullDates[] = $hourlyMap[$h]['label'];
+                $arrivals[] = $hourlyMap[$h]['arr'];
+                $departures[] = $hourlyMap[$h]['dep'];
+                $passengers[] = $hourlyMap[$h]['pax'];
+                $cargoTon[] = round($hourlyMap[$h]['cargo_kg'] / 1000, 2);
+            }
+        }
+
+        return [
+            'granularity'      => $granularity,
+            'labels'           => $labels,
+            'full_dates'       => $fullDates,
+            'arrivals'         => $arrivals,
+            'departures'       => $departures,
+            'passengers'       => $passengers,
+            'cargo_ton'        => $cargoTon,
+            'total_arrivals'   => array_sum($arrivals),
+            'total_departures' => array_sum($departures),
+            'total_passengers' => array_sum($passengers),
+            'total_cargo_ton'  => round(array_sum($cargoTon), 2),
+        ];
+    }
 }
+
