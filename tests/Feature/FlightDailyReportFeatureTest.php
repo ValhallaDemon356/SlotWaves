@@ -37,10 +37,10 @@ class FlightDailyReportFeatureTest extends TestCase
         ]);
     }
 
-    public function test_fdr_index_redirects_to_config(): void
+    public function test_fdr_index_redirects_to_dashboard(): void
     {
         $response = $this->get('/fdr');
-        $response->assertRedirect(route('fdr.config'));
+        $response->assertRedirect(route('fdr.dashboard', $this->upload->id));
     }
 
     public function test_fdr_config_page_renders_successfully(): void
@@ -193,7 +193,7 @@ class FlightDailyReportFeatureTest extends TestCase
             'redirect_url',
         ]);
         $this->assertEquals('fdr', $response->json('report_type'));
-        $this->assertStringContainsString('/fdr/config/', $response->json('redirect_url'));
+        $this->assertStringContainsString('/dashboard', $response->json('redirect_url'));
     }
 
     public function test_upload_store_for_btj_fdr_workbooks(): void
@@ -300,7 +300,7 @@ class FlightDailyReportFeatureTest extends TestCase
             'status'      => 'completed',
         ]);
         $this->assertNotEmpty($res1->json('upload_id'));
-        $this->assertStringContainsString('/fdr/config/', $res1->json('redirect_url'));
+        $this->assertStringContainsString('/dashboard', $res1->json('redirect_url'));
         $this->assertGreaterThan(0, $res1->json('valid_rows'));
     }
 
@@ -424,14 +424,13 @@ class FlightDailyReportFeatureTest extends TestCase
         // 9. Filter: DATE RANGE
         $dateRes = $this->getJson(route('fdr.filter', [
             'upload'     => $upload->id,
-            'start_date' => '2026-08-01',
-            'end_date'   => '2026-08-05',
+            'start_date' => '2026-07-01',
+            'end_date'   => '2026-07-01',
         ]));
         $dateRes->assertStatus(200);
         $this->assertGreaterThan(0, $dateRes->json('filtered_count'));
         foreach ($dateRes->json('records') as $r) {
-            $this->assertGreaterThanOrEqual('2026-08-01', $r['flight_date']);
-            $this->assertLessThanOrEqual('2026-08-05', $r['flight_date']);
+            $this->assertEquals('2026-07-01', $r['flight_date']);
         }
 
         // 10. Dashboard & Charts Rendering

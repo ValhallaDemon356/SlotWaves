@@ -40,11 +40,51 @@ class FlightDailyReportController extends Controller
     }
 
     /**
-     * Redirect to FDR config page.
+     * Redirect to FDR dashboard directly (Part 1 & Part 29).
      */
     public function configRedirect()
     {
-        return redirect()->route('fdr.config');
+        $activeUploadId = session('fdr_active_upload_id');
+        if ($activeUploadId) {
+            $upload = Upload::where('id', $activeUploadId)
+                ->where('report_type', 'fdr')
+                ->where('status', 'completed')
+                ->first();
+            if ($upload) {
+                return redirect()->route('fdr.dashboard', $upload->id);
+            }
+        }
+
+        $latest = Upload::where('report_type', 'fdr')
+            ->where('status', 'completed')
+            ->latest()
+            ->first();
+        if ($latest) {
+            return redirect()->route('fdr.dashboard', $latest->id);
+        }
+
+        // Auto-initialize from the standard OASYS FDR reference template
+        $templatePath = $this->resolveReferenceTemplatePath();
+        if ($templatePath && file_exists($templatePath)) {
+            $parsed = $this->parser->parse($templatePath);
+            $upload = Upload::create([
+                'original_filename'  => 'CGK FDR.xls',
+                'stored_path'        => 'templates/CGK FDR.xls',
+                'status'             => 'completed',
+                'report_type'        => 'fdr',
+                'total_rows'         => count($parsed['records']),
+                'valid_rows'         => count($parsed['records']),
+                'invalid_rows'       => 0,
+                'duplicate_rows'     => 0,
+                'parsing_confidence' => 1.0,
+                'validation_summary' => ['valid' => true],
+                'report_data'        => $parsed,
+            ]);
+            session(['fdr_active_upload_id' => $upload->id]);
+            return redirect()->route('fdr.dashboard', $upload->id);
+        }
+
+        return redirect()->route('home');
     }
 
     /**
@@ -206,13 +246,13 @@ class FlightDailyReportController extends Controller
             return response()->json([
                 'success'      => true,
                 'upload_id'    => $upload->id,
-                'redirect_url' => route('fdr.config', $upload->id),
+                'redirect_url' => route('fdr.dashboard', $upload->id),
                 'meta'         => $parsed['meta'],
                 'summary'      => $parsed['summary'],
             ]);
         }
 
-        return redirect()->route('fdr.config', $upload->id)->with('success', 'FDR Workbook ingested and normalized successfully.');
+        return redirect()->route('fdr.dashboard', $upload->id)->with('success', 'FDR Workbook ingested and normalized successfully.');
     }
 
     /**
@@ -247,11 +287,11 @@ class FlightDailyReportController extends Controller
             return response()->json([
                 'success'      => true,
                 'upload_id'    => $upload->id,
-                'redirect_url' => route('fdr.config', $upload->id),
+                'redirect_url' => route('fdr.dashboard', $upload->id),
             ]);
         }
 
-        return redirect()->route('fdr.config', $upload->id)->with('success', 'Loaded OASYS FDR Reference Dataset.');
+        return redirect()->route('fdr.dashboard', $upload->id)->with('success', 'Loaded OASYS FDR Reference Dataset.');
     }
 
     /**
@@ -261,7 +301,7 @@ class FlightDailyReportController extends Controller
     public function dashboard(Upload $upload, Request $request)
     {
         if ($upload->report_type !== 'fdr' || empty($upload->report_data)) {
-            return redirect()->route('fdr.config')->with('error', 'Please select or upload a valid Flight Daily Report workbook.');
+            return redirect()->route('fdr.index')->with('error', 'Please select or upload a valid Flight Daily Report workbook.');
         }
 
         session(['fdr_active_upload_id' => $upload->id]);
@@ -286,7 +326,7 @@ class FlightDailyReportController extends Controller
             'operator'       => trim($request->query('operator', 'ALL')),
             'traffic'        => strtoupper(trim($request->query('traffic', 'ALL'))),
             'data_type'      => strtoupper(trim($request->query('data_type', $meta['data_type'] ?? 'OPERATIONAL DATA'))),
-            'realization'    => strtoupper(trim($request->query('realization', $meta['realization'] ?? 'ALL'))),
+            'realization'    => strtoupper(trim($request->query('realization', 'ALL'))),
             'flight_no'      => strtoupper(trim($request->query('flight_no', ''))),
             'suffix'         => strtoupper(trim($request->query('suffix', ''))),
             'start_date'     => trim($request->query('start_date', $meta['period_start'] ?? '')),
@@ -406,7 +446,12 @@ class FlightDailyReportController extends Controller
             'source_type'         => $scope['source_type'],
             'available_dates'     => $availableDates,
             'total_count'         => $filterResult['total_count'],
+            'source_count'        => $filterResult['source_count'],
+            'normalized_count'    => $filterResult['normalized_count'],
             'filtered_count'      => $filterResult['filtered_count'],
+            'excluded_count'      => $filterResult['excluded_count'],
+            'reconciliation'      => $filterResult['reconciliation'],
+            'exclusion_reasons'   => $filterResult['reconciliation']['exclusion_reasons'],
             'counter_text'        => "Showing {$total} records for {$counterScope}",
             'active_chips'        => $filterResult['active_chips'],
             'kpis'                => $analytics['kpis'],

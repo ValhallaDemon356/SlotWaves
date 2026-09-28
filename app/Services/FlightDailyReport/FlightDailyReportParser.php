@@ -17,10 +17,10 @@ class FlightDailyReportParser
         'desc'        => '/^(desc|description|keterangan)$/i',
         'sibt'        => '/^(sibt|sched(uled)?\s*in(\s*block)?(\s*time)?|sta\b)$/i',
         'sobt'        => '/^(sobt|sched(uled)?\s*off(\s*block)?(\s*time)?|std\b)$/i',
-        'sibt_sobt'   => '/^(sibt\s*[\/\-]\s*sobt|sched(uled)?\s*block(\s*time)?)$/i',
+        'sibt_sobt'   => '/^(sibt[\s\/\-_]+sobt|sibt\s*sobt|sched(uled)?\s*block(\s*time)?)$/i',
         'aibt'        => '/^(aibt|actual\s*in(\s*block)?(\s*time)?|ata\b)$/i',
         'aobt'        => '/^(aobt|actual\s*off(\s*block)?(\s*time)?|atd\b)$/i',
-        'aibt_aobt'   => '/^(aibt\s*[\/\-]\s*aobt|actual\s*block(\s*time)?)$/i',
+        'aibt_aobt'   => '/^(aibt[\s\/\-_]+aobt|aibt\s*aobt|actual\s*block(\s*time)?)$/i',
         'leg'         => '/^(leg|leg\s*type|status\s*leg|a\/d\s*sched)$/i',
         'city_1'      => '/^(city\s*1|origin|asal|dari|bandara\s*asal|dep\s*apt)$/i',
         'city_2'      => '/^(city\s*2|destination|dest|tujuan|ke|bandara\s*tujuan|arr\s*apt)$/i',
@@ -353,7 +353,8 @@ class FlightDailyReportParser
             $currentMap = [];
             $matchedCount = 0;
             foreach ($row as $colIdx => $cell) {
-                $cellTrimmed = trim((string)$cell);
+                $cellClean = trim(preg_replace('/<[^>]+>/', ' ', (string)$cell));
+                $cellTrimmed = trim(preg_replace('/\s+/', ' ', $cellClean));
                 if ($cellTrimmed === '') continue;
                 foreach (self::HEADER_MAPPINGS as $field => $regex) {
                     if (preg_match($regex, $cellTrimmed)) {
@@ -664,25 +665,13 @@ class FlightDailyReportParser
             $finalTime = $get('final_time', 'N/A');
             $branch    = $get('branch', 'N/A');
 
-            // Handle combined SIBT/SOBT column if separate columns were missing
-            if ($sibt === 'N/A' && $sobt === 'N/A' && isset($map['sibt_sobt'])) {
-                $blockVal = $get('sibt_sobt', 'N/A');
-                if (str_starts_with($legUpper, 'D')) {
-                    $sobt = $blockVal;
-                } else {
-                    $sibt = $blockVal;
-                }
-            }
-
-            // Handle combined AIBT/AOBT column if separate columns were missing
-            if ($aibt === 'N/A' && $aobt === 'N/A' && isset($map['aibt_aobt'])) {
-                $blockVal = $get('aibt_aobt', 'N/A');
-                if (str_starts_with($legUpper, 'D')) {
-                    $aobt = $blockVal;
-                } else {
-                    $aibt = $blockVal;
-                }
-            }
+            // Combined and separate timestamp columns
+            $sibtSobtVal = $get('sibt_sobt', 'N/A');
+            $aibtAobtVal = $get('aibt_aobt', 'N/A');
+            $sibtVal     = $get('sibt', 'N/A');
+            $sobtVal     = $get('sobt', 'N/A');
+            $aibtVal     = $get('aibt', 'N/A');
+            $aobtVal     = $get('aobt', 'N/A');
 
             // If flight_no and air_line are both N/A, skip row
             if ($flightNo === 'N/A' && $airLine === 'N/A') {
@@ -739,9 +728,9 @@ class FlightDailyReportParser
             $direction = 'ARRIVAL';
             $schedType = 'SCHEDULED';
 
-            if (str_starts_with($legUpper, 'D') || ($sobt !== 'N/A' && $sibt === 'N/A') || ($aobt !== 'N/A' && $aibt === 'N/A')) {
+            if (str_starts_with($legUpper, 'D') || ($sobtVal !== 'N/A' && $sibtVal === 'N/A') || ($aobtVal !== 'N/A' && $aibtVal === 'N/A')) {
                 $direction = 'DEPARTURE';
-            } elseif (str_starts_with($legUpper, 'A') || ($sibt !== 'N/A' && $sobt === 'N/A') || ($aibt !== 'N/A' && $aobt === 'N/A')) {
+            } elseif (str_starts_with($legUpper, 'A') || ($sibtVal !== 'N/A' && $sobtVal === 'N/A') || ($aibtVal !== 'N/A' && $aobtVal === 'N/A')) {
                 $direction = 'ARRIVAL';
             } else {
                 if ($city1 === $meta['airport'] && $city2 !== $meta['airport']) {
@@ -758,40 +747,67 @@ class FlightDailyReportParser
             // Standardize LEG representation: A SCHED / D SCHED / A UNSCHED / D UNSCHED
             $normalizedLeg = ($direction === 'ARRIVAL' ? 'A ' : 'D ') . ($schedType === 'SCHEDULED' ? 'SCHED' : 'UNSCHED');
 
-            // Retain original scheduled and actual datetimes
-            $schedDatetime = ($direction === 'ARRIVAL') ? $sibt : $sobt;
-            $actDatetime   = ($direction === 'ARRIVAL') ? $aibt : $aobt;
+            // ── DIRECTION-AWARE TIMESTAMP MAPPING (PART 4, 5, 6) ──
+            $schedArrivalRaw = null;
+            $actArrivalRaw   = null;
+            $schedDepRaw     = null;
+            $actDepRaw       = null;
 
-            // Retain opposite direction timestamps if primary is missing
-            if ($schedDatetime === 'N/A' && ($direction === 'ARRIVAL' ? $sobt : $sibt) !== 'N/A') {
-                $schedDatetime = ($direction === 'ARRIVAL') ? $sobt : $sibt;
+            if ($direction === 'ARRIVAL') {
+                $rawS = ($sibtVal !== 'N/A' && $sibtVal !== '') ? $sibtVal : (($sibtSobtVal !== 'N/A' && $sibtSobtVal !== '') ? $sibtSobtVal : null);
+                $rawA = ($aibtVal !== 'N/A' && $aibtVal !== '') ? $aibtVal : (($aibtAobtVal !== 'N/A' && $aibtAobtVal !== '') ? $aibtAobtVal : null);
+
+                $schedArrivalRaw = ($rawS !== '-' && $rawS !== 'NULL') ? $rawS : null;
+                $actArrivalRaw   = ($rawA !== '-' && $rawA !== 'NULL') ? $rawA : null;
+
+                $sibt = $schedArrivalRaw ?: 'N/A';
+                $sobt = 'N/A';
+                $aibt = $actArrivalRaw ?: 'N/A';
+                $aobt = 'N/A';
+            } else {
+                $rawS = ($sobtVal !== 'N/A' && $sobtVal !== '') ? $sobtVal : (($sibtSobtVal !== 'N/A' && $sibtSobtVal !== '') ? $sibtSobtVal : null);
+                $rawA = ($aobtVal !== 'N/A' && $aobtVal !== '') ? $aobtVal : (($aibtAobtVal !== 'N/A' && $aibtAobtVal !== '') ? $aibtAobtVal : null);
+
+                $schedDepRaw = ($rawS !== '-' && $rawS !== 'NULL') ? $rawS : null;
+                $actDepRaw   = ($rawA !== '-' && $rawA !== 'NULL') ? $rawA : null;
+
+                $sobt = $schedDepRaw ?: 'N/A';
+                $sibt = 'N/A';
+                $aobt = $actDepRaw ?: 'N/A';
+                $aibt = 'N/A';
             }
-            if ($actDatetime === 'N/A' && ($direction === 'ARRIVAL' ? $aobt : $aibt) !== 'N/A') {
-                $actDatetime = ($direction === 'ARRIVAL') ? $aobt : $aibt;
-            }
 
-            // Direction-aware movement timestamp determination:
-            // For realization records, prefer actual timestamp; for planned, prefer scheduled.
-            $isRealized = ($actDatetime !== 'N/A' && !empty($actDatetime));
-            $movementTimestamp = ((($meta['realization'] ?? 'YES') === 'YES') || $isRealized)
-                ? ($actDatetime !== 'N/A' ? $actDatetime : $schedDatetime)
-                : ($schedDatetime !== 'N/A' ? $schedDatetime : $actDatetime);
+            // Directionally relevant raw strings
+            $schedMovementRaw = ($direction === 'ARRIVAL') ? $schedArrivalRaw : $schedDepRaw;
+            $actMovementRaw   = ($direction === 'ARRIVAL') ? $actArrivalRaw   : $actDepRaw;
 
-            $parsedDt = $this->parseDateTimeString($movementTimestamp, $meta['period_start'] ?? date('Y-m-d'));
-            $operationalDate = $parsedDt['date'];
-            $operationalHour = $parsedDt['hour'];
-            $operationalDatetime = $parsedDt['datetime'];
+            // Parse timestamps
+            $schedParsed = $this->parseDateTimeString($schedMovementRaw, $meta['period_start'] ?? null);
+            $actParsed   = $this->parseDateTimeString($actMovementRaw, $meta['period_start'] ?? null);
+
+            $scheduledDatetime = $schedParsed['datetime'];
+            $actualDatetime    = $actParsed['datetime'];
+
+            $scheduledHour = $schedParsed['hour'];
+            $actualHour    = $actParsed['hour'];
+
+            // Operational Date based on SCHEDULED timestamp (PART 7)
+            $operationalDate       = $schedParsed['date'] ?: ($actParsed['date'] ?: ($meta['period_start'] ?? date('Y-m-d')));
+            $actualOperationalDate = $actParsed['date'];
+
+            // Operational Hour: scheduled_hour prefered for planned analytics, actual_hour for realized (PART 8)
+            $operationalHour = $scheduledHour !== null ? $scheduledHour : ($actualHour !== null ? $actualHour : 0);
+            $operationalDatetime = $scheduledDatetime ?: ($actualDatetime ?: "{$operationalDate} 00:00:00");
 
             // Delay in minutes
             $delayMinutes = 0;
-            $schedTime = ($direction === 'ARRIVAL') ? $sibt : $sobt;
-            $actTime   = ($direction === 'ARRIVAL') ? $aibt : $aobt;
-            if ($schedTime !== 'N/A' && $actTime !== 'N/A') {
-                $delayMinutes = $this->calculateTimeDifferenceMinutes($schedTime, $actTime);
+            if ($schedMovementRaw && $actMovementRaw) {
+                $delayMinutes = $this->calculateTimeDifferenceMinutes($schedMovementRaw, $actMovementRaw);
             }
 
-            // Irregularity Flag: Divert > 0, Miss > 0, or Unscheduled
+            // Irregularity Flag: Divert > 0, Miss > 0, or Unscheduled (PART 13)
             $isIrregular = ($divert > 0 || $miss > 0 || $schedType === 'UNSCHEDULED');
+            $isRealized  = ($actualDatetime !== null && $actMovementRaw !== null && $actMovementRaw !== '-' && $actMovementRaw !== 'N/A');
 
             // Traffic: DOMESTIC vs INTERNATIONAL
             $traffic = 'DOMESTIC';
@@ -805,30 +821,44 @@ class FlightDailyReportParser
             if ($runway === '-' || $runway === '') $runway = 'N/A';
 
             $records[] = [
-                'index'                => count($records) + 1,
-                'air_line'             => $airLine,
-                'flight_no'            => $flightNo,
-                'flight_no_base'       => $flightNoBase,
-                'flight_suffix'        => $flightSuffix,
-                'paired_no'            => $pairedNo,
-                'desc'                 => $desc,
-                'sibt'                 => $sibt,
-                'sobt'                 => $sobt,
-                'aibt'                 => $aibt,
-                'aobt'                 => $aobt,
-                'scheduled_datetime'   => ($schedDatetime !== 'N/A' && !empty($schedDatetime)) ? $schedDatetime : null,
-                'actual_datetime'      => ($actDatetime !== 'N/A' && !empty($actDatetime)) ? $actDatetime : null,
-                'leg'                  => $normalizedLeg,
-                'raw_leg'              => $rawLeg,
-                'direction'            => $direction,
-                'sched_type'           => $schedType,
-                'is_scheduled'         => ($schedType === 'SCHEDULED'),
-                'city_1'               => $city1,
-                'city_2'               => $city2,
-                'route'                => ($city1 !== 'N/A' && $city2 !== 'N/A') ? "{$city1} → {$city2}" : 'N/A',
-                'traffic'              => $traffic,
-                'route_type'           => $traffic,
-                'mtow'                 => $mtow,
+                'index'                        => count($records) + 1,
+                'air_line'                     => $airLine,
+                'flight_no'                    => $flightNo,
+                'flight_no_base'               => $flightNoBase,
+                'flight_suffix'                => $flightSuffix,
+                'paired_no'                    => $pairedNo,
+                'desc'                         => $desc,
+                'sibt'                         => $sibt,
+                'sobt'                         => $sobt,
+                'aibt'                         => $aibt,
+                'aobt'                         => $aobt,
+                'sched_display'                => ($direction === 'ARRIVAL' ? $sibt : $sobt),
+                'actual_display'               => ($direction === 'ARRIVAL' ? $aibt : $aobt),
+                'scheduled_datetime'           => $scheduledDatetime,
+                'actual_datetime'              => $actualDatetime,
+                'scheduled_arrival_datetime'   => ($direction === 'ARRIVAL' ? $scheduledDatetime : null),
+                'actual_arrival_datetime'      => ($direction === 'ARRIVAL' ? $actualDatetime : null),
+                'scheduled_departure_datetime' => ($direction === 'DEPARTURE' ? $scheduledDatetime : null),
+                'actual_departure_datetime'    => ($direction === 'DEPARTURE' ? $actualDatetime : null),
+                'operational_date'             => $operationalDate,
+                'actual_operational_date'      => $actualOperationalDate,
+                'flight_date'                  => $operationalDate,
+                'scheduled_hour'               => $scheduledHour,
+                'actual_hour'                  => $actualHour,
+                'operational_hour'             => $operationalHour,
+                'hour'                         => $operationalHour,
+                'operational_datetime'         => $operationalDatetime,
+                'leg'                          => $normalizedLeg,
+                'raw_leg'                      => $rawLeg,
+                'direction'                    => $direction,
+                'sched_type'                   => $schedType,
+                'is_scheduled'                 => ($schedType === 'SCHEDULED'),
+                'city_1'                       => $city1,
+                'city_2'                       => $city2,
+                'route'                        => ($city1 !== 'N/A' && $city2 !== 'N/A') ? "{$city1} → {$city2}" : 'N/A',
+                'traffic'                      => $traffic,
+                'route_type'                   => $traffic,
+                'mtow'                         => $mtow,
                 'reg_no'               => $regNo,
                 'cap'                  => $cap,
                 'load'                 => $load,
@@ -850,14 +880,9 @@ class FlightDailyReportParser
                 'final'                => $final,
                 'final_time'           => $finalTime,
                 'branch'               => $branch,
-                'operational_date'     => $operationalDate,
-                'operational_hour'     => $operationalHour,
-                'operational_datetime' => $operationalDatetime,
-                'flight_date'          => $operationalDate,
-                'hour'                 => $operationalHour,
                 'delay_minutes'        => $delayMinutes,
                 'is_irregular'         => $isIrregular,
-                'is_realized'          => ($actTime !== 'N/A'),
+                'is_realized'          => $isRealized,
             ];
         }
 
@@ -866,18 +891,18 @@ class FlightDailyReportParser
 
     /**
      * Parse date and hour from any supported date/time format.
+     * Never defaults unparseable hour to 12.
      */
-    public function parseDateTimeString(?string $str, string $fallbackDate = '2026-08-01'): array
+    public function parseDateTimeString(?string $str, ?string $fallbackDate = null): array
     {
-        $date = $fallbackDate;
-        $hour = 12;
-        $datetime = "{$fallbackDate} 12:00:00";
-
-        if (empty($str) || $str === 'N/A') {
-            return ['date' => $date, 'hour' => $hour, 'datetime' => $datetime];
+        if (empty($str) || $str === 'N/A' || $str === '-' || $str === 'NULL') {
+            return ['date' => null, 'hour' => null, 'datetime' => null];
         }
 
         $str = trim($str);
+        $date = null;
+        $hour = null;
+        $datetime = null;
 
         // Check for YYYY-MM-DD or YYYY/MM/DD
         if (preg_match('/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/', $str, $m)) {
@@ -886,6 +911,8 @@ class FlightDailyReportParser
         // Check for DD-MM-YYYY or DD/MM/YYYY
         elseif (preg_match('/(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/', $str, $m)) {
             $date = sprintf('%04d-%02d-%02d', (int)$m[3], (int)$m[2], (int)$m[1]);
+        } elseif ($fallbackDate) {
+            $date = $fallbackDate;
         }
 
         // Check for hour:minute(:second)
@@ -895,9 +922,13 @@ class FlightDailyReportParser
             $sec = isset($tm[3]) ? (int)$tm[3] : 0;
             if ($h >= 24) $h = 23;
             $hour = $h;
-            $datetime = sprintf('%s %02d:%02d:%02d', $date, $h, $min, $sec);
-        } else {
-            $datetime = "{$date} 12:00:00";
+            if ($date) {
+                $datetime = sprintf('%s %02d:%02d:%02d', $date, $h, $min, $sec);
+            } else {
+                $datetime = sprintf('%02d:%02d:%02d', $h, $min, $sec);
+            }
+        } elseif ($date) {
+            $datetime = "{$date} 00:00:00";
         }
 
         return ['date' => $date, 'hour' => $hour, 'datetime' => $datetime];

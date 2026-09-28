@@ -21,9 +21,9 @@ class FDRRealOasysMonthlyDayByDayTest extends TestCase
 
     public function test_real_monthly_oasys_file_day_by_day_selection(): void
     {
-        $filePath = storage_path('app/templates/CGK FDR.xls');
+        $filePath = storage_path('app/templates/BTJ FDR.xls');
         if (!file_exists($filePath)) {
-            $filePath = resource_path('templates/fdr/OASYS-FDR-TEMPLATE.xls');
+            $filePath = storage_path('app/templates/OASYS-FDR-TEMPLATE.xls');
         }
         $this->assertFileExists($filePath);
 

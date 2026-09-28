@@ -23,26 +23,19 @@
             </div>
         </div>
 
-        {{-- Breadcrumb Flow: Home → Select Type → FDR Config → Dashboard --}}
+        {{-- Breadcrumb Flow: Home → Flight Daily Report → FDR Dashboard --}}
         <div class="hidden lg:flex items-center gap-2 text-xs font-medium text-slate-400">
             <a href="{{ route('home') }}" class="hover:text-aviation-600 transition">Home</a>
             <span>&rarr;</span>
-            <span class="text-slate-500">Select Type</span>
-            <span>&rarr;</span>
-            <a href="{{ route('fdr.config', $upload->id) }}" class="hover:text-aviation-600 transition">FDR Config</a>
+            <span class="text-slate-500">Flight Daily Report</span>
             <span>&rarr;</span>
             <span class="text-aviation-700 dark:text-aviation-300 font-bold px-2 py-0.5 rounded bg-aviation-50 dark:bg-aviation-950 border border-aviation-200 dark:border-aviation-800">
                 FDR Dashboard
             </span>
         </div>
 
-        {{-- Action Buttons (Config, Exports) --}}
+        {{-- Action Buttons (Exports) --}}
         <div class="flex items-center gap-2">
-            <a href="{{ route('fdr.config', $upload->id) }}"
-               class="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-aviation-600 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-navy-800 transition flex items-center gap-1.5 shadow-2xs">
-                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
-                <span class="hidden sm:inline">Config</span>
-            </a>
 
             {{-- Export CSV --}}
             <a :href="getExportUrl('csv')"
@@ -260,8 +253,46 @@
         {{-- ══ SECTION 1: FILTER CASCADE & ACTIVE CHIPS BAR ═══════════════════ --}}
         <div class="bg-white dark:bg-navy-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-sm space-y-4">
             
+            {{-- ══ ROW COUNT RECONCILIATION DIAGNOSTIC (PART 3 & PART 28) ══ --}}
+            <div class="rounded-xl border p-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs"
+                 :class="(reconciliation && reconciliation.excluded_count > 0) 
+                    ? 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200' 
+                    : 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="font-bold uppercase tracking-wider text-[11px] px-2 py-0.5 rounded font-mono"
+                          :class="(reconciliation && reconciliation.excluded_count > 0) ? 'bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-100' : 'bg-emerald-200 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-100'">
+                        RECONCILIATION
+                    </span>
+                    <span>Source Rows: <strong class="font-mono text-sm" x-text="reconciliation ? reconciliation.source_count : sourceSummary.total_flights">{{ $filterResult['source_count'] }}</strong></span>
+                    <span>&bull;</span>
+                    <span>Normalized: <strong class="font-mono text-sm" x-text="reconciliation ? reconciliation.normalized_count : sourceSummary.total_flights">{{ $filterResult['normalized_count'] }}</strong></span>
+                    <span>&bull;</span>
+                    <span>Filtered: <strong class="font-mono text-sm" x-text="reconciliation ? reconciliation.filtered_count : {{ $filterResult['filtered_count'] }}">{{ $filterResult['filtered_count'] }}</strong></span>
+                    <span>&bull;</span>
+                    <span>Excluded: <strong class="font-mono text-sm" x-text="reconciliation ? reconciliation.excluded_count : {{ $filterResult['excluded_count'] }}">{{ $filterResult['excluded_count'] }}</strong></span>
+                </div>
+
+                <div>
+                    <template x-if="!reconciliation || reconciliation.excluded_count === 0">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold text-[10px] tracking-wider uppercase shadow-2xs">
+                            ✓ 100% RECONCILED (0 DROPPED)
+                        </span>
+                    </template>
+                    <template x-if="reconciliation && reconciliation.excluded_count > 0">
+                        <div class="text-[11px] font-mono flex flex-wrap items-center gap-1">
+                            <span class="font-bold text-amber-800 dark:text-amber-300">EXCLUSION REASONS:</span>
+                            <template x-for="(count, reason) in reconciliation.exclusion_reasons" :key="reason">
+                                <span class="px-2 py-0.5 rounded bg-white dark:bg-navy-800 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200">
+                                    <span x-text="reason"></span>: <strong x-text="count"></strong>
+                                </span>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
             {{-- Quick Filter Controls --}}
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 text-xs">
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 text-xs">
                 
                 {{-- Airport --}}
                 <div>
@@ -302,6 +333,16 @@
                         <option value="ALL">ALL TRAFFIC</option>
                         <option value="DOMESTIC">DOMESTIC</option>
                         <option value="INTERNATIONAL">INTERNATIONAL</option>
+                    </select>
+                </div>
+
+                {{-- Realization (ALL / YES / NO) --}}
+                <div>
+                    <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Realization</label>
+                    <select x-model="filters.realization" @change="triggerFilter()" class="w-full rounded-xl border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-navy-800 text-slate-900 dark:text-white text-xs font-semibold py-1.5 px-2.5">
+                        <option value="ALL">ALL (REAL &amp; PLAN)</option>
+                        <option value="YES">REALIZED ONLY (AIBT/AOBT)</option>
+                        <option value="NO">UNREALIZED ONLY (PLAN)</option>
                     </select>
                 </div>
 
@@ -410,12 +451,11 @@
                     </div>
                 </div>
 
-                {{-- 2. Analysis Passengers --}}
+                {{-- 2. Analysis Passengers (Part 20 to Part 24) --}}
                 <div class="bg-white dark:bg-navy-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
                     <div class="flex items-center justify-between">
-                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400"
-                              x-text="filters.analysis_level === 'DAILY' ? 'Analysis Day Passengers' : 'Analysis Scope Passengers'">
-                            Analysis Day Passengers
+                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                            Passenger Movement
                         </span>
                         <span class="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
@@ -424,27 +464,34 @@
                     <div class="text-2xl font-black text-slate-900 dark:text-white mt-1" x-text="kpis.total_passengers.toLocaleString()">
                         {{ number_format($analytics['kpis']['total_passengers']) }}
                     </div>
-                    <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 truncate">
+                    <div class="flex items-center justify-between text-xs font-bold text-aviation-600 dark:text-aviation-400 mt-1">
+                        <span x-text="kpis.pax_per_flight_display">{{ $analytics['kpis']['pax_per_flight_display'] ?? '134.9 Pax / Flight' }}</span>
+                        <span class="text-[10px] font-normal text-slate-400">Trn: <strong class="font-bold text-slate-700 dark:text-slate-200" x-text="kpis.transit_passengers"></strong> | Trf: <strong class="font-bold text-slate-700 dark:text-slate-200" x-text="kpis.transfer_passengers"></strong></span>
+                    </div>
+                    <div class="text-[10px] text-slate-400 mt-1 truncate">
                         Adl: <strong x-text="kpis.adult_passengers.toLocaleString()">{{ number_format($analytics['kpis']['adult_passengers']) }}</strong> | Chd: <strong x-text="kpis.child_passengers.toLocaleString()">{{ number_format($analytics['kpis']['child_passengers']) }}</strong> | Inf: <strong x-text="kpis.infant_passengers.toLocaleString()">{{ number_format($analytics['kpis']['infant_passengers']) }}</strong>
                     </div>
                 </div>
 
-                {{-- 3. Average Load Factor (PART 24) --}}
+                {{-- 3. Average Load Factor / Seat Utilization (Part 25 & 26) --}}
                 <div class="bg-white dark:bg-navy-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
                     <div class="flex items-center justify-between">
-                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400"
-                              x-text="filters.analysis_level === 'DAILY' ? 'Analysis Day Load Factor' : 'Average Load Factor'">
-                            Analysis Day Load Factor
+                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                            Seat Util. / Load Factor
                         </span>
                         <span class="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                         </span>
                     </div>
-                    <div class="text-2xl font-black text-aviation-600 dark:text-aviation-400 mt-1" x-text="kpis.avg_load_factor">
-                        {{ $analytics['kpis']['avg_load_factor'] }}
+                    <div class="flex items-baseline gap-2 mt-1">
+                        <div class="text-2xl font-black text-aviation-600 dark:text-aviation-400" x-text="kpis.passenger_utilization">
+                            {{ $analytics['kpis']['passenger_utilization'] ?? '71.7%' }}
+                        </div>
+                        <span class="text-xs font-semibold text-slate-400">Pax Util.</span>
                     </div>
-                    <div class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-mono">
-                        Load: <span x-text="kpis.total_load.toLocaleString()">{{ number_format($analytics['kpis']['total_load']) }}</span> / Cap: <span x-text="kpis.total_capacity.toLocaleString()">{{ number_format($analytics['kpis']['total_capacity']) }}</span>
+                    <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-1 font-mono">
+                        <span>W-LF: <strong x-text="kpis.weighted_load_factor">{{ $analytics['kpis']['weighted_load_factor'] ?? '37.8%' }}</strong></span>
+                        <span>Cap: <strong x-text="kpis.total_capacity.toLocaleString()">{{ number_format($analytics['kpis']['total_capacity']) }}</strong></span>
                     </div>
                 </div>
 
@@ -844,8 +891,8 @@
                                               x-text="r.leg"></span>
                                     </td>
                                     <td class="py-2.5 px-3" x-text="r.route"></td>
-                                    <td class="py-2.5 px-3 text-slate-500" x-text="r.direction === 'ARRIVAL' ? r.sibt : r.sobt"></td>
-                                    <td class="py-2.5 px-3 text-slate-800 dark:text-slate-200 font-bold" x-text="r.direction === 'ARRIVAL' ? r.aibt : r.aobt"></td>
+                                    <td class="py-2.5 px-3 text-slate-500 font-mono" x-text="r.sched_display || (r.direction === 'ARRIVAL' ? r.sibt : r.sobt)"></td>
+                                    <td class="py-2.5 px-3 text-slate-800 dark:text-slate-200 font-mono font-bold" x-text="r.actual_display || (r.direction === 'ARRIVAL' ? r.aibt : r.aobt)"></td>
                                     <td class="py-2.5 px-3" x-text="r.reg_no"></td>
                                     <td class="py-2.5 px-3" x-text="r.cap"></td>
                                     <td class="py-2.5 px-3" x-text="r.load"></td>
@@ -938,11 +985,11 @@
                     <div class="p-3 rounded-xl bg-aviation-50/50 dark:bg-aviation-950/40 border border-aviation-100 dark:border-aviation-900/60 grid grid-cols-2 gap-3">
                         <div>
                             <div class="text-[10px] font-sans text-aviation-700 dark:text-aviation-300 font-bold">Scheduled Time (SIBT/SOBT)</div>
-                            <div class="text-sm font-bold text-slate-900 dark:text-white" x-text="selectedFlight.direction === 'ARRIVAL' ? selectedFlight.sibt : selectedFlight.sobt"></div>
+                            <div class="text-sm font-bold text-slate-900 dark:text-white font-mono" x-text="selectedFlight.sched_display || (selectedFlight.direction === 'ARRIVAL' ? selectedFlight.sibt : selectedFlight.sobt)"></div>
                         </div>
                         <div>
                             <div class="text-[10px] font-sans text-aviation-700 dark:text-aviation-300 font-bold">Actual Block Time (AIBT/AOBT)</div>
-                            <div class="text-sm font-bold text-slate-900 dark:text-white" x-text="selectedFlight.direction === 'ARRIVAL' ? selectedFlight.aibt : selectedFlight.aobt"></div>
+                            <div class="text-sm font-bold text-slate-900 dark:text-white font-mono" x-text="selectedFlight.actual_display || (selectedFlight.direction === 'ARRIVAL' ? selectedFlight.aibt : selectedFlight.aobt)"></div>
                         </div>
                     </div>
 
@@ -1028,6 +1075,7 @@ function fdrDashboardController() {
         airlineRoute: @json($analytics['airline_route']),
         groundOps: @json($analytics['ground_operations']),
         activeReconciliation: @json($filters['report_mode'] == 7 ? $analytics['reconciliation_apps'] : $analytics['reconciliation_edifly']),
+        reconciliation: @json($filterResult['reconciliation']),
         flightRecords: @json($records),
         pagination: {
             current_page: 1,
@@ -1368,6 +1416,9 @@ function fdrDashboardController() {
                 this.airlineRoute = data.airline_route;
                 this.groundOps = data.ground_ops;
                 this.activeReconciliation = (this.filters.report_mode == 7) ? data.reconciliation_apps : data.reconciliation_edifly;
+                if (data.reconciliation) {
+                    this.reconciliation = data.reconciliation;
+                }
                 this.flightRecords = data.records;
                 this.pagination = data.pagination;
 

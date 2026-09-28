@@ -84,6 +84,8 @@ class FlightDailyReportFilter
             $activeChips[] = ['key' => 'search', 'label' => "Query: {$search}", 'value' => $search];
         }
 
+        $excludedReasons = [];
+
         foreach ($records as $r) {
             $rDate = self::standardizeDate($r['operational_date'] ?? ($r['flight_date'] ?? ''));
 
@@ -91,17 +93,20 @@ class FlightDailyReportFilter
             if ($analysisLevel === 'DAILY') {
                 if ($stdAnalysisDate !== null && $stdAnalysisDate !== 'N/A') {
                     if ($rDate !== $stdAnalysisDate) {
+                        $excludedReasons['Outside selected analysis date (' . ($rDate ?: 'N/A') . ')'] = ($excludedReasons['Outside selected analysis date (' . ($rDate ?: 'N/A') . ')'] ?? 0) + 1;
                         continue;
                     }
                 }
             } elseif ($analysisLevel === 'MONTHLY') {
                 $monthTarget = !empty($analysisMonth) ? $analysisMonth : ($stdAnalysisDate ? substr($stdAnalysisDate, 0, 7) : substr($startDate, 0, 7));
                 if (!empty($monthTarget) && substr($rDate, 0, 7) !== $monthTarget) {
+                    $excludedReasons['Outside selected month (' . substr($rDate, 0, 7) . ')'] = ($excludedReasons['Outside selected month (' . substr($rDate, 0, 7) . ')'] ?? 0) + 1;
                     continue;
                 }
             } elseif ($analysisLevel === 'YEARLY') {
                 $yearTarget = !empty($analysisYear) ? $analysisYear : ($stdAnalysisDate ? substr($stdAnalysisDate, 0, 4) : substr($startDate, 0, 4));
                 if (!empty($yearTarget) && substr($rDate, 0, 4) !== $yearTarget) {
+                    $excludedReasons['Outside selected year (' . substr($rDate, 0, 4) . ')'] = ($excludedReasons['Outside selected year (' . substr($rDate, 0, 4) . ')'] ?? 0) + 1;
                     continue;
                 }
             }
@@ -112,6 +117,7 @@ class FlightDailyReportFilter
                 $c2 = strtoupper($r['city_2'] ?? '');
                 $metaAp = strtoupper($meta['airport'] ?? '');
                 if ($c1 !== $airport && $c2 !== $airport && $metaAp !== $airport) {
+                    $excludedReasons["Airport mismatch (expected {$airport})"] = ($excludedReasons["Airport mismatch (expected {$airport})"] ?? 0) + 1;
                     continue;
                 }
             }
@@ -120,6 +126,7 @@ class FlightDailyReportFilter
             if ($leg !== 'ALL' && !empty($leg)) {
                 $dir = strtoupper($r['direction'] ?? '');
                 if ($dir !== $leg && !str_starts_with(strtoupper($r['leg'] ?? ''), $leg[0])) {
+                    $excludedReasons["Leg mismatch (flight is {$dir})"] = ($excludedReasons["Leg mismatch (flight is {$dir})"] ?? 0) + 1;
                     continue;
                 }
             }
@@ -128,6 +135,7 @@ class FlightDailyReportFilter
             if ($operator !== 'ALL' && !empty($operator)) {
                 $al = trim($r['air_line'] ?? ($r['operator'] ?? ''));
                 if (strcasecmp($al, $operator) !== 0 && stripos($al, $operator) === false) {
+                    $excludedReasons["Operator mismatch ({$al})"] = ($excludedReasons["Operator mismatch ({$al})"] ?? 0) + 1;
                     continue;
                 }
             }
@@ -141,6 +149,7 @@ class FlightDailyReportFilter
                     if (($traffic === 'INT' || $traffic === 'INTERNATIONAL') && ($tr === 'INT' || $tr === 'INTERNATIONAL')) $matches = true;
                 }
                 if (!$matches) {
+                    $excludedReasons["Traffic mismatch ({$tr})"] = ($excludedReasons["Traffic mismatch ({$tr})"] ?? 0) + 1;
                     continue;
                 }
             }
@@ -148,8 +157,14 @@ class FlightDailyReportFilter
             // 5. Realization Filter (ALL / YES / NO)
             if ($realization !== 'ALL' && !empty($realization)) {
                 $isRealized = !empty($r['is_realized']) || !empty($r['realization']);
-                if ($realization === 'YES' && !$isRealized) continue;
-                if ($realization === 'NO' && $isRealized) continue;
+                if ($realization === 'YES' && !$isRealized) {
+                    $excludedReasons['Unrealized flight (no actual AIBT/AOBT)'] = ($excludedReasons['Unrealized flight (no actual AIBT/AOBT)'] ?? 0) + 1;
+                    continue;
+                }
+                if ($realization === 'NO' && $isRealized) {
+                    $excludedReasons['Realized flight (excluded by NO filter)'] = ($excludedReasons['Realized flight (excluded by NO filter)'] ?? 0) + 1;
+                    continue;
+                }
             }
 
             // 6. Flight No & Suffix Filter
@@ -157,26 +172,34 @@ class FlightDailyReportFilter
                 $fn = strtoupper($r['flight_no'] ?? '');
                 $fnb = strtoupper($r['flight_no_base'] ?? '');
                 if (stripos($fn, $flightNo) === false && stripos($fnb, $flightNo) === false) {
+                    $excludedReasons["Flight No mismatch ({$fn})"] = ($excludedReasons["Flight No mismatch ({$fn})"] ?? 0) + 1;
                     continue;
                 }
             }
             if (!empty($suffix)) {
                 $sfx = strtoupper($r['flight_suffix'] ?? '');
                 if ($sfx !== $suffix) {
+                    $excludedReasons["Suffix mismatch ({$sfx})"] = ($excludedReasons["Suffix mismatch ({$sfx})"] ?? 0) + 1;
                     continue;
                 }
             }
 
             // 7. Date Range Filter
             if (!empty($startDate)) {
-                $stdStart = $this->standardizeDate($startDate);
-                $fd = $this->standardizeDate($r['flight_date'] ?? '');
-                if ($fd !== 'N/A' && $fd < $stdStart) continue;
+                $stdStart = self::standardizeDate($startDate);
+                $fd = self::standardizeDate($r['flight_date'] ?? '');
+                if ($fd !== 'N/A' && $fd < $stdStart) {
+                    $excludedReasons['Date earlier than start range'] = ($excludedReasons['Date earlier than start range'] ?? 0) + 1;
+                    continue;
+                }
             }
             if (!empty($endDate)) {
-                $stdEnd = $this->standardizeDate($endDate);
-                $fd = $this->standardizeDate($r['flight_date'] ?? '');
-                if ($fd !== 'N/A' && $fd > $stdEnd) continue;
+                $stdEnd = self::standardizeDate($endDate);
+                $fd = self::standardizeDate($r['flight_date'] ?? '');
+                if ($fd !== 'N/A' && $fd > $stdEnd) {
+                    $excludedReasons['Date later than end range'] = ($excludedReasons['Date later than end range'] ?? 0) + 1;
+                    continue;
+                }
             }
 
             // 8. Search Filter
@@ -193,6 +216,7 @@ class FlightDailyReportFilter
                     $r['city_2'] ?? '',
                 ]));
                 if (strpos($haystack, $search) === false) {
+                    $excludedReasons['Search query mismatch'] = ($excludedReasons['Search query mismatch'] ?? 0) + 1;
                     continue;
                 }
             }
@@ -201,11 +225,23 @@ class FlightDailyReportFilter
         }
 
         $filteredCount = count($filtered);
+        $excludedCount = $totalCount - $filteredCount;
 
         return [
             'records'        => array_values($filtered),
             'total_count'    => $totalCount,
+            'source_count'   => $totalCount,
+            'normalized_count' => $totalCount,
             'filtered_count' => $filteredCount,
+            'excluded_count' => $excludedCount,
+            'reconciliation' => [
+                'source_count'      => $totalCount,
+                'normalized_count'  => $totalCount,
+                'filtered_count'    => $filteredCount,
+                'excluded_count'    => $excludedCount,
+                'is_reconciled'     => ($excludedCount === 0),
+                'exclusion_reasons' => $excludedReasons,
+            ],
             'counter_text'   => "Showing {$filteredCount} of {$totalCount} records",
             'active_chips'   => $activeChips,
             'filters'        => [

@@ -153,34 +153,51 @@ class FlightDailyReportAnalytics
             }
         }
 
-        $directPax = $adult + $child + $infant;
-        $totalPax = ($totalLoad > 0) ? $totalLoad : ($directPax + $transit + $transfer);
+        // Strict Passenger Movement KPI: Adult + Child + Infant (Part 21 & 22)
+        // Fallback to totalLoad only if detailed pax fields are completely absent (e.g. synthetic test fixtures)
+        $detailedPax = $adult + $child + $infant;
+        $passengerMovement = ($detailedPax > 0) ? $detailedPax : $totalLoad;
 
-        // Load Factor Guardrail: When totalCap = 0, strictly 'N/A'
-        $avgLoadFactor = ($totalCap > 0) ? round(($totalLoad / $totalCap) * 100, 1) . '%' : 'N/A';
-        $avgLoadFactorNum = ($totalCap > 0) ? round(($totalLoad / $totalCap) * 100, 1) : null;
+        // Pax per Flight (Part 23): e.g. 25,627 / 190 = 134.88... -> 134.9
+        $paxPerFlight = ($totalFlights > 0) ? round($passengerMovement / $totalFlights, 1) : 0.0;
+
+        // Passenger Seat Utilization: SUM(Adult + Child + Infant) / SUM(CAP) (Part 26)
+        $passengerUtilization = ($totalCap > 0) ? round(($passengerMovement / $totalCap) * 100, 1) : null;
+        $passengerUtilizationStr = ($passengerUtilization !== null) ? "{$passengerUtilization}%" : 'N/A';
+
+        // Capacity-weighted Load Factor: SUM(CAP x LOAD%) / SUM(CAP) (Part 26)
+        $weightedLoadFactor = ($totalCap > 0) ? round(($totalLoad / $totalCap) * 100, 1) : null;
+        $weightedLoadFactorStr = ($weightedLoadFactor !== null) ? "{$weightedLoadFactor}%" : 'N/A';
 
         return [
-            'total_flights'        => $totalFlights,
-            'arrivals'             => $arrivals,
-            'departures'           => $departures,
-            'total_passengers'     => $totalPax,
-            'adult_passengers'     => $adult,
-            'child_passengers'     => $child,
-            'infant_passengers'    => $infant,
-            'transit_passengers'   => $transit,
-            'transfer_passengers'  => $transfer,
-            'total_capacity'       => $totalCap,
-            'total_load'           => $totalLoad,
-            'avg_load_factor'      => $avgLoadFactor,
-            'avg_load_factor_num'  => $avgLoadFactorNum,
-            'cargo_kg'             => round($cargoKg, 1),
-            'total_cargo_kg'       => round($cargoKg, 1),
-            'cargo_ton'            => round($cargoKg / 1000, 2),
-            'baggage_kg'           => round($baggageKg, 1),
-            'total_baggage_kg'     => round($baggageKg, 1),
-            'pos_kg'               => round($posKg, 1),
-            'irregularities'       => [
+            'total_flights'            => $totalFlights,
+            'arrivals'                 => $arrivals,
+            'departures'               => $departures,
+            'total_passengers'         => $passengerMovement,
+            'passenger_movement'       => $passengerMovement,
+            'direct_passengers'        => $passengerMovement,
+            'adult_passengers'         => $adult,
+            'child_passengers'         => $child,
+            'infant_passengers'        => $infant,
+            'transit_passengers'       => $transit,
+            'transfer_passengers'      => $transfer,
+            'pax_per_flight'           => $paxPerFlight,
+            'pax_per_flight_display'   => "{$paxPerFlight} Pax / Flight",
+            'total_capacity'           => $totalCap,
+            'total_load'               => $totalLoad,
+            'passenger_utilization'    => $passengerUtilizationStr,
+            'passenger_utilization_num'=> $passengerUtilization,
+            'weighted_load_factor'     => $weightedLoadFactorStr,
+            'weighted_load_factor_num' => $weightedLoadFactor,
+            'avg_load_factor'          => $weightedLoadFactorStr,
+            'avg_load_factor_num'      => $weightedLoadFactor,
+            'cargo_kg'                 => round($cargoKg, 1),
+            'total_cargo_kg'           => round($cargoKg, 1),
+            'cargo_ton'                => round($cargoKg / 1000, 2),
+            'baggage_kg'               => round($baggageKg, 1),
+            'total_baggage_kg'         => round($baggageKg, 1),
+            'pos_kg'                   => round($posKg, 1),
+            'irregularities'           => [
                 'total'        => ($diverts + $misses + $unscheduled),
                 'divert'       => $diverts,
                 'miss'         => $misses,

@@ -63,7 +63,7 @@ class UploadController extends Controller
                     return redirect()->route('schedule.dashboard', $upload->id);
                 }
                 if ($upload->report_type === 'fdr') {
-                    return redirect()->route('fdr.config', $upload->id);
+                    return redirect()->route('fdr.dashboard', $upload->id);
                 }
                 return redirect()->route('dau.dashboard', $upload->id);
             }
@@ -398,7 +398,7 @@ class UploadController extends Controller
                 'status'       => 'completed',
                 'total_rows'   => $upload->total_rows,
                 'valid_rows'   => $upload->valid_rows,
-                'redirect_url' => route('fdr.config', $upload->id),
+                'redirect_url' => route('fdr.dashboard', $upload->id),
                 'message'      => "Flight Daily Report uploaded and processed successfully ({$upload->valid_rows} records).",
             ]);
         }
@@ -599,12 +599,12 @@ class UploadController extends Controller
                     'status'       => 'completed',
                     'total_rows'   => $upload->total_rows,
                     'valid_rows'   => $upload->valid_rows,
-                    'redirect_url' => route('fdr.config', $upload->id),
+                    'redirect_url' => route('fdr.dashboard', $upload->id),
                     'message'      => "Flight Daily Report uploaded and validated successfully ({$upload->valid_rows} movements).",
                 ]);
             }
 
-            return redirect()->route('fdr.config', $upload->id);
+            return redirect()->route('fdr.dashboard', $upload->id);
         }
 
         // ═════════════════════════════════════════════════════════════════════
@@ -709,7 +709,7 @@ class UploadController extends Controller
         }
 
         if ($upload->report_type === 'fdr') {
-            return redirect()->route('fdr.config', $upload->id);
+            return redirect()->route('fdr.dashboard', $upload->id);
         }
 
         return $this->executeDauProcessing($upload);

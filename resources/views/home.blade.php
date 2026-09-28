@@ -40,7 +40,7 @@
                 <span>Master Data</span>
             </a>
 
-            <a href="{{ route('fdr.config') }}"
+            <a href="{{ route('fdr.index') }}"
                class="text-xs font-bold text-aviation-700 dark:text-aviation-300 hover:text-aviation-800 px-3 py-1.5 rounded-lg border border-aviation-300 dark:border-aviation-700 bg-aviation-50 dark:bg-aviation-950/80 transition flex items-center gap-1.5 shadow-2xs">
                 <svg class="w-3.5 h-3.5 text-aviation-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -174,7 +174,7 @@
 
                     {{-- Download Reference Template / View FDR Format Button --}}
                     <template x-if="selectedReport === 'fdr'">
-                        <a href="{{ route('fdr.config') }}"
+                        <a href="{{ route('fdr.index') }}"
                            class="shrink-0 px-3.5 py-2 rounded-lg text-xs font-bold bg-white dark:bg-navy-800 border border-slate-200 dark:border-slate-700 text-aviation-600 dark:text-aviation-400 hover:bg-aviation-50 dark:hover:bg-navy-700 transition flex items-center gap-2 shadow-2xs">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             <span>View FDR Format</span>
