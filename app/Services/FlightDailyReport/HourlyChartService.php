@@ -26,16 +26,20 @@ class HourlyChartService
                 'hour_label'         => "{$hStr}:00",
                 'time_range'         => "{$hStr}:00–{$hStr}:59",
                 'runway_capacity'    => $cap,
-                // ARRIVAL-DEPARTURE (Chart 1)
+                // ARRIVAL-DEPARTURE (Chart 1: total)
                 'total_plan'         => 0,
                 'total_realized'     => 0,
                 'total_irregular'    => 0,
-                // DEPARTURE (Chart 2)
+                // DEPARTURE (Chart 2: split by traffic type)
                 'dep_plan'           => 0,
+                'dep_dom_plan'       => 0,   // Departure Domestic (dark blue #1D4ED8)
+                'dep_int_plan'       => 0,   // Departure International (light blue #60A5FA)
                 'dep_irregular'      => 0,
                 'dep_realized'       => 0,
-                // ARRIVAL (Chart 3)
+                // ARRIVAL (Chart 3: split by traffic type)
                 'arr_plan'           => 0,
+                'arr_dom_plan'       => 0,   // Arrival Domestic (dark amber #CA8A04)
+                'arr_int_plan'       => 0,   // Arrival International (light yellow #FDE047)
                 'arr_irregular'      => 0,
                 'arr_realized'       => 0,
             ];
@@ -63,12 +67,20 @@ class HourlyChartService
                 }
             }
 
+            // Domestic vs International (source-first, no fabrication)
+            $traffic = strtoupper(trim($r['traffic'] ?? ($r['route_type'] ?? 'DOMESTIC')));
+            $isDom = ($traffic === 'DOMESTIC' || $traffic === 'DOM');
+
             if ($schedHour !== null && $schedHour >= 0 && $schedHour < 24) {
                 if (!$isIrreg) {
                     if ($isArr) {
                         $hourlyData[$schedHour]['arr_plan']++;
+                        if ($isDom) { $hourlyData[$schedHour]['arr_dom_plan']++; }
+                        else        { $hourlyData[$schedHour]['arr_int_plan']++; }
                     } else {
                         $hourlyData[$schedHour]['dep_plan']++;
+                        if ($isDom) { $hourlyData[$schedHour]['dep_dom_plan']++; }
+                        else        { $hourlyData[$schedHour]['dep_int_plan']++; }
                     }
                     $hourlyData[$schedHour]['total_plan'] = $hourlyData[$schedHour]['arr_plan'] + $hourlyData[$schedHour]['dep_plan'];
                 }

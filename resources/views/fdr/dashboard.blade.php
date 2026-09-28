@@ -542,7 +542,7 @@
                     </div>
                 </div>
 
-                {{-- ── CHART 1: ARRIVAL–DEPARTURE MOVEMENT ────────────────────────── --}}
+                {{-- ── CHART 1: ARRIVAL–DEPARTURE MOVEMENT (no Runway Capacity) ─────── --}}
                 <div class="space-y-2">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2">
@@ -555,11 +555,10 @@
                         <div class="flex items-center gap-3 text-[11px] text-slate-500">
                             <span class="inline-flex items-center gap-1"><span class="w-3 h-2 rounded bg-[#FDBA74]"></span> Plan (PPRP)</span>
                             <span class="inline-flex items-center gap-1"><span class="w-3 h-2 rounded bg-[#D97706]"></span> Irregular Flt</span>
-                            <span class="inline-flex items-center gap-1"><span class="w-3 h-0.5 bg-[#EF4444]"></span> Runway Capacity</span>
                         </div>
                     </div>
                     <div class="h-56 w-full relative">
-                        <canvas id="mentorChart1Movement"></canvas>
+                        <canvas id="mentorChart1Movement" style="display:block;"></canvas>
                     </div>
                 </div>
 
@@ -569,17 +568,17 @@
                         <div class="flex items-center gap-2">
                             <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
                             <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-white">
-                                Chart 2: DEPARTURE MOVEMENT (Blue Semantic Palette)
+                                Chart 2: DEPARTURE MOVEMENT
                             </h3>
                             <span class="text-[11px] font-semibold text-slate-400 font-mono" x-text="'(' + formatDateOption(filters.analysis_date) + ')'"></span>
                         </div>
                         <div class="flex items-center gap-3 text-[11px] text-slate-500">
-                            <span class="inline-flex items-center gap-1"><span class="w-3 h-2 rounded bg-[#93C5FD]"></span> Plan (PPRP)</span>
-                            <span class="inline-flex items-center gap-1"><span class="w-3 h-2 rounded bg-[#1D4ED8]"></span> Irregular Flt</span>
+                            <span class="inline-flex items-center gap-1"><span class="w-3 h-2 rounded bg-[#93C5FD]"></span> Dom Dep</span>
+                            <span class="inline-flex items-center gap-1"><span class="w-3 h-2 rounded bg-[#60A5FA]"></span> Intl Dep</span>
                         </div>
                     </div>
                     <div class="h-44 w-full relative">
-                        <canvas id="mentorChart2Departure"></canvas>
+                        <canvas id="mentorChart2Departure" style="display:block;"></canvas>
                     </div>
                 </div>
 
@@ -587,19 +586,19 @@
                 <div class="space-y-2 pt-4 border-t border-slate-100 dark:border-slate-800">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2">
-                            <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
                             <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-white">
-                                Chart 3: ARRIVAL MOVEMENT (Salmon/Magenta Palette)
+                                Chart 3: ARRIVAL MOVEMENT
                             </h3>
                             <span class="text-[11px] font-semibold text-slate-400 font-mono" x-text="'(' + formatDateOption(filters.analysis_date) + ')'"></span>
                         </div>
                         <div class="flex items-center gap-3 text-[11px] text-slate-500">
-                            <span class="inline-flex items-center gap-1"><span class="w-3 h-2 rounded bg-[#FDA4AF]"></span> Plan (PPRP)</span>
-                            <span class="inline-flex items-center gap-1"><span class="w-3 h-2 rounded bg-[#BE185D]"></span> Irregular Flt</span>
+                            <span class="inline-flex items-center gap-1"><span class="w-3 h-2 rounded bg-[#CA8A04]"></span> Dom Arr</span>
+                            <span class="inline-flex items-center gap-1"><span class="w-3 h-2 rounded bg-[#FDE047]"></span> Intl Arr</span>
                         </div>
                     </div>
                     <div class="h-44 w-full relative">
-                        <canvas id="mentorChart3Arrival"></canvas>
+                        <canvas id="mentorChart3Arrival" style="display:block;"></canvas>
                     </div>
                 </div>
 
@@ -839,6 +838,77 @@
                 </div>
             </div>
 
+            {{-- ══ SECTION 4B: FLIGHT MOVEMENT CHART ALL / DEP / ARR ════════════════ --}}
+            <div class="bg-white dark:bg-navy-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm space-y-4">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-4 rounded-full bg-aviation-600"></span>
+                        <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                            Flight Movement Chart
+                        </h3>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-aviation-50 text-aviation-700 dark:bg-aviation-950 dark:text-aviation-300 border border-aviation-200 dark:border-aviation-800"
+                              x-text="'Scope: ' + (filters.analysis_level === 'DAILY' ? formatDateOption(filters.analysis_date) : (filters.analysis_level === 'MONTHLY' ? formatMonthHeader(filters.analysis_month) : filters.analysis_year))">
+                        </span>
+                    </div>
+                    {{-- ALL / DEP / ARR mode switcher --}}
+                    <div class="flex items-center gap-1 bg-slate-50 dark:bg-navy-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <button type="button" @click="fdrChartMode = 'ALL'; renderFlightMovementChart()"
+                                :class="fdrChartMode === 'ALL' ? 'bg-aviation-600 text-white shadow-xs' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/60'"
+                                class="px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer">
+                            ALL
+                        </button>
+                        <button type="button" @click="fdrChartMode = 'DEP'; renderFlightMovementChart()"
+                                :class="fdrChartMode === 'DEP' ? 'bg-blue-700 text-white shadow-xs' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/60'"
+                                class="px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer">
+                            DEP
+                        </button>
+                        <button type="button" @click="fdrChartMode = 'ARR'; renderFlightMovementChart()"
+                                :class="fdrChartMode === 'ARR' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/60'"
+                                class="px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer">
+                            ARR
+                        </button>
+                    </div>
+                </div>
+
+                {{-- Legend --}}
+                <div class="flex flex-wrap items-center gap-3 text-[11px] text-slate-600 dark:text-slate-400">
+                    <template x-if="fdrChartMode === 'ALL' || fdrChartMode === 'DEP'">
+                        <span class="inline-flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-sm" style="background:#1D4ED8"></span>
+                            Dep Domestic
+                        </span>
+                    </template>
+                    <template x-if="fdrChartMode === 'ALL' || fdrChartMode === 'DEP'">
+                        <span class="inline-flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-sm" style="background:#60A5FA"></span>
+                            Dep International
+                        </span>
+                    </template>
+                    <template x-if="fdrChartMode === 'ALL' || fdrChartMode === 'ARR'">
+                        <span class="inline-flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-sm" style="background:#CA8A04"></span>
+                            Arr Domestic
+                        </span>
+                    </template>
+                    <template x-if="fdrChartMode === 'ALL' || fdrChartMode === 'ARR'">
+                        <span class="inline-flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-sm" style="background:#FDE047"></span>
+                            Arr International
+                        </span>
+                    </template>
+                </div>
+
+                {{-- Chart Canvas --}}
+                <div class="relative" style="height:280px;">
+                    <canvas id="fdrMovementChart" style="display:block;"></canvas>
+                    <template x-if="hourlyData.every(h => (h.dep_plan + h.arr_plan) === 0)">
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <p class="text-slate-400 text-sm font-medium">Data tidak tersedia untuk scope ini</p>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
             {{-- ══ SECTION 5: DETAILED FLIGHT TABLE (PART 26, PART 27) ═══════════════ --}}
             <div class="bg-white dark:bg-navy-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm space-y-4">
                 <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
@@ -1041,6 +1111,17 @@
 
 @push('scripts')
 <script>
+// Module-level non-reactive store for Chart.js instances.
+// IMPORTANT: Alpine.js Proxy wraps reactive data objects, which corrupts Chart.js
+// internal state. Chart instances MUST be stored outside Alpine's reactive scope.
+const _fdrCharts = {
+    chart1: null,
+    chart2: null,
+    chart3: null,
+    chartPax: null,
+    fdrMovement: null,
+};
+
 function fdrDashboardController() {
     return {
         uploadId: {{ $upload->id }},
@@ -1086,8 +1167,11 @@ function fdrDashboardController() {
         selectedFlight: null,
         isFiltering: false,
         activeRequestId: 0, // Token to resolve rapid race conditions
+        fdrChartMode: 'ALL', // ALL / DEP / ARR
 
-        chartInstances: {},
+        // NOTE: chartInstances is intentionally NOT in Alpine reactive data.
+        // Chart.js instances cannot be stored as Alpine Proxy objects.
+        // Use the module-level _fdrCharts variable instead.
 
         init() {
             this.$nextTick(() => {
@@ -1172,44 +1256,33 @@ function fdrDashboardController() {
 
             const hours = this.hourlyData.map(h => h.hour_label);
 
-            // Chart 1: Arrival-Departure Movement (24h)
+            // ── Color constants (Departure = Blue family, Arrival = Yellow/Amber family) ──
+            // Departure: Domestic = dark blue #1D4ED8, International = light blue #60A5FA
+            // Arrival: Domestic = dark amber #CA8A04, International = light yellow #FDE047
+
+            // Chart 1: Arrival-Departure Movement (24h) — GROUPED BAR, no Runway Capacity
             const ctx1 = document.getElementById('mentorChart1Movement');
             if (ctx1) {
-                this.chartInstances.chart1 = new Chart(ctx1, {
+                _fdrCharts.chart1 = new Chart(ctx1, {
+                    type: 'bar',
                     data: {
                         labels: hours,
                         datasets: [
                             {
-                                type: 'line',
-                                label: 'Runway Capacity',
-                                data: this.hourlyData.map(h => h.runway_capacity),
-                                borderColor: '#EF4444',
-                                backgroundColor: 'transparent',
-                                borderWidth: 2.5,
-                                pointRadius: 3,
-                                pointHoverRadius: 5,
-                                tension: 0.25,
-                                order: 1
-                            },
-                            {
-                                type: 'bar',
                                 label: 'Plan (PPRP)',
                                 data: this.hourlyData.map(h => h.total_plan),
                                 backgroundColor: '#FDBA74',
                                 borderColor: '#FB923C',
                                 borderWidth: 1,
                                 borderRadius: 4,
-                                order: 2
                             },
                             {
-                                type: 'bar',
                                 label: 'Irregular Flt',
                                 data: this.hourlyData.map(h => h.total_irregular),
                                 backgroundColor: '#D97706',
                                 borderColor: '#B45309',
                                 borderWidth: 1,
                                 borderRadius: 4,
-                                order: 3
                             }
                         ]
                     },
@@ -1220,15 +1293,8 @@ function fdrDashboardController() {
                             legend: { display: false },
                             tooltip: {
                                 callbacks: {
-                                    afterBody: (context) => {
-                                        const idx = context[0].dataIndex;
-                                        const h = this.hourlyData[idx];
-                                        return [
-                                            `Runway Capacity: ${h.runway_capacity} A/C`,
-                                            `Difference: ${h.difference} A/C`,
-                                            `Status: ${h.status}`
-                                        ];
-                                    }
+                                    title: (ctx) => `Hour: ${ctx[0].label}`,
+                                    label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y} movements`
                                 }
                             }
                         },
@@ -1240,27 +1306,27 @@ function fdrDashboardController() {
                 });
             }
 
-            // Chart 2: Departure Movement (24h)
+            // Chart 2: Departure Movement (24h) — Domestic DEP dark blue, Intl DEP light blue
             const ctx2 = document.getElementById('mentorChart2Departure');
             if (ctx2) {
-                this.chartInstances.chart2 = new Chart(ctx2, {
+                _fdrCharts.chart2 = new Chart(ctx2, {
                     type: 'bar',
                     data: {
                         labels: hours,
                         datasets: [
                             {
-                                label: 'Plan (PPRP)',
-                                data: this.hourlyData.map(h => h.dep_plan),
-                                backgroundColor: '#93C5FD',
-                                borderColor: '#60A5FA',
+                                label: 'Dep Domestic',
+                                data: this.hourlyData.map(h => h.dep_dom_plan ?? h.dep_plan),
+                                backgroundColor: '#1D4ED8',
+                                borderColor: '#1E40AF',
                                 borderWidth: 1,
                                 borderRadius: 4
                             },
                             {
-                                label: 'Irregular Flt',
-                                data: this.hourlyData.map(h => h.dep_irregular),
-                                backgroundColor: '#1D4ED8',
-                                borderColor: '#1E40AF',
+                                label: 'Dep International',
+                                data: this.hourlyData.map(h => h.dep_int_plan ?? 0),
+                                backgroundColor: '#60A5FA',
+                                borderColor: '#3B82F6',
                                 borderWidth: 1,
                                 borderRadius: 4
                             }
@@ -1269,7 +1335,15 @@ function fdrDashboardController() {
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    title: (ctx) => `Hour: ${ctx[0].label}`,
+                                    label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y} A/C`
+                                }
+                            }
+                        },
                         scales: {
                             x: { grid: { display: false } },
                             y: { beginAtZero: true, grid: { color: '#F1F5F9' } }
@@ -1278,27 +1352,27 @@ function fdrDashboardController() {
                 });
             }
 
-            // Chart 3: Arrival Movement (24h)
+            // Chart 3: Arrival Movement (24h) — Domestic ARR dark amber, Intl ARR light yellow
             const ctx3 = document.getElementById('mentorChart3Arrival');
             if (ctx3) {
-                this.chartInstances.chart3 = new Chart(ctx3, {
+                _fdrCharts.chart3 = new Chart(ctx3, {
                     type: 'bar',
                     data: {
                         labels: hours,
                         datasets: [
                             {
-                                label: 'Plan (PPRP)',
-                                data: this.hourlyData.map(h => h.arr_plan),
-                                backgroundColor: '#FDA4AF',
-                                borderColor: '#FB7185',
+                                label: 'Arr Domestic',
+                                data: this.hourlyData.map(h => h.arr_dom_plan ?? h.arr_plan),
+                                backgroundColor: '#CA8A04',
+                                borderColor: '#A16207',
                                 borderWidth: 1,
                                 borderRadius: 4
                             },
                             {
-                                label: 'Irregular Flt',
-                                data: this.hourlyData.map(h => h.arr_irregular),
-                                backgroundColor: '#BE185D',
-                                borderColor: '#9D174D',
+                                label: 'Arr International',
+                                data: this.hourlyData.map(h => h.arr_int_plan ?? 0),
+                                backgroundColor: '#FDE047',
+                                borderColor: '#EAB308',
                                 borderWidth: 1,
                                 borderRadius: 4
                             }
@@ -1307,7 +1381,15 @@ function fdrDashboardController() {
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    title: (ctx) => `Hour: ${ctx[0].label}`,
+                                    label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y} A/C`
+                                }
+                            }
+                        },
                         scales: {
                             x: { grid: { display: false } },
                             y: { beginAtZero: true, grid: { color: '#F1F5F9' } }
@@ -1332,7 +1414,7 @@ function fdrDashboardController() {
                     ? ['#0284C7', '#38BDF8', '#7DD3FC', '#F59E0B', '#10B981']
                     : ['#0284C7'];
 
-                this.chartInstances.chartPax = new Chart(ctxPax, {
+                _fdrCharts.chartPax = new Chart(ctxPax, {
                     type: 'bar',
                     data: {
                         labels: paxLabels,
@@ -1365,6 +1447,102 @@ function fdrDashboardController() {
                     }
                 });
             }
+
+            // Flight Movement Chart (ALL/DEP/ARR) - Section 4B
+            this.renderFlightMovementChart();
+        },
+
+        renderFlightMovementChart() {
+            if (!window.Chart) return;
+            const ctx = document.getElementById('fdrMovementChart');
+            if (!ctx) return;
+
+            const hours = this.hourlyData.map(h => h.hour_label);
+            const mode = this.fdrChartMode;
+
+            // Color constants (MANDATORY — consistent across chart, legend, tooltip)
+            const C = {
+                DEP_DOM: '#1D4ED8',   // Departure Domestic: dark blue
+                DEP_INT: '#60A5FA',   // Departure International: light blue
+                ARR_DOM: '#CA8A04',   // Arrival Domestic: dark amber
+                ARR_INT: '#FDE047',   // Arrival International: light yellow
+            };
+
+            let datasets = [];
+
+            if (mode === 'DEP' || mode === 'ALL') {
+                datasets.push({
+                    label: 'Dep Domestic',
+                    data: this.hourlyData.map(h => h.dep_dom_plan ?? h.dep_plan),
+                    backgroundColor: C.DEP_DOM,
+                    borderColor: '#1E40AF',
+                    borderWidth: 1,
+                    borderRadius: 3,
+                });
+                datasets.push({
+                    label: 'Dep International',
+                    data: this.hourlyData.map(h => h.dep_int_plan ?? 0),
+                    backgroundColor: C.DEP_INT,
+                    borderColor: '#3B82F6',
+                    borderWidth: 1,
+                    borderRadius: 3,
+                });
+            }
+
+            if (mode === 'ARR' || mode === 'ALL') {
+                datasets.push({
+                    label: 'Arr Domestic',
+                    data: this.hourlyData.map(h => h.arr_dom_plan ?? h.arr_plan),
+                    backgroundColor: C.ARR_DOM,
+                    borderColor: '#A16207',
+                    borderWidth: 1,
+                    borderRadius: 3,
+                });
+                datasets.push({
+                    label: 'Arr International',
+                    data: this.hourlyData.map(h => h.arr_int_plan ?? 0),
+                    backgroundColor: C.ARR_INT,
+                    borderColor: '#EAB308',
+                    borderWidth: 1,
+                    borderRadius: 3,
+                });
+            }
+
+            // Destroy existing instance first
+            if (_fdrCharts.fdrMovement) {
+                _fdrCharts.fdrMovement.destroy();
+                _fdrCharts.fdrMovement = null;
+            }
+
+            _fdrCharts.fdrMovement = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: hours, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                boxWidth: 12,
+                                font: { size: 11 },
+                                padding: 12,
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: (ctx) => `Hour: ${ctx[0].label}`,
+                                label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y} A/C`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { beginAtZero: true, grid: { color: '#F1F5F9' }, ticks: { precision: 0 } }
+                    }
+                }
+            });
         },
 
         async triggerFilter(page = 1) {
@@ -1435,45 +1613,47 @@ function fdrDashboardController() {
         },
 
         updateChartsLive() {
-            if (!this.chartInstances.chart1) return;
+            if (!_fdrCharts.chart1) return;
 
-            // Chart 1
-            this.chartInstances.chart1.data.datasets[0].data = this.hourlyData.map(h => h.runway_capacity);
-            this.chartInstances.chart1.data.datasets[1].data = this.hourlyData.map(h => h.total_plan);
-            this.chartInstances.chart1.data.datasets[2].data = this.hourlyData.map(h => h.total_irregular);
-            this.chartInstances.chart1.update();
+            // Chart 1: All movement (no Runway Capacity — removed)
+            _fdrCharts.chart1.data.datasets[0].data = this.hourlyData.map(h => h.total_plan);
+            _fdrCharts.chart1.data.datasets[1].data = this.hourlyData.map(h => h.total_irregular);
+            _fdrCharts.chart1.update();
 
-            // Chart 2
-            if (this.chartInstances.chart2) {
-                this.chartInstances.chart2.data.datasets[0].data = this.hourlyData.map(h => h.dep_plan);
-                this.chartInstances.chart2.data.datasets[1].data = this.hourlyData.map(h => h.dep_irregular);
-                this.chartInstances.chart2.update();
+            // Chart 2: Departure (Domestic = dark blue, International = light blue)
+            if (_fdrCharts.chart2) {
+                _fdrCharts.chart2.data.datasets[0].data = this.hourlyData.map(h => h.dep_dom_plan ?? h.dep_plan);
+                _fdrCharts.chart2.data.datasets[1].data = this.hourlyData.map(h => h.dep_int_plan ?? 0);
+                _fdrCharts.chart2.update();
             }
 
-            // Chart 3
-            if (this.chartInstances.chart3) {
-                this.chartInstances.chart3.data.datasets[0].data = this.hourlyData.map(h => h.arr_plan);
-                this.chartInstances.chart3.data.datasets[1].data = this.hourlyData.map(h => h.arr_irregular);
-                this.chartInstances.chart3.update();
+            // Chart 3: Arrival (Domestic = dark amber, International = light yellow)
+            if (_fdrCharts.chart3) {
+                _fdrCharts.chart3.data.datasets[0].data = this.hourlyData.map(h => h.arr_dom_plan ?? h.arr_plan);
+                _fdrCharts.chart3.data.datasets[1].data = this.hourlyData.map(h => h.arr_int_plan ?? 0);
+                _fdrCharts.chart3.update();
             }
 
             // Pax Composition Chart
-            if (this.chartInstances.chartPax && this.paxAnalytics.composition) {
+            if (_fdrCharts.chartPax && this.paxAnalytics.composition) {
                 const comp = this.paxAnalytics.composition;
                 const hasBreakdown = (comp.adult + comp.child + comp.infant + comp.transit + comp.transfer) > 0;
                 if (hasBreakdown) {
-                    this.chartInstances.chartPax.data.labels = ['Adult', 'Child', 'Infant', 'Transit', 'Transfer'];
-                    this.chartInstances.chartPax.data.datasets[0].data = [comp.adult, comp.child, comp.infant, comp.transit, comp.transfer];
-                    this.chartInstances.chartPax.data.datasets[0].backgroundColor = ['#0284C7', '#38BDF8', '#7DD3FC', '#F59E0B', '#10B981'];
-                    this.chartInstances.chartPax.data.datasets[0].borderColor = ['#0284C7', '#38BDF8', '#7DD3FC', '#F59E0B', '#10B981'];
+                    _fdrCharts.chartPax.data.labels = ['Adult', 'Child', 'Infant', 'Transit', 'Transfer'];
+                    _fdrCharts.chartPax.data.datasets[0].data = [comp.adult, comp.child, comp.infant, comp.transit, comp.transfer];
+                    _fdrCharts.chartPax.data.datasets[0].backgroundColor = ['#0284C7', '#38BDF8', '#7DD3FC', '#F59E0B', '#10B981'];
+                    _fdrCharts.chartPax.data.datasets[0].borderColor = ['#0284C7', '#38BDF8', '#7DD3FC', '#F59E0B', '#10B981'];
                 } else {
-                    this.chartInstances.chartPax.data.labels = ['Total Pax'];
-                    this.chartInstances.chartPax.data.datasets[0].data = [this.paxAnalytics.total_load || this.kpis.total_passengers || 0];
-                    this.chartInstances.chartPax.data.datasets[0].backgroundColor = ['#0284C7'];
-                    this.chartInstances.chartPax.data.datasets[0].borderColor = ['#0284C7'];
+                    _fdrCharts.chartPax.data.labels = ['Total Pax'];
+                    _fdrCharts.chartPax.data.datasets[0].data = [this.paxAnalytics.total_load || this.kpis.total_passengers || 0];
+                    _fdrCharts.chartPax.data.datasets[0].backgroundColor = ['#0284C7'];
+                    _fdrCharts.chartPax.data.datasets[0].borderColor = ['#0284C7'];
                 }
-                this.chartInstances.chartPax.update();
+                _fdrCharts.chartPax.update();
             }
+
+            // Flight Movement Chart (ALL/DEP/ARR) — re-render with latest data
+            this.renderFlightMovementChart();
         },
 
         changePage(p) {
