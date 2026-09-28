@@ -273,42 +273,34 @@ class FlightDailyReportController extends Controller
         // Extract distinct available dates & source dataset summary
         $availableDates = $this->extractAvailableDates($rawRecords, $meta);
         $sourceSummary = $this->buildSourceSummary($rawRecords, $availableDates, $meta);
-
-        // Determine analysis date: default to first valid date in dataset or user query
-        $reqAnalysisDate = trim($request->query('analysis_date', ''));
-        $stdReqDate = !empty($reqAnalysisDate) ? $this->filterService->standardizeDate($reqAnalysisDate) : '';
-
-        if (!empty($stdReqDate) && in_array($stdReqDate, $availableDates, true)) {
-            $analysisDate = $stdReqDate;
-        } elseif (!empty($availableDates)) {
-            $analysisDate = reset($availableDates);
-        } else {
-            $analysisDate = $this->filterService->standardizeDate($meta['period_start'] ?? date('Y-m-d'));
-        }
+        $scope = $this->resolveAnalysisScope($request, $sourceSummary, $availableDates);
 
         // Read active filters from request query
         $filters = [
-            'analysis_date' => $analysisDate,
-            'airport'       => strtoupper(trim($request->query('airport', $meta['airport'] ?? 'ALL'))),
-            'leg'           => strtoupper(trim($request->query('leg', 'ALL'))),
-            'operator'      => trim($request->query('operator', 'ALL')),
-            'traffic'       => strtoupper(trim($request->query('traffic', 'ALL'))),
-            'data_type'     => strtoupper(trim($request->query('data_type', $meta['data_type'] ?? 'OPERATIONAL DATA'))),
-            'realization'   => strtoupper(trim($request->query('realization', $meta['realization'] ?? 'ALL'))),
-            'flight_no'     => strtoupper(trim($request->query('flight_no', ''))),
-            'suffix'        => strtoupper(trim($request->query('suffix', ''))),
-            'start_date'    => trim($request->query('start_date', $meta['period_start'] ?? '')),
-            'end_date'      => trim($request->query('end_date', $meta['period_end'] ?? '')),
-            'report_mode'   => (int)$request->query('report_mode', 1),
-            'search'        => trim($request->query('search', '')),
-            'v'             => $request->query('v', time()),
+            'analysis_level' => $scope['analysis_level'],
+            'analysis_date'  => $scope['analysis_date'],
+            'analysis_month' => $scope['analysis_month'],
+            'analysis_year'  => $scope['analysis_year'],
+            'airport'        => strtoupper(trim($request->query('airport', $meta['airport'] ?? 'ALL'))),
+            'leg'            => strtoupper(trim($request->query('leg', 'ALL'))),
+            'operator'       => trim($request->query('operator', 'ALL')),
+            'traffic'        => strtoupper(trim($request->query('traffic', 'ALL'))),
+            'data_type'      => strtoupper(trim($request->query('data_type', $meta['data_type'] ?? 'OPERATIONAL DATA'))),
+            'realization'    => strtoupper(trim($request->query('realization', $meta['realization'] ?? 'ALL'))),
+            'flight_no'      => strtoupper(trim($request->query('flight_no', ''))),
+            'suffix'         => strtoupper(trim($request->query('suffix', ''))),
+            'start_date'     => trim($request->query('start_date', $meta['period_start'] ?? '')),
+            'end_date'       => trim($request->query('end_date', $meta['period_end'] ?? '')),
+            'report_mode'    => (int)$request->query('report_mode', 1),
+            'search'         => trim($request->query('search', '')),
+            'v'              => $request->query('v', time()),
         ];
 
-        // Apply filter cascade (Analysis Date + other operational filters)
+        // Apply filter cascade (Analysis Date / Scope + other operational filters)
         $filterResult = $this->filterService->apply($rawRecords, $filters, $meta);
         $filteredRecords = $filterResult['records'];
 
-        // Compute analytical intelligence payload strictly for the filtered daily dataset
+        // Compute analytical intelligence payload strictly for the filtered daily/scoped dataset
         $analytics = $this->analytics->compute($filteredRecords, $meta, ['report_mode' => $filters['report_mode']]);
 
         // Distinct filter lists for reactive dropdowns
@@ -333,7 +325,11 @@ class FlightDailyReportController extends Controller
             'airlines'        => array_keys($airlines),
             'airports'        => array_keys($airports),
             'rawRecordsCount' => count($rawRecords),
-            'analysisDate'    => $analysisDate,
+            'analysisLevel'   => $scope['analysis_level'],
+            'analysisDate'    => $scope['analysis_date'],
+            'analysisMonth'   => $scope['analysis_month'],
+            'analysisYear'    => $scope['analysis_year'],
+            'sourceType'      => $scope['source_type'],
             'availableDates'  => $availableDates,
             'sourceSummary'   => $sourceSummary,
         ]);
@@ -355,33 +351,26 @@ class FlightDailyReportController extends Controller
 
         $availableDates = $this->extractAvailableDates($rawRecords, $meta);
         $sourceSummary = $this->buildSourceSummary($rawRecords, $availableDates, $meta);
-
-        $reqAnalysisDate = trim($request->query('analysis_date', ''));
-        $stdReqDate = !empty($reqAnalysisDate) ? $this->filterService->standardizeDate($reqAnalysisDate) : '';
-
-        if (!empty($stdReqDate) && in_array($stdReqDate, $availableDates, true)) {
-            $analysisDate = $stdReqDate;
-        } elseif (!empty($availableDates)) {
-            $analysisDate = reset($availableDates);
-        } else {
-            $analysisDate = $this->filterService->standardizeDate($meta['period_start'] ?? date('Y-m-d'));
-        }
+        $scope = $this->resolveAnalysisScope($request, $sourceSummary, $availableDates);
 
         $filters = [
-            'analysis_date' => $analysisDate,
-            'airport'       => strtoupper(trim($request->query('airport', 'ALL'))),
-            'leg'           => strtoupper(trim($request->query('leg', 'ALL'))),
-            'operator'      => trim($request->query('operator', 'ALL')),
-            'traffic'       => strtoupper(trim($request->query('traffic', 'ALL'))),
-            'data_type'     => strtoupper(trim($request->query('data_type', 'ALL'))),
-            'realization'   => strtoupper(trim($request->query('realization', 'ALL'))),
-            'flight_no'     => strtoupper(trim($request->query('flight_no', ''))),
-            'suffix'        => strtoupper(trim($request->query('suffix', ''))),
-            'start_date'    => trim($request->query('start_date', '')),
-            'end_date'      => trim($request->query('end_date', '')),
-            'report_mode'   => (int)$request->query('report_mode', 1),
-            'search'        => trim($request->query('search', '')),
-            'v'             => $request->query('v', time()),
+            'analysis_level' => $scope['analysis_level'],
+            'analysis_date'  => $scope['analysis_date'],
+            'analysis_month' => $scope['analysis_month'],
+            'analysis_year'  => $scope['analysis_year'],
+            'airport'        => strtoupper(trim($request->query('airport', 'ALL'))),
+            'leg'            => strtoupper(trim($request->query('leg', 'ALL'))),
+            'operator'       => trim($request->query('operator', 'ALL')),
+            'traffic'        => strtoupper(trim($request->query('traffic', 'ALL'))),
+            'data_type'      => strtoupper(trim($request->query('data_type', 'ALL'))),
+            'realization'    => strtoupper(trim($request->query('realization', 'ALL'))),
+            'flight_no'      => strtoupper(trim($request->query('flight_no', ''))),
+            'suffix'         => strtoupper(trim($request->query('suffix', ''))),
+            'start_date'     => trim($request->query('start_date', '')),
+            'end_date'       => trim($request->query('end_date', '')),
+            'report_mode'    => (int)$request->query('report_mode', 1),
+            'search'         => trim($request->query('search', '')),
+            'v'              => $request->query('v', time()),
         ];
 
         $page = max(1, (int)$request->query('page', 1));
@@ -391,7 +380,7 @@ class FlightDailyReportController extends Controller
         $filterResult = $this->filterService->apply($rawRecords, $filters, $meta);
         $filteredRecords = $filterResult['records'];
 
-        // Compute analytics strictly for the selected single day
+        // Compute analytics strictly for the selected single day or analytical scope
         $analytics = $this->analytics->compute($filteredRecords, $meta, ['report_mode' => $filters['report_mode']]);
 
         // Pagination for detailed table
@@ -399,16 +388,26 @@ class FlightDailyReportController extends Controller
         $offset = ($page - 1) * $perPage;
         $pagedRecords = array_slice($filteredRecords, $offset, $perPage);
 
+        $counterScope = ($scope['analysis_level'] === 'DAILY')
+            ? date('d M Y', strtotime($scope['analysis_date']))
+            : (($scope['analysis_level'] === 'MONTHLY')
+                ? date('F Y', strtotime($scope['analysis_month'] . '-01'))
+                : "Year " . $scope['analysis_year']);
+
         return response()->json([
             'version'             => $filters['v'],
-            'analysis_date'       => $analysisDate,
-            'analysis_date_label' => date('d-m-Y', strtotime($analysisDate)),
-            'analysis_date_title' => strtoupper(date('d F Y', strtotime($analysisDate))),
+            'analysis_level'      => $scope['analysis_level'],
+            'analysis_date'       => $scope['analysis_date'],
+            'analysis_month'      => $scope['analysis_month'],
+            'analysis_year'       => $scope['analysis_year'],
+            'analysis_date_label' => date('d-m-Y', strtotime($scope['analysis_date'])),
+            'analysis_date_title' => strtoupper(date('d F Y', strtotime($scope['analysis_date']))),
             'source_summary'      => $sourceSummary,
+            'source_type'         => $scope['source_type'],
             'available_dates'     => $availableDates,
             'total_count'         => $filterResult['total_count'],
             'filtered_count'      => $filterResult['filtered_count'],
-            'counter_text'        => "Showing {$total} records for " . date('d M Y', strtotime($analysisDate)),
+            'counter_text'        => "Showing {$total} records for {$counterScope}",
             'active_chips'        => $filterResult['active_chips'],
             'kpis'                => $analytics['kpis'],
             'hourly_charts'       => $analytics['hourly_charts'],
@@ -463,37 +462,32 @@ class FlightDailyReportController extends Controller
         $rawRecords = $upload->report_data['records'] ?? [];
 
         $availableDates = $this->extractAvailableDates($rawRecords, $meta);
-        $reqAnalysisDate = trim($request->query('analysis_date', ''));
-        $stdReqDate = !empty($reqAnalysisDate) ? $this->filterService->standardizeDate($reqAnalysisDate) : '';
-
-        if (!empty($stdReqDate) && in_array($stdReqDate, $availableDates, true)) {
-            $analysisDate = $stdReqDate;
-        } elseif (!empty($availableDates)) {
-            $analysisDate = reset($availableDates);
-        } else {
-            $analysisDate = $this->filterService->standardizeDate($meta['period_start'] ?? date('Y-m-d'));
-        }
+        $sourceSummary = $this->buildSourceSummary($rawRecords, $availableDates, $meta);
+        $scope = $this->resolveAnalysisScope($request, $sourceSummary, $availableDates);
 
         $filters = [
-            'analysis_date' => $analysisDate,
-            'airport'       => strtoupper(trim($request->query('airport', $meta['airport'] ?? 'ALL'))),
-            'leg'           => strtoupper(trim($request->query('leg', 'ALL'))),
-            'operator'      => trim($request->query('operator', 'ALL')),
-            'traffic'       => strtoupper(trim($request->query('traffic', 'ALL'))),
-            'data_type'     => strtoupper(trim($request->query('data_type', 'ALL'))),
-            'realization'   => strtoupper(trim($request->query('realization', 'ALL'))),
-            'flight_no'     => strtoupper(trim($request->query('flight_no', ''))),
-            'suffix'        => strtoupper(trim($request->query('suffix', ''))),
-            'start_date'    => trim($request->query('start_date', '')),
-            'end_date'      => trim($request->query('end_date', '')),
-            'report_mode'   => (int)$request->query('report_mode', 1),
-            'search'        => trim($request->query('search', '')),
+            'analysis_level' => $scope['analysis_level'],
+            'analysis_date'  => $scope['analysis_date'],
+            'analysis_month' => $scope['analysis_month'],
+            'analysis_year'  => $scope['analysis_year'],
+            'airport'        => strtoupper(trim($request->query('airport', $meta['airport'] ?? 'ALL'))),
+            'leg'            => strtoupper(trim($request->query('leg', 'ALL'))),
+            'operator'       => trim($request->query('operator', 'ALL')),
+            'traffic'        => strtoupper(trim($request->query('traffic', 'ALL'))),
+            'data_type'      => strtoupper(trim($request->query('data_type', 'ALL'))),
+            'realization'    => strtoupper(trim($request->query('realization', 'ALL'))),
+            'flight_no'      => strtoupper(trim($request->query('flight_no', ''))),
+            'suffix'         => strtoupper(trim($request->query('suffix', ''))),
+            'start_date'     => trim($request->query('start_date', '')),
+            'end_date'       => trim($request->query('end_date', '')),
+            'report_mode'    => (int)$request->query('report_mode', 1),
+            'search'         => trim($request->query('search', '')),
         ];
 
         $filterResult = $this->filterService->apply($rawRecords, $filters, $meta);
         $records = $filterResult['records'];
 
-        $dateSuffix = !empty($analysisDate) ? date('Ymd', strtotime($analysisDate)) : date('Ymd_His');
+        $dateSuffix = !empty($scope['analysis_date']) ? date('Ymd', strtotime($scope['analysis_date'])) : date('Ymd_His');
         $filename = 'FDR_' . ($meta['airport'] ?? 'AIRPORT') . '_' . $dateSuffix . '.csv';
 
         $headers = [
@@ -504,16 +498,21 @@ class FlightDailyReportController extends Controller
             'Expires'             => '0',
         ];
 
-        return response()->stream(function () use ($meta, $records, $filters, $analysisDate) {
+        return response()->stream(function () use ($meta, $records, $filters, $scope, $sourceSummary) {
             $handle = fopen('php://output', 'w');
             fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM
 
             // Header metadata comments
             fputcsv($handle, ['SLOTWAVES FLIGHT DAILY REPORT (FDR) ANALYTICS']);
             fputcsv($handle, ['Airport:', $meta['airport'] ?? 'CGK', 'Name:', $meta['airport_name'] ?? 'N/A']);
-            fputcsv($handle, ['Source Period:', $meta['period_label'] ?? 'N/A']);
-            if (!empty($analysisDate)) {
-                fputcsv($handle, ['Peak Analysis Date:', date('d-m-Y', strtotime($analysisDate)) . ' (' . date('d F Y', strtotime($analysisDate)) . ')']);
+            fputcsv($handle, ['Source Period:', $sourceSummary['period_label'] ?? 'N/A', 'Source Type:', $sourceSummary['source_type']]);
+            fputcsv($handle, ['Analysis Level:', $scope['analysis_level']]);
+            if ($scope['analysis_level'] === 'DAILY') {
+                fputcsv($handle, ['Peak Analysis Date:', date('d-m-Y', strtotime($scope['analysis_date'])) . ' (' . date('d F Y', strtotime($scope['analysis_date'])) . ')']);
+            } elseif ($scope['analysis_level'] === 'MONTHLY') {
+                fputcsv($handle, ['Analysis Month:', date('F Y', strtotime($scope['analysis_month'] . '-01'))]);
+            } elseif ($scope['analysis_level'] === 'YEARLY') {
+                fputcsv($handle, ['Analysis Year:', $scope['analysis_year']]);
             }
             fputcsv($handle, ['Operator:', $filters['operator'] ?: ($meta['operator'] ?? 'ALL AIRLINE')]);
             fputcsv($handle, ['Realization:', $filters['realization'] ?: ($meta['realization'] ?? 'YES')]);
@@ -587,36 +586,82 @@ class FlightDailyReportController extends Controller
         $rawRecords = $upload->report_data['records'] ?? [];
 
         $availableDates = $this->extractAvailableDates($rawRecords, $meta);
-        $reqAnalysisDate = trim($request->query('analysis_date', ''));
-        $stdReqDate = !empty($reqAnalysisDate) ? $this->filterService->standardizeDate($reqAnalysisDate) : '';
-
-        if (!empty($stdReqDate) && in_array($stdReqDate, $availableDates, true)) {
-            $analysisDate = $stdReqDate;
-        } elseif (!empty($availableDates)) {
-            $analysisDate = reset($availableDates);
-        } else {
-            $analysisDate = $this->filterService->standardizeDate($meta['period_start'] ?? date('Y-m-d'));
-        }
+        $sourceSummary = $this->buildSourceSummary($rawRecords, $availableDates, $meta);
+        $scope = $this->resolveAnalysisScope($request, $sourceSummary, $availableDates);
 
         $filters = [
-            'analysis_date' => $analysisDate,
-            'airport'       => strtoupper(trim($request->query('airport', $meta['airport'] ?? 'ALL'))),
-            'leg'           => strtoupper(trim($request->query('leg', 'ALL'))),
-            'operator'      => trim($request->query('operator', 'ALL')),
-            'traffic'       => strtoupper(trim($request->query('traffic', 'ALL'))),
-            'data_type'     => strtoupper(trim($request->query('data_type', 'ALL'))),
-            'realization'   => strtoupper(trim($request->query('realization', 'ALL'))),
-            'flight_no'     => strtoupper(trim($request->query('flight_no', ''))),
-            'suffix'        => strtoupper(trim($request->query('suffix', ''))),
-            'start_date'    => trim($request->query('start_date', '')),
-            'end_date'      => trim($request->query('end_date', '')),
-            'report_mode'   => (int)$request->query('report_mode', 1),
-            'search'        => trim($request->query('search', '')),
+            'analysis_level' => $scope['analysis_level'],
+            'analysis_date'  => $scope['analysis_date'],
+            'analysis_month' => $scope['analysis_month'],
+            'analysis_year'  => $scope['analysis_year'],
+            'airport'        => strtoupper(trim($request->query('airport', $meta['airport'] ?? 'ALL'))),
+            'leg'            => strtoupper(trim($request->query('leg', 'ALL'))),
+            'operator'       => trim($request->query('operator', 'ALL')),
+            'traffic'        => strtoupper(trim($request->query('traffic', 'ALL'))),
+            'data_type'      => strtoupper(trim($request->query('data_type', 'ALL'))),
+            'realization'    => strtoupper(trim($request->query('realization', 'ALL'))),
+            'flight_no'      => strtoupper(trim($request->query('flight_no', ''))),
+            'suffix'         => strtoupper(trim($request->query('suffix', ''))),
+            'start_date'     => trim($request->query('start_date', '')),
+            'end_date'       => trim($request->query('end_date', '')),
+            'report_mode'    => (int)$request->query('report_mode', 1),
+            'search'         => trim($request->query('search', '')),
         ];
 
         $filterResult = $this->filterService->apply($rawRecords, $filters, $meta);
 
         return $this->pdfExport->download($filterResult['records'], $meta, $filters);
+    }
+
+    /**
+     * Resolve analysis level and date/scope based on request and source dataset constraints.
+     */
+    protected function resolveAnalysisScope(Request $request, array $sourceSummary, array $availableDates): array
+    {
+        $sourceType = $sourceSummary['source_type'] ?? 'DAILY';
+        $startDate  = $sourceSummary['start_date'] ?? date('Y-m-d');
+        $endDate    = $sourceSummary['end_date'] ?? date('Y-m-d');
+
+        // Determine analysis level permitted by source
+        $reqLevel = strtoupper(trim($request->query('analysis_level', '')));
+        if ($sourceType === 'DAILY') {
+            $analysisLevel = 'DAILY';
+        } elseif ($sourceType === 'MONTHLY') {
+            $analysisLevel = in_array($reqLevel, ['DAILY', 'MONTHLY'], true) ? $reqLevel : 'DAILY';
+        } elseif ($sourceType === 'YEARLY') {
+            $analysisLevel = in_array($reqLevel, ['DAILY', 'MONTHLY', 'YEARLY'], true) ? $reqLevel : 'DAILY';
+        } else {
+            $analysisLevel = in_array($reqLevel, ['DAILY', 'FULL'], true) ? $reqLevel : 'DAILY';
+        }
+
+        // Determine analysis date
+        if ($sourceType === 'DAILY') {
+            $analysisDate = $startDate;
+        } else {
+            $reqAnalysisDate = trim($request->query('analysis_date', ''));
+            $stdReqDate = !empty($reqAnalysisDate) ? FlightDailyReportFilter::standardizeDate($reqAnalysisDate) : '';
+
+            $isValidDate = (!empty($stdReqDate) && $stdReqDate !== 'N/A' && $stdReqDate >= $startDate && $stdReqDate <= $endDate);
+
+            if ($isValidDate && in_array($stdReqDate, $availableDates, true)) {
+                $analysisDate = $stdReqDate;
+            } elseif (!empty($availableDates)) {
+                $analysisDate = reset($availableDates);
+            } else {
+                $analysisDate = $startDate;
+            }
+        }
+
+        $analysisMonth = trim($request->query('analysis_month', substr($analysisDate, 0, 7)));
+        $analysisYear  = trim($request->query('analysis_year', substr($analysisDate, 0, 4)));
+
+        return [
+            'analysis_level' => $analysisLevel,
+            'analysis_date'  => $analysisDate,
+            'analysis_month' => $analysisMonth,
+            'analysis_year'  => $analysisYear,
+            'source_type'    => $sourceType,
+        ];
     }
 
     /**
@@ -626,9 +671,9 @@ class FlightDailyReportController extends Controller
     {
         $dates = [];
         foreach ($rawRecords as $r) {
-            $d = $r['flight_date'] ?? null;
+            $d = $r['operational_date'] ?? ($r['flight_date'] ?? null);
             if ($d && $d !== 'N/A') {
-                $std = $this->filterService->standardizeDate($d);
+                $std = FlightDailyReportFilter::standardizeDate($d);
                 if ($std !== 'N/A') {
                     $dates[$std] = true;
                 }
@@ -644,9 +689,11 @@ class FlightDailyReportController extends Controller
      */
     protected function buildSourceSummary(array $rawRecords, array $availableDates, array $meta = []): array
     {
-        $startDate = !empty($availableDates) ? reset($availableDates) : ($meta['period_start'] ?? date('Y-m-01'));
-        $endDate = !empty($availableDates) ? end($availableDates) : ($meta['period_end'] ?? date('Y-m-t'));
+        $startDate = !empty($meta['period_start']) ? $meta['period_start'] : (!empty($availableDates) ? reset($availableDates) : date('Y-m-01'));
+        $endDate = !empty($meta['period_end']) ? $meta['period_end'] : (!empty($availableDates) ? end($availableDates) : date('Y-m-t'));
         $daysCount = count($availableDates);
+
+        $sourceType = $meta['source_type'] ?? FlightDailyReportParser::detectGranularity($startDate, $endDate);
 
         return [
             'total_flights'  => count($rawRecords),
@@ -657,6 +704,11 @@ class FlightDailyReportController extends Controller
             'end_label'      => date('d-m-Y', strtotime($endDate)),
             'period_label'   => date('d-m-Y', strtotime($startDate)) . ' → ' . date('d-m-Y', strtotime($endDate)),
             'days_available' => "{$daysCount} DAYS AVAILABLE",
+            'source_type'    => $sourceType,
+            'is_daily'       => ($sourceType === 'DAILY'),
+            'is_monthly'     => ($sourceType === 'MONTHLY'),
+            'is_yearly'      => ($sourceType === 'YEARLY'),
+            'is_custom'      => ($sourceType === 'CUSTOM RANGE'),
         ];
     }
 

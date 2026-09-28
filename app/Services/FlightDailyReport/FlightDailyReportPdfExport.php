@@ -35,14 +35,29 @@ class FlightDailyReportPdfExport
         $svgChart2 = $this->hourlyChartService->renderChartSvg('departure', $hourlyData, 720, 140);
         $svgChart3 = $this->hourlyChartService->renderChartSvg('arrival', $hourlyData, 720, 140);
 
+        $analysisLevel = $filters['analysis_level'] ?? 'DAILY';
         $analysisDate = $filters['analysis_date'] ?? '';
-        $analysisDateFormatted = (!empty($analysisDate) && $analysisDate !== 'ALL')
-            ? date('d F Y', strtotime($analysisDate))
-            : ($meta['period_label'] ?? 'Operational Analysis');
+        $analysisMonth = $filters['analysis_month'] ?? '';
+        $analysisYear = $filters['analysis_year'] ?? '';
+
+        if ($analysisLevel === 'DAILY') {
+            $analysisDateFormatted = (!empty($analysisDate) && $analysisDate !== 'ALL')
+                ? date('d F Y', strtotime($analysisDate))
+                : ($meta['period_label'] ?? 'Peak Daily Analysis');
+        } elseif ($analysisLevel === 'MONTHLY') {
+            $m = !empty($analysisMonth) ? $analysisMonth : substr($analysisDate, 0, 7);
+            $analysisDateFormatted = !empty($m) ? date('F Y', strtotime($m . '-01')) : ($meta['period_label'] ?? 'Monthly Overview');
+        } elseif ($analysisLevel === 'YEARLY') {
+            $y = !empty($analysisYear) ? $analysisYear : substr($analysisDate, 0, 4);
+            $analysisDateFormatted = !empty($y) ? "Year {$y}" : ($meta['period_label'] ?? 'Yearly Overview');
+        } else {
+            $analysisDateFormatted = $meta['period_label'] ?? 'Operational Analysis';
+        }
 
         $pdf = Pdf::loadView('fdr.pdf', [
             'meta'                  => $meta,
             'filters'               => $filters,
+            'analysisLevel'         => $analysisLevel,
             'analysisDate'          => $analysisDate,
             'analysisDateFormatted' => $analysisDateFormatted,
             'kpis'                  => $analyticsData['kpis'],

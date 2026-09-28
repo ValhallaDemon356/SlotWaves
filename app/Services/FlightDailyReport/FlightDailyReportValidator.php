@@ -60,7 +60,7 @@ class FlightDailyReportValidator
             $displayExt = (!empty($extension) && $extension !== 'tmp') ? ".{$extension}" : '(unknown)';
             return [
                 'valid'          => false,
-                'category'       => 'UNSUPPORTED_FILE_FORMAT',
+                'category'       => 'INVALID_EXTENSION',
                 'category_title' => 'UNSUPPORTED FILE FORMAT',
                 'errors'         => ["Unsupported file extension {$displayExt}. Please upload an OASYS FDR (.xls, .xlsx, or .csv) file."],
             ];
@@ -75,7 +75,7 @@ class FlightDailyReportValidator
             if (empty($records)) {
                 return [
                     'valid'          => false,
-                    'category'       => 'NO_VALID_FLIGHT_MOVEMENT_ROWS',
+                    'category'       => 'NO_RECORDS',
                     'category_title' => 'NO VALID FLIGHT MOVEMENT ROWS FOUND',
                     'errors'         => ['No valid flight movement rows found in the Flight Daily Report.'],
                 ];

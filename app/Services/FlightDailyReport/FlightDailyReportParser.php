@@ -446,6 +446,10 @@ class FlightDailyReportParser
             $endDate = $startDate;
         }
 
+        $pStart = $startDate ?: '2026-08-01';
+        $pEnd = $endDate ?: '2026-08-31';
+        $sourceType = self::detectGranularity($pStart, $pEnd);
+
         // 4. Realization Status
         $realization = 'YES';
         if (!empty($metaMap['REAL'])) {
@@ -485,11 +489,12 @@ class FlightDailyReportParser
             'airport_code'  => $airportCode,
             'airport_name'  => $airportName,
             'operator'      => $operator,
-            'date_start'    => $startDate ?: '2026-08-01',
-            'date_end'      => $endDate ?: '2026-08-31',
-            'period_start'  => $startDate ?: '2026-08-01',
-            'period_end'    => $endDate ?: '2026-08-31',
-            'period_label'  => ($startDate && $endDate) ? "{$startDate} s/d {$endDate}" : '01-08-2026 s/d 31-08-2026',
+            'date_start'    => $pStart,
+            'date_end'      => $pEnd,
+            'period_start'  => $pStart,
+            'period_end'    => $pEnd,
+            'period_label'  => "{$pStart} s/d {$pEnd}",
+            'source_type'   => $sourceType,
             'direction'     => $direction,
             'leg'           => $direction,
             'route_type'    => $routeType,
@@ -499,6 +504,42 @@ class FlightDailyReportParser
             'source_system' => 'OASYS',
             'report_name'   => 'FLIGHT DAILY REPORT',
         ];
+    }
+
+    /**
+     * Automatically detect source period granularity.
+     * DAILY: 1 calendar day
+     * MONTHLY: full calendar month
+     * YEARLY: full calendar year
+     * CUSTOM RANGE: other multi-day period
+     */
+    public static function detectGranularity(string $startDate, string $endDate): string
+    {
+        $start = trim(str_replace('/', '-', $startDate));
+        $end = trim(str_replace('/', '-', $endDate));
+
+        if ($start === $end) {
+            return 'DAILY';
+        }
+
+        try {
+            $cStart = Carbon::parse($start);
+            $cEnd = Carbon::parse($end);
+
+            if ($cStart->isSameDay($cEnd)) {
+                return 'DAILY';
+            }
+
+            if ($cStart->year === $cEnd->year && $cStart->month === 1 && $cStart->day === 1 && $cEnd->month === 12 && $cEnd->day === 31) {
+                return 'YEARLY';
+            }
+
+            if ($cStart->year === $cEnd->year && $cStart->month === $cEnd->month && $cStart->day === 1 && $cEnd->day === $cEnd->copy()->endOfMonth()->day) {
+                return 'MONTHLY';
+            }
+        } catch (\Throwable $e) {}
+
+        return 'CUSTOM RANGE';
     }
 
     /**
@@ -515,8 +556,9 @@ class FlightDailyReportParser
         $hasActuals = false;
 
         foreach ($records as $r) {
-            if (!empty($r['flight_date']) && $r['flight_date'] !== 'N/A') {
-                $dates[] = $r['flight_date'];
+            $d = $r['operational_date'] ?? ($r['flight_date'] ?? null);
+            if (!empty($d) && $d !== 'N/A') {
+                $dates[$d] = true;
             }
             if (!empty($r['air_line']) && $r['air_line'] !== 'N/A') {
                 $airlines[$r['air_line']] = true;
@@ -527,15 +569,23 @@ class FlightDailyReportParser
         }
 
         if (!empty($dates)) {
-            sort($dates);
-            $minDate = reset($dates);
-            $maxDate = end($dates);
-            $meta['date_start'] = $minDate;
-            $meta['date_end'] = $maxDate;
-            $meta['period_start'] = $minDate;
-            $meta['period_end'] = $maxDate;
-            $meta['period_label'] = "{$minDate} s/d {$maxDate}";
+            $sortedDates = array_keys($dates);
+            sort($sortedDates);
+            $minDate = reset($sortedDates);
+            $maxDate = end($sortedDates);
+
+            // If header was generic or record span is smaller/larger, synchronize
+            if (empty($meta['period_start']) || $meta['period_start'] > $minDate || $meta['period_end'] < $maxDate) {
+                $meta['date_start'] = $minDate;
+                $meta['date_end'] = $maxDate;
+                $meta['period_start'] = $minDate;
+                $meta['period_end'] = $maxDate;
+                $meta['period_label'] = "{$minDate} s/d {$maxDate}";
+            }
         }
+
+        // Re-evaluate granularity after record inspection
+        $meta['source_type'] = self::detectGranularity($meta['period_start'], $meta['period_end']);
 
         if (!$hasActuals && $meta['realization'] === 'YES') {
             $meta['realization'] = 'NO';
@@ -708,22 +758,29 @@ class FlightDailyReportParser
             // Standardize LEG representation: A SCHED / D SCHED / A UNSCHED / D UNSCHED
             $normalizedLeg = ($direction === 'ARRIVAL' ? 'A ' : 'D ') . ($schedType === 'SCHEDULED' ? 'SCHED' : 'UNSCHED');
 
-            // Extract Flight Date & Hour (0-23)
-            $flightDate = $meta['period_start'];
-            $timeString = ($direction === 'ARRIVAL')
-                ? ($aibt !== 'N/A' ? $aibt : $sibt)
-                : ($aobt !== 'N/A' ? $aobt : $sobt);
+            // Retain original scheduled and actual datetimes
+            $schedDatetime = ($direction === 'ARRIVAL') ? $sibt : $sobt;
+            $actDatetime   = ($direction === 'ARRIVAL') ? $aibt : $aobt;
 
-            $hour = 12; // default midday fallback
-            if ($timeString !== 'N/A') {
-                if (preg_match('/(\d{4}[-\/]\d{2}[-\/]\d{2})/', $timeString, $dm)) {
-                    $flightDate = $this->standardizeDate($dm[1]);
-                }
-                if (preg_match('/(\d{1,2}):(\d{2})/', $timeString, $tm)) {
-                    $hour = (int)$tm[1];
-                    if ($hour >= 24) $hour = 23;
-                }
+            // Retain opposite direction timestamps if primary is missing
+            if ($schedDatetime === 'N/A' && ($direction === 'ARRIVAL' ? $sobt : $sibt) !== 'N/A') {
+                $schedDatetime = ($direction === 'ARRIVAL') ? $sobt : $sibt;
             }
+            if ($actDatetime === 'N/A' && ($direction === 'ARRIVAL' ? $aobt : $aibt) !== 'N/A') {
+                $actDatetime = ($direction === 'ARRIVAL') ? $aobt : $aibt;
+            }
+
+            // Direction-aware movement timestamp determination:
+            // For realization records, prefer actual timestamp; for planned, prefer scheduled.
+            $isRealized = ($actDatetime !== 'N/A' && !empty($actDatetime));
+            $movementTimestamp = ((($meta['realization'] ?? 'YES') === 'YES') || $isRealized)
+                ? ($actDatetime !== 'N/A' ? $actDatetime : $schedDatetime)
+                : ($schedDatetime !== 'N/A' ? $schedDatetime : $actDatetime);
+
+            $parsedDt = $this->parseDateTimeString($movementTimestamp, $meta['period_start'] ?? date('Y-m-d'));
+            $operationalDate = $parsedDt['date'];
+            $operationalHour = $parsedDt['hour'];
+            $operationalDatetime = $parsedDt['datetime'];
 
             // Delay in minutes
             $delayMinutes = 0;
@@ -748,58 +805,102 @@ class FlightDailyReportParser
             if ($runway === '-' || $runway === '') $runway = 'N/A';
 
             $records[] = [
-                'index'            => count($records) + 1,
-                'air_line'         => $airLine,
-                'flight_no'        => $flightNo,
-                'flight_no_base'   => $flightNoBase,
-                'flight_suffix'    => $flightSuffix,
-                'paired_no'        => $pairedNo,
-                'desc'             => $desc,
-                'sibt'             => $sibt,
-                'sobt'             => $sobt,
-                'aibt'             => $aibt,
-                'aobt'             => $aobt,
-                'leg'              => $normalizedLeg,
-                'raw_leg'          => $rawLeg,
-                'direction'        => $direction,
-                'sched_type'       => $schedType,
-                'is_scheduled'     => ($schedType === 'SCHEDULED'),
-                'city_1'           => $city1,
-                'city_2'           => $city2,
-                'route'            => ($city1 !== 'N/A' && $city2 !== 'N/A') ? "{$city1} → {$city2}" : 'N/A',
-                'traffic'          => $traffic,
-                'route_type'       => $traffic,
-                'mtow'             => $mtow,
-                'reg_no'           => $regNo,
-                'cap'              => $cap,
-                'load'             => $load,
-                'load_factor'      => $loadFactor,
-                'adult'            => $adult,
-                'child'            => $child,
-                'infant'           => $infant,
-                'transit'          => $transit,
-                'transfer'         => $transfer,
-                'divert'           => $divert,
-                'miss'             => $miss,
-                'crw'              => $crw,
-                'ex_crw'           => $exCrw,
-                'cargo_kg'         => $cargoKg,
-                'baggage_kg'       => $baggageKg,
-                'pos_kg'           => $posKg,
-                'stand'            => $stand,
-                'runway'           => $runway,
-                'final'            => $final,
-                'final_time'       => $finalTime,
-                'branch'           => $branch,
-                'flight_date'      => $flightDate,
-                'hour'             => $hour,
-                'delay_minutes'    => $delayMinutes,
-                'is_irregular'     => $isIrregular,
-                'is_realized'      => ($actTime !== 'N/A'),
+                'index'                => count($records) + 1,
+                'air_line'             => $airLine,
+                'flight_no'            => $flightNo,
+                'flight_no_base'       => $flightNoBase,
+                'flight_suffix'        => $flightSuffix,
+                'paired_no'            => $pairedNo,
+                'desc'                 => $desc,
+                'sibt'                 => $sibt,
+                'sobt'                 => $sobt,
+                'aibt'                 => $aibt,
+                'aobt'                 => $aobt,
+                'scheduled_datetime'   => ($schedDatetime !== 'N/A' && !empty($schedDatetime)) ? $schedDatetime : null,
+                'actual_datetime'      => ($actDatetime !== 'N/A' && !empty($actDatetime)) ? $actDatetime : null,
+                'leg'                  => $normalizedLeg,
+                'raw_leg'              => $rawLeg,
+                'direction'            => $direction,
+                'sched_type'           => $schedType,
+                'is_scheduled'         => ($schedType === 'SCHEDULED'),
+                'city_1'               => $city1,
+                'city_2'               => $city2,
+                'route'                => ($city1 !== 'N/A' && $city2 !== 'N/A') ? "{$city1} → {$city2}" : 'N/A',
+                'traffic'              => $traffic,
+                'route_type'           => $traffic,
+                'mtow'                 => $mtow,
+                'reg_no'               => $regNo,
+                'cap'                  => $cap,
+                'load'                 => $load,
+                'load_factor'          => $loadFactor,
+                'adult'                => $adult,
+                'child'                => $child,
+                'infant'               => $infant,
+                'transit'              => $transit,
+                'transfer'             => $transfer,
+                'divert'               => $divert,
+                'miss'                 => $miss,
+                'crw'                  => $crw,
+                'ex_crw'               => $exCrw,
+                'cargo_kg'             => $cargoKg,
+                'baggage_kg'           => $baggageKg,
+                'pos_kg'               => $posKg,
+                'stand'                => $stand,
+                'runway'               => $runway,
+                'final'                => $final,
+                'final_time'           => $finalTime,
+                'branch'               => $branch,
+                'operational_date'     => $operationalDate,
+                'operational_hour'     => $operationalHour,
+                'operational_datetime' => $operationalDatetime,
+                'flight_date'          => $operationalDate,
+                'hour'                 => $operationalHour,
+                'delay_minutes'        => $delayMinutes,
+                'is_irregular'         => $isIrregular,
+                'is_realized'          => ($actTime !== 'N/A'),
             ];
         }
 
         return $records;
+    }
+
+    /**
+     * Parse date and hour from any supported date/time format.
+     */
+    public function parseDateTimeString(?string $str, string $fallbackDate = '2026-08-01'): array
+    {
+        $date = $fallbackDate;
+        $hour = 12;
+        $datetime = "{$fallbackDate} 12:00:00";
+
+        if (empty($str) || $str === 'N/A') {
+            return ['date' => $date, 'hour' => $hour, 'datetime' => $datetime];
+        }
+
+        $str = trim($str);
+
+        // Check for YYYY-MM-DD or YYYY/MM/DD
+        if (preg_match('/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/', $str, $m)) {
+            $date = sprintf('%04d-%02d-%02d', (int)$m[1], (int)$m[2], (int)$m[3]);
+        }
+        // Check for DD-MM-YYYY or DD/MM/YYYY
+        elseif (preg_match('/(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/', $str, $m)) {
+            $date = sprintf('%04d-%02d-%02d', (int)$m[3], (int)$m[2], (int)$m[1]);
+        }
+
+        // Check for hour:minute(:second)
+        if (preg_match('/(\d{1,2}):(\d{2})(?::(\d{2}))?/', $str, $tm)) {
+            $h = (int)$tm[1];
+            $min = (int)$tm[2];
+            $sec = isset($tm[3]) ? (int)$tm[3] : 0;
+            if ($h >= 24) $h = 23;
+            $hour = $h;
+            $datetime = sprintf('%s %02d:%02d:%02d', $date, $h, $min, $sec);
+        } else {
+            $datetime = "{$date} 12:00:00";
+        }
+
+        return ['date' => $date, 'hour' => $hour, 'datetime' => $datetime];
     }
 
     /**

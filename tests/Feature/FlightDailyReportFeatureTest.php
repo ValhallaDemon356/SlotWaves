@@ -49,11 +49,8 @@ class FlightDailyReportFeatureTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee('Flight Daily Report (FDR) Configuration');
         $response->assertSee('Operational Scope &amp; Flight Filters', false);
-        $response->assertSee('Select Report Mode (Modes 1 to 8)', false);
-        $response->assertSee('1. NORMAL');
-        $response->assertSee('2. LOAD FACTOR');
-        $response->assertSee('7. OASYS VS APPS');
-        $response->assertSee('8. OASYS VS EDIFLY');
+        $response->assertSee('Generate FDR Dashboard');
+        $response->assertDontSee('Select Report Mode (Modes 1 to 8)');
     }
 
     public function test_fdr_dashboard_renders_successfully(): void

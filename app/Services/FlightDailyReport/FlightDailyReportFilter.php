@@ -24,18 +24,37 @@ class FlightDailyReportFilter
         $suffix       = strtoupper(trim($filters['suffix'] ?? ''));
         $startDate    = trim($filters['start_date'] ?? '');
         $endDate      = trim($filters['end_date'] ?? '');
-        $search       = strtolower(trim($filters['search'] ?? ''));
-        $analysisDate = trim($filters['analysis_date'] ?? '');
-        $reportMode   = (int)($filters['report_mode'] ?? 1);
-        $reqVersion   = $filters['v'] ?? ($filters['req_id'] ?? time());
+        $search        = strtolower(trim($filters['search'] ?? ''));
+        $analysisDate  = trim($filters['analysis_date'] ?? '');
+        $analysisLevel = strtoupper(trim($filters['analysis_level'] ?? 'DAILY'));
+        $analysisMonth = trim($filters['analysis_month'] ?? '');
+        $analysisYear  = trim($filters['analysis_year'] ?? '');
+        $reportMode    = (int)($filters['report_mode'] ?? 1);
+        $reqVersion    = $filters['v'] ?? ($filters['req_id'] ?? time());
 
         $activeChips = [];
 
-        if (!empty($analysisDate) && $analysisDate !== 'ALL') {
-            $stdDate = $this->standardizeDate($analysisDate);
-            $displayDate = date('d-m-Y', strtotime($stdDate));
-            $activeChips[] = ['key' => 'analysis_date', 'label' => "Date: {$displayDate}", 'value' => $stdDate];
+        $stdAnalysisDate = (!empty($analysisDate) && $analysisDate !== 'ALL') ? self::standardizeDate($analysisDate) : null;
+
+        // Format analysis scope chips based on analysis level
+        if ($analysisLevel === 'DAILY') {
+            if ($stdAnalysisDate !== null && $stdAnalysisDate !== 'N/A') {
+                $displayDate = date('d-m-Y', strtotime($stdAnalysisDate));
+                $activeChips[] = ['key' => 'analysis_date', 'label' => "Date: {$displayDate}", 'value' => $stdAnalysisDate];
+            }
+        } elseif ($analysisLevel === 'MONTHLY') {
+            $monthTarget = !empty($analysisMonth) ? $analysisMonth : ($stdAnalysisDate ? substr($stdAnalysisDate, 0, 7) : substr($startDate, 0, 7));
+            if (!empty($monthTarget)) {
+                $displayMonth = date('F Y', strtotime($monthTarget . '-01'));
+                $activeChips[] = ['key' => 'analysis_level', 'label' => "Month: {$displayMonth}", 'value' => $monthTarget];
+            }
+        } elseif ($analysisLevel === 'YEARLY') {
+            $yearTarget = !empty($analysisYear) ? $analysisYear : ($stdAnalysisDate ? substr($stdAnalysisDate, 0, 4) : substr($startDate, 0, 4));
+            if (!empty($yearTarget)) {
+                $activeChips[] = ['key' => 'analysis_level', 'label' => "Year: {$yearTarget}", 'value' => $yearTarget];
+            }
         }
+
         if ($airport !== 'ALL' && !empty($airport)) {
             $activeChips[] = ['key' => 'airport', 'label' => "Airport: {$airport}", 'value' => $airport];
         }
@@ -65,13 +84,24 @@ class FlightDailyReportFilter
             $activeChips[] = ['key' => 'search', 'label' => "Query: {$search}", 'value' => $search];
         }
 
-        $stdAnalysisDate = (!empty($analysisDate) && $analysisDate !== 'ALL') ? $this->standardizeDate($analysisDate) : null;
-
         foreach ($records as $r) {
-            // 0. Analysis Date Filter (Single Day Peak Analysis)
-            if ($stdAnalysisDate !== null) {
-                $rDate = $this->standardizeDate($r['flight_date'] ?? '');
-                if ($rDate !== $stdAnalysisDate) {
+            $rDate = self::standardizeDate($r['operational_date'] ?? ($r['flight_date'] ?? ''));
+
+            // 0. Analysis Scope Filter (DAILY / MONTHLY / YEARLY)
+            if ($analysisLevel === 'DAILY') {
+                if ($stdAnalysisDate !== null && $stdAnalysisDate !== 'N/A') {
+                    if ($rDate !== $stdAnalysisDate) {
+                        continue;
+                    }
+                }
+            } elseif ($analysisLevel === 'MONTHLY') {
+                $monthTarget = !empty($analysisMonth) ? $analysisMonth : ($stdAnalysisDate ? substr($stdAnalysisDate, 0, 7) : substr($startDate, 0, 7));
+                if (!empty($monthTarget) && substr($rDate, 0, 7) !== $monthTarget) {
+                    continue;
+                }
+            } elseif ($analysisLevel === 'YEARLY') {
+                $yearTarget = !empty($analysisYear) ? $analysisYear : ($stdAnalysisDate ? substr($stdAnalysisDate, 0, 4) : substr($startDate, 0, 4));
+                if (!empty($yearTarget) && substr($rDate, 0, 4) !== $yearTarget) {
                     continue;
                 }
             }
@@ -179,20 +209,23 @@ class FlightDailyReportFilter
             'counter_text'   => "Showing {$filteredCount} of {$totalCount} records",
             'active_chips'   => $activeChips,
             'filters'        => [
-                'analysis_date' => $stdAnalysisDate ?? $analysisDate,
-                'airport'       => $airport,
-                'leg'           => $leg,
-                'operator'      => $operator,
-                'traffic'       => $traffic,
-                'realization'   => $realization,
-                'data_type'     => $dataType,
-                'flight_no'     => $flightNo,
-                'suffix'        => $suffix,
-                'start_date'    => $startDate,
-                'end_date'      => $endDate,
-                'search'        => $search,
-                'report_mode'   => $reportMode,
-                'v'             => $reqVersion,
+                'analysis_level' => $analysisLevel,
+                'analysis_date'  => $stdAnalysisDate ?? $analysisDate,
+                'analysis_month' => $analysisMonth,
+                'analysis_year'  => $analysisYear,
+                'airport'        => $airport,
+                'leg'            => $leg,
+                'operator'       => $operator,
+                'traffic'        => $traffic,
+                'realization'    => $realization,
+                'data_type'      => $dataType,
+                'flight_no'      => $flightNo,
+                'suffix'         => $suffix,
+                'start_date'     => $startDate,
+                'end_date'       => $endDate,
+                'search'         => $search,
+                'report_mode'    => $reportMode,
+                'v'              => $reqVersion,
             ],
             'version'        => $reqVersion,
         ];
@@ -207,10 +240,10 @@ class FlightDailyReportFilter
             if ($rawDate === null) return 'N/A';
             $rawDate = trim(str_replace('/', '-', $rawDate));
             if (empty($rawDate) || $rawDate === 'N/A') return 'N/A';
-            if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})/', $rawDate, $m)) {
+            if (preg_match('/(\d{4})-(\d{1,2})-(\d{1,2})/', $rawDate, $m)) {
                 return sprintf('%04d-%02d-%02d', (int)$m[1], (int)$m[2], (int)$m[3]);
             }
-            if (preg_match('/^(\d{1,2})-(\d{1,2})-(\d{4})/', $rawDate, $m)) {
+            if (preg_match('/(\d{1,2})-(\d{1,2})-(\d{4})/', $rawDate, $m)) {
                 return sprintf('%04d-%02d-%02d', (int)$m[3], (int)$m[2], (int)$m[1]);
             }
             $ts = strtotime($rawDate);
