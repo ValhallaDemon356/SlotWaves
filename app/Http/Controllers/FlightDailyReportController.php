@@ -332,6 +332,8 @@ class FlightDailyReportController extends Controller
             'start_date'     => trim($request->query('start_date', $meta['period_start'] ?? '')),
             'end_date'       => trim($request->query('end_date', $meta['period_end'] ?? '')),
             'report_mode'    => (int)$request->query('report_mode', 1),
+            'time_basis'     => in_array($request->query('time_basis', 'scheduled'), ['scheduled','actual']) ? $request->query('time_basis', 'scheduled') : 'scheduled',
+            'otp_tolerance'  => max(1, min(120, (int)$request->query('otp_tolerance', 15))),
             'search'         => trim($request->query('search', '')),
             'v'              => $request->query('v', time()),
         ];
@@ -341,7 +343,12 @@ class FlightDailyReportController extends Controller
         $filteredRecords = $filterResult['records'];
 
         // Compute analytical intelligence payload strictly for the filtered daily/scoped dataset
-        $analytics = $this->analytics->compute($filteredRecords, $meta, ['report_mode' => $filters['report_mode']]);
+        $analytics = $this->analytics->compute($filteredRecords, $meta, [
+            'report_mode'   => $filters['report_mode'],
+            'time_basis'    => $filters['time_basis'],
+            'report_date'   => $scope['analysis_date'],
+            'otp_tolerance' => $filters['otp_tolerance'],
+        ]);
 
         // Distinct filter lists for reactive dropdowns
         $airlines = [];
@@ -372,6 +379,8 @@ class FlightDailyReportController extends Controller
             'sourceType'      => $scope['source_type'],
             'availableDates'  => $availableDates,
             'sourceSummary'   => $sourceSummary,
+            'timeBasis'       => $filters['time_basis'],
+            'otpTolerance'    => $filters['otp_tolerance'],
         ]);
     }
 
@@ -409,6 +418,8 @@ class FlightDailyReportController extends Controller
             'start_date'     => trim($request->query('start_date', '')),
             'end_date'       => trim($request->query('end_date', '')),
             'report_mode'    => (int)$request->query('report_mode', 1),
+            'time_basis'     => in_array($request->query('time_basis', 'scheduled'), ['scheduled','actual']) ? $request->query('time_basis', 'scheduled') : 'scheduled',
+            'otp_tolerance'  => max(1, min(120, (int)$request->query('otp_tolerance', 15))),
             'search'         => trim($request->query('search', '')),
             'v'              => $request->query('v', time()),
         ];
@@ -421,7 +432,12 @@ class FlightDailyReportController extends Controller
         $filteredRecords = $filterResult['records'];
 
         // Compute analytics strictly for the selected single day or analytical scope
-        $analytics = $this->analytics->compute($filteredRecords, $meta, ['report_mode' => $filters['report_mode']]);
+        $analytics = $this->analytics->compute($filteredRecords, $meta, [
+            'report_mode'   => $filters['report_mode'],
+            'time_basis'    => $filters['time_basis'],
+            'report_date'   => $scope['analysis_date'],
+            'otp_tolerance' => $filters['otp_tolerance'],
+        ]);
 
         // Pagination for detailed table
         $total = count($filteredRecords);
@@ -459,10 +475,13 @@ class FlightDailyReportController extends Controller
             'sched_vs_real'       => $analytics['schedule_vs_realization'],
             'pax_analytics'       => $analytics['passenger_analytics'],
             'airline_route'       => $analytics['airline_route'],
+            'fleet_performance'   => $analytics['fleet_performance'],
             'ground_ops'          => $analytics['ground_operations'],
             'mode_payload'        => $analytics['mode_payload'],
             'reconciliation_apps' => $analytics['reconciliation_apps'],
             'reconciliation_edifly' => $analytics['reconciliation_edifly'],
+            'time_basis'          => $filters['time_basis'],
+            'otp_tolerance'       => $filters['otp_tolerance'],
             'records'             => $pagedRecords,
             'pagination'          => [
                 'current_page' => $page,

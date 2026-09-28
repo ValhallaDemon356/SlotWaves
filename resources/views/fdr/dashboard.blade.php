@@ -355,7 +355,29 @@
 
             </div>
 
+            {{-- ── BASIS WAKTU TOGGLE (Jadwal = SIBT/SOBT | Aktual = AIBT/AOBT) ── --}}
+            <div class="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">Basis Waktu:</span>
+                <div class="flex items-center gap-1 bg-slate-100 dark:bg-navy-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <button type="button" id="basisJadwal"
+                            @click="timeBasis = 'scheduled'; triggerFilter()"
+                            :class="timeBasis === 'scheduled' ? 'bg-aviation-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-navy-700'"
+                            class="px-3 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer">
+                        🕐 Jadwal (SIBT/SOBT)
+                    </button>
+                    <button type="button" id="basisAktual"
+                            @click="timeBasis = 'actual'; triggerFilter()"
+                            :class="timeBasis === 'actual' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-navy-700'"
+                            class="px-3 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer">
+                        ✅ Aktual (AIBT/AOBT)
+                    </button>
+                </div>
+                <span class="text-[10px] text-slate-400 font-mono italic"
+                      x-text="timeBasis === 'actual' ? 'Menggunakan waktu block-out/block-in aktual' : 'Menggunakan waktu jadwal (rencana)'"></span>
+            </div>
+
             {{-- Filter Chips & Dynamic Counter --}}
+
             <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
                 
                 {{-- Active Chips --}}
@@ -552,10 +574,6 @@
                             </h3>
                             <span class="text-[11px] font-semibold text-slate-400 font-mono" x-text="'(' + formatDateOption(filters.analysis_date) + ')'"></span>
                         </div>
-                        <div class="flex items-center gap-3 text-[11px] text-slate-500">
-                            <span class="inline-flex items-center gap-1"><span class="w-3 h-2 rounded bg-[#FDBA74]"></span> Plan (PPRP)</span>
-                            <span class="inline-flex items-center gap-1"><span class="w-3 h-2 rounded bg-[#D97706]"></span> Irregular Flt</span>
-                        </div>
                     </div>
                     <div class="h-56 w-full relative">
                         <canvas id="mentorChart1Movement" style="display:block;"></canvas>
@@ -607,20 +625,32 @@
             {{-- ══ TAB VIEW: OPERATIONAL PRESENTATION MODULES (OVERVIEW / LOAD FACTOR) ══ --}}
             <div x-show="activeTab === 'overview' || activeTab === 'load_factor'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-                {{-- MODULE 1: Schedule vs Realization (PART 25: Punctuality) --}}
+                {{-- MODULE 1: Schedule vs Realization (OTP & Punctuality) --}}
                 <div class="bg-white dark:bg-navy-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm space-y-4">
-                    <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                    {{-- Header with OTP status & inline tolerance input --}}
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
                         <div class="flex items-center gap-2">
                             <span class="w-1.5 h-4 rounded-full bg-aviation-600"></span>
                             <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                                1. Schedule vs Realization (SIBT/SOBT vs AIBT/AOBT)
+                                1. Schedule vs Realization (OTP)
                             </h3>
                         </div>
-                        <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold"
-                              :class="schedVsReal.has_evaluation ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-navy-800 dark:text-slate-400'"
-                              x-text="schedVsReal.has_evaluation ? (schedVsReal.on_time_percentage + ' ON-TIME') : 'N/A'"></span>
+                        <div class="flex items-center gap-2.5">
+                            {{-- Configurable Tolerance --}}
+                            <div class="flex items-center gap-1 text-[11px] text-slate-500 bg-slate-50 dark:bg-navy-800 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase">Tol: ±</span>
+                                <input type="number" x-model.lazy="otpTolerance" @change="triggerFilter()" min="1" max="120"
+                                       class="w-10 text-center font-mono font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-navy-900 border border-slate-200 dark:border-slate-700 rounded px-1 py-0.5 text-xs">
+                                <span class="text-[10px] text-slate-400 font-mono">min</span>
+                            </div>
+                            {{-- OTP Badge --}}
+                            <span class="px-2.5 py-0.5 rounded-md text-[11px] font-mono font-bold"
+                                  :class="schedVsReal.has_evaluation ? (schedVsReal.on_time_pct_num >= 80 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800') : 'bg-slate-100 text-slate-500 dark:bg-navy-800 border border-slate-200 dark:border-slate-700'"
+                                  x-text="schedVsReal.has_evaluation ? (schedVsReal.on_time_percentage + ' ON-TIME') : 'N/A'"></span>
+                        </div>
                     </div>
 
+                    {{-- 4 Metric Boxes --}}
                     <div class="grid grid-cols-4 gap-2 text-center text-xs">
                         <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-navy-800/60 border border-slate-100 dark:border-slate-800">
                             <div class="text-[10px] font-bold uppercase text-slate-400">Evaluated</div>
@@ -630,90 +660,243 @@
                             <div class="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400">On-Time</div>
                             <div class="text-base font-black text-emerald-700 dark:text-emerald-300 mt-0.5" x-text="schedVsReal.has_evaluation ? schedVsReal.on_time_count : 'N/A'"></div>
                         </div>
-                        <div class="p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-800">
-                            <div class="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400">16-45m Delay</div>
-                            <div class="text-base font-black text-amber-700 dark:text-amber-300 mt-0.5" x-text="schedVsReal.has_evaluation ? schedVsReal.minor_delay_count : 'N/A'"></div>
+                        <div class="p-2.5 rounded-xl bg-sky-50/70 dark:bg-sky-950/40 border border-sky-100 dark:border-sky-800">
+                            <div class="text-[10px] font-bold uppercase text-sky-600 dark:text-sky-400">Early (&gt;Tol)</div>
+                            <div class="text-base font-black text-sky-700 dark:text-sky-300 mt-0.5" x-text="schedVsReal.has_evaluation ? schedVsReal.early_count : 'N/A'"></div>
                         </div>
                         <div class="p-2.5 rounded-xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-800">
-                            <div class="text-[10px] font-bold uppercase text-rose-600 dark:text-rose-400">&gt;45m Delay</div>
-                            <div class="text-base font-black text-rose-700 dark:text-rose-300 mt-0.5" x-text="schedVsReal.has_evaluation ? schedVsReal.severe_delay_count : 'N/A'"></div>
+                            <div class="text-[10px] font-bold uppercase text-rose-600 dark:text-rose-400">Late (&gt;Tol)</div>
+                            <div class="text-base font-black text-rose-700 dark:text-rose-300 mt-0.5" x-text="schedVsReal.has_evaluation ? schedVsReal.late_count : 'N/A'"></div>
                         </div>
                     </div>
 
-                    <div class="p-3 rounded-xl bg-slate-50 dark:bg-navy-800/40 border border-slate-100 dark:border-slate-800 text-xs flex items-center justify-between">
-                        <span class="text-slate-500">Average Punctuality Variance:</span>
-                        <span class="font-mono font-bold text-slate-900 dark:text-white" x-text="schedVsReal.avg_delay_minutes"></span>
+                    {{-- Variance Stats Strip --}}
+                    <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                        <div class="p-2 rounded-xl bg-slate-50 dark:bg-navy-800/40 border border-slate-100 dark:border-slate-800">
+                            <div class="text-[10px] text-slate-400 font-semibold">Average Variance</div>
+                            <div class="font-mono font-bold text-slate-800 dark:text-slate-200 mt-0.5" x-text="schedVsReal.avg_delay_minutes"></div>
+                        </div>
+                        <div class="p-2 rounded-xl bg-slate-50 dark:bg-navy-800/40 border border-slate-100 dark:border-slate-800">
+                            <div class="text-[10px] text-slate-400 font-semibold">Median Delay</div>
+                            <div class="font-mono font-bold text-slate-800 dark:text-slate-200 mt-0.5" x-text="schedVsReal.median_delay"></div>
+                        </div>
+                        <div class="p-2 rounded-xl bg-slate-50 dark:bg-navy-800/40 border border-slate-100 dark:border-slate-800">
+                            <div class="text-[10px] text-slate-400 font-semibold">Min / Max Delay</div>
+                            <div class="font-mono font-bold text-slate-800 dark:text-slate-200 mt-0.5">
+                                <span x-text="schedVsReal.min_delay"></span> / <span x-text="schedVsReal.max_delay"></span>
+                            </div>
+                        </div>
                     </div>
+
+                    {{-- Delay Distribution Histogram --}}
+                    <template x-if="schedVsReal.histogram && schedVsReal.histogram.some(h => h.count > 0)">
+                        <div class="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
+                            <div class="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                <span>Delay Distribution</span>
+                                <span>Frequency</span>
+                            </div>
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 max-h-36 overflow-y-auto pr-1">
+                                <template x-for="bin in schedVsReal.histogram.filter(h => h.count > 0)" :key="bin.label">
+                                    <div class="p-1.5 rounded-lg bg-slate-50 dark:bg-navy-800/70 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] font-mono">
+                                        <span class="text-slate-600 dark:text-slate-300 text-[10px] truncate" x-text="bin.label"></span>
+                                        <span class="font-black px-1.5 py-0.2 rounded"
+                                              :class="bin.min < 0 ? 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300' : (bin.min <= 15 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300')"
+                                              x-text="bin.count"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+
+                    {{-- Top 5 Delayed Flights --}}
+                    <template x-if="schedVsReal.top10_delays && schedVsReal.top10_delays.length > 0">
+                        <div class="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                Top Delayed Flights
+                            </div>
+                            <div class="space-y-1 max-h-32 overflow-y-auto pr-1 font-mono text-xs">
+                                <template x-for="flt in schedVsReal.top10_delays.slice(0, 5)" :key="flt.flight_no">
+                                    <div class="flex items-center justify-between p-1.5 rounded-lg bg-slate-50 dark:bg-navy-800 border border-slate-100 dark:border-slate-800 text-[11px]">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="font-black text-slate-800 dark:text-slate-100" x-text="flt.flight_no"></span>
+                                            <span class="text-[10px] text-slate-400" x-text="'(' + flt.route + ')'"></span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-[10px] text-slate-400" x-text="flt.sched + ' → ' + flt.actual"></span>
+                                            <span class="font-black text-rose-600 dark:text-rose-400" x-text="'+' + flt.delay_min + 'm'"></span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
                 </div>
 
-                {{-- MODULE 2: Passenger Composition (PART 23: Analysis Day Passengers) --}}
+                {{-- MODULE 2: Passenger Composition & Payload (PART 23: Analysis Day Passengers) --}}
                 <div class="bg-white dark:bg-navy-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm space-y-4">
                     <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
                         <div class="flex items-center gap-2">
                             <span class="w-1.5 h-4 rounded-full bg-aviation-600"></span>
                             <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                                2. Passenger Composition
+                                2. Passenger Composition &amp; Payload
                             </h3>
                         </div>
-                        <span class="text-xs text-slate-400 font-mono" x-text="'Date: ' + formatDateOption(filters.analysis_date)"></span>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                              x-text="(paxAnalytics.total_all || kpis.total_passengers || 0).toLocaleString() + ' Total Pax'"></span>
                     </div>
 
-                    <div class="h-32 w-full relative">
+                    {{-- Mini Composition Chart --}}
+                    <div class="h-28 w-full relative">
                         <canvas id="passengerTrendChart"></canvas>
                     </div>
 
-                    <div class="grid grid-cols-5 gap-1.5 text-center text-xs font-mono pt-1">
+                    {{-- 6-Component Breakdown: Adult, Child, Infant, Transit, Transfer, Crew --}}
+                    <div class="grid grid-cols-6 gap-1 text-center text-xs font-mono">
                         <div class="p-1.5 rounded-lg bg-slate-50 dark:bg-navy-800 border border-slate-100 dark:border-slate-800">
                             <div class="text-[9px] uppercase font-bold text-slate-400 font-sans">Adult</div>
-                            <div class="text-xs font-black text-slate-800 dark:text-slate-200" x-text="paxAnalytics.composition.adult.toLocaleString()"></div>
+                            <div class="text-xs font-black text-slate-800 dark:text-slate-200 mt-0.5" x-text="paxAnalytics.composition.adult.toLocaleString()"></div>
                         </div>
                         <div class="p-1.5 rounded-lg bg-slate-50 dark:bg-navy-800 border border-slate-100 dark:border-slate-800">
                             <div class="text-[9px] uppercase font-bold text-slate-400 font-sans">Child</div>
-                            <div class="text-xs font-black text-slate-800 dark:text-slate-200" x-text="paxAnalytics.composition.child.toLocaleString()"></div>
+                            <div class="text-xs font-black text-slate-800 dark:text-slate-200 mt-0.5" x-text="paxAnalytics.composition.child.toLocaleString()"></div>
                         </div>
                         <div class="p-1.5 rounded-lg bg-slate-50 dark:bg-navy-800 border border-slate-100 dark:border-slate-800">
                             <div class="text-[9px] uppercase font-bold text-slate-400 font-sans">Infant</div>
-                            <div class="text-xs font-black text-slate-800 dark:text-slate-200" x-text="paxAnalytics.composition.infant.toLocaleString()"></div>
+                            <div class="text-xs font-black text-slate-800 dark:text-slate-200 mt-0.5" x-text="paxAnalytics.composition.infant.toLocaleString()"></div>
                         </div>
                         <div class="p-1.5 rounded-lg bg-slate-50 dark:bg-navy-800 border border-slate-100 dark:border-slate-800">
                             <div class="text-[9px] uppercase font-bold text-slate-400 font-sans">Transit</div>
-                            <div class="text-xs font-black text-slate-800 dark:text-slate-200" x-text="paxAnalytics.composition.transit.toLocaleString()"></div>
+                            <div class="text-xs font-black text-slate-800 dark:text-slate-200 mt-0.5" x-text="paxAnalytics.composition.transit.toLocaleString()"></div>
                         </div>
                         <div class="p-1.5 rounded-lg bg-slate-50 dark:bg-navy-800 border border-slate-100 dark:border-slate-800">
                             <div class="text-[9px] uppercase font-bold text-slate-400 font-sans">Transfer</div>
-                            <div class="text-xs font-black text-slate-800 dark:text-slate-200" x-text="paxAnalytics.composition.transfer.toLocaleString()"></div>
+                            <div class="text-xs font-black text-slate-800 dark:text-slate-200 mt-0.5" x-text="(paxAnalytics.composition.transfer || 0).toLocaleString()"></div>
+                        </div>
+                        <div class="p-1.5 rounded-lg bg-slate-50 dark:bg-navy-800 border border-slate-100 dark:border-slate-800">
+                            <div class="text-[9px] uppercase font-bold text-purple-600 dark:text-purple-400 font-sans">Crew</div>
+                            <div class="text-xs font-black text-purple-700 dark:text-purple-300 mt-0.5" x-text="(paxAnalytics.composition.crew || 0).toLocaleString()"></div>
                         </div>
                     </div>
+
+                    {{-- Directional Split (ARR vs DEP) & Load Factor --}}
+                    <div class="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-slate-100 dark:border-slate-800">
+                        {{-- ARR Breakdown --}}
+                        <div class="p-2.5 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/60 space-y-1">
+                            <div class="flex items-center justify-between font-bold text-amber-800 dark:text-amber-300 text-[11px]">
+                                <span>ARRIVAL PAX</span>
+                                <span class="font-mono" x-text="paxAnalytics.lf_avg_arr !== null ? 'LF ' + paxAnalytics.lf_avg_arr + '%' : 'LF N/A'"></span>
+                            </div>
+                            <div class="text-[10px] text-slate-500 font-mono">
+                                Pax: <strong class="text-slate-800 dark:text-slate-200" x-text="(paxAnalytics.composition_arr.adult + paxAnalytics.composition_arr.child + paxAnalytics.composition_arr.infant).toLocaleString()"></strong>
+                                <span class="text-slate-400" x-text="'+ ' + paxAnalytics.composition_arr.transit + ' Trn'"></span>
+                            </div>
+                            <div class="text-[10px] text-slate-500 font-mono">
+                                Cargo: <strong class="text-slate-800 dark:text-slate-200" x-text="(paxAnalytics.payload_arr.cargo_kg / 1000).toFixed(1) + ' t'"></strong>
+                                &bull; Bag: <span x-text="(paxAnalytics.payload_arr.baggage_kg / 1000).toFixed(1) + ' t'"></span>
+                            </div>
+                        </div>
+
+                        {{-- DEP Breakdown --}}
+                        <div class="p-2.5 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/60 space-y-1">
+                            <div class="flex items-center justify-between font-bold text-blue-800 dark:text-blue-300 text-[11px]">
+                                <span>DEPARTURE PAX</span>
+                                <span class="font-mono" x-text="paxAnalytics.lf_avg_dep !== null ? 'LF ' + paxAnalytics.lf_avg_dep + '%' : 'LF N/A'"></span>
+                            </div>
+                            <div class="text-[10px] text-slate-500 font-mono">
+                                Pax: <strong class="text-slate-800 dark:text-slate-200" x-text="(paxAnalytics.composition_dep.adult + paxAnalytics.composition_dep.child + paxAnalytics.composition_dep.infant).toLocaleString()"></strong>
+                                <span class="text-slate-400" x-text="'+ ' + paxAnalytics.composition_dep.transit + ' Trn'"></span>
+                            </div>
+                            <div class="text-[10px] text-slate-500 font-mono">
+                                Cargo: <strong class="text-slate-800 dark:text-slate-200" x-text="(paxAnalytics.payload_dep.cargo_kg / 1000).toFixed(1) + ' t'"></strong>
+                                &bull; Bag: <span x-text="(paxAnalytics.payload_dep.baggage_kg / 1000).toFixed(1) + ' t'"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- LF Buckets distribution --}}
+                    <template x-if="paxAnalytics.lf_buckets && paxAnalytics.lf_buckets.some(b => b.count > 0)">
+                        <div class="flex items-center justify-between gap-1 text-[10px] font-mono pt-1">
+                            <span class="text-slate-400 font-sans uppercase font-bold text-[9px]">LF Mix:</span>
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                <template x-for="b in paxAnalytics.lf_buckets" :key="b.key">
+                                    <span class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-navy-800 text-slate-600 dark:text-slate-300">
+                                        <span x-text="b.label"></span>: <strong class="text-slate-900 dark:text-white" x-text="b.count"></strong>
+                                    </span>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
                 </div>
 
-                {{-- MODULE 3: Airline & Route Performance --}}
+                {{-- MODULE 3: Airline & Fleet Performance --}}
                 <div class="bg-white dark:bg-navy-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm space-y-4">
                     <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
                         <div class="flex items-center gap-2">
                             <span class="w-1.5 h-4 rounded-full bg-aviation-600"></span>
                             <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                                3. Airline Operator Performance
+                                3. Operator &amp; Fleet Performance
                             </h3>
                         </div>
-                        <span class="text-[11px] text-slate-400 font-mono">Ranked by Volume</span>
+                        {{-- Fleet Mix Summary Pills --}}
+                        <div class="flex items-center gap-1.5 text-[10px] font-mono font-bold">
+                            <span class="px-2 py-0.5 rounded bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300 border border-sky-200 dark:border-sky-800"
+                                  x-text="(fleetPerformance.narrow_count || 0) + ' Narrow'"></span>
+                            <span class="px-2 py-0.5 rounded bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
+                                  x-text="(fleetPerformance.wide_count || 0) + ' Wide'"></span>
+                        </div>
                     </div>
 
-                    <div class="space-y-2.5 max-h-56 overflow-y-auto pr-1 text-xs">
-                        <template x-for="al in airlineRoute.ranked_airlines.slice(0, 6)" :key="al.airline">
-                            <div class="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-navy-800/40 flex items-center justify-between">
-                                <div>
-                                    <div class="font-bold text-slate-900 dark:text-white" x-text="al.airline"></div>
-                                    <div class="text-[10px] text-slate-400 mt-0.5">
-                                        <span x-text="al.flights + ' flts'"></span> &bull;
-                                        <span x-text="al.passengers.toLocaleString() + ' pax'"></span> &bull;
-                                        <span x-text="(al.cargo_kg / 1000).toFixed(1) + ' t cargo'"></span>
+                    {{-- Fleet Mix Sub-Table (Aircraft Types) --}}
+                    <template x-if="fleetPerformance.fleet_mix && fleetPerformance.fleet_mix.length > 0">
+                        <div class="space-y-1.5">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                Aircraft Types
+                            </div>
+                            <div class="space-y-1 max-h-36 overflow-y-auto pr-1 text-xs">
+                                <template x-for="f in fleetPerformance.fleet_mix.slice(0, 4)" :key="f.desc">
+                                    <div class="p-2 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-navy-800/40 flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            <span class="px-1.5 py-0.5 rounded text-[9px] font-black uppercase"
+                                                  :class="f.wide ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300' : 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300'"
+                                                  x-text="f.wide ? 'WIDE' : (f.narrow ? 'NARROW' : 'OTHER')"></span>
+                                            <div>
+                                                <div class="font-bold text-slate-800 dark:text-slate-100 text-[11px]" x-text="f.desc"></div>
+                                                <div class="text-[10px] text-slate-400" x-text="f.avg_cap ? 'Avg Cap: ' + f.avg_cap : ''"></div>
+                                            </div>
+                                        </div>
+                                        <div class="text-right font-mono text-[11px]">
+                                            <div class="font-black text-slate-800 dark:text-slate-200" x-text="f.movements + ' mvts'"></div>
+                                            <div class="text-[10px] text-aviation-600 dark:text-aviation-400" x-text="f.avg_lf !== null ? 'LF ' + f.avg_lf + '%' : ''"></div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+
+                    {{-- Top Airline Operators --}}
+                    <div class="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <div class="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                            <span>Top Airline Operators</span>
+                            <span class="font-mono" x-text="'Total Regs: ' + (fleetPerformance.total_regs || 0)"></span>
+                        </div>
+                        <div class="space-y-1.5 max-h-40 overflow-y-auto pr-1 text-xs">
+                            <template x-for="al in airlineRoute.ranked_airlines.slice(0, 5)" :key="al.airline">
+                                <div class="p-2 rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-navy-800/40 flex items-center justify-between">
+                                    <div>
+                                        <div class="font-bold text-slate-900 dark:text-white text-[11px]" x-text="al.airline"></div>
+                                        <div class="text-[10px] text-slate-400 mt-0.5">
+                                            <span x-text="al.flights + ' flts'"></span> &bull;
+                                            <span x-text="al.passengers.toLocaleString() + ' pax'"></span> &bull;
+                                            <span x-text="(al.cargo_kg / 1000).toFixed(1) + ' t cargo'"></span>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-aviation-50 text-aviation-700 dark:bg-aviation-950 dark:text-aviation-300" x-text="'LF: ' + al.avg_load_factor"></span>
                                     </div>
                                 </div>
-                                <div class="text-right">
-                                    <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-aviation-50 text-aviation-700 dark:bg-aviation-950 dark:text-aviation-300" x-text="'LF: ' + al.avg_load_factor"></span>
-                                </div>
-                            </div>
-                        </template>
+                            </template>
+                        </div>
                     </div>
                 </div>
 
@@ -723,17 +906,45 @@
                         <div class="flex items-center gap-2">
                             <span class="w-1.5 h-4 rounded-full bg-aviation-600"></span>
                             <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                                4. Ground Operations &amp; Stand Utilization
+                                4. Ground Operations &amp; Turnaround
                             </h3>
                         </div>
-                        <span class="text-xs text-slate-400 font-mono">Stands &amp; Runways</span>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-aviation-50 text-aviation-700 dark:bg-aviation-950 dark:text-aviation-300"
+                              x-text="(groundOps.turnaround_count || 0) + ' Paired Turnarounds'"></span>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-3 text-xs">
+                    {{-- Turnaround Statistics Grid (FIFO greedy pairing) --}}
+                    <div class="grid grid-cols-4 gap-2 text-center text-xs">
+                        <div class="p-2 rounded-xl bg-slate-50 dark:bg-navy-800/60 border border-slate-100 dark:border-slate-800">
+                            <div class="text-[9px] uppercase font-bold text-slate-400">Avg Ground</div>
+                            <div class="text-sm font-black text-slate-800 dark:text-slate-200 mt-0.5"
+                                 x-text="groundOps.ground_time_mean !== null ? groundOps.ground_time_mean + 'm' : 'N/A'"></div>
+                        </div>
+                        <div class="p-2 rounded-xl bg-slate-50 dark:bg-navy-800/60 border border-slate-100 dark:border-slate-800">
+                            <div class="text-[9px] uppercase font-bold text-slate-400">Median Ground</div>
+                            <div class="text-sm font-black text-slate-800 dark:text-slate-200 mt-0.5"
+                                 x-text="groundOps.ground_time_median !== null ? groundOps.ground_time_median + 'm' : 'N/A'"></div>
+                        </div>
+                        <div class="p-2 rounded-xl bg-slate-50 dark:bg-navy-800/60 border border-slate-100 dark:border-slate-800">
+                            <div class="text-[9px] uppercase font-bold text-slate-400">Min / Max</div>
+                            <div class="text-xs font-black font-mono text-slate-800 dark:text-slate-200 mt-1">
+                                <span x-text="groundOps.ground_time_min ?? 'N/A'"></span>/<span x-text="groundOps.ground_time_max ?? 'N/A'"></span>m
+                            </div>
+                        </div>
+                        <div class="p-2 rounded-xl border"
+                             :class="(groundOps.stand_changes || 0) > 0 ? 'bg-amber-50/70 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800' : 'bg-slate-50 dark:bg-navy-800/60 border-slate-100 dark:border-slate-800'">
+                            <div class="text-[9px] uppercase font-bold" :class="(groundOps.stand_changes || 0) > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-slate-400'">Stand Changes</div>
+                            <div class="text-sm font-black mt-0.5" :class="(groundOps.stand_changes || 0) > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-slate-800 dark:text-slate-200'"
+                                 x-text="groundOps.stand_changes || 0"></div>
+                        </div>
+                    </div>
+
+                    {{-- Stands & Runways (Normalized) --}}
+                    <div class="grid grid-cols-2 gap-3 text-xs pt-1 border-t border-slate-100 dark:border-slate-800">
                         <div>
                             <div class="text-[10px] uppercase font-bold text-slate-400 mb-1.5">Top Stands</div>
-                            <div class="space-y-1.5 max-h-44 overflow-y-auto">
-                                <template x-for="st in groundOps.stands.slice(0, 5)" :key="st.stand">
+                            <div class="space-y-1 max-h-36 overflow-y-auto">
+                                <template x-for="st in (groundOps.stands || []).slice(0, 4)" :key="st.stand">
                                     <div class="flex items-center justify-between p-1.5 rounded bg-slate-50 dark:bg-navy-800 font-mono text-[11px]">
                                         <span class="font-bold text-slate-800 dark:text-slate-200" x-text="st.stand"></span>
                                         <span class="text-slate-500" x-text="st.count + ' (' + st.percentage + '%)'"></span>
@@ -744,8 +955,8 @@
 
                         <div>
                             <div class="text-[10px] uppercase font-bold text-slate-400 mb-1.5">Runway Distribution</div>
-                            <div class="space-y-1.5 max-h-44 overflow-y-auto">
-                                <template x-for="rw in groundOps.runways.slice(0, 4)" :key="rw.runway">
+                            <div class="space-y-1 max-h-36 overflow-y-auto">
+                                <template x-for="rw in (groundOps.runways || []).slice(0, 4)" :key="rw.runway">
                                     <div class="flex items-center justify-between p-1.5 rounded bg-slate-50 dark:bg-navy-800 font-mono text-[11px]">
                                         <span class="font-bold text-slate-800 dark:text-slate-200" x-text="rw.runway"></span>
                                         <span class="text-slate-500" x-text="rw.count + ' (' + rw.percentage + '%)'"></span>
@@ -754,6 +965,33 @@
                             </div>
                         </div>
                     </div>
+
+                    {{-- Turnaround Pairs Sample (FIFO Greedy) --}}
+                    <template x-if="groundOps.turnaround_pairs && groundOps.turnaround_pairs.length > 0">
+                        <div class="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                Paired Turnaround Sample (FIFO)
+                            </div>
+                            <div class="space-y-1 max-h-32 overflow-y-auto pr-1 font-mono text-xs">
+                                <template x-for="pair in groundOps.turnaround_pairs.slice(0, 4)" :key="pair.reg_no + '-' + pair.arr_time">
+                                    <div class="flex items-center justify-between p-1.5 rounded-lg bg-slate-50 dark:bg-navy-800 border border-slate-100 dark:border-slate-800 text-[11px]">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="font-black text-slate-800 dark:text-slate-100" x-text="pair.reg_no"></span>
+                                            <span class="text-[10px] text-slate-400" x-text="pair.arr_time + ' → ' + pair.dep_time"></span>
+                                        </div>
+                                        <div class="flex items-center gap-1.5">
+                                            <template x-if="pair.stand_change">
+                                                <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                                    <span x-text="pair.stand_arr + '→' + pair.stand_dep"></span>
+                                                </span>
+                                            </template>
+                                            <span class="font-black text-aviation-600 dark:text-aviation-400" x-text="pair.ground_min + 'm'"></span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
                 </div>
 
             </div>
@@ -1154,10 +1392,13 @@ function fdrDashboardController() {
         schedVsReal: @json($analytics['schedule_vs_realization']),
         paxAnalytics: @json($analytics['passenger_analytics']),
         airlineRoute: @json($analytics['airline_route']),
+        fleetPerformance: @json($analytics['fleet_performance'] ?? []),
         groundOps: @json($analytics['ground_operations']),
         activeReconciliation: @json($filters['report_mode'] == 7 ? $analytics['reconciliation_apps'] : $analytics['reconciliation_edifly']),
         reconciliation: @json($filterResult['reconciliation']),
         flightRecords: @json($records),
+        timeBasis: '{{ $timeBasis }}',   // 'scheduled' | 'actual'
+        otpTolerance: {{ $otpTolerance ?? 15 }},
         pagination: {
             current_page: 1,
             per_page: 50,
@@ -1167,7 +1408,6 @@ function fdrDashboardController() {
         selectedFlight: null,
         isFiltering: false,
         activeRequestId: 0, // Token to resolve rapid race conditions
-        fdrChartMode: 'ALL', // ALL / DEP / ARR
 
         // NOTE: chartInstances is intentionally NOT in Alpine reactive data.
         // Chart.js instances cannot be stored as Alpine Proxy objects.
@@ -1256,11 +1496,24 @@ function fdrDashboardController() {
 
             const hours = this.hourlyData.map(h => h.hour_label);
 
-            // ── Color constants (Departure = Blue family, Arrival = Yellow/Amber family) ──
-            // Departure: Domestic = dark blue #1D4ED8, International = light blue #60A5FA
-            // Arrival: Domestic = dark amber #CA8A04, International = light yellow #FDE047
+            // ── Color constants (shared across ALL 3 charts) ──────────────────────────
+            // Departure: Domestic = dark blue, International = light blue
+            // Arrival:   Domestic = dark amber, International = light yellow
+            const C = {
+                DEP_DOM: '#1D4ED8',  DEP_DOM_BDR: '#1E40AF',
+                DEP_INT: '#60A5FA',  DEP_INT_BDR: '#3B82F6',
+                ARR_DOM: '#CA8A04',  ARR_DOM_BDR: '#A16207',
+                ARR_INT: '#FDE047',  ARR_INT_BDR: '#EAB308',
+            };
 
-            // Chart 1: Arrival-Departure Movement (24h) — GROUPED BAR, no Runway Capacity
+
+            // Helper: pick scheduled or actual column based on timeBasis
+            const depDom  = (h) => this.timeBasis === 'actual' ? (h.dep_dom_realized ?? 0) : (h.dep_dom_plan ?? h.dep_plan ?? 0);
+            const depInt  = (h) => this.timeBasis === 'actual' ? (h.dep_int_realized ?? 0) : (h.dep_int_plan ?? 0);
+            const arrDom  = (h) => this.timeBasis === 'actual' ? (h.arr_dom_realized ?? 0) : (h.arr_dom_plan ?? h.arr_plan ?? 0);
+            const arrInt  = (h) => this.timeBasis === 'actual' ? (h.arr_int_realized ?? 0) : (h.arr_int_plan ?? 0);
+
+            // Chart 1: ARRIVAL–DEPARTURE MOVEMENT — 4-series grouped bar (same C as Chart 2+3)
             const ctx1 = document.getElementById('mentorChart1Movement');
             if (ctx1) {
                 _fdrCharts.chart1 = new Chart(ctx1, {
@@ -1268,43 +1521,29 @@ function fdrDashboardController() {
                     data: {
                         labels: hours,
                         datasets: [
-                            {
-                                label: 'Plan (PPRP)',
-                                data: this.hourlyData.map(h => h.total_plan),
-                                backgroundColor: '#FDBA74',
-                                borderColor: '#FB923C',
-                                borderWidth: 1,
-                                borderRadius: 4,
-                            },
-                            {
-                                label: 'Irregular Flt',
-                                data: this.hourlyData.map(h => h.total_irregular),
-                                backgroundColor: '#D97706',
-                                borderColor: '#B45309',
-                                borderWidth: 1,
-                                borderRadius: 4,
-                            }
+                            { label: 'Dep Domestic',     data: this.hourlyData.map(depDom),  backgroundColor: C.DEP_DOM, borderColor: C.DEP_DOM_BDR, borderWidth: 1, borderRadius: 3 },
+                            { label: 'Dep International', data: this.hourlyData.map(depInt), backgroundColor: C.DEP_INT, borderColor: C.DEP_INT_BDR, borderWidth: 1, borderRadius: 3 },
+                            { label: 'Arr Domestic',     data: this.hourlyData.map(arrDom),  backgroundColor: C.ARR_DOM, borderColor: C.ARR_DOM_BDR, borderWidth: 1, borderRadius: 3 },
+                            { label: 'Arr International', data: this.hourlyData.map(arrInt), backgroundColor: C.ARR_INT, borderColor: C.ARR_INT_BDR, borderWidth: 1, borderRadius: 3 },
                         ]
                     },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
+                        responsive: true, maintainAspectRatio: false,
                         plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    title: (ctx) => `Hour: ${ctx[0].label}`,
-                                    label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y} movements`
-                                }
-                            }
+                            legend: { display: true, position: 'top', labels: { boxWidth: 12, font: { size: 11 }, padding: 10 } },
+                            tooltip: { callbacks: {
+                                title: (ctx) => `Hour: ${ctx[0].label}`,
+                                label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y} A/C`
+                            }}
                         },
                         scales: {
-                            x: { grid: { display: false } },
-                            y: { beginAtZero: true, grid: { color: '#F1F5F9' } }
+                            x: { grid: { display: false }, stacked: false },
+                            y: { beginAtZero: true, grid: { color: '#F1F5F910' }, ticks: { precision: 0 } }
                         }
                     }
                 });
             }
+
 
             // Chart 2: Departure Movement (24h) — Domestic DEP dark blue, Intl DEP light blue
             const ctx2 = document.getElementById('mentorChart2Departure');
@@ -1314,45 +1553,28 @@ function fdrDashboardController() {
                     data: {
                         labels: hours,
                         datasets: [
-                            {
-                                label: 'Dep Domestic',
-                                data: this.hourlyData.map(h => h.dep_dom_plan ?? h.dep_plan),
-                                backgroundColor: '#1D4ED8',
-                                borderColor: '#1E40AF',
-                                borderWidth: 1,
-                                borderRadius: 4
-                            },
-                            {
-                                label: 'Dep International',
-                                data: this.hourlyData.map(h => h.dep_int_plan ?? 0),
-                                backgroundColor: '#60A5FA',
-                                borderColor: '#3B82F6',
-                                borderWidth: 1,
-                                borderRadius: 4
-                            }
+                            { label: 'Dep Domestic',      data: this.hourlyData.map(depDom), backgroundColor: C.DEP_DOM, borderColor: C.DEP_DOM_BDR, borderWidth: 1, borderRadius: 4 },
+                            { label: 'Dep International', data: this.hourlyData.map(depInt), backgroundColor: C.DEP_INT, borderColor: C.DEP_INT_BDR, borderWidth: 1, borderRadius: 4 }
                         ]
                     },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
+                        responsive: true, maintainAspectRatio: false,
                         plugins: {
                             legend: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    title: (ctx) => `Hour: ${ctx[0].label}`,
-                                    label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y} A/C`
-                                }
-                            }
+                            tooltip: { callbacks: {
+                                title: (ctx) => `Hour: ${ctx[0].label}`,
+                                label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y} A/C`
+                            }}
                         },
                         scales: {
                             x: { grid: { display: false } },
-                            y: { beginAtZero: true, grid: { color: '#F1F5F9' } }
+                            y: { beginAtZero: true, grid: { color: '#F1F5F910' }, ticks: { precision: 0 } }
                         }
                     }
                 });
             }
 
-            // Chart 3: Arrival Movement (24h) — Domestic ARR dark amber, Intl ARR light yellow
+
             const ctx3 = document.getElementById('mentorChart3Arrival');
             if (ctx3) {
                 _fdrCharts.chart3 = new Chart(ctx3, {
@@ -1360,192 +1582,56 @@ function fdrDashboardController() {
                     data: {
                         labels: hours,
                         datasets: [
-                            {
-                                label: 'Arr Domestic',
-                                data: this.hourlyData.map(h => h.arr_dom_plan ?? h.arr_plan),
-                                backgroundColor: '#CA8A04',
-                                borderColor: '#A16207',
-                                borderWidth: 1,
-                                borderRadius: 4
-                            },
-                            {
-                                label: 'Arr International',
-                                data: this.hourlyData.map(h => h.arr_int_plan ?? 0),
-                                backgroundColor: '#FDE047',
-                                borderColor: '#EAB308',
-                                borderWidth: 1,
-                                borderRadius: 4
-                            }
+                            { label: 'Arr Domestic',      data: this.hourlyData.map(arrDom), backgroundColor: C.ARR_DOM, borderColor: C.ARR_DOM_BDR, borderWidth: 1, borderRadius: 4 },
+                            { label: 'Arr International', data: this.hourlyData.map(arrInt), backgroundColor: C.ARR_INT, borderColor: C.ARR_INT_BDR, borderWidth: 1, borderRadius: 4 }
                         ]
                     },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
+                        responsive: true, maintainAspectRatio: false,
                         plugins: {
                             legend: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    title: (ctx) => `Hour: ${ctx[0].label}`,
-                                    label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y} A/C`
-                                }
-                            }
-                        },
-                        scales: {
-                            x: { grid: { display: false } },
-                            y: { beginAtZero: true, grid: { color: '#F1F5F9' } }
-                        }
-                    }
-                });
-            }
-
-            // Passenger Composition Chart (Bar breakdown for single analysis date)
-            const ctxPax = document.getElementById('passengerTrendChart');
-            if (ctxPax) {
-                const comp = this.paxAnalytics.composition || { adult: 0, child: 0, infant: 0, transit: 0, transfer: 0 };
-                const hasBreakdown = (comp.adult + comp.child + comp.infant + comp.transit + comp.transfer) > 0;
-
-                const paxLabels = hasBreakdown 
-                    ? ['Adult', 'Child', 'Infant', 'Transit', 'Transfer']
-                    : ['Total Pax'];
-                const paxValues = hasBreakdown
-                    ? [comp.adult, comp.child, comp.infant, comp.transit, comp.transfer]
-                    : [this.paxAnalytics.total_load || this.kpis.total_passengers || 0];
-                const paxColors = hasBreakdown
-                    ? ['#0284C7', '#38BDF8', '#7DD3FC', '#F59E0B', '#10B981']
-                    : ['#0284C7'];
-
-                _fdrCharts.chartPax = new Chart(ctxPax, {
-                    type: 'bar',
-                    data: {
-                        labels: paxLabels,
-                        datasets: [
-                            {
-                                label: 'Passengers',
-                                data: paxValues,
-                                backgroundColor: paxColors,
-                                borderRadius: 5,
-                                borderWidth: 1,
-                                borderColor: paxColors,
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    label: (ctx) => ` ${ctx.parsed.y.toLocaleString()} passengers`
-                                }
-                            }
-                        },
-                        scales: {
-                            x: { grid: { display: false } },
-                            y: { beginAtZero: true, grid: { color: '#F1F5F9' } }
-                        }
-                    }
-                });
-            }
-
-            // Flight Movement Chart (ALL/DEP/ARR) - Section 4B
-            this.renderFlightMovementChart();
-        },
-
-        renderFlightMovementChart() {
-            if (!window.Chart) return;
-            const ctx = document.getElementById('fdrMovementChart');
-            if (!ctx) return;
-
-            const hours = this.hourlyData.map(h => h.hour_label);
-            const mode = this.fdrChartMode;
-
-            // Color constants (MANDATORY — consistent across chart, legend, tooltip)
-            const C = {
-                DEP_DOM: '#1D4ED8',   // Departure Domestic: dark blue
-                DEP_INT: '#60A5FA',   // Departure International: light blue
-                ARR_DOM: '#CA8A04',   // Arrival Domestic: dark amber
-                ARR_INT: '#FDE047',   // Arrival International: light yellow
-            };
-
-            let datasets = [];
-
-            if (mode === 'DEP' || mode === 'ALL') {
-                datasets.push({
-                    label: 'Dep Domestic',
-                    data: this.hourlyData.map(h => h.dep_dom_plan ?? h.dep_plan),
-                    backgroundColor: C.DEP_DOM,
-                    borderColor: '#1E40AF',
-                    borderWidth: 1,
-                    borderRadius: 3,
-                });
-                datasets.push({
-                    label: 'Dep International',
-                    data: this.hourlyData.map(h => h.dep_int_plan ?? 0),
-                    backgroundColor: C.DEP_INT,
-                    borderColor: '#3B82F6',
-                    borderWidth: 1,
-                    borderRadius: 3,
-                });
-            }
-
-            if (mode === 'ARR' || mode === 'ALL') {
-                datasets.push({
-                    label: 'Arr Domestic',
-                    data: this.hourlyData.map(h => h.arr_dom_plan ?? h.arr_plan),
-                    backgroundColor: C.ARR_DOM,
-                    borderColor: '#A16207',
-                    borderWidth: 1,
-                    borderRadius: 3,
-                });
-                datasets.push({
-                    label: 'Arr International',
-                    data: this.hourlyData.map(h => h.arr_int_plan ?? 0),
-                    backgroundColor: C.ARR_INT,
-                    borderColor: '#EAB308',
-                    borderWidth: 1,
-                    borderRadius: 3,
-                });
-            }
-
-            // Destroy existing instance first
-            if (_fdrCharts.fdrMovement) {
-                _fdrCharts.fdrMovement.destroy();
-                _fdrCharts.fdrMovement = null;
-            }
-
-            _fdrCharts.fdrMovement = new Chart(ctx, {
-                type: 'bar',
-                data: { labels: hours, datasets },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top',
-                            labels: {
-                                boxWidth: 12,
-                                font: { size: 11 },
-                                padding: 12,
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
+                            tooltip: { callbacks: {
                                 title: (ctx) => `Hour: ${ctx[0].label}`,
                                 label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y} A/C`
-                            }
+                            }}
+                        },
+                        scales: {
+                            x: { grid: { display: false } },
+                            y: { beginAtZero: true, grid: { color: '#F1F5F910' }, ticks: { precision: 0 } }
                         }
-                    },
-                    scales: {
-                        x: { grid: { display: false } },
-                        y: { beginAtZero: true, grid: { color: '#F1F5F9' }, ticks: { precision: 0 } }
                     }
-                }
-            });
+                });
+            }
+
+            // Passenger Composition Chart
+            const ctxPax = document.getElementById('passengerTrendChart');
+            if (ctxPax) {
+                const comp = this.paxAnalytics.composition || { adult: 0, child: 0, infant: 0, transit: 0, transfer: 0, crew: 0 };
+                const hasBreakdown = (comp.adult + comp.child + comp.infant + comp.transit + comp.transfer + (comp.crew||0)) > 0;
+                const paxLabels = hasBreakdown ? ['Adult', 'Child', 'Infant', 'Transit', 'Transfer', 'Crew'] : ['Total Pax'];
+                const paxValues = hasBreakdown
+                    ? [comp.adult, comp.child, comp.infant, comp.transit, comp.transfer, comp.crew||0]
+                    : [this.paxAnalytics.total_load || this.kpis.total_passengers || 0];
+                const paxColors = hasBreakdown
+                    ? ['#0284C7', '#38BDF8', '#7DD3FC', '#F59E0B', '#10B981', '#A78BFA']
+                    : ['#0284C7'];
+                _fdrCharts.chartPax = new Chart(ctxPax, {
+                    type: 'bar',
+                    data: { labels: paxLabels, datasets: [{ label: 'Passengers', data: paxValues, backgroundColor: paxColors, borderRadius: 5, borderWidth: 1, borderColor: paxColors }] },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { callbacks: { label: (ctx) => ` ${ctx.parsed.y.toLocaleString()} passengers` } }
+                        },
+                        scales: { x: { grid: { display: false } }, y: { beginAtZero: true } }
+                    }
+                });
+            }
         },
 
         async triggerFilter(page = 1) {
+
             this.isFiltering = true;
             this.pagination.current_page = page;
             const currentReqId = ++this.activeRequestId;
@@ -1566,6 +1652,8 @@ function fdrDashboardController() {
                 start_date: this.filters.start_date,
                 end_date: this.filters.end_date,
                 report_mode: this.filters.report_mode,
+                time_basis: this.timeBasis,
+                otp_tolerance: this.otpTolerance,
                 search: this.filters.search,
                 page: page,
                 v: currentReqId
@@ -1592,7 +1680,10 @@ function fdrDashboardController() {
                 this.schedVsReal = data.sched_vs_real;
                 this.paxAnalytics = data.pax_analytics;
                 this.airlineRoute = data.airline_route;
+                if (data.fleet_performance) this.fleetPerformance = data.fleet_performance;
                 this.groundOps = data.ground_ops;
+                if (data.time_basis) this.timeBasis = data.time_basis;
+                if (data.otp_tolerance !== undefined) this.otpTolerance = data.otp_tolerance;
                 this.activeReconciliation = (this.filters.report_mode == 7) ? data.reconciliation_apps : data.reconciliation_edifly;
                 if (data.reconciliation) {
                     this.reconciliation = data.reconciliation;
@@ -1614,46 +1705,51 @@ function fdrDashboardController() {
 
         updateChartsLive() {
             if (!_fdrCharts.chart1) return;
+            const basis = this.timeBasis;
+            // Pick the right field prefix for the active basis
+            const suf = (field) => basis === 'actual' ? field.replace('_plan','_realized').replace('dep_dom','dep_dom_realized').replace('dep_int','dep_int_realized').replace('arr_dom','arr_dom_realized').replace('arr_int','arr_int_realized') : field;
+            const depDom = (h) => basis === 'actual' ? (h.dep_dom_realized ?? 0) : (h.dep_dom_plan ?? h.dep_plan ?? 0);
+            const depInt = (h) => basis === 'actual' ? (h.dep_int_realized ?? 0) : (h.dep_int_plan ?? 0);
+            const arrDom = (h) => basis === 'actual' ? (h.arr_dom_realized ?? 0) : (h.arr_dom_plan ?? h.arr_plan ?? 0);
+            const arrInt = (h) => basis === 'actual' ? (h.arr_int_realized ?? 0) : (h.arr_int_plan ?? 0);
 
-            // Chart 1: All movement (no Runway Capacity — removed)
-            _fdrCharts.chart1.data.datasets[0].data = this.hourlyData.map(h => h.total_plan);
-            _fdrCharts.chart1.data.datasets[1].data = this.hourlyData.map(h => h.total_irregular);
+            // Chart 1: 4-seri grouped bar
+            _fdrCharts.chart1.data.datasets[0].data = this.hourlyData.map(depDom);
+            _fdrCharts.chart1.data.datasets[1].data = this.hourlyData.map(depInt);
+            _fdrCharts.chart1.data.datasets[2].data = this.hourlyData.map(arrDom);
+            _fdrCharts.chart1.data.datasets[3].data = this.hourlyData.map(arrInt);
             _fdrCharts.chart1.update();
 
-            // Chart 2: Departure (Domestic = dark blue, International = light blue)
+            // Chart 2: Departure
             if (_fdrCharts.chart2) {
-                _fdrCharts.chart2.data.datasets[0].data = this.hourlyData.map(h => h.dep_dom_plan ?? h.dep_plan);
-                _fdrCharts.chart2.data.datasets[1].data = this.hourlyData.map(h => h.dep_int_plan ?? 0);
+                _fdrCharts.chart2.data.datasets[0].data = this.hourlyData.map(depDom);
+                _fdrCharts.chart2.data.datasets[1].data = this.hourlyData.map(depInt);
                 _fdrCharts.chart2.update();
             }
 
-            // Chart 3: Arrival (Domestic = dark amber, International = light yellow)
+            // Chart 3: Arrival
             if (_fdrCharts.chart3) {
-                _fdrCharts.chart3.data.datasets[0].data = this.hourlyData.map(h => h.arr_dom_plan ?? h.arr_plan);
-                _fdrCharts.chart3.data.datasets[1].data = this.hourlyData.map(h => h.arr_int_plan ?? 0);
+                _fdrCharts.chart3.data.datasets[0].data = this.hourlyData.map(arrDom);
+                _fdrCharts.chart3.data.datasets[1].data = this.hourlyData.map(arrInt);
                 _fdrCharts.chart3.update();
             }
 
             // Pax Composition Chart
             if (_fdrCharts.chartPax && this.paxAnalytics.composition) {
                 const comp = this.paxAnalytics.composition;
-                const hasBreakdown = (comp.adult + comp.child + comp.infant + comp.transit + comp.transfer) > 0;
+                const hasBreakdown = (comp.adult + comp.child + comp.infant + comp.transit + (comp.crew||0)) > 0;
                 if (hasBreakdown) {
-                    _fdrCharts.chartPax.data.labels = ['Adult', 'Child', 'Infant', 'Transit', 'Transfer'];
-                    _fdrCharts.chartPax.data.datasets[0].data = [comp.adult, comp.child, comp.infant, comp.transit, comp.transfer];
-                    _fdrCharts.chartPax.data.datasets[0].backgroundColor = ['#0284C7', '#38BDF8', '#7DD3FC', '#F59E0B', '#10B981'];
-                    _fdrCharts.chartPax.data.datasets[0].borderColor = ['#0284C7', '#38BDF8', '#7DD3FC', '#F59E0B', '#10B981'];
+                    _fdrCharts.chartPax.data.labels = ['Adult', 'Child', 'Infant', 'Transit', 'Transfer', 'Crew'];
+                    _fdrCharts.chartPax.data.datasets[0].data = [comp.adult, comp.child, comp.infant, comp.transit, comp.transfer||0, comp.crew||0];
+                    _fdrCharts.chartPax.data.datasets[0].backgroundColor = ['#0284C7', '#38BDF8', '#7DD3FC', '#F59E0B', '#10B981', '#A78BFA'];
+                    _fdrCharts.chartPax.data.datasets[0].borderColor = ['#0284C7', '#38BDF8', '#7DD3FC', '#F59E0B', '#10B981', '#A78BFA'];
                 } else {
                     _fdrCharts.chartPax.data.labels = ['Total Pax'];
                     _fdrCharts.chartPax.data.datasets[0].data = [this.paxAnalytics.total_load || this.kpis.total_passengers || 0];
                     _fdrCharts.chartPax.data.datasets[0].backgroundColor = ['#0284C7'];
-                    _fdrCharts.chartPax.data.datasets[0].borderColor = ['#0284C7'];
                 }
                 _fdrCharts.chartPax.update();
             }
-
-            // Flight Movement Chart (ALL/DEP/ARR) — re-render with latest data
-            this.renderFlightMovementChart();
         },
 
         changePage(p) {

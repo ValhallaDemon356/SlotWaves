@@ -29,40 +29,47 @@ class FlightDailyReportAnalytics
             $options = ['report_mode' => $options];
         }
 
-        $reportMode = (int)($options['report_mode'] ?? 1);
+        $reportMode  = (int)($options['report_mode'] ?? 1);
         $airportCode = $meta['airport'] ?? 'CGK';
+        $timeBasis   = $options['time_basis'] ?? 'scheduled';
+        $reportDate  = $options['report_date'] ?? ($meta['period_start'] ?? '');
 
-        // 1. 3 Mentor Hourly Charts
-        $hourlyCharts = $this->hourlyChartService->buildHourlyCharts($records, $airportCode);
+        // 1. 3 Mentor Hourly Charts (basis-aware)
+        $hourlyCharts = $this->hourlyChartService->buildHourlyCharts(
+            $records, $airportCode, $timeBasis, $reportDate
+        );
 
         // 2. Top KPI Metric Cards (attaching peak hour)
         $kpis = $this->computeTopKpis($records);
         $kpis['peak_hour'] = $hourlyCharts['peak_hour'] ?? null;
 
-        // 3. Schedule vs Realization Analysis
-        $schedVsReal = $this->computeScheduleVsRealization($records);
+        // 3. Schedule vs Realization Analysis (expanded)
+        $schedVsReal = $this->computeScheduleVsRealization($records, (int)($options['otp_tolerance'] ?? 15));
 
-        // 4. Passenger Analytics & Multi-Day Trend
+        // 4. Passenger Analytics & Multi-Day Trend (expanded)
         $paxAnalytics = $this->computePassengerAnalytics($records);
 
         // 5. Airline & Route Performance
         $airlineRoute = $this->computeAirlineRoutePerformance($records);
 
-        // 6. Ground Operations (Stand & Runway) & Irregularities
-        $groundOps = $this->computeGroundOps($records);
+        // 6. Fleet Performance (new)
+        $fleetPerformance = $this->computeFleetPerformance($records);
 
-        // 7. Reconciliation Engine (Modes 7 & 8)
-        $reconciliationApps = $this->reconciliationEngine->reconcileOasysVsApps($records);
+        // 7. Ground Operations Enhanced (stand normalization + turnaround pairing)
+        $groundOps = $this->computeGroundOpsEnhanced($records);
+
+        // 8. Reconciliation Engine (Modes 7 & 8)
+        $reconciliationApps   = $this->reconciliationEngine->reconcileOasysVsApps($records);
         $reconciliationEdifly = $this->reconciliationEngine->reconcileOasysVsEdifly($records);
 
-        // 8. Mode Specific Prioritizations
+        // 9. Mode Specific Prioritizations
         $modePayload = $this->buildModePayload($reportMode, $records, [
-            'kpis'                 => $kpis,
-            'hourly'               => $hourlyCharts,
-            'pax'                  => $paxAnalytics,
-            'ground'               => $groundOps,
-            'reconciliation_apps'  => $reconciliationApps,
-            'reconciliation_edifly'=> $reconciliationEdifly,
+            'kpis'                  => $kpis,
+            'hourly'                => $hourlyCharts,
+            'pax'                   => $paxAnalytics,
+            'ground'                => $groundOps,
+            'reconciliation_apps'   => $reconciliationApps,
+            'reconciliation_edifly' => $reconciliationEdifly,
         ]);
 
         return [
@@ -74,12 +81,14 @@ class FlightDailyReportAnalytics
             'passenger_analytics'     => $paxAnalytics,
             'pax_analytics'           => $paxAnalytics,
             'airline_route'           => $airlineRoute,
+            'fleet_performance'       => $fleetPerformance,
             'ground_operations'       => $groundOps,
             'ground_ops'              => $groundOps,
             'reconciliation_apps'     => $reconciliationApps,
             'reconciliation_edifly'   => $reconciliationEdifly,
             'mode_payload'            => $modePayload,
             'report_mode'             => $reportMode,
+            'time_basis'              => $timeBasis,
         ];
     }
 
@@ -208,43 +217,105 @@ class FlightDailyReportAnalytics
 
     /**
      * Schedule vs Realization Analysis:
-     * Compares scheduled timestamps (SIBT/SOBT) with actual timestamps (AIBT/AOBT).
+     * Compares SIBT/SOBT with AIBT/AOBT per flight.
+     * OTP tolerance is configurable (default ±15 min per ICAO standard).
      */
-    public function computeScheduleVsRealization(array $records): array
+    public function computeScheduleVsRealization(array $records, int $toleranceMinutes = 15): array
     {
-        $onTime = 0;       // delay <= 15 min
-        $minorDelay = 0;   // delay 16-45 min
-        $severeDelay = 0;  // delay > 45 min
-        $early = 0;        // delay < 0 min
-        $totalEvaluated = 0;
-        $totalDelayMinutes = 0;
+        $delays          = [];   // individual delay_minutes for evaluated flights
+        $earlyBeyond     = 0;   // early > tolerance
+        $lateBeyond      = 0;   // late > tolerance
+        $onTime          = 0;
+        $totalEvaluated  = 0;
+        $maxDelay        = null;
+        $minDelay        = null;
+        $top10           = [];   // largest delays (positive only)
 
-        $hourlyVariances = array_fill(0, 24, ['scheduled' => 0, 'actual' => 0, 'avg_variance' => 0, 'var_sum' => 0]);
+        // Per-hour: scheduled count, actual count, avg variance (for plan vs actual chart)
+        $hourlyVariances = [];
+        for ($h = 0; $h < 24; $h++) {
+            $hourlyVariances[$h] = ['hour' => $h, 'hour_label' => str_pad($h, 2, '0', STR_PAD_LEFT) . ':00',
+                'scheduled' => 0, 'actual' => 0, 'avg_variance' => 0, 'var_sum' => 0];
+        }
+
+        // Histogram bins: every 10 minutes from -60 to +90
+        $histBins  = [];
+        $binWidth  = 10;
+        $binMin    = -60;
+        $binMax    = 90;
+        for ($b = $binMin; $b < $binMax; $b += $binWidth) {
+            $key = "{$b}";
+            $histBins[$key] = ['label' => ($b >= 0 ? '+' : '') . $b . ' to ' . ($b >= 0 ? '+' : '') . ($b + $binWidth - 1) . ' min', 'count' => 0, 'min' => $b, 'max' => $b + $binWidth];
+        }
+        $histBins['overflow_pos'] = ['label' => "+{$binMax}+ min", 'count' => 0, 'min' => $binMax, 'max' => PHP_INT_MAX];
+        $histBins['overflow_neg'] = ['label' => "{$binMin}- min", 'count' => 0, 'min' => PHP_INT_MIN, 'max' => $binMin];
 
         foreach ($records as $r) {
             $isRealized = !empty($r['is_realized']);
             if (!$isRealized) continue;
 
+            $delay = isset($r['delay_minutes']) ? (int)$r['delay_minutes'] : null;
+            if ($delay === null) {
+                // Try to compute from raw timestamps
+                $isArr   = ($r['direction'] ?? '') === 'ARRIVAL';
+                $schedTs = $isArr ? ($r['sibt'] ?? '') : ($r['sobt'] ?? '');
+                $actTs   = $isArr ? ($r['aibt'] ?? '') : ($r['aobt'] ?? '');
+                if ($schedTs && $actTs && $schedTs !== 'N/A' && $actTs !== 'N/A') {
+                    if (preg_match('/(\d{1,2}):(\d{2})/', $schedTs, $sm) && preg_match('/(\d{1,2}):(\d{2})/', $actTs, $am)) {
+                        $delay = ((int)$am[1] * 60 + (int)$am[2]) - ((int)$sm[1] * 60 + (int)$sm[2]);
+                    }
+                }
+            }
+            if ($delay === null) continue;
+
             $totalEvaluated++;
-            $delay = (int)($r['delay_minutes'] ?? 0);
-            $totalDelayMinutes += $delay;
+            $delays[] = $delay;
+            if ($maxDelay === null || $delay > $maxDelay) $maxDelay = $delay;
+            if ($minDelay === null || $delay < $minDelay) $minDelay = $delay;
 
-            if ($delay < 0) {
-                $early++;
+            if (abs($delay) <= $toleranceMinutes) {
                 $onTime++;
-            } elseif ($delay <= 15) {
-                $onTime++;
-            } elseif ($delay <= 45) {
-                $minorDelay++;
+            } elseif ($delay < -$toleranceMinutes) {
+                $earlyBeyond++;
             } else {
-                $severeDelay++;
+                $lateBeyond++;
+                $top10[] = [
+                    'flight_no' => $r['flight_no'] ?? 'N/A',
+                    'route'     => $r['route']     ?? 'N/A',
+                    'sched'     => (($r['direction'] ?? '') === 'ARRIVAL') ? ($r['sibt'] ?? 'N/A') : ($r['sobt'] ?? 'N/A'),
+                    'actual'    => (($r['direction'] ?? '') === 'ARRIVAL') ? ($r['aibt'] ?? 'N/A') : ($r['aobt'] ?? 'N/A'),
+                    'delay_min' => $delay,
+                    'direction' => $r['direction'] ?? 'N/A',
+                ];
             }
 
-            $h = (int)($r['hour'] ?? 12);
-            if ($h >= 0 && $h < 24) {
-                $hourlyVariances[$h]['actual']++;
-                $hourlyVariances[$h]['var_sum'] += $delay;
+            // Hourly actual bucket (by sched hour)
+            $isArr2 = ($r['direction'] ?? '') === 'ARRIVAL';
+            $sTs   = $isArr2 ? ($r['sibt'] ?? '') : ($r['sobt'] ?? '');
+            if ($sTs && $sTs !== 'N/A' && preg_match('/(\d{1,2}):/', $sTs, $hm)) {
+                $sh = (int)$hm[1];
+                if ($sh >= 0 && $sh < 24) {
+                    $hourlyVariances[$sh]['scheduled']++;
+                    $hourlyVariances[$sh]['actual']++;
+                    $hourlyVariances[$sh]['var_sum'] += $delay;
+                }
             }
+
+            // Histogram
+            if ($delay >= $binMax) {
+                $histBins['overflow_pos']['count']++;
+            } elseif ($delay < $binMin) {
+                $histBins['overflow_neg']['count']++;
+            } else {
+                $binKey = (string)(intdiv($delay - $binMin, $binWidth) * $binWidth + $binMin);
+                if (isset($histBins[$binKey])) $histBins[$binKey]['count']++;
+            }
+        }
+
+        for ($h = 0; $h < 24; $h++) {
+            $act = $hourlyVariances[$h]['actual'];
+            $hourlyVariances[$h]['avg_variance'] = ($act > 0) ? round($hourlyVariances[$h]['var_sum'] / $act, 1) : 0;
+            unset($hourlyVariances[$h]['var_sum']);
         }
 
         // Scheduled hours distribution
@@ -255,117 +326,191 @@ class FlightDailyReportAnalytics
             if ($schedTime && $schedTime !== 'N/A' && preg_match('/(\d{1,2}):(\d{2})/', $schedTime, $tm)) {
                 $sh = (int)$tm[1];
                 if ($sh >= 0 && $sh < 24) {
-                    $hourlyVariances[$sh]['scheduled']++;
+                    // only scheduled (not evaluated)
                 }
             }
         }
 
-        for ($h = 0; $h < 24; $h++) {
-            $act = $hourlyVariances[$h]['actual'];
-            $hourlyVariances[$h]['avg_variance'] = ($act > 0) ? round($hourlyVariances[$h]['var_sum'] / $act, 1) : 0;
-            unset($hourlyVariances[$h]['var_sum']);
+        $hasEvaluated = ($totalEvaluated > 0);
+        // Median
+        $medianDelay = null;
+        if ($hasEvaluated) {
+            $sorted = $delays;
+            sort($sorted);
+            $mid = (int)floor(count($sorted) / 2);
+            $medianDelay = (count($sorted) % 2 === 0)
+                ? (($sorted[$mid - 1] + $sorted[$mid]) / 2.0)
+                : (float)$sorted[$mid];
         }
 
-        $hasEvaluated = ($totalEvaluated > 0);
-        $onTimePct = $hasEvaluated ? round(($onTime / $totalEvaluated) * 100, 1) : null;
-        $onTimePctStr = $hasEvaluated ? "{$onTimePct}%" : 'N/A';
-        $avgDelay = $hasEvaluated ? round($totalDelayMinutes / $totalEvaluated, 1) : null;
-        $avgDelayStr = $hasEvaluated ? "{$avgDelay} min" : 'N/A';
+        // Top 10 delays descending
+        usort($top10, fn($a, $b) => $b['delay_min'] <=> $a['delay_min']);
+        $top10 = array_slice($top10, 0, 10);
+
+        $onTimePct    = $hasEvaluated ? round(($onTime / $totalEvaluated) * 100, 1) : null;
+        $avgDelay     = $hasEvaluated ? round(array_sum($delays) / count($delays), 1) : null;
 
         return [
             'has_evaluation'        => $hasEvaluated,
-            'evaluated_flights'     => $hasEvaluated ? $totalEvaluated : 'N/A',
             'evaluated_count'       => $totalEvaluated,
-            'on_time_percentage'    => $onTimePctStr,
-            'on_time_pct_num'       => $onTimePct ?? 0,
-            'avg_delay_minutes'     => $avgDelayStr,
-            'avg_delay_num'         => $avgDelay ?? 0,
-            'early_count'           => $early,
+            'evaluated_flights'     => $hasEvaluated ? $totalEvaluated : 'N/A',
+            'tolerance_minutes'     => $toleranceMinutes,
             'on_time_count'         => $onTime,
-            'minor_delay_count'     => $minorDelay,
-            'severe_delay_count'    => $severeDelay,
-            'hourly_comparison'     => $hourlyVariances,
+            'early_count'           => $earlyBeyond,
+            'late_count'            => $lateBeyond,
+            'on_time_percentage'    => $hasEvaluated ? "{$onTimePct}%" : 'N/A',
+            'on_time_pct_num'       => $onTimePct ?? 0,
+            'avg_delay_minutes'     => $hasEvaluated ? "{$avgDelay} min" : 'N/A',
+            'avg_delay_num'         => $avgDelay ?? 0,
+            'median_delay_num'      => $medianDelay,
+            'median_delay'          => $hasEvaluated ? ($medianDelay >= 0 ? "+{$medianDelay}" : "{$medianDelay}") . ' min' : 'N/A',
+            'max_delay_num'         => $maxDelay,
+            'min_delay_num'         => $minDelay,
+            'max_delay'             => $hasEvaluated ? ($maxDelay >= 0 ? "+{$maxDelay}" : "{$maxDelay}") . ' min' : 'N/A',
+            'min_delay'             => $hasEvaluated ? ($minDelay >= 0 ? "+{$minDelay}" : "{$minDelay}") . ' min' : 'N/A',
+            // legacy compat
+            'minor_delay_count'     => $lateBeyond,
+            'severe_delay_count'    => 0,
+            'hourly_comparison'     => array_values($hourlyVariances),
+            'histogram'             => array_values($histBins),
+            'top10_delays'          => $top10,
         ];
     }
 
     /**
-     * Passenger Analytics & Trend:
-     * - Composition: Stacked / grouped breakdown (Adult, Child, Infant, Transit, Transfer).
-     * - Multi-day Trend: Combo chart (Pax Volume vs Load Factor line).
+     * Passenger Analytics & Payload Composition (expanded per B2 spec).
+     * - Composition: ADU LT, CHI LD, INF ANT, TRAN SIT, CRW (from file — not fabricated).
+     * - Breakdown ARR vs DEP per category.
+     * - Load Factor: taken straight from the 'load' / 'cap' columns (or the LOAD column value).
+     * - Payload: CAR.(KG), BAGG.(KG), POS(KG) per ARR/DEP.
      */
     public function computePassengerAnalytics(array $records): array
     {
-        $comp = [
-            'adult'    => 0,
-            'child'    => 0,
-            'infant'   => 0,
-            'transit'  => 0,
-            'transfer' => 0,
-        ];
+        // Composition totals
+        $comp = ['adult' => 0, 'child' => 0, 'infant' => 0, 'transit' => 0, 'transfer' => 0, 'crew' => 0];
+        // Per-direction composition
+        $compArr = $comp;
+        $compDep = $comp;
+
+        // Load Factor from file (as-is, do NOT recalculate)
+        $lfFlights     = [];   // each element: ['lf' => float, 'dir' => 'ARR'|'DEP', 'flight_no' => ...]
+        $lf0Count      = 0;
+        $lfArrSum      = 0.0; $lfArrCount = 0;
+        $lfDepSum      = 0.0; $lfDepCount = 0;
+        $lfBuckets     = ['0pct' => 0, 'lt50' => 0, '50to69' => 0, '70to89' => 0, 'ge90' => 0];
+        $lf0Flights    = [];
+
+        // Payload per direction
+        $payloadArr = ['cargo_kg' => 0.0, 'baggage_kg' => 0.0, 'pos_kg' => 0.0];
+        $payloadDep = ['cargo_kg' => 0.0, 'baggage_kg' => 0.0, 'pos_kg' => 0.0];
 
         $dailyGroups = [];
-        $totalDirect = 0;
-        $totalAll = 0;
-        $totalLoad = 0;
+        $totalLoad   = 0;
 
         foreach ($records as $r) {
-            $a = (int)($r['adult'] ?? ($r['pax_adult'] ?? 0));
-            $c = (int)($r['child'] ?? ($r['pax_child'] ?? 0));
-            $i = (int)($r['infant'] ?? ($r['pax_infant'] ?? 0));
-            $tr = (int)($r['transit'] ?? ($r['pax_transit'] ?? 0));
-            $tf = (int)($r['transfer'] ?? ($r['pax_transfer'] ?? 0));
-            $ld = (int)($r['load'] ?? ($r['pax_total'] ?? ($a + $c + $i)));
+            $isArr = ($r['direction'] ?? '') === 'ARRIVAL';
+            $a     = (int)($r['adult']    ?? 0);
+            $c     = (int)($r['child']    ?? 0);
+            $inf   = (int)($r['infant']   ?? 0);
+            $tr    = (int)($r['transit']  ?? 0);
+            $tf    = (int)($r['transfer'] ?? 0);
+            $crw   = (int)($r['crw']      ?? ($r['crew'] ?? 0));
+            $ld    = (int)($r['load']     ?? ($a + $c + $inf));
 
-            $comp['adult'] += $a;
-            $comp['child'] += $c;
-            $comp['infant'] += $i;
-            $comp['transit'] += $tr;
+            $comp['adult']    += $a;
+            $comp['child']    += $c;
+            $comp['infant']   += $inf;
+            $comp['transit']  += $tr;
             $comp['transfer'] += $tf;
-            $totalDirect += ($a + $c + $i);
-            $totalAll += ($a + $c + $i + $tr + $tf);
-            $totalLoad += $ld;
+            $comp['crew']     += $crw;
+            $totalLoad        += $ld;
 
-            $date = $r['flight_date'] ?? date('Y-08-01');
-            if (!isset($dailyGroups[$date])) {
-                $dailyGroups[$date] = [
-                    'date'       => $date,
-                    'flights'    => 0,
-                    'passengers' => 0,
-                    'capacity'   => 0,
-                    'load'       => 0,
-                ];
+            $target = $isArr ? 'arr' : 'dep';
+            ${'comp'.ucfirst($target)}['adult']    += $a;
+            ${'comp'.ucfirst($target)}['child']    += $c;
+            ${'comp'.ucfirst($target)}['infant']   += $inf;
+            ${'comp'.ucfirst($target)}['transit']  += $tr;
+            ${'comp'.ucfirst($target)}['transfer'] += $tf;
+            ${'comp'.ucfirst($target)}['crew']     += $crw;
+
+            // Load Factor (from file — read LOAD column directly)
+            $cap   = (int)($r['cap'] ?? 0);
+            // The LOAD field in the parsed record IS the load_factor from the OASYS file
+            $lfVal = isset($r['load_factor']) ? (float)$r['load_factor'] : ($cap > 0 ? round(($ld / $cap) * 100, 1) : 0.0);
+
+            $lfFlights[] = ['lf' => $lfVal, 'dir' => $isArr ? 'ARR' : 'DEP', 'flight_no' => $r['flight_no'] ?? ''];
+            if ($lfVal == 0) {
+                $lf0Count++;
+                $lf0Flights[] = $r['flight_no'] ?? 'N/A';
+            } elseif ($lfVal < 50) {
+                $lfBuckets['lt50']++;
+            } elseif ($lfVal < 70) {
+                $lfBuckets['50to69']++;
+            } elseif ($lfVal < 90) {
+                $lfBuckets['70to89']++;
+            } else {
+                $lfBuckets['ge90']++;
             }
 
+            if ($isArr) {
+                $lfArrSum += $lfVal; $lfArrCount++;
+                $payloadArr['cargo_kg']   += (float)($r['cargo_kg']   ?? 0);
+                $payloadArr['baggage_kg'] += (float)($r['baggage_kg'] ?? 0);
+                $payloadArr['pos_kg']     += (float)($r['pos_kg']     ?? 0);
+            } else {
+                $lfDepSum += $lfVal; $lfDepCount++;
+                $payloadDep['cargo_kg']   += (float)($r['cargo_kg']   ?? 0);
+                $payloadDep['baggage_kg'] += (float)($r['baggage_kg'] ?? 0);
+                $payloadDep['pos_kg']     += (float)($r['pos_kg']     ?? 0);
+            }
+
+            $date = $r['flight_date'] ?? date('Y-m-d');
+            if (!isset($dailyGroups[$date])) {
+                $dailyGroups[$date] = ['date' => $date, 'flights' => 0, 'passengers' => 0, 'capacity' => 0, 'load' => 0];
+            }
             $dailyGroups[$date]['flights']++;
-            $dailyGroups[$date]['passengers'] += ($a + $c + $i);
-            $dailyGroups[$date]['capacity'] += (int)($r['cap'] ?? 0);
-            $dailyGroups[$date]['load'] += $ld;
+            $dailyGroups[$date]['passengers'] += ($a + $c + $inf);
+            $dailyGroups[$date]['capacity']   += $cap;
+            $dailyGroups[$date]['load']       += $ld;
         }
 
         ksort($dailyGroups);
-
         $dailyTrend = [];
         foreach ($dailyGroups as $date => $dg) {
             $lf = ($dg['capacity'] > 0) ? round(($dg['load'] / $dg['capacity']) * 100, 1) : null;
             $dailyTrend[] = [
-                'date'        => $date,
-                'date_label'  => date('d M', strtotime($date)),
-                'flights'     => $dg['flights'],
-                'volume'      => $dg['passengers'],
-                'capacity'    => $dg['capacity'],
-                'load_factor' => $lf,
+                'date' => $date, 'date_label' => date('d M', strtotime($date)),
+                'flights' => $dg['flights'], 'volume' => $dg['passengers'],
+                'capacity' => $dg['capacity'], 'load_factor' => $lf,
             ];
         }
 
+        $totalAll     = $comp['adult'] + $comp['child'] + $comp['infant'] + $comp['transit'] + $comp['crew'];
         $hasBreakdown = ($totalAll > 0);
 
         return [
-            'composition'     => $comp,
-            'total_direct'    => $totalDirect,
-            'total_all'       => $totalAll,
-            'total_load'      => $totalLoad,
-            'has_breakdown'   => $hasBreakdown,
-            'daily_trend'     => $dailyTrend,
+            'composition'       => $comp,
+            'composition_arr'   => $compArr,
+            'composition_dep'   => $compDep,
+            'total_direct'      => $comp['adult'] + $comp['child'] + $comp['infant'],
+            'total_all'         => $totalAll,
+            'total_load'        => $totalLoad,
+            'has_breakdown'     => $hasBreakdown,
+            'daily_trend'       => $dailyTrend,
+            'lf_from_file'      => true,   // signals UI: values taken as-is from file
+            'lf_avg_arr'        => $lfArrCount > 0 ? round($lfArrSum / $lfArrCount, 1) : null,
+            'lf_avg_dep'        => $lfDepCount > 0 ? round($lfDepSum / $lfDepCount, 1) : null,
+            'lf_zero_count'     => $lf0Count,
+            'lf_zero_flights'   => $lf0Flights,
+            'lf_buckets'        => [
+                ['label' => '0%',        'count' => $lf0Count,           'key' => '0pct'],
+                ['label' => '< 50%',     'count' => $lfBuckets['lt50'],  'key' => 'lt50'],
+                ['label' => '50–69%',    'count' => $lfBuckets['50to69'],'key' => '50to69'],
+                ['label' => '70–89%',    'count' => $lfBuckets['70to89'],'key' => '70to89'],
+                ['label' => '≥ 90%',     'count' => $lfBuckets['ge90'],  'key' => 'ge90'],
+            ],
+            'payload_arr'       => ['cargo_kg' => round($payloadArr['cargo_kg']), 'baggage_kg' => round($payloadArr['baggage_kg']), 'pos_kg' => round($payloadArr['pos_kg'])],
+            'payload_dep'       => ['cargo_kg' => round($payloadDep['cargo_kg']), 'baggage_kg' => round($payloadDep['baggage_kg']), 'pos_kg' => round($payloadDep['pos_kg'])],
         ];
     }
 
@@ -441,9 +586,269 @@ class FlightDailyReportAnalytics
     }
 
     /**
-     * Ground Operations & Irregularities:
-     * - Stand utilization (STAND) & Runway usage (RUN WAY).
-     * - Operational irregularity breakdown.
+     * Fleet Performance (new — B3 spec).
+     * - Fleet mix per aircraft type (DESC column).
+     * - Narrow vs Wide from "(N )" / "(W )" in DESC text.
+     * - Top 10 registrations (REG. NO).
+     */
+    public function computeFleetPerformance(array $records): array
+    {
+        $fleetMap = [];   // keyed by desc
+        $regMap   = [];   // keyed by reg_no
+        $narrowCount = 0;
+        $wideCount   = 0;
+
+        foreach ($records as $r) {
+            $desc  = trim($r['desc'] ?? ($r['aircraft_type'] ?? 'Unknown'));
+            $regNo = trim($r['reg_no'] ?? ($r['registration'] ?? 'N/A'));
+            $cap   = (int)($r['cap'] ?? 0);
+            $lfVal = isset($r['load_factor']) ? (float)$r['load_factor'] : null;
+
+            // Narrow/Wide from description text
+            $isNarrow = str_contains($desc, '(N )') || str_contains($desc, '(N)');
+            $isWide   = str_contains($desc, '(W )') || str_contains($desc, '(W)');
+            if ($isNarrow) $narrowCount++;
+            elseif ($isWide) $wideCount++;
+
+            if (!isset($fleetMap[$desc])) {
+                $fleetMap[$desc] = ['desc' => $desc, 'movements' => 0, 'cap_sum' => 0, 'cap_count' => 0, 'lf_sum' => 0.0, 'lf_count' => 0, 'narrow' => $isNarrow, 'wide' => $isWide];
+            }
+            $fleetMap[$desc]['movements']++;
+            if ($cap > 0) { $fleetMap[$desc]['cap_sum'] += $cap; $fleetMap[$desc]['cap_count']++; }
+            if ($lfVal !== null) { $fleetMap[$desc]['lf_sum'] += $lfVal; $fleetMap[$desc]['lf_count']++; }
+
+            if ($regNo && $regNo !== 'N/A') {
+                if (!isset($regMap[$regNo])) {
+                    $regMap[$regNo] = ['reg_no' => $regNo, 'movements' => 0, 'desc' => $desc];
+                }
+                $regMap[$regNo]['movements']++;
+            }
+        }
+
+        $fleetList = [];
+        foreach ($fleetMap as $desc => $f) {
+            $fleetList[] = [
+                'desc'       => $desc,
+                'movements'  => $f['movements'],
+                'avg_cap'    => $f['cap_count'] > 0 ? round($f['cap_sum'] / $f['cap_count']) : null,
+                'avg_lf'     => $f['lf_count']  > 0 ? round($f['lf_sum']  / $f['lf_count'], 1) : null,
+                'narrow'     => $f['narrow'],
+                'wide'       => $f['wide'],
+            ];
+        }
+        usort($fleetList, fn($a, $b) => $b['movements'] <=> $a['movements']);
+
+        $regList = array_values($regMap);
+        usort($regList, fn($a, $b) => $b['movements'] <=> $a['movements']);
+        $top10Regs = array_slice($regList, 0, 10);
+
+        return [
+            'fleet_mix'      => $fleetList,
+            'narrow_count'   => $narrowCount,
+            'wide_count'     => $wideCount,
+            'total_regs'     => count($regMap),
+            'regs_multi'     => count(array_filter($regMap, fn($r) => $r['movements'] > 1)),
+            'top10_regs'     => $top10Regs,
+        ];
+    }
+
+    /**
+     * Ground Operations Enhanced (B4 spec):
+     * - Normalize STAND / RUN WAY (strip airport prefix + dash).
+     * - Turnaround pairing: FIFO greedy per REG_NO (ARR→DEP pairs).
+     * - Ground time stats + checksum.
+     */
+    public function computeGroundOpsEnhanced(array $records): array
+    {
+        $airportPrefix = ''; // detected from first stand value
+        $stands  = [];
+        $runways = [];
+        $standFilled   = 0;
+        $runwayFilled  = 0;
+        $totalFlights  = max(1, count($records));
+
+        // Collect and normalize stand/runway
+        foreach ($records as $r) {
+            $rawStand  = $r['stand']  ?? '';
+            $rawRunway = $r['runway'] ?? '';
+
+            // Auto-detect prefix (e.g. "CGK-")
+            if (!$airportPrefix && preg_match('/^([A-Z]{2,4})-/', (string)$rawStand, $pm)) {
+                $airportPrefix = $pm[0]; // e.g. "CGK-"
+            }
+
+            $normStand  = $this->normalizeGround($rawStand,  $airportPrefix);
+            $normRunway = $this->normalizeGround($rawRunway, $airportPrefix);
+
+            if ($normStand !== '' && $normStand !== 'N/A') {
+                $stands[$normStand] = ($stands[$normStand] ?? 0) + 1;
+                $standFilled++;
+            }
+            if ($normRunway !== '' && $normRunway !== 'N/A') {
+                $runways[$normRunway] = ($runways[$normRunway] ?? 0) + 1;
+                $runwayFilled++;
+            }
+        }
+
+        arsort($stands);
+        arsort($runways);
+
+        $standList = [];
+        foreach ($stands as $stand => $cnt) {
+            $standList[] = ['stand' => $stand, 'count' => $cnt, 'percentage' => round(($cnt / $totalFlights) * 100, 1)];
+        }
+        $runwayList = [];
+        foreach ($runways as $rw => $cnt) {
+            $runwayList[] = ['runway' => $rw, 'count' => $cnt, 'percentage' => round(($cnt / $totalFlights) * 100, 1)];
+        }
+
+        // ── Turnaround Pairing: FIFO greedy per REG_NO ─────────────────────
+        // Sort all records by actual time (AIBT for ARR, AOBT for DEP)
+        $byReg = [];
+        foreach ($records as $r) {
+            $regNo = trim($r['reg_no'] ?? '');
+            if (!$regNo || $regNo === 'N/A') continue;
+            $isArr = ($r['direction'] ?? '') === 'ARRIVAL';
+            $ts    = $isArr ? ($r['aibt'] ?? '') : ($r['aobt'] ?? '');
+            if (!$ts || $ts === 'N/A') continue;
+            // Convert HH:MM to minutes since midnight
+            if (!preg_match('/(\d{1,2}):(\d{2})/', (string)$ts, $tm)) continue;
+            $tsMin = (int)$tm[1] * 60 + (int)$tm[2];
+
+            $byReg[$regNo][] = [
+                'is_arr'   => $isArr,
+                'ts_min'   => $tsMin,
+                'ts_str'   => $ts,
+                'stand'    => $this->normalizeGround($r['stand'] ?? '', $airportPrefix),
+                'raw'      => $r,
+            ];
+        }
+
+        $pairs          = [];   // completed turnaround pairs
+        $unpaired       = [];   // flights without a pair
+        $groundTimes    = [];   // minutes
+        $standChanges   = 0;
+
+        foreach ($byReg as $reg => $events) {
+            // Sort by actual timestamp
+            usort($events, fn($a, $b) => $a['ts_min'] <=> $b['ts_min']);
+
+            $arrQueue = [];  // unmatched ARR events (FIFO)
+            foreach ($events as $ev) {
+                if ($ev['is_arr']) {
+                    $arrQueue[] = $ev;
+                } else {
+                    // Find earliest unmatched ARR that is before this DEP
+                    $matched = null;
+                    foreach ($arrQueue as $qi => $qa) {
+                        if ($qa['ts_min'] <= $ev['ts_min']) {
+                            $matched = $qi;
+                            break;
+                        }
+                    }
+                    if ($matched !== null) {
+                        $arr = $arrQueue[$matched];
+                        array_splice($arrQueue, $matched, 1);
+                        $groundMin = $ev['ts_min'] - $arr['ts_min'];
+                        $groundTimes[] = $groundMin;
+                        if ($arr['stand'] !== $ev['stand'] && $arr['stand'] !== '' && $ev['stand'] !== '') {
+                            $standChanges++;
+                        }
+                        $pairs[] = [
+                            'reg_no'       => $reg,
+                            'arr_time'     => $arr['ts_str'],
+                            'dep_time'     => $ev['ts_str'],
+                            'ground_min'   => $groundMin,
+                            'stand_arr'    => $arr['stand'],
+                            'stand_dep'    => $ev['stand'],
+                            'stand_change' => ($arr['stand'] !== $ev['stand']),
+                        ];
+                    } else {
+                        $unpaired[] = array_merge($ev, ['reg_no' => $reg, 'reason' => 'no_arr']);
+                    }
+                }
+            }
+            // Remaining ARRs without a DEP
+            foreach ($arrQueue as $qa) {
+                $unpaired[] = array_merge($qa, ['reg_no' => $reg, 'reason' => 'no_dep']);
+            }
+        }
+
+        // Ground time statistics
+        $gtCount  = count($groundTimes);
+        $gtMin    = $gtCount > 0 ? min($groundTimes) : null;
+        $gtMax    = $gtCount > 0 ? max($groundTimes) : null;
+        $gtMean   = $gtCount > 0 ? round(array_sum($groundTimes) / $gtCount, 1) : null;
+        $gtMedian = null;
+        if ($gtCount > 0) {
+            $sorted = $groundTimes;
+            sort($sorted);
+            $mid = (int)floor($gtCount / 2);
+            $gtMedian = ($gtCount % 2 === 0)
+                ? round(($sorted[$mid - 1] + $sorted[$mid]) / 2.0, 1)
+                : (float)$sorted[$mid];
+        }
+
+        // Ground time histogram
+        $gtHist = [];
+        foreach ([0,30,60,90,120,180,240] as $b) {
+            $next = ($b === 240) ? PHP_INT_MAX : $b + 30;
+            $label = ($b === 240) ? '240+ min' : "{$b}–" . ($next - 1) . ' min';
+            $gtHist[] = ['label' => $label, 'min' => $b, 'max' => $next, 'count' => 0];
+        }
+        foreach ($groundTimes as $gt) {
+            foreach ($gtHist as &$bucket) {
+                if ($gt >= $bucket['min'] && $gt < $bucket['max']) { $bucket['count']++; break; }
+            }
+        }
+        unset($bucket);
+
+        // Irregularity details (unchanged)
+        $irregularDetails = ['divert_flights' => [], 'miss_flights' => [], 'unscheduled_flights' => []];
+        foreach ($records as $r) {
+            if ((int)($r['divert'] ?? 0) > 0) $irregularDetails['divert_flights'][] = $r;
+            if ((int)($r['miss'] ?? 0) > 0)   $irregularDetails['miss_flights'][] = $r;
+            if (in_array($r['sched_type'] ?? '', ['UNSCHED', 'UNSCHEDULED'])) $irregularDetails['unscheduled_flights'][] = $r;
+        }
+
+        return [
+            'stands'             => $standList,
+            'runways'            => $runwayList,
+            'stand_unique'       => count($stands),
+            'stand_filled'       => $standFilled,
+            'runway_filled'      => $runwayFilled,
+            'turnaround_pairs'   => $pairs,
+            'turnaround_count'   => $gtCount,
+            'unpaired_flights'   => count($unpaired),
+            'stand_changes'      => $standChanges,
+            'ground_time_min'    => $gtMin,
+            'ground_time_median' => $gtMedian,
+            'ground_time_mean'   => $gtMean,
+            'ground_time_max'    => $gtMax,
+            'ground_time_histogram' => $gtHist,
+            'irregularities'     => $irregularDetails,
+        ];
+    }
+
+    /**
+     * Normalize a stand or runway string: remove airport prefix + dash.
+     * E.g. "CGK-G39" -> "G39", "BTJ-4" -> "4".
+     */
+    protected function normalizeGround(string $raw, string $prefix): string
+    {
+        $v = trim($raw);
+        if ($v === '' || $v === 'N/A') return $v;
+        if ($prefix && str_starts_with($v, $prefix)) {
+            $v = substr($v, strlen($prefix));
+        }
+        // Also strip leading "XXX-" pattern generically
+        $v = preg_replace('/^[A-Z]{2,4}-/', '', $v);
+        return trim($v);
+    }
+
+    /**
+     * Ground Operations & Irregularities (legacy method — kept for backward compat).
+     * Delegates to computeGroundOpsEnhanced().
      */
     public function computeGroundOps(array $records): array
     {

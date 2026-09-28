@@ -8,10 +8,20 @@ class HourlyChartService
 {
     /**
      * Build the 3 Mentor Hourly Charts data payload strictly covering 24 hours (00 to 23).
+     *
+     * @param  array  $records      Normalized FDR records
+     * @param  string $airportCode  IATA code used for capacity profile
+     * @param  string $timeBasis    'scheduled' (SIBT/SOBT) | 'actual' (AIBT/AOBT)
+     * @param  string $reportDate   Y-m-d of the analysis day (for cross-day detection)
      */
-    public function buildHourlyCharts(array $records, string $airportCode = 'CGK'): array
-    {
-        $hourlyData = [];
+    public function buildHourlyCharts(
+        array  $records,
+        string $airportCode = 'CGK',
+        string $timeBasis   = 'scheduled',
+        string $reportDate  = ''
+    ): array {
+        $hourlyData   = [];
+        $prevDayCount = 0;   // flights whose sched time falls on the *previous* day
 
         // Resolve baseline airport capacity
         $capacityProfile = $this->resolveRunwayCapacityProfile($airportCode);
@@ -19,85 +29,112 @@ class HourlyChartService
         // Initialize all 24 hours (00 to 23)
         for ($h = 0; $h < 24; $h++) {
             $hStr = str_pad((string)$h, 2, '0', STR_PAD_LEFT);
-            $cap = $capacityProfile[$h] ?? 40;
+            $cap  = $capacityProfile[$h] ?? 40;
 
             $hourlyData[$h] = [
-                'hour'               => $h,
-                'hour_label'         => "{$hStr}:00",
-                'time_range'         => "{$hStr}:00–{$hStr}:59",
-                'runway_capacity'    => $cap,
-                // ARRIVAL-DEPARTURE (Chart 1: total)
-                'total_plan'         => 0,
-                'total_realized'     => 0,
-                'total_irregular'    => 0,
-                // DEPARTURE (Chart 2: split by traffic type)
-                'dep_plan'           => 0,
-                'dep_dom_plan'       => 0,   // Departure Domestic (dark blue #1D4ED8)
-                'dep_int_plan'       => 0,   // Departure International (light blue #60A5FA)
-                'dep_irregular'      => 0,
-                'dep_realized'       => 0,
-                // ARRIVAL (Chart 3: split by traffic type)
-                'arr_plan'           => 0,
-                'arr_dom_plan'       => 0,   // Arrival Domestic (dark amber #CA8A04)
-                'arr_int_plan'       => 0,   // Arrival International (light yellow #FDE047)
-                'arr_irregular'      => 0,
-                'arr_realized'       => 0,
+                'hour'            => $h,
+                'hour_label'      => "{$hStr}:00",
+                'time_range'      => "{$hStr}:00–{$hStr}:59",
+                'runway_capacity' => $cap,
+
+                // ── Scheduled-basis aggregates (Chart 2 = Dep, Chart 3 = Arr) ─
+                'total_plan'    => 0,
+                'total_irregular' => 0,
+                'dep_plan'      => 0,
+                'dep_dom_plan'  => 0,   // DEP Domestic  (dark blue  #1D4ED8)
+                'dep_int_plan'  => 0,   // DEP Intl      (light blue #60A5FA)
+                'dep_irregular' => 0,
+                'arr_plan'      => 0,
+                'arr_dom_plan'  => 0,   // ARR Domestic  (dark amber #CA8A04)
+                'arr_int_plan'  => 0,   // ARR Intl      (light yel. #FDE047)
+                'arr_irregular' => 0,
+
+                // ── Actual-basis aggregates ─────────────────────────────────────
+                'total_realized'    => 0,
+                'dep_realized'      => 0,
+                'dep_dom_realized'  => 0,
+                'dep_int_realized'  => 0,
+                'arr_realized'      => 0,
+                'arr_dom_realized'  => 0,
+                'arr_int_realized'  => 0,
             ];
         }
 
-        // Aggregate records into hourly bins direction-aware (Part 10 to Part 17, Part 33 to 37)
+        // ── Aggregate records into hourly bins ───────────────────────────────────
         foreach ($records as $r) {
-            $isArr = (($r['direction'] ?? '') === 'ARRIVAL' || strtoupper(substr($r['leg'] ?? '', 0, 1)) === 'A');
+            $isArr  = (($r['direction'] ?? '') === 'ARRIVAL');
             $isIrreg = !empty($r['is_irregular']) || !empty($r['irregular']);
             $isRealized = array_key_exists('is_realized', $r)
                 ? (!empty($r['is_realized']) || !empty($r['realization']))
                 : (array_key_exists('realization', $r) ? !empty($r['realization']) : true);
 
-            // 1. Plan series: uses scheduled timestamps (SIBT for arrival, SOBT for departure)
+            // ── Traffic type (Domestic vs International) ─────────────────────
+            $traffic = strtoupper(trim($r['traffic'] ?? ($r['route_type'] ?? 'DOMESTIC')));
+            $isDom   = ($traffic === 'DOMESTIC' || $traffic === 'DOM');
+
+            // ── 1. SCHEDULED series (SIBT for ARR, SOBT for DEP) ────────────
             $schedHour = $r['scheduled_hour'] ?? null;
-            if ($schedHour === null && isset($r['hour']) && !array_key_exists('scheduled_hour', $r)) {
-                $schedHour = (int)$r['hour'];
-            }
             if ($schedHour === null) {
                 $schedStr = $isArr
                     ? ($r['sibt'] ?? ($r['arr_sched'] ?? null))
                     : ($r['sobt'] ?? ($r['dep_sched'] ?? null));
-                if (!empty($schedStr) && $schedStr !== 'N/A' && preg_match('/(\d{1,2}):(\d{2})/', (string)$schedStr, $tm)) {
+                if (!empty($schedStr) && $schedStr !== 'N/A'
+                        && preg_match('/(\d{1,2}):(\d{2})/', (string)$schedStr, $tm)) {
                     $schedHour = (int)$tm[1];
-                }
-            }
-
-            // Domestic vs International (source-first, no fabrication)
-            $traffic = strtoupper(trim($r['traffic'] ?? ($r['route_type'] ?? 'DOMESTIC')));
-            $isDom = ($traffic === 'DOMESTIC' || $traffic === 'DOM');
-
-            if ($schedHour !== null && $schedHour >= 0 && $schedHour < 24) {
-                if (!$isIrreg) {
-                    if ($isArr) {
-                        $hourlyData[$schedHour]['arr_plan']++;
-                        if ($isDom) { $hourlyData[$schedHour]['arr_dom_plan']++; }
-                        else        { $hourlyData[$schedHour]['arr_int_plan']++; }
-                    } else {
-                        $hourlyData[$schedHour]['dep_plan']++;
-                        if ($isDom) { $hourlyData[$schedHour]['dep_dom_plan']++; }
-                        else        { $hourlyData[$schedHour]['dep_int_plan']++; }
+                    // Cross-day detection: if the full datetime contains a prior date
+                    if ($reportDate && !$isIrreg) {
+                        $schedDateStr = preg_match('/(\d{4}-\d{2}-\d{2})/', (string)$schedStr, $dm)
+                            ? $dm[1]
+                            : ($r['flight_date'] ?? '');
+                        if ($schedDateStr && $schedDateStr < $reportDate) {
+                            $prevDayCount++;
+                        }
                     }
-                    $hourlyData[$schedHour]['total_plan'] = $hourlyData[$schedHour]['arr_plan'] + $hourlyData[$schedHour]['dep_plan'];
                 }
             }
 
-            // 2. Realized series: uses actual timestamps (AIBT for arrival, AOBT for departure)
-            // A flight is ONE movement - only counted if realized with valid actual time
+            if ($schedHour !== null && $schedHour >= 0 && $schedHour < 24 && !$isIrreg) {
+                if ($isArr) {
+                    $hourlyData[$schedHour]['arr_plan']++;
+                    if ($isDom) { $hourlyData[$schedHour]['arr_dom_plan']++; }
+                    else        { $hourlyData[$schedHour]['arr_int_plan']++; }
+                } else {
+                    $hourlyData[$schedHour]['dep_plan']++;
+                    if ($isDom) { $hourlyData[$schedHour]['dep_dom_plan']++; }
+                    else        { $hourlyData[$schedHour]['dep_int_plan']++; }
+                }
+                $hourlyData[$schedHour]['total_plan'] =
+                    $hourlyData[$schedHour]['arr_plan'] + $hourlyData[$schedHour]['dep_plan'];
+            }
+
+            // Irregulars: use actual hour if realized, else scheduled hour
+            if ($isIrreg) {
+                $irrH = $schedHour;
+                // Try actual timestamp first
+                $actStr2 = $isArr
+                    ? ($r['aibt'] ?? ($r['arr_actual'] ?? null))
+                    : ($r['aobt'] ?? ($r['dep_actual'] ?? null));
+                if (!empty($actStr2) && $actStr2 !== 'N/A'
+                        && preg_match('/(\d{1,2}):(\d{2})/', (string)$actStr2, $tm2)) {
+                    $irrH = (int)$tm2[1];
+                }
+                if ($irrH !== null && $irrH >= 0 && $irrH < 24) {
+                    if ($isArr) { $hourlyData[$irrH]['arr_irregular']++; }
+                    else        { $hourlyData[$irrH]['dep_irregular']++; }
+                    $hourlyData[$irrH]['total_irregular'] =
+                        $hourlyData[$irrH]['arr_irregular'] + $hourlyData[$irrH]['dep_irregular'];
+                }
+            }
+
+            // ── 2. ACTUAL series (AIBT for ARR, AOBT for DEP) ───────────────
             if ($isRealized) {
                 $actHour = $r['actual_hour'] ?? null;
-                if ($actHour === null && isset($r['hour']) && !array_key_exists('actual_hour', $r)) {
-                    $actHour = (int)$r['hour'];
-                }
                 if ($actHour === null) {
                     $actStr = $isArr
                         ? ($r['aibt'] ?? ($r['arr_actual'] ?? null))
                         : ($r['aobt'] ?? ($r['dep_actual'] ?? null));
-                    if (!empty($actStr) && $actStr !== 'N/A' && preg_match('/(\d{1,2}):(\d{2})/', (string)$actStr, $tm)) {
+                    if (!empty($actStr) && $actStr !== 'N/A'
+                            && preg_match('/(\d{1,2}):(\d{2})/', (string)$actStr, $tm)) {
                         $actHour = (int)$tm[1];
                     }
                 }
@@ -105,85 +142,102 @@ class HourlyChartService
                 if ($actHour !== null && $actHour >= 0 && $actHour < 24) {
                     if ($isArr) {
                         $hourlyData[$actHour]['arr_realized']++;
+                        if ($isDom) { $hourlyData[$actHour]['arr_dom_realized']++; }
+                        else        { $hourlyData[$actHour]['arr_int_realized']++; }
                     } else {
                         $hourlyData[$actHour]['dep_realized']++;
+                        if ($isDom) { $hourlyData[$actHour]['dep_dom_realized']++; }
+                        else        { $hourlyData[$actHour]['dep_int_realized']++; }
                     }
-                    $hourlyData[$actHour]['total_realized'] = $hourlyData[$actHour]['arr_realized'] + $hourlyData[$actHour]['dep_realized'];
-                }
-            }
-
-            // 3. Irregular series: ONLY legitimate irregulars (UNSCHED, divert, miss)
-            if ($isIrreg) {
-                // Irregular hour: prefer actual hour if realized, otherwise scheduled hour
-                $irregHour = ($isRealized && isset($actHour) && $actHour !== null) ? $actHour : ($schedHour ?? null);
-                if ($irregHour !== null && $irregHour >= 0 && $irregHour < 24) {
-                    if ($isArr) {
-                        $hourlyData[$irregHour]['arr_irregular']++;
-                    } else {
-                        $hourlyData[$irregHour]['dep_irregular']++;
-                    }
-                    $hourlyData[$irregHour]['total_irregular'] = $hourlyData[$irregHour]['arr_irregular'] + $hourlyData[$irregHour]['dep_irregular'];
+                    $hourlyData[$actHour]['total_realized'] =
+                        $hourlyData[$actHour]['arr_realized'] + $hourlyData[$actHour]['dep_realized'];
                 }
             }
         }
 
-        // Compute tooltips and capacity status per hour
+        // ── Compute tooltips and capacity status per hour ─────────────────────
         for ($h = 0; $h < 24; $h++) {
-            $row = &$hourlyData[$h];
-            $plan    = $row['total_plan'];
-            $actual  = $row['total_realized'];
-            $irreg   = $row['total_irregular'];
-            $cap     = $row['runway_capacity'];
+            $row  = &$hourlyData[$h];
+            $plan = $row['total_plan'];
+            $act  = $row['total_realized'];
+            $irreg = $row['total_irregular'];
+            $cap  = $row['runway_capacity'];
 
-            $diff = $cap - $plan;
+            $diff   = $cap - $plan;
             $status = 'AVAILABLE';
-            if ($plan > $cap) {
-                $status = 'OVER';
-            } elseif ($plan === $cap && $cap > 0) {
-                $status = 'FULL';
-            }
+            if ($plan > $cap)                  { $status = 'OVER'; }
+            elseif ($plan === $cap && $cap > 0) { $status = 'FULL'; }
 
             $row['difference'] = $diff;
-            $row['delta'] = $diff;
-            $row['status'] = $status;
-            $row['tooltip'] = "{$row['time_range']} | Plan: {$plan} | Actual: {$actual} | Irregular: {$irreg} | Runway Capacity: {$cap} | Status: {$status}";
-        }
+            $row['delta']      = $diff;
+            $row['status']     = $status;
+            $row['tooltip']    = "{$row['time_range']} | Plan: {$plan} | Actual: {$act} | Irreg: {$irreg} | Cap: {$cap} | {$status}";
 
-        // Compute Peak Hour strictly for planned movements (or realized if in realization mode)
-        $peakHourIndex = 0;
-        $maxMovements = -1;
+            // Expose which column is "active" for the chosen basis so JS can easily pick
+            // one set of values without branching.
+            $row['active_dep_dom']  = ($timeBasis === 'actual') ? $row['dep_dom_realized'] : $row['dep_dom_plan'];
+            $row['active_dep_int']  = ($timeBasis === 'actual') ? $row['dep_int_realized'] : $row['dep_int_plan'];
+            $row['active_arr_dom']  = ($timeBasis === 'actual') ? $row['arr_dom_realized'] : $row['arr_dom_plan'];
+            $row['active_arr_int']  = ($timeBasis === 'actual') ? $row['arr_int_realized'] : $row['arr_int_plan'];
+            $row['active_total']    = ($timeBasis === 'actual') ? $row['total_realized']   : $row['total_plan'];
+        }
+        unset($row);
+
+        // ── Peak Hour: return ALL hours that share the maximum value ─────────
+        $activeColumn = ($timeBasis === 'actual') ? 'total_realized' : 'total_plan';
+        $maxMovements = max(0, ...array_column($hourlyData, $activeColumn));
+
+        $peakHours = [];
         for ($h = 0; $h < 24; $h++) {
-            $planMovements = $hourlyData[$h]['total_plan'];
-            if ($planMovements > $maxMovements) {
-                $maxMovements = $planMovements;
-                $peakHourIndex = $h;
+            if ($hourlyData[$h][$activeColumn] === $maxMovements && $maxMovements > 0) {
+                $peakHours[] = [
+                    'hour'       => $h,
+                    'hour_label' => $hourlyData[$h]['hour_label'],
+                    'time_range' => $hourlyData[$h]['time_range'],
+                    'movements'  => $maxMovements,
+                ];
             }
         }
 
-        $peakHourRow = $hourlyData[$peakHourIndex];
-        $peakHour = [
-            'hour'        => $peakHourIndex,
-            'hour_label'  => $peakHourRow['hour_label'],
-            'time_range'  => $peakHourRow['time_range'],
-            'movements'   => max(0, $maxMovements),
-            'plan'        => $peakHourRow['total_plan'],
-            'actual'      => $peakHourRow['total_realized'],
-            'arrivals'    => $peakHourRow['arr_plan'],
-            'departures'  => $peakHourRow['dep_plan'],
-            'display'     => $maxMovements > 0
-                ? "{$peakHourRow['time_range']} ({$maxMovements} movements)"
-                : "N/A",
+        // Build display string (handles ties like "13:00–13:59 & 15:00–15:59 (16 movements)")
+        if (empty($peakHours)) {
+            $peakDisplay = 'N/A';
+        } elseif (count($peakHours) === 1) {
+            $peakDisplay = "{$peakHours[0]['time_range']} ({$maxMovements} movements)";
+        } else {
+            $ranges = implode(' & ', array_column($peakHours, 'time_range'));
+            $peakDisplay = "{$ranges} ({$maxMovements} movements)";
+        }
+
+        // Backward-compat: single peak hour object (use first peak hour)
+        $primaryPeak = $peakHours[0] ?? ['hour' => 0, 'hour_label' => 'N/A', 'time_range' => 'N/A', 'movements' => 0];
+        $peakRow     = $hourlyData[$primaryPeak['hour']];
+        $peakHour    = [
+            'hour'        => $primaryPeak['hour'],
+            'hour_label'  => $primaryPeak['hour_label'],
+            'time_range'  => $primaryPeak['time_range'],
+            'movements'   => $maxMovements,
+            'plan'        => $peakRow['total_plan'],
+            'actual'      => $peakRow['total_realized'],
+            'arrivals'    => $peakRow['arr_plan'],
+            'departures'  => $peakRow['dep_plan'],
+            'display'     => $peakDisplay,
+            'all_peaks'   => $peakHours,   // ALL tied peaks for UI
+            'basis'       => $timeBasis,
         ];
 
-        // Construct 3 distinct chart payloads
+        // Construct chart payloads
         return [
-            'hours'                   => array_column($hourlyData, 'hour_label'),
-            'hourly_data'             => array_values($hourlyData),
-            'chart1_movement'         => $this->buildChart1Payload($hourlyData),
-            'chart2_departure'        => $this->buildChart2Payload($hourlyData),
-            'chart3_arrival'          => $this->buildChart3Payload($hourlyData),
-            'peak_hour'               => $peakHour,
-            'max_hourly_movement'     => max(0, $maxMovements),
+            'hours'               => array_column($hourlyData, 'hour_label'),
+            'hourly_data'         => array_values($hourlyData),
+            'chart1_movement'     => $this->buildChart1Payload($hourlyData),
+            'chart2_departure'    => $this->buildChart2Payload($hourlyData),
+            'chart3_arrival'      => $this->buildChart3Payload($hourlyData),
+            'peak_hour'           => $peakHour,
+            'peak_hours'          => $peakHours,
+            'max_hourly_movement' => $maxMovements,
+            'time_basis'          => $timeBasis,
+            'prev_day_count'      => $prevDayCount,
         ];
     }
 
