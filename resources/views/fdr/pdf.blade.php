@@ -188,6 +188,8 @@
                         <span class="meta-pill" style="background-color: #FEF3C7; border-color: #FDE68A; color: #92400E;">SCOPE: {{ $analysisLevel }} ({{ strtoupper($analysisDateFormatted) }})</span>
                         <span class="meta-pill">SOURCE PERIOD: {{ $meta['period_label'] ?? 'N/A' }} ({{ $meta['source_type'] ?? 'MONTHLY' }})</span>
                         <span class="meta-pill">OPERATOR: {{ ($filters['operator'] ?? null) ?: ($meta['operator'] ?? 'ALL AIRLINE') }}</span>
+                        <span class="meta-pill" style="background-color: #EFF6FF; border-color: #BFDBFE; color: #1D4ED8;">MOVEMENT: {{ $legFilter ?? 'ALL' }}</span>
+                        <span class="meta-pill" style="background-color: #F0FDF4; border-color: #BBF7D0; color: #15803D;">TRAFFIC: {{ $trafficFilter ?? 'ALL' }}</span>
                     </div>
                 </td>
                 <td style="width: 40%; text-align: right;">
@@ -229,43 +231,94 @@
         </tr>
     </table>
 
-    {{-- 2. THE 3 MENTOR HOURLY CHARTS (NATIVE VECTOR SVGS) --}}
-    <div class="section-title">{{ $analysisLevel === 'DAILY' ? 'PEAK DAILY ANALYSIS' : 'HOURLY OPERATIONS ANALYSIS' }} — {{ strtoupper($analysisDateFormatted) }} (Source: {{ $meta['period_label'] ?? 'N/A' }})</div>
-
-    {{-- CHART 1: ARRIVAL-DEPARTURE MOVEMENT --}}
-    <div class="chart-box">
-        <span class="chart-header">Chart 1: ARRIVAL–DEPARTURE MOVEMENT</span>
-        <div class="chart-legend">
-            <span class="legend-dot" style="background: #FDBA74;"></span> Plan (PPRP)
-            &nbsp;&nbsp;
-            <span class="legend-dot" style="background: #D97706;"></span> Irregular Flt
-            &nbsp;&nbsp;
-            <span class="legend-dot" style="background: #EF4444;"></span> Runway Capacity (Continuous Variable Profile)
-        </div>
-        {!! $svgChart1 !!}
+    {{-- 2. FLIGHT / PASSENGER / CARGO ANALYTICS (THREE SYNCHRONIZED VISUALIZATIONS) --}}
+    <div class="section-title">FLIGHT / PASSENGER / CARGO ANALYTICS ({{ strtoupper($analysisDateFormatted) }})</div>
+    <div style="font-size: 8px; color: #64748B; margin-bottom: 5px;">
+        Operational trend based on active FDR filters: <strong>Movement: {{ $legFilter ?? 'ALL' }}</strong> &bull; <strong>Traffic: {{ $trafficFilter ?? 'ALL' }}</strong>
     </div>
 
-    {{-- CHART 2: DEPARTURE MOVEMENT --}}
+    {{-- A. FLIGHT MOVEMENT GROUPED BARS --}}
     <div class="chart-box">
-        <span class="chart-header">Chart 2: DEPARTURE MOVEMENT (Blue Semantic Palette)</span>
+        <span class="chart-header">FLIGHT MOVEMENT (Grouped Bars &bull; Arrival vs Departure &bull; Domestic vs International)</span>
         <div class="chart-legend">
-            <span class="legend-dot" style="background: #93C5FD;"></span> Plan (PPRP)
+            <span class="legend-dot" style="background: #FBBF24;"></span> Arrival Dom (Light Amber)
             &nbsp;&nbsp;
-            <span class="legend-dot" style="background: #1D4ED8;"></span> Irregular Flt
+            <span class="legend-dot" style="background: #B45309;"></span> Arrival Intl (Dark Amber)
+            &nbsp;&nbsp;
+            <span class="legend-dot" style="background: #60A5FA;"></span> Departure Dom (Light Blue)
+            &nbsp;&nbsp;
+            <span class="legend-dot" style="background: #1D4ED8;"></span> Departure Intl (Dark Blue)
         </div>
-        {!! $svgChart2 !!}
+        {!! $svgFlightMovement !!}
     </div>
 
-    {{-- CHART 3: ARRIVAL MOVEMENT --}}
-    <div class="chart-box">
-        <span class="chart-header">Chart 3: ARRIVAL MOVEMENT (Salmon/Magenta Semantic Palette)</span>
-        <div class="chart-legend">
-            <span class="legend-dot" style="background: #FDA4AF;"></span> Plan (PPRP)
-            &nbsp;&nbsp;
-            <span class="legend-dot" style="background: #BE185D;"></span> Irregular Flt
-        </div>
-        {!! $svgChart3 !!}
-    </div>
+    {{-- B. PASSENGER TREND & CARGO TREND --}}
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
+        <tr>
+            <td style="width: 50%; vertical-align: top; padding-right: 4px;">
+                <div class="chart-box" style="margin-bottom: 0;">
+                    <span class="chart-header">PASSENGER TREND (Movement Adherence)</span>
+                    <div class="chart-legend">
+                        <span class="legend-dot" style="background: #F59E0B;"></span> Arrival Pax
+                        &nbsp;&nbsp;
+                        <span class="legend-dot" style="background: #2563EB;"></span> Departure Pax
+                    </div>
+                    {!! $svgPaxTrend !!}
+                </div>
+            </td>
+            <td style="width: 50%; vertical-align: top; padding-left: 4px;">
+                <div class="chart-box" style="margin-bottom: 0;">
+                    <span class="chart-header">CARGO TREND (Tons per Time Bucket)</span>
+                    <div class="chart-legend">
+                        <span class="legend-dot" style="background: #10B981;"></span> Cargo Volume (Ton)
+                    </div>
+                    {!! $svgCargoTrend !!}
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    {{-- 3. PASSENGER COMPOSITION & PAYLOAD DONUTS --}}
+    <div class="section-title">2. PASSENGER COMPOSITION &amp; PAYLOAD (DONUT VISUALIZATION)</div>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
+        <tr>
+            <td style="width: 50%; vertical-align: top; padding-right: 4px;">
+                <div class="chart-box" style="text-align: center; padding: 6px;">
+                    <span class="chart-header" style="text-align: left;">PASSENGER COMPOSITION (Adult, Child, Infant)</span>
+                    <div style="margin: 4px auto; text-align: center;">
+                        {!! $svgPaxDonut !!}
+                    </div>
+                    <div style="font-size: 8px; color: #475569; margin-top: 4px; border-top: 1px solid #F1F5F9; padding-top: 4px;">
+                        <strong>Adult:</strong> {{ number_format($paxAnalytics['composition']['adult'] ?? 0) }} &bull;
+                        <strong>Child:</strong> {{ number_format($paxAnalytics['composition']['child'] ?? 0) }} &bull;
+                        <strong>Infant:</strong> {{ number_format($paxAnalytics['composition']['infant'] ?? 0) }}
+                    </div>
+                    <div style="font-size: 7.5px; color: #64748B; margin-top: 2px;">
+                        Transit: <strong>{{ number_format($paxAnalytics['composition']['transit'] ?? 0) }}</strong> |
+                        Transfer: <strong>{{ number_format($paxAnalytics['composition']['transfer'] ?? 0) }}</strong> |
+                        Crew: <strong>{{ number_format($paxAnalytics['composition']['crew'] ?? 0) }}</strong>
+                    </div>
+                </div>
+            </td>
+            <td style="width: 50%; vertical-align: top; padding-left: 4px;">
+                <div class="chart-box" style="text-align: center; padding: 6px;">
+                    <span class="chart-header" style="text-align: left;">PAYLOAD COMPOSITION (Cargo vs Baggage)</span>
+                    <div style="margin: 4px auto; text-align: center;">
+                        {!! $svgPayloadDonut !!}
+                    </div>
+                    <div style="font-size: 8px; color: #475569; margin-top: 4px; border-top: 1px solid #F1F5F9; padding-top: 4px;">
+                        <strong>Cargo:</strong> {{ number_format($kpis['cargo_kg']) }} kg ({{ number_format($kpis['cargo_ton'], 1) }} t) &bull;
+                        <strong>Baggage:</strong> {{ number_format($kpis['baggage_kg']) }} kg
+                    </div>
+                    <div style="font-size: 7.5px; color: #64748B; margin-top: 2px;">
+                        Pax / Flight: <strong>{{ $kpis['pax_per_flight'] }}</strong> Pax |
+                        Cargo / Flight: <strong>{{ $kpis['cargo_per_flight_t'] }}</strong> t |
+                        Baggage / Flight: <strong>{{ $kpis['baggage_per_flight_kg'] }}</strong> kg
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
 
     <div class="page-break"></div>
 

@@ -26,19 +26,58 @@ class FlightDailyReportPdfExport
         $reportMode = (int)($filters['report_mode'] ?? 1);
         $airportCode = $meta['airport'] ?? 'CGK';
 
-        // Compute full analytics payload
-        $analyticsData = $this->analytics->compute($filteredRecords, $meta, ['report_mode' => $reportMode]);
+        $analysisLevel = $filters['analysis_level'] ?? 'DAILY';
+        $analysisDate = $filters['analysis_date'] ?? '';
+        $analysisMonth = $filters['analysis_month'] ?? '';
+        $analysisYear = $filters['analysis_year'] ?? '';
 
-        // Generate vector SVGs for the 3 Mentor Hourly Charts
+        // Compute full analytics payload
+        $analyticsData = $this->analytics->compute($filteredRecords, $meta, [
+            'report_mode'    => $reportMode,
+            'time_basis'     => $filters['time_basis'] ?? 'scheduled',
+            'analysis_level' => $analysisLevel,
+            'report_date'    => $analysisDate,
+        ]);
+
+        // Generate vector SVGs for the 3 Mentor Hourly Charts (legacy support)
         $hourlyData = $analyticsData['hourly_charts']['hourly_data'] ?? [];
         $svgChart1 = $this->hourlyChartService->renderChartSvg('movement', $hourlyData, 720, 160);
         $svgChart2 = $this->hourlyChartService->renderChartSvg('departure', $hourlyData, 720, 140);
         $svgChart3 = $this->hourlyChartService->renderChartSvg('arrival', $hourlyData, 720, 140);
 
-        $analysisLevel = $filters['analysis_level'] ?? 'DAILY';
-        $analysisDate = $filters['analysis_date'] ?? '';
-        $analysisMonth = $filters['analysis_month'] ?? '';
-        $analysisYear = $filters['analysis_year'] ?? '';
+        // Generate vector SVGs for the Combined Analytics Section
+        $legFilter = strtoupper($filters['leg'] ?? 'ALL');
+        $trafficFilter = strtoupper($filters['traffic'] ?? 'ALL');
+        $combinedTrend = $analyticsData['combined_trend'] ?? [];
+
+        $svgFlightMovement = $this->hourlyChartService->renderCombinedFlightMovementSvg($combinedTrend, $legFilter, $trafficFilter, 720, 150);
+        $svgPaxTrend = $this->hourlyChartService->renderCombinedPaxTrendSvg($combinedTrend, $legFilter, 720, 120);
+        $svgCargoTrend = $this->hourlyChartService->renderCombinedCargoTrendSvg($combinedTrend, $legFilter, 720, 120);
+
+        // Generate Donut SVGs (Passenger Composition & Payload Composition)
+        $paxComp = $analyticsData['passenger_analytics']['composition'] ?? [];
+        $adult = (int)($paxComp['adult'] ?? 0);
+        $child = (int)($paxComp['child'] ?? 0);
+        $infant = (int)($paxComp['infant'] ?? 0);
+        $totalDirectPax = $adult + $child + $infant;
+
+        $paxSegments = [
+            ['label' => 'Adult', 'value' => $adult, 'color' => '#2563EB'],
+            ['label' => 'Child', 'value' => $child, 'color' => '#38BDF8'],
+            ['label' => 'Infant', 'value' => $infant, 'color' => '#A855F7'],
+        ];
+        $svgPaxDonut = $this->hourlyChartService->renderDonutSvg($paxSegments, 'TOTAL PAX', number_format($totalDirectPax), 130);
+
+        $cargoKg = (float)($analyticsData['kpis']['total_cargo_kg'] ?? 0);
+        $baggageKg = (float)($analyticsData['kpis']['total_baggage_kg'] ?? 0);
+        $totalPayload = $cargoKg + $baggageKg;
+        $payloadValFmt = ($totalPayload >= 1000) ? number_format($totalPayload / 1000, 1) . ' t' : number_format($totalPayload) . ' kg';
+
+        $payloadSegments = [
+            ['label' => 'Cargo', 'value' => $cargoKg, 'color' => '#10B981'],
+            ['label' => 'Baggage', 'value' => $baggageKg, 'color' => '#F59E0B'],
+        ];
+        $svgPayloadDonut = $this->hourlyChartService->renderDonutSvg($payloadSegments, 'TOTAL PAYLOAD', $payloadValFmt, 130);
 
         if ($analysisLevel === 'DAILY') {
             $analysisDateFormatted = (!empty($analysisDate) && $analysisDate !== 'ALL')
@@ -57,15 +96,23 @@ class FlightDailyReportPdfExport
         $pdf = Pdf::loadView('fdr.pdf', [
             'meta'                  => $meta,
             'filters'               => $filters,
+            'legFilter'             => $legFilter,
+            'trafficFilter'         => $trafficFilter,
             'analysisLevel'         => $analysisLevel,
             'analysisDate'          => $analysisDate,
             'analysisDateFormatted' => $analysisDateFormatted,
             'kpis'                  => $analyticsData['kpis'],
             'hourly'                => $hourlyData,
+            'combinedTrend'         => $combinedTrend,
             'peakHour'              => $analyticsData['hourly_charts']['peak_hour'] ?? null,
             'svgChart1'             => $svgChart1,
             'svgChart2'             => $svgChart2,
             'svgChart3'             => $svgChart3,
+            'svgFlightMovement'     => $svgFlightMovement,
+            'svgPaxTrend'           => $svgPaxTrend,
+            'svgCargoTrend'         => $svgCargoTrend,
+            'svgPaxDonut'           => $svgPaxDonut,
+            'svgPayloadDonut'       => $svgPayloadDonut,
             'schedVsReal'           => $analyticsData['schedule_vs_realization'],
             'paxAnalytics'          => $analyticsData['passenger_analytics'],
             'airlineRoute'          => $analyticsData['airline_route'],

@@ -93,10 +93,41 @@ class FlightDailyReportController extends Controller
      */
     public function config(Request $request, Upload $upload = null)
     {
-        if ($upload && $upload->report_type === 'fdr') {
-            return redirect()->route('fdr.dashboard', $upload->id);
+        if (!$upload || $upload->report_type !== 'fdr') {
+            $activeUploadId = session('fdr_active_upload_id');
+            if ($activeUploadId) {
+                $upload = Upload::where('id', $activeUploadId)->where('report_type', 'fdr')->first();
+            }
+            if (!$upload) {
+                $upload = Upload::where('report_type', 'fdr')->where('status', 'completed')->latest()->first();
+            }
         }
-        return $this->configRedirect();
+
+        if (!$upload) {
+            return $this->configRedirect();
+        }
+
+        $meta = $upload->report_data['meta'] ?? [];
+        $records = $upload->report_data['records'] ?? [];
+        $recordsCount = count($records);
+
+        $airlines = [];
+        $airports = [];
+        foreach ($records as $r) {
+            if (!empty($r['air_line']) && $r['air_line'] !== 'N/A') $airlines[$r['air_line']] = true;
+            if (!empty($r['city_1']) && $r['city_1'] !== 'N/A') $airports[$r['city_1']] = true;
+            if (!empty($r['city_2']) && $r['city_2'] !== 'N/A') $airports[$r['city_2']] = true;
+        }
+        ksort($airlines);
+        ksort($airports);
+
+        return view('fdr.config', [
+            'upload'       => $upload,
+            'meta'         => $meta,
+            'recordsCount' => $recordsCount,
+            'airlines'     => array_keys($airlines),
+            'airports'     => array_keys($airports),
+        ]);
     }
 
     /**
@@ -258,10 +289,11 @@ class FlightDailyReportController extends Controller
 
         // Compute analytical intelligence payload strictly for the filtered daily/scoped dataset
         $analytics = $this->analytics->compute($filteredRecords, $meta, [
-            'report_mode'   => $filters['report_mode'],
-            'time_basis'    => $filters['time_basis'],
-            'report_date'   => $scope['analysis_date'],
-            'otp_tolerance' => $filters['otp_tolerance'],
+            'report_mode'    => $filters['report_mode'],
+            'time_basis'     => $filters['time_basis'],
+            'report_date'    => $scope['analysis_date'],
+            'analysis_level' => $scope['analysis_level'],
+            'otp_tolerance'  => $filters['otp_tolerance'],
         ]);
 
         // Distinct filter lists for reactive dropdowns
@@ -347,10 +379,11 @@ class FlightDailyReportController extends Controller
 
         // Compute analytics strictly for the selected single day or analytical scope
         $analytics = $this->analytics->compute($filteredRecords, $meta, [
-            'report_mode'   => $filters['report_mode'],
-            'time_basis'    => $filters['time_basis'],
-            'report_date'   => $scope['analysis_date'],
-            'otp_tolerance' => $filters['otp_tolerance'],
+            'report_mode'    => $filters['report_mode'],
+            'time_basis'     => $filters['time_basis'],
+            'report_date'    => $scope['analysis_date'],
+            'analysis_level' => $scope['analysis_level'],
+            'otp_tolerance'  => $filters['otp_tolerance'],
         ]);
 
         // Pagination for detailed table
@@ -493,6 +526,8 @@ class FlightDailyReportController extends Controller
             } elseif ($scope['analysis_level'] === 'YEARLY') {
                 fputcsv($handle, ['Analysis Year:', $scope['analysis_year']]);
             }
+            fputcsv($handle, ['Flight Movement:', $filters['leg'] ?: 'ALL']);
+            fputcsv($handle, ['Traffic Type:', $filters['traffic'] ?: 'ALL']);
             fputcsv($handle, ['Operator:', $filters['operator'] ?: ($meta['operator'] ?? 'ALL AIRLINE')]);
             fputcsv($handle, ['Realization:', $filters['realization'] ?: ($meta['realization'] ?? 'YES')]);
             fputcsv($handle, ['Export Timestamp:', date('Y-m-d H:i:s')]);

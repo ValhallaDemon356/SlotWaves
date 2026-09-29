@@ -1152,13 +1152,18 @@ class FlightDailyReportAnalytics
 
     /**
      * Flight / Passenger / Cargo Trend (Combination Chart).
-     * Bars: Arrival Flights & Departure Flights.
-     * Lines: Passenger Trend & Cargo Trend.
-     * Granularity: Daily if multiple dates, Hourly (00:00-23:00) if single date.
+    /**
+     * Flight / Passenger / Cargo Trend (Combination Analytics).
+     * Synchronized series for:
+     * 1. Flight Movement (Grouped Bars: Arr Dom, Arr Int, Dep Dom, Dep Int)
+     * 2. Passenger Trend (Line: Arrival Pax & Departure Pax, Total Pax)
+     * 3. Cargo Trend (Line/Area: Arrival Cargo & Departure Cargo, Total Cargo kg/Ton)
+     * Granularity: Daily if multiple dates (Monthly/Custom), Hourly (00:00-23:00) if Daily/Single Date, Monthly if Yearly.
      */
     public function computeCombinedTrend(array $records, array $options = []): array
     {
         $timeBasis = $options['time_basis'] ?? 'scheduled';
+        $analysisLevel = strtoupper($options['analysis_level'] ?? 'DAILY');
 
         // Check date span
         $dates = [];
@@ -1173,22 +1178,119 @@ class FlightDailyReportAnalytics
 
         $labels = [];
         $fullDates = [];
+        $arrDomFlights = [];
+        $arrIntFlights = [];
+        $depDomFlights = [];
+        $depIntFlights = [];
         $arrivals = [];
         $departures = [];
+        $totalFlights = [];
+
+        $arrPassengers = [];
+        $depPassengers = [];
         $passengers = [];
+
+        $arrCargoKg = [];
+        $depCargoKg = [];
+        $cargoKg = [];
         $cargoTon = [];
+        $arrCargoTon = [];
+        $depCargoTon = [];
+
+        $arrBaggageKg = [];
+        $depBaggageKg = [];
+        $baggageKg = [];
+
         $granularity = 'daily';
 
-        if (count($dateKeys) > 1) {
+        if ($analysisLevel === 'YEARLY' && count($dateKeys) > 31) {
+            // Yearly granularity: 12 months (Jan to Dec)
+            $granularity = 'monthly';
+            $monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            $monthMap = [];
+            for ($m = 1; $m <= 12; $m++) {
+                $mKey = str_pad($m, 2, '0', STR_PAD_LEFT);
+                $monthMap[$mKey] = [
+                    'label' => $monthNames[$m - 1],
+                    'full_date' => $monthNames[$m - 1],
+                    'arr_dom' => 0, 'arr_int' => 0, 'dep_dom' => 0, 'dep_int' => 0,
+                    'arr_pax' => 0, 'dep_pax' => 0,
+                    'arr_cargo' => 0.0, 'dep_cargo' => 0.0,
+                    'arr_bagg' => 0.0, 'dep_bagg' => 0.0,
+                ];
+            }
+
+            foreach ($records as $r) {
+                $d = $r['operational_date'] ?? ($r['flight_date'] ?? '');
+                $mKey = substr($d, 5, 2);
+                if (!isset($monthMap[$mKey])) continue;
+
+                $isArr = ($r['direction'] ?? '') === 'ARRIVAL';
+                $tr = strtoupper(trim($r['traffic'] ?? ($r['route_type'] ?? 'DOMESTIC')));
+                $isDom = ($tr === 'DOM' || $tr === 'DOMESTIC');
+
+                if ($isArr) {
+                    if ($isDom) { $monthMap[$mKey]['arr_dom']++; } else { $monthMap[$mKey]['arr_int']++; }
+                } else {
+                    if ($isDom) { $monthMap[$mKey]['dep_dom']++; } else { $monthMap[$mKey]['dep_int']++; }
+                }
+
+                $pax = (int)($r['adult'] ?? 0) + (int)($r['child'] ?? 0) + (int)($r['infant'] ?? 0);
+                if ($pax === 0) { $pax = (int)($r['load'] ?? ($r['pax_total'] ?? 0)); }
+                if ($isArr) { $monthMap[$mKey]['arr_pax'] += $pax; } else { $monthMap[$mKey]['dep_pax'] += $pax; }
+
+                $cKg = (float)($r['cargo_kg'] ?? 0.0);
+                $bKg = (float)($r['baggage_kg'] ?? 0.0);
+                if ($isArr) {
+                    $monthMap[$mKey]['arr_cargo'] += $cKg;
+                    $monthMap[$mKey]['arr_bagg'] += $bKg;
+                } else {
+                    $monthMap[$mKey]['dep_cargo'] += $cKg;
+                    $monthMap[$mKey]['dep_bagg'] += $bKg;
+                }
+            }
+
+            foreach ($monthMap as $mKey => $val) {
+                $labels[] = $val['label'];
+                $fullDates[] = $val['full_date'];
+                $arrDomFlights[] = $val['arr_dom'];
+                $arrIntFlights[] = $val['arr_int'];
+                $depDomFlights[] = $val['dep_dom'];
+                $depIntFlights[] = $val['dep_int'];
+                $arrTot = $val['arr_dom'] + $val['arr_int'];
+                $depTot = $val['dep_dom'] + $val['dep_int'];
+                $arrivals[] = $arrTot;
+                $departures[] = $depTot;
+                $totalFlights[] = $arrTot + $depTot;
+
+                $arrPassengers[] = $val['arr_pax'];
+                $depPassengers[] = $val['dep_pax'];
+                $passengers[] = $val['arr_pax'] + $val['dep_pax'];
+
+                $arrCargoKg[] = round($val['arr_cargo'], 1);
+                $depCargoKg[] = round($val['dep_cargo'], 1);
+                $totC = $val['arr_cargo'] + $val['dep_cargo'];
+                $cargoKg[] = round($totC, 1);
+                $cargoTon[] = round($totC / 1000, 2);
+                $arrCargoTon[] = round($val['arr_cargo'] / 1000, 2);
+                $depCargoTon[] = round($val['dep_cargo'] / 1000, 2);
+
+                $arrBaggageKg[] = round($val['arr_bagg'], 1);
+                $depBaggageKg[] = round($val['dep_bagg'], 1);
+                $baggageKg[] = round($val['arr_bagg'] + $val['dep_bagg'], 1);
+            }
+        } elseif (count($dateKeys) > 1 && $analysisLevel !== 'DAILY') {
             // Multi-day granularity
             $granularity = 'daily';
             $dailyMap = [];
             foreach ($dateKeys as $dk) {
                 $dailyMap[$dk] = [
-                    'arr' => 0,
-                    'dep' => 0,
-                    'pax' => 0,
-                    'cargo_kg' => 0.0,
+                    'label' => date('d M', strtotime($dk)),
+                    'full_date' => date('d M Y', strtotime($dk)),
+                    'arr_dom' => 0, 'arr_int' => 0, 'dep_dom' => 0, 'dep_int' => 0,
+                    'arr_pax' => 0, 'dep_pax' => 0,
+                    'arr_cargo' => 0.0, 'dep_cargo' => 0.0,
+                    'arr_bagg' => 0.0, 'dep_bagg' => 0.0,
                 ];
             }
 
@@ -1197,45 +1299,81 @@ class FlightDailyReportAnalytics
                 if (!isset($dailyMap[$d])) continue;
 
                 $isArr = ($r['direction'] ?? '') === 'ARRIVAL';
+                $tr = strtoupper(trim($r['traffic'] ?? ($r['route_type'] ?? 'DOMESTIC')));
+                $isDom = ($tr === 'DOM' || $tr === 'DOMESTIC');
+
                 if ($isArr) {
-                    $dailyMap[$d]['arr']++;
+                    if ($isDom) { $dailyMap[$d]['arr_dom']++; } else { $dailyMap[$d]['arr_int']++; }
                 } else {
-                    $dailyMap[$d]['dep']++;
+                    if ($isDom) { $dailyMap[$d]['dep_dom']++; } else { $dailyMap[$d]['dep_int']++; }
                 }
 
                 $pax = (int)($r['adult'] ?? 0) + (int)($r['child'] ?? 0) + (int)($r['infant'] ?? 0);
-                if ($pax === 0) {
-                    $pax = (int)($r['load'] ?? ($r['pax_total'] ?? 0));
+                if ($pax === 0) { $pax = (int)($r['load'] ?? ($r['pax_total'] ?? 0)); }
+                if ($isArr) { $dailyMap[$d]['arr_pax'] += $pax; } else { $dailyMap[$d]['dep_pax'] += $pax; }
+
+                $cKg = (float)($r['cargo_kg'] ?? 0.0);
+                $bKg = (float)($r['baggage_kg'] ?? 0.0);
+                if ($isArr) {
+                    $dailyMap[$d]['arr_cargo'] += $cKg;
+                    $dailyMap[$d]['arr_bagg'] += $bKg;
+                } else {
+                    $dailyMap[$d]['dep_cargo'] += $cKg;
+                    $dailyMap[$d]['dep_bagg'] += $bKg;
                 }
-                $dailyMap[$d]['pax'] += $pax;
-                $dailyMap[$d]['cargo_kg'] += (float)($r['cargo_kg'] ?? 0.0);
             }
 
             foreach ($dailyMap as $dk => $val) {
-                $labels[] = date('d M', strtotime($dk));
-                $fullDates[] = date('d M Y', strtotime($dk));
-                $arrivals[] = $val['arr'];
-                $departures[] = $val['dep'];
-                $passengers[] = $val['pax'];
-                $cargoTon[] = round($val['cargo_kg'] / 1000, 2);
+                $labels[] = $val['label'];
+                $fullDates[] = $val['full_date'];
+                $arrDomFlights[] = $val['arr_dom'];
+                $arrIntFlights[] = $val['arr_int'];
+                $depDomFlights[] = $val['dep_dom'];
+                $depIntFlights[] = $val['dep_int'];
+                $arrTot = $val['arr_dom'] + $val['arr_int'];
+                $depTot = $val['dep_dom'] + $val['dep_int'];
+                $arrivals[] = $arrTot;
+                $departures[] = $depTot;
+                $totalFlights[] = $arrTot + $depTot;
+
+                $arrPassengers[] = $val['arr_pax'];
+                $depPassengers[] = $val['dep_pax'];
+                $passengers[] = $val['arr_pax'] + $val['dep_pax'];
+
+                $arrCargoKg[] = round($val['arr_cargo'], 1);
+                $depCargoKg[] = round($val['dep_cargo'], 1);
+                $totC = $val['arr_cargo'] + $val['dep_cargo'];
+                $cargoKg[] = round($totC, 1);
+                $cargoTon[] = round($totC / 1000, 2);
+                $arrCargoTon[] = round($val['arr_cargo'] / 1000, 2);
+                $depCargoTon[] = round($val['dep_cargo'] / 1000, 2);
+
+                $arrBaggageKg[] = round($val['arr_bagg'], 1);
+                $depBaggageKg[] = round($val['dep_bagg'], 1);
+                $baggageKg[] = round($val['arr_bagg'] + $val['dep_bagg'], 1);
             }
         } else {
-            // Single-day -> Hourly granularity (00:00 to 23:00)
+            // Single-day -> Hourly granularity strictly 24 hours (00:00 to 23:00)
             $granularity = 'hourly';
             $hourlyMap = [];
             for ($h = 0; $h < 24; $h++) {
                 $lbl = str_pad($h, 2, '0', STR_PAD_LEFT) . ':00';
+                $range = str_pad($h, 2, '0', STR_PAD_LEFT) . ':00–' . str_pad($h, 2, '0', STR_PAD_LEFT) . ':59';
                 $hourlyMap[$h] = [
                     'label' => $lbl,
-                    'arr' => 0,
-                    'dep' => 0,
-                    'pax' => 0,
-                    'cargo_kg' => 0.0,
+                    'full_date' => $range,
+                    'arr_dom' => 0, 'arr_int' => 0, 'dep_dom' => 0, 'dep_int' => 0,
+                    'arr_pax' => 0, 'dep_pax' => 0,
+                    'arr_cargo' => 0.0, 'dep_cargo' => 0.0,
+                    'arr_bagg' => 0.0, 'dep_bagg' => 0.0,
                 ];
             }
 
             foreach ($records as $r) {
                 $isArr = ($r['direction'] ?? '') === 'ARRIVAL';
+                $tr = strtoupper(trim($r['traffic'] ?? ($r['route_type'] ?? 'DOMESTIC')));
+                $isDom = ($tr === 'DOM' || $tr === 'DOMESTIC');
+
                 $ts = '';
                 if ($timeBasis === 'actual') {
                     $ts = $isArr ? ($r['aibt'] ?? ($r['sibt'] ?? '')) : ($r['aobt'] ?? ($r['sobt'] ?? ''));
@@ -1250,41 +1388,92 @@ class FlightDailyReportAnalytics
                 if ($h < 0 || $h > 23) $h = 0;
 
                 if ($isArr) {
-                    $hourlyMap[$h]['arr']++;
+                    if ($isDom) { $hourlyMap[$h]['arr_dom']++; } else { $hourlyMap[$h]['arr_int']++; }
                 } else {
-                    $hourlyMap[$h]['dep']++;
+                    if ($isDom) { $hourlyMap[$h]['dep_dom']++; } else { $hourlyMap[$h]['dep_int']++; }
                 }
 
                 $pax = (int)($r['adult'] ?? 0) + (int)($r['child'] ?? 0) + (int)($r['infant'] ?? 0);
                 if ($pax === 0) {
                     $pax = (int)($r['load'] ?? ($r['pax_total'] ?? 0));
                 }
-                $hourlyMap[$h]['pax'] += $pax;
-                $hourlyMap[$h]['cargo_kg'] += (float)($r['cargo_kg'] ?? 0.0);
+                if ($isArr) { $hourlyMap[$h]['arr_pax'] += $pax; } else { $hourlyMap[$h]['dep_pax'] += $pax; }
+
+                $cKg = (float)($r['cargo_kg'] ?? 0.0);
+                $bKg = (float)($r['baggage_kg'] ?? 0.0);
+                if ($isArr) {
+                    $hourlyMap[$h]['arr_cargo'] += $cKg;
+                    $hourlyMap[$h]['arr_bagg'] += $bKg;
+                } else {
+                    $hourlyMap[$h]['dep_cargo'] += $cKg;
+                    $hourlyMap[$h]['dep_bagg'] += $bKg;
+                }
             }
 
             for ($h = 0; $h < 24; $h++) {
                 $labels[] = $hourlyMap[$h]['label'];
-                $fullDates[] = $hourlyMap[$h]['label'];
-                $arrivals[] = $hourlyMap[$h]['arr'];
-                $departures[] = $hourlyMap[$h]['dep'];
-                $passengers[] = $hourlyMap[$h]['pax'];
-                $cargoTon[] = round($hourlyMap[$h]['cargo_kg'] / 1000, 2);
+                $fullDates[] = $hourlyMap[$h]['full_date'];
+                $arrDomFlights[] = $hourlyMap[$h]['arr_dom'];
+                $arrIntFlights[] = $hourlyMap[$h]['arr_int'];
+                $depDomFlights[] = $hourlyMap[$h]['dep_dom'];
+                $depIntFlights[] = $hourlyMap[$h]['dep_int'];
+                $arrTot = $hourlyMap[$h]['arr_dom'] + $hourlyMap[$h]['arr_int'];
+                $depTot = $hourlyMap[$h]['dep_dom'] + $hourlyMap[$h]['dep_int'];
+                $arrivals[] = $arrTot;
+                $departures[] = $depTot;
+                $totalFlights[] = $arrTot + $depTot;
+
+                $arrPassengers[] = $hourlyMap[$h]['arr_pax'];
+                $depPassengers[] = $hourlyMap[$h]['dep_pax'];
+                $passengers[] = $hourlyMap[$h]['arr_pax'] + $hourlyMap[$h]['dep_pax'];
+
+                $arrCargoKg[] = round($hourlyMap[$h]['arr_cargo'], 1);
+                $depCargoKg[] = round($hourlyMap[$h]['dep_cargo'], 1);
+                $totC = $hourlyMap[$h]['arr_cargo'] + $hourlyMap[$h]['dep_cargo'];
+                $cargoKg[] = round($totC, 1);
+                $cargoTon[] = round($totC / 1000, 2);
+                $arrCargoTon[] = round($hourlyMap[$h]['arr_cargo'] / 1000, 2);
+                $depCargoTon[] = round($hourlyMap[$h]['dep_cargo'] / 1000, 2);
+
+                $arrBaggageKg[] = round($hourlyMap[$h]['arr_bagg'], 1);
+                $depBaggageKg[] = round($hourlyMap[$h]['dep_bagg'], 1);
+                $baggageKg[] = round($hourlyMap[$h]['arr_bagg'] + $hourlyMap[$h]['dep_bagg'], 1);
             }
         }
 
         return [
-            'granularity'      => $granularity,
-            'labels'           => $labels,
-            'full_dates'       => $fullDates,
-            'arrivals'         => $arrivals,
-            'departures'       => $departures,
-            'passengers'       => $passengers,
-            'cargo_ton'        => $cargoTon,
-            'total_arrivals'   => array_sum($arrivals),
-            'total_departures' => array_sum($departures),
-            'total_passengers' => array_sum($passengers),
-            'total_cargo_ton'  => round(array_sum($cargoTon), 2),
+            'granularity'          => $granularity,
+            'labels'               => $labels,
+            'full_dates'           => $fullDates,
+            'time_ranges'          => $fullDates,
+            'arr_dom_flights'      => $arrDomFlights,
+            'arr_int_flights'      => $arrIntFlights,
+            'dep_dom_flights'      => $depDomFlights,
+            'dep_int_flights'      => $depIntFlights,
+            'arrivals'             => $arrivals,
+            'departures'           => $departures,
+            'total_flights'        => $totalFlights,
+            'arr_passengers'       => $arrPassengers,
+            'dep_passengers'       => $depPassengers,
+            'passengers'           => $passengers,
+            'arr_cargo_kg'         => $arrCargoKg,
+            'dep_cargo_kg'         => $depCargoKg,
+            'cargo_kg'             => $cargoKg,
+            'cargo_ton'            => $cargoTon,
+            'arr_cargo_ton'        => $arrCargoTon,
+            'dep_cargo_ton'        => $depCargoTon,
+            'arr_baggage_kg'       => $arrBaggageKg,
+            'dep_baggage_kg'       => $depBaggageKg,
+            'baggage_kg'           => $baggageKg,
+            'total_arrivals'       => array_sum($arrivals),
+            'total_departures'     => array_sum($departures),
+            'total_flights_count'  => array_sum($totalFlights),
+            'total_passengers'     => array_sum($passengers),
+            'total_arr_passengers' => array_sum($arrPassengers),
+            'total_dep_passengers' => array_sum($depPassengers),
+            'total_cargo_kg'       => round(array_sum($cargoKg), 1),
+            'total_cargo_ton'      => round(array_sum($cargoTon), 2),
+            'total_baggage_kg'     => round(array_sum($baggageKg), 1),
         ];
     }
 }

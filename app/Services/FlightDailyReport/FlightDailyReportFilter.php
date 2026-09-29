@@ -122,10 +122,19 @@ class FlightDailyReportFilter
                 }
             }
 
-            // 2. Leg Filter (ALL / ARRIVAL / DEPARTURE)
+            // 2. Leg Filter (ALL / ARR / DEP / ARRIVAL / DEPARTURE)
             if ($leg !== 'ALL' && !empty($leg)) {
                 $dir = strtoupper($r['direction'] ?? '');
-                if ($dir !== $leg && !str_starts_with(strtoupper($r['leg'] ?? ''), $leg[0])) {
+                $rLeg = strtoupper($r['leg'] ?? '');
+                $matchesLeg = false;
+                if ($leg === 'ARR' || $leg === 'ARRIVAL') {
+                    $matchesLeg = ($dir === 'ARRIVAL' || str_starts_with($rLeg, 'A') || str_starts_with($dir, 'A'));
+                } elseif ($leg === 'DEP' || $leg === 'DEPARTURE') {
+                    $matchesLeg = ($dir === 'DEPARTURE' || str_starts_with($rLeg, 'D') || str_starts_with($dir, 'D'));
+                } else {
+                    $matchesLeg = ($dir === $leg || str_starts_with($rLeg, $leg[0]));
+                }
+                if (!$matchesLeg) {
                     $excludedReasons["Leg mismatch (flight is {$dir})"] = ($excludedReasons["Leg mismatch (flight is {$dir})"] ?? 0) + 1;
                     continue;
                 }
@@ -140,13 +149,13 @@ class FlightDailyReportFilter
                 }
             }
 
-            // 4. Traffic Filter (ALL / DOMESTIC / INTERNATIONAL)
+            // 4. Traffic Filter (ALL / DOM / INTL / DOMESTIC / INTERNATIONAL)
             if ($traffic !== 'ALL' && !empty($traffic)) {
                 $tr = strtoupper(trim($r['traffic'] ?? ($r['route_type'] ?? 'DOMESTIC')));
                 $matches = ($tr === $traffic);
                 if (!$matches) {
                     if (($traffic === 'DOM' || $traffic === 'DOMESTIC') && ($tr === 'DOM' || $tr === 'DOMESTIC')) $matches = true;
-                    if (($traffic === 'INT' || $traffic === 'INTERNATIONAL') && ($tr === 'INT' || $tr === 'INTERNATIONAL')) $matches = true;
+                    if (($traffic === 'INT' || $traffic === 'INTL' || $traffic === 'INTERNATIONAL') && ($tr === 'INT' || $tr === 'INTL' || $tr === 'INTERNATIONAL')) $matches = true;
                 }
                 if (!$matches) {
                     $excludedReasons["Traffic mismatch ({$tr})"] = ($excludedReasons["Traffic mismatch ({$tr})"] ?? 0) + 1;

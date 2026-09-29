@@ -90,6 +90,8 @@ class HourlyChartService
                             $prevDayCount++;
                         }
                     }
+                } elseif (isset($r['hour']) && is_numeric($r['hour'])) {
+                    $schedHour = (int)$r['hour'];
                 }
             }
 
@@ -136,6 +138,8 @@ class HourlyChartService
                     if (!empty($actStr) && $actStr !== 'N/A'
                             && preg_match('/(\d{1,2}):(\d{2})/', (string)$actStr, $tm)) {
                         $actHour = (int)$tm[1];
+                    } elseif (isset($r['hour']) && is_numeric($r['hour'])) {
+                        $actHour = (int)$r['hour'];
                     }
                 }
 
@@ -527,6 +531,279 @@ class HourlyChartService
                 $svg .= "<circle cx=\"{$px}\" cy=\"{$py}\" r=\"2.5\" fill=\"#EF4444\" />\n";
             }
         }
+
+        $svg .= "</svg>\n";
+        return $svg;
+    }
+
+    /**
+     * Render SVG for Flight Movement grouped bars in PDF export.
+     */
+    public function renderCombinedFlightMovementSvg(array $trend, string $legFilter = 'ALL', string $trafficFilter = 'ALL', int $width = 750, int $height = 180): string
+    {
+        $padding = ['top' => 20, 'right' => 20, 'bottom' => 30, 'left' => 35];
+        $plotW = $width - $padding['left'] - $padding['right'];
+        $plotH = $height - $padding['top'] - $padding['bottom'];
+
+        $labels = $trend['labels'] ?? [];
+        $n = count($labels);
+        if ($n === 0) return "<svg width=\"{$width}\" height=\"{$height}\"></svg>";
+
+        $arrDom = $trend['arr_dom_flights'] ?? [];
+        $arrInt = $trend['arr_int_flights'] ?? [];
+        $depDom = $trend['dep_dom_flights'] ?? [];
+        $depInt = $trend['dep_int_flights'] ?? [];
+
+        $showArr = ($legFilter === 'ALL' || $legFilter === 'ARR' || $legFilter === 'ARRIVAL');
+        $showDep = ($legFilter === 'ALL' || $legFilter === 'DEP' || $legFilter === 'DEPARTURE');
+        $showDom = ($trafficFilter === 'ALL' || $trafficFilter === 'DOM' || $trafficFilter === 'DOMESTIC');
+        $showInt = ($trafficFilter === 'ALL' || $trafficFilter === 'INT' || $trafficFilter === 'INTL' || $trafficFilter === 'INTERNATIONAL');
+
+        $activeSeries = [];
+        if ($showArr && $showDom) $activeSeries[] = ['name' => 'Arr Dom', 'data' => $arrDom, 'color' => '#FBBF24'];
+        if ($showArr && $showInt) $activeSeries[] = ['name' => 'Arr Int', 'data' => $arrInt, 'color' => '#B45309'];
+        if ($showDep && $showDom) $activeSeries[] = ['name' => 'Dep Dom', 'data' => $depDom, 'color' => '#60A5FA'];
+        if ($showDep && $showInt) $activeSeries[] = ['name' => 'Dep Int', 'data' => $depInt, 'color' => '#1D4ED8'];
+
+        $numSeries = max(1, count($activeSeries));
+
+        $maxY = 5;
+        foreach ($activeSeries as $s) {
+            foreach ($s['data'] as $v) {
+                if ($v > $maxY) $maxY = $v;
+            }
+        }
+        $maxY = ceil($maxY * 1.15);
+
+        $colWidth = $plotW / $n;
+        $barWidth = max(2, min(14, ($colWidth * 0.8) / $numSeries));
+
+        $svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{$width}\" height=\"{$height}\" viewBox=\"0 0 {$width} {$height}\" style=\"background-color:#ffffff; font-family:sans-serif;\">\n";
+
+        for ($t = 0; $t <= 4; $t++) {
+            $val = round(($maxY / 4) * $t);
+            $y = $padding['top'] + $plotH - ($plotH * ($val / $maxY));
+            $svg .= "<line x1=\"{$padding['left']}\" y1=\"{$y}\" x2=\"" . ($width - $padding['right']) . "\" y2=\"{$y}\" stroke=\"#E2E8F0\" stroke-width=\"1\" stroke-dasharray=\"2,2\" />\n";
+            $svg .= "<text x=\"" . ($padding['left'] - 6) . "\" y=\"" . ($y + 3) . "\" fill=\"#64748B\" font-size=\"8.5\" text-anchor=\"end\">{$val}</text>\n";
+        }
+
+        for ($i = 0; $i < $n; $i++) {
+            $xCenter = $padding['left'] + ($i * $colWidth) + ($colWidth / 2);
+            $groupWidth = $numSeries * $barWidth;
+            $xStart = $xCenter - ($groupWidth / 2);
+
+            foreach ($activeSeries as $sIdx => $s) {
+                $val = $s['data'][$i] ?? 0;
+                $hBar = ($maxY > 0) ? ($val / $maxY) * $plotH : 0;
+                $yBar = $padding['top'] + $plotH - $hBar;
+                $xBar = $xStart + ($sIdx * $barWidth);
+
+                if ($hBar > 0) {
+                    $svg .= "<rect x=\"{$xBar}\" y=\"{$yBar}\" width=\"" . max(1, $barWidth - 1) . "\" height=\"{$hBar}\" fill=\"{$s['color']}\" rx=\"1.5\" />\n";
+                }
+            }
+
+            $showLabel = ($n <= 12) || ($n <= 24 && $i % 2 === 0) || ($i % 3 === 0);
+            if ($showLabel && isset($labels[$i])) {
+                $svg .= "<text x=\"{$xCenter}\" y=\"" . ($height - 10) . "\" fill=\"#64748B\" font-size=\"8.5\" text-anchor=\"middle\">{$labels[$i]}</text>\n";
+            }
+        }
+
+        $svg .= "</svg>\n";
+        return $svg;
+    }
+
+    /**
+     * Render SVG for Passenger Trend line in PDF export.
+     */
+    public function renderCombinedPaxTrendSvg(array $trend, string $legFilter = 'ALL', int $width = 750, int $height = 150): string
+    {
+        $padding = ['top' => 20, 'right' => 20, 'bottom' => 25, 'left' => 45];
+        $plotW = $width - $padding['left'] - $padding['right'];
+        $plotH = $height - $padding['top'] - $padding['bottom'];
+
+        $labels = $trend['labels'] ?? [];
+        $n = count($labels);
+        if ($n === 0) return "<svg width=\"{$width}\" height=\"{$height}\"></svg>";
+
+        $arrPax = $trend['arr_passengers'] ?? [];
+        $depPax = $trend['dep_passengers'] ?? [];
+
+        $showArr = ($legFilter === 'ALL' || $legFilter === 'ARR' || $legFilter === 'ARRIVAL');
+        $showDep = ($legFilter === 'ALL' || $legFilter === 'DEP' || $legFilter === 'DEPARTURE');
+
+        $lines = [];
+        if ($legFilter === 'ALL') {
+            $lines[] = ['name' => 'Arrival Pax', 'data' => $arrPax, 'color' => '#F59E0B'];
+            $lines[] = ['name' => 'Departure Pax', 'data' => $depPax, 'color' => '#2563EB'];
+        } elseif ($showArr) {
+            $lines[] = ['name' => 'Arrival Pax', 'data' => $arrPax, 'color' => '#F59E0B'];
+        } else {
+            $lines[] = ['name' => 'Departure Pax', 'data' => $depPax, 'color' => '#2563EB'];
+        }
+
+        $maxY = 100;
+        foreach ($lines as $ln) {
+            foreach ($ln['data'] as $v) {
+                if ($v > $maxY) $maxY = $v;
+            }
+        }
+        $maxY = ceil($maxY * 1.15);
+
+        $colWidth = $plotW / max(1, $n - 1);
+
+        $svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{$width}\" height=\"{$height}\" viewBox=\"0 0 {$width} {$height}\" style=\"background-color:#ffffff; font-family:sans-serif;\">\n";
+
+        for ($t = 0; $t <= 3; $t++) {
+            $val = round(($maxY / 3) * $t);
+            $y = $padding['top'] + $plotH - ($plotH * ($val / $maxY));
+            $svg .= "<line x1=\"{$padding['left']}\" y1=\"{$y}\" x2=\"" . ($width - $padding['right']) . "\" y2=\"{$y}\" stroke=\"#E2E8F0\" stroke-width=\"1\" stroke-dasharray=\"2,2\" />\n";
+            $valFmt = ($val >= 1000) ? round($val / 1000, 1) . 'k' : $val;
+            $svg .= "<text x=\"" . ($padding['left'] - 6) . "\" y=\"" . ($y + 3) . "\" fill=\"#64748B\" font-size=\"8.5\" text-anchor=\"end\">{$valFmt}</text>\n";
+        }
+
+        foreach ($lines as $ln) {
+            $pts = [];
+            for ($i = 0; $i < $n; $i++) {
+                $val = $ln['data'][$i] ?? 0;
+                $x = $padding['left'] + ($i * $colWidth);
+                $y = $padding['top'] + $plotH - (($val / $maxY) * $plotH);
+                $pts[] = "{$x},{$y}";
+            }
+            if (!empty($pts)) {
+                $svg .= "<polyline points=\"" . implode(' ', $pts) . "\" fill=\"none\" stroke=\"{$ln['color']}\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n";
+                foreach ($pts as $pt) {
+                    [$px, $py] = explode(',', $pt);
+                    $svg .= "<circle cx=\"{$px}\" cy=\"{$py}\" r=\"2\" fill=\"{$ln['color']}\" />\n";
+                }
+            }
+        }
+
+        for ($i = 0; $i < $n; $i++) {
+            $showLabel = ($n <= 12) || ($n <= 24 && $i % 2 === 0) || ($i % 3 === 0);
+            if ($showLabel && isset($labels[$i])) {
+                $x = $padding['left'] + ($i * $colWidth);
+                $svg .= "<text x=\"{$x}\" y=\"" . ($height - 8) . "\" fill=\"#64748B\" font-size=\"8.5\" text-anchor=\"middle\">{$labels[$i]}</text>\n";
+            }
+        }
+
+        $svg .= "</svg>\n";
+        return $svg;
+    }
+
+    /**
+     * Render SVG for Cargo Trend area/line in PDF export.
+     */
+    public function renderCombinedCargoTrendSvg(array $trend, string $legFilter = 'ALL', int $width = 750, int $height = 150): string
+    {
+        $padding = ['top' => 20, 'right' => 20, 'bottom' => 25, 'left' => 45];
+        $plotW = $width - $padding['left'] - $padding['right'];
+        $plotH = $height - $padding['top'] - $padding['bottom'];
+
+        $labels = $trend['labels'] ?? [];
+        $n = count($labels);
+        if ($n === 0) return "<svg width=\"{$width}\" height=\"{$height}\"></svg>";
+
+        $arrCargo = $trend['arr_cargo_ton'] ?? [];
+        $depCargo = $trend['dep_cargo_ton'] ?? [];
+        $totCargo = $trend['cargo_ton'] ?? [];
+
+        $data = $totCargo;
+        $color = '#10B981';
+        if ($legFilter === 'ARR' || $legFilter === 'ARRIVAL') {
+            $data = $arrCargo;
+        } elseif ($legFilter === 'DEP' || $legFilter === 'DEPARTURE') {
+            $data = $depCargo;
+            $color = '#059669';
+        }
+
+        $maxY = 5;
+        foreach ($data as $v) {
+            if ($v > $maxY) $maxY = $v;
+        }
+        $maxY = ceil($maxY * 1.15);
+
+        $colWidth = $plotW / max(1, $n - 1);
+
+        $svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{$width}\" height=\"{$height}\" viewBox=\"0 0 {$width} {$height}\" style=\"background-color:#ffffff; font-family:sans-serif;\">\n";
+
+        for ($t = 0; $t <= 3; $t++) {
+            $val = round(($maxY / 3) * $t, 1);
+            $y = $padding['top'] + $plotH - ($plotH * ($val / $maxY));
+            $svg .= "<line x1=\"{$padding['left']}\" y1=\"{$y}\" x2=\"" . ($width - $padding['right']) . "\" y2=\"{$y}\" stroke=\"#E2E8F0\" stroke-width=\"1\" stroke-dasharray=\"2,2\" />\n";
+            $svg .= "<text x=\"" . ($padding['left'] - 6) . "\" y=\"" . ($y + 3) . "\" fill=\"#64748B\" font-size=\"8.5\" text-anchor=\"end\">{$val} t</text>\n";
+        }
+
+        $pts = [];
+        for ($i = 0; $i < $n; $i++) {
+            $val = $data[$i] ?? 0;
+            $x = $padding['left'] + ($i * $colWidth);
+            $y = $padding['top'] + $plotH - (($val / $maxY) * $plotH);
+            $pts[] = "{$x},{$y}";
+        }
+
+        if (!empty($pts)) {
+            $firstX = $padding['left'];
+            $lastX = $padding['left'] + (($n - 1) * $colWidth);
+            $bottomY = $padding['top'] + $plotH;
+            $areaPoints = "{$firstX},{$bottomY} " . implode(' ', $pts) . " {$lastX},{$bottomY}";
+            $svg .= "<polygon points=\"{$areaPoints}\" fill=\"#ECFDF5\" />\n";
+
+            $svg .= "<polyline points=\"" . implode(' ', $pts) . "\" fill=\"none\" stroke=\"{$color}\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n";
+            foreach ($pts as $pt) {
+                [$px, $py] = explode(',', $pt);
+                $svg .= "<circle cx=\"{$px}\" cy=\"{$py}\" r=\"2\" fill=\"{$color}\" />\n";
+            }
+        }
+
+        for ($i = 0; $i < $n; $i++) {
+            $showLabel = ($n <= 12) || ($n <= 24 && $i % 2 === 0) || ($i % 3 === 0);
+            if ($showLabel && isset($labels[$i])) {
+                $x = $padding['left'] + ($i * $colWidth);
+                $svg .= "<text x=\"{$x}\" y=\"" . ($height - 8) . "\" fill=\"#64748B\" font-size=\"8.5\" text-anchor=\"middle\">{$labels[$i]}</text>\n";
+            }
+        }
+
+        $svg .= "</svg>\n";
+        return $svg;
+    }
+
+    /**
+     * Render SVG Donut Chart for Passenger / Payload Composition in PDF export.
+     */
+    public function renderDonutSvg(array $segments, string $centerTitle, string $centerValue, int $size = 150): string
+    {
+        $cx = $size / 2;
+        $cy = $size / 2;
+        $radius = ($size / 2) - 18;
+        $strokeWidth = 16;
+        $circ = 2 * M_PI * $radius;
+
+        $total = 0;
+        foreach ($segments as $s) {
+            $total += (float)($s['value'] ?? 0);
+        }
+
+        $svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{$size}\" height=\"{$size}\" viewBox=\"0 0 {$size} {$size}\" style=\"background-color:#ffffff; font-family:sans-serif;\">\n";
+        $svg .= "<circle cx=\"{$cx}\" cy=\"{$cy}\" r=\"{$radius}\" fill=\"transparent\" stroke=\"#F1F5F9\" stroke-width=\"{$strokeWidth}\" />\n";
+
+        if ($total > 0) {
+            $accum = 0;
+            foreach ($segments as $s) {
+                $val = (float)($s['value'] ?? 0);
+                if ($val <= 0) continue;
+                $pct = $val / $total;
+                $dash = round($pct * $circ, 2);
+                $gap = round($circ - $dash, 2);
+                $offset = round(-$accum, 2);
+
+                $svg .= "<circle cx=\"{$cx}\" cy=\"{$cy}\" r=\"{$radius}\" fill=\"transparent\" stroke=\"{$s['color']}\" stroke-width=\"{$strokeWidth}\" stroke-dasharray=\"{$dash} {$gap}\" stroke-dashoffset=\"{$offset}\" transform=\"rotate(-90 {$cx} {$cy})\" />\n";
+                $accum += $dash;
+            }
+        }
+
+        $svg .= "<text x=\"{$cx}\" y=\"" . ($cy - 5) . "\" text-anchor=\"middle\" fill=\"#64748B\" font-size=\"8\" font-weight=\"bold\" letter-spacing=\"0.5\">" . htmlspecialchars($centerTitle) . "</text>\n";
+        $svg .= "<text x=\"{$cx}\" y=\"" . ($cy + 11) . "\" text-anchor=\"middle\" fill=\"#0F172A\" font-size=\"12\" font-weight=\"900\">" . htmlspecialchars($centerValue) . "</text>\n";
 
         $svg .= "</svg>\n";
         return $svg;
