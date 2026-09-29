@@ -332,6 +332,17 @@
         </table>
     </div>
 
+    {{-- Schedule Variance Distribution Chart --}}
+    @if(!empty($svgScheduleVariance))
+    <div class="chart-box" style="margin-bottom: 8px;">
+        <span class="chart-header">SCHEDULE VARIANCE DISTRIBUTION (Early vs On Time vs Late &bull; 9 Semantic Buckets)</span>
+        <div style="font-size: 7.5px; color: #64748B; margin-bottom: 4px;">
+            How early or late actual movement occurred compared with schedule (Arrival: AIBT &minus; SIBT &bull; Departure: AOBT &minus; SOBT)
+        </div>
+        {!! $svgScheduleVariance !!}
+    </div>
+    @endif
+
     {{-- Schedule vs Realization & Stand / Runway Utilization --}}
     <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
         <tr>

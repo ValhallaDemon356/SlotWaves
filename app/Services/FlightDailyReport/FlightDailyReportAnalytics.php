@@ -34,6 +34,14 @@ class FlightDailyReportAnalytics
         $timeBasis   = $options['time_basis'] ?? 'scheduled';
         $reportDate  = $options['report_date'] ?? ($meta['period_start'] ?? '');
 
+        // Section 11: Exclude PAX ALL summary rows from all analytics
+        $records = array_values(array_filter($records, function ($r) {
+            if (($r['row_type'] ?? 'MOVEMENT') === 'SUMMARY') return false;
+            $al = trim($r['air_line'] ?? '');
+            if (strcasecmp($al, 'PAX ALL') === 0 || stripos($al, 'PAX ALL') !== false) return false;
+            return true;
+        }));
+
         // 1. 3 Mentor Hourly Charts (basis-aware)
         $hourlyCharts = $this->hourlyChartService->buildHourlyCharts(
             $records, $airportCode, $timeBasis, $reportDate
@@ -79,6 +87,7 @@ class FlightDailyReportAnalytics
         return [
             'meta'                    => $meta,
             'kpis'                    => $kpis,
+            'kpi'                     => $kpis,
             'hourly_charts'           => $hourlyCharts,
             'combined_trend'          => $combinedTrend,
             'schedule_vs_realization' => $schedVsReal,
@@ -86,6 +95,7 @@ class FlightDailyReportAnalytics
             'passenger_analytics'     => $paxAnalytics,
             'pax_analytics'           => $paxAnalytics,
             'airline_route'           => $airlineRoute,
+            'airline_analysis'        => $airlineRoute['ranked_airlines'] ?? [],
             'fleet_performance'       => $fleetPerformance,
             'ground_operations'       => $groundOps,
             'ground_ops'              => $groundOps,
@@ -130,9 +140,9 @@ class FlightDailyReportAnalytics
         $depInt = 0;
 
         foreach ($records as $r) {
-            $isArr = ($r['direction'] ?? '') === 'ARRIVAL';
-            $tr = strtoupper(trim($r['traffic'] ?? ($r['route_type'] ?? 'DOMESTIC')));
-            $isDom = in_array($tr, ['DOM', 'DOMESTIC'], true);
+            $isArr = ($r['direction'] ?? '') === 'ARRIVAL' || ($r['movement_type'] ?? '') === 'A' || ($r['flow'] ?? '') === 'ARR';
+            $tr = strtoupper(trim($r['traffic'] ?? ($r['route_type'] ?? ($r['dom_int'] ?? 'DOMESTIC'))));
+            $isDom = in_array($tr, ['DOM', 'DOMESTIC', 'D'], true);
 
             if ($isArr) {
                 $arrivals++;
@@ -155,7 +165,7 @@ class FlightDailyReportAnalytics
             $transfer += $rTransfer;
 
             $cap = (int)($r['cap'] ?? ($r['capacity'] ?? 0));
-            $load = (int)($r['load'] ?? ($r['pax_total'] ?? ($rAdult + $rChild + $rInfant)));
+            $load = (int)($r['load'] ?? ($r['pax_total'] ?? ($r['total_passenger'] ?? ($rAdult + $rChild + $rInfant))));
             $totalCap += $cap;
             $totalLoad += $load;
 
@@ -202,7 +212,9 @@ class FlightDailyReportAnalytics
         return [
             'total_flights'            => $totalFlights,
             'arrivals'                 => $arrivals,
+            'total_arrivals'           => $arrivals,
             'departures'               => $departures,
+            'total_departures'         => $departures,
             'arrivals_dom'             => $arrDom,
             'arrivals_int'             => $arrInt,
             'departures_dom'           => $depDom,
@@ -266,29 +278,137 @@ class FlightDailyReportAnalytics
                 'scheduled' => 0, 'actual' => 0, 'avg_variance' => 0, 'var_sum' => 0];
         }
 
-        // Histogram bins (9 bins matching Airport Operations Intelligence mockup)
+        // Histogram bins (9 bins matching Schedule Variance Distribution)
         $histBins = [
-            '<-60'    => ['label' => '<-60',    'count' => 0, 'min' => PHP_INT_MIN, 'max' => -61],
-            '-60~-31' => ['label' => '-60~-31', 'count' => 0, 'min' => -60,        'max' => -31],
-            '-30~-16' => ['label' => '-30~-16', 'count' => 0, 'min' => -30,        'max' => -16],
-            '-15~-6'  => ['label' => '-15~-6',  'count' => 0, 'min' => -15,        'max' => -6],
-            '-5~5'    => ['label' => '-5~5',    'count' => 0, 'min' => -5,         'max' => 5],
-            '6~15'    => ['label' => '6~15',    'count' => 0, 'min' => 6,          'max' => 15],
-            '16~30'   => ['label' => '16~30',   'count' => 0, 'min' => 16,         'max' => 30],
-            '31~60'   => ['label' => '31~60',   'count' => 0, 'min' => 31,         'max' => 60],
-            '>60'     => ['label' => '>60',     'count' => 0, 'min' => 61,         'max' => PHP_INT_MAX],
+            'early_gt60' => [
+                'key'           => 'early_gt60',
+                'label'         => '>60 MIN EARLY',
+                'legacy_label'  => '<-60',
+                'category'      => 'EARLY',
+                'group'         => 'EARLY',
+                'variance_desc' => '>60 minutes early',
+                'desc'          => '>60 minutes early',
+                'count'         => 0,
+                'min'           => PHP_INT_MIN,
+                'max'           => -61,
+                'color'         => '#1E3A8A', // dark blue
+            ],
+            'early_31_60' => [
+                'key'           => 'early_31_60',
+                'label'         => '31–60 MIN EARLY',
+                'legacy_label'  => '-60~-31',
+                'category'      => 'EARLY',
+                'group'         => 'EARLY',
+                'variance_desc' => '31–60 minutes early',
+                'desc'          => '31–60 minutes early',
+                'count'         => 0,
+                'min'           => -60,
+                'max'           => -31,
+                'color'         => '#2563EB', // medium blue
+            ],
+            'early_16_30' => [
+                'key'           => 'early_16_30',
+                'label'         => '16–30 MIN EARLY',
+                'legacy_label'  => '-30~-16',
+                'category'      => 'EARLY',
+                'group'         => 'EARLY',
+                'variance_desc' => '16–30 minutes early',
+                'desc'          => '16–30 minutes early',
+                'count'         => 0,
+                'min'           => -30,
+                'max'           => -16,
+                'color'         => '#38BDF8', // light blue
+            ],
+            'early_6_15' => [
+                'key'           => 'early_6_15',
+                'label'         => '6–15 MIN EARLY',
+                'legacy_label'  => '-15~-6',
+                'category'      => 'EARLY',
+                'group'         => 'EARLY',
+                'variance_desc' => '6–15 minutes early',
+                'desc'          => '6–15 minutes early',
+                'count'         => 0,
+                'min'           => -15,
+                'max'           => -6,
+                'color'         => '#BAE6FD', // very light blue
+            ],
+            'on_time' => [
+                'key'           => 'on_time',
+                'label'         => 'ON TIME ±5 MIN',
+                'legacy_label'  => '-5~5',
+                'category'      => 'ON TIME',
+                'group'         => 'ON TIME',
+                'variance_desc' => 'Within ±5 minutes',
+                'desc'          => 'Within ±5 minutes',
+                'count'         => 0,
+                'min'           => -5,
+                'max'           => 5,
+                'color'         => '#10B981', // green
+            ],
+            'late_6_15' => [
+                'key'           => 'late_6_15',
+                'label'         => '6–15 MIN LATE',
+                'legacy_label'  => '6~15',
+                'category'      => 'LATE',
+                'group'         => 'LATE',
+                'variance_desc' => '6–15 minutes late',
+                'desc'          => '6–15 minutes late',
+                'count'         => 0,
+                'min'           => 6,
+                'max'           => 15,
+                'color'         => '#FDE047', // light amber
+            ],
+            'late_16_30' => [
+                'key'           => 'late_16_30',
+                'label'         => '16–30 MIN LATE',
+                'legacy_label'  => '16~30',
+                'category'      => 'LATE',
+                'group'         => 'LATE',
+                'variance_desc' => '16–30 minutes late',
+                'desc'          => '16–30 minutes late',
+                'count'         => 0,
+                'min'           => 16,
+                'max'           => 30,
+                'color'         => '#F59E0B', // amber
+            ],
+            'late_31_60' => [
+                'key'           => 'late_31_60',
+                'label'         => '31–60 MIN LATE',
+                'legacy_label'  => '31~60',
+                'category'      => 'LATE',
+                'group'         => 'LATE',
+                'variance_desc' => '31–60 minutes late',
+                'desc'          => '31–60 minutes late',
+                'count'         => 0,
+                'min'           => 31,
+                'max'           => 60,
+                'color'         => '#EA580C', // orange/red
+            ],
+            'late_gt60' => [
+                'key'           => 'late_gt60',
+                'label'         => '>60 MIN LATE',
+                'legacy_label'  => '>60',
+                'category'      => 'LATE',
+                'group'         => 'LATE',
+                'variance_desc' => '>60 minutes late',
+                'desc'          => '>60 minutes late',
+                'count'         => 0,
+                'min'           => 61,
+                'max'           => PHP_INT_MAX,
+                'color'         => '#DC2626', // red
+            ],
         ];
 
         foreach ($records as $r) {
-            $isRealized = !empty($r['is_realized']);
+            $isRealized = !empty($r['is_realized']) || !empty($r['realization']) || (!empty($r['aibt']) && $r['aibt'] !== 'N/A') || (!empty($r['aobt']) && $r['aobt'] !== 'N/A') || isset($r['delay_minutes']);
             if (!$isRealized) continue;
 
             $delay = isset($r['delay_minutes']) ? (int)$r['delay_minutes'] : null;
             if ($delay === null) {
                 // Try to compute from raw timestamps
-                $isArr   = ($r['direction'] ?? '') === 'ARRIVAL';
-                $schedTs = $isArr ? ($r['sibt'] ?? '') : ($r['sobt'] ?? '');
-                $actTs   = $isArr ? ($r['aibt'] ?? '') : ($r['aobt'] ?? '');
+                $isArr   = ($r['direction'] ?? '') === 'ARRIVAL' || ($r['movement_type'] ?? '') === 'A' || ($r['flow'] ?? '') === 'ARR';
+                $schedTs = $isArr ? ($r['sibt'] ?? ($r['arr_sched'] ?? '')) : ($r['sobt'] ?? ($r['dep_sched'] ?? ''));
+                $actTs   = $isArr ? ($r['aibt'] ?? ($r['arr_actual'] ?? '')) : ($r['aobt'] ?? ($r['dep_actual'] ?? ''));
                 if ($schedTs && $actTs && $schedTs !== 'N/A' && $actTs !== 'N/A') {
                     if (preg_match('/(\d{1,2}):(\d{2})/', $schedTs, $sm) && preg_match('/(\d{1,2}):(\d{2})/', $actTs, $am)) {
                         $delay = ((int)$am[1] * 60 + (int)$am[2]) - ((int)$sm[1] * 60 + (int)$sm[2]);
@@ -330,25 +450,25 @@ class FlightDailyReportAnalytics
                 }
             }
 
-            // Histogram (9 standard operational bins)
+            // Histogram (9 standard schedule variance bins)
             if ($delay < -60) {
-                $histBins['<-60']['count']++;
+                $histBins['early_gt60']['count']++;
             } elseif ($delay <= -31) {
-                $histBins['-60~-31']['count']++;
+                $histBins['early_31_60']['count']++;
             } elseif ($delay <= -16) {
-                $histBins['-30~-16']['count']++;
+                $histBins['early_16_30']['count']++;
             } elseif ($delay <= -6) {
-                $histBins['-15~-6']['count']++;
+                $histBins['early_6_15']['count']++;
             } elseif ($delay <= 5) {
-                $histBins['-5~5']['count']++;
+                $histBins['on_time']['count']++;
             } elseif ($delay <= 15) {
-                $histBins['6~15']['count']++;
+                $histBins['late_6_15']['count']++;
             } elseif ($delay <= 30) {
-                $histBins['16~30']['count']++;
+                $histBins['late_16_30']['count']++;
             } elseif ($delay <= 60) {
-                $histBins['31~60']['count']++;
+                $histBins['late_31_60']['count']++;
             } else {
-                $histBins['>60']['count']++;
+                $histBins['late_gt60']['count']++;
             }
         }
 
@@ -408,11 +528,24 @@ class FlightDailyReportAnalytics
             'min_delay_num'         => $minDelay,
             'max_delay'             => $hasEvaluated ? ($maxDelay >= 0 ? "+{$maxDelay}" : "{$maxDelay}") . ' min' : 'N/A',
             'min_delay'             => $hasEvaluated ? ($minDelay >= 0 ? "+{$minDelay}" : "{$minDelay}") . ' min' : 'N/A',
+            'title'                 => 'SCHEDULE VARIANCE DISTRIBUTION',
+            'subtitle'              => 'How early or late actual movement occurred compared with schedule.',
             // legacy compat
             'minor_delay_count'     => $lateBeyond,
             'severe_delay_count'    => 0,
             'hourly_comparison'     => array_values($hourlyVariances),
             'histogram'             => array_values($histBins),
+            'hist_bins'             => $histBins,
+            'summary'               => [
+                'early'   => $histBins['early_gt60']['count'] + $histBins['early_31_60']['count'] + $histBins['early_16_30']['count'] + $histBins['early_6_15']['count'],
+                'on_time' => $histBins['on_time']['count'],
+                'late'    => $histBins['late_6_15']['count'] + $histBins['late_16_30']['count'] + $histBins['late_31_60']['count'] + $histBins['late_gt60']['count'],
+            ],
+            'variance_summary'      => [
+                'early_count'   => $histBins['early_gt60']['count'] + $histBins['early_31_60']['count'] + $histBins['early_16_30']['count'] + $histBins['early_6_15']['count'],
+                'on_time_count' => $histBins['on_time']['count'],
+                'late_count'    => $histBins['late_6_15']['count'] + $histBins['late_16_30']['count'] + $histBins['late_31_60']['count'] + $histBins['late_gt60']['count'],
+            ],
             'top10_delays'          => $top10,
         ];
     }
@@ -1215,7 +1348,9 @@ class FlightDailyReportAnalytics
                     'full_date' => $monthNames[$m - 1],
                     'arr_dom' => 0, 'arr_int' => 0, 'dep_dom' => 0, 'dep_int' => 0,
                     'arr_pax' => 0, 'dep_pax' => 0,
+                    'arr_dom_pax' => 0, 'arr_int_pax' => 0, 'dep_dom_pax' => 0, 'dep_int_pax' => 0,
                     'arr_cargo' => 0.0, 'dep_cargo' => 0.0,
+                    'arr_dom_cargo' => 0.0, 'arr_int_cargo' => 0.0, 'dep_dom_cargo' => 0.0, 'dep_int_cargo' => 0.0,
                     'arr_bagg' => 0.0, 'dep_bagg' => 0.0,
                 ];
             }
@@ -1229,26 +1364,49 @@ class FlightDailyReportAnalytics
                 $tr = strtoupper(trim($r['traffic'] ?? ($r['route_type'] ?? 'DOMESTIC')));
                 $isDom = ($tr === 'DOM' || $tr === 'DOMESTIC');
 
-                if ($isArr) {
-                    if ($isDom) { $monthMap[$mKey]['arr_dom']++; } else { $monthMap[$mKey]['arr_int']++; }
-                } else {
-                    if ($isDom) { $monthMap[$mKey]['dep_dom']++; } else { $monthMap[$mKey]['dep_int']++; }
-                }
-
                 $pax = (int)($r['adult'] ?? 0) + (int)($r['child'] ?? 0) + (int)($r['infant'] ?? 0);
                 if ($pax === 0) { $pax = (int)($r['load'] ?? ($r['pax_total'] ?? 0)); }
-                if ($isArr) { $monthMap[$mKey]['arr_pax'] += $pax; } else { $monthMap[$mKey]['dep_pax'] += $pax; }
 
                 $cKg = (float)($r['cargo_kg'] ?? 0.0);
                 $bKg = (float)($r['baggage_kg'] ?? 0.0);
+
                 if ($isArr) {
+                    if ($isDom) {
+                        $monthMap[$mKey]['arr_dom']++;
+                        $monthMap[$mKey]['arr_dom_pax'] += $pax;
+                        $monthMap[$mKey]['arr_dom_cargo'] += $cKg;
+                    } else {
+                        $monthMap[$mKey]['arr_int']++;
+                        $monthMap[$mKey]['arr_int_pax'] += $pax;
+                        $monthMap[$mKey]['arr_int_cargo'] += $cKg;
+                    }
+                    $monthMap[$mKey]['arr_pax'] += $pax;
                     $monthMap[$mKey]['arr_cargo'] += $cKg;
                     $monthMap[$mKey]['arr_bagg'] += $bKg;
                 } else {
+                    if ($isDom) {
+                        $monthMap[$mKey]['dep_dom']++;
+                        $monthMap[$mKey]['dep_dom_pax'] += $pax;
+                        $monthMap[$mKey]['dep_dom_cargo'] += $cKg;
+                    } else {
+                        $monthMap[$mKey]['dep_int']++;
+                        $monthMap[$mKey]['dep_int_pax'] += $pax;
+                        $monthMap[$mKey]['dep_int_cargo'] += $cKg;
+                    }
+                    $monthMap[$mKey]['dep_pax'] += $pax;
                     $monthMap[$mKey]['dep_cargo'] += $cKg;
                     $monthMap[$mKey]['dep_bagg'] += $bKg;
                 }
             }
+
+            $arrDomPax = [];
+            $arrIntPax = [];
+            $depDomPax = [];
+            $depIntPax = [];
+            $arrDomCargoKg = [];
+            $arrIntCargoKg = [];
+            $depDomCargoKg = [];
+            $depIntCargoKg = [];
 
             foreach ($monthMap as $mKey => $val) {
                 $labels[] = $val['label'];
@@ -1266,6 +1424,10 @@ class FlightDailyReportAnalytics
                 $arrPassengers[] = $val['arr_pax'];
                 $depPassengers[] = $val['dep_pax'];
                 $passengers[] = $val['arr_pax'] + $val['dep_pax'];
+                $arrDomPax[] = $val['arr_dom_pax'];
+                $arrIntPax[] = $val['arr_int_pax'];
+                $depDomPax[] = $val['dep_dom_pax'];
+                $depIntPax[] = $val['dep_int_pax'];
 
                 $arrCargoKg[] = round($val['arr_cargo'], 1);
                 $depCargoKg[] = round($val['dep_cargo'], 1);
@@ -1274,6 +1436,10 @@ class FlightDailyReportAnalytics
                 $cargoTon[] = round($totC / 1000, 2);
                 $arrCargoTon[] = round($val['arr_cargo'] / 1000, 2);
                 $depCargoTon[] = round($val['dep_cargo'] / 1000, 2);
+                $arrDomCargoKg[] = round($val['arr_dom_cargo'], 1);
+                $arrIntCargoKg[] = round($val['arr_int_cargo'], 1);
+                $depDomCargoKg[] = round($val['dep_dom_cargo'], 1);
+                $depIntCargoKg[] = round($val['dep_int_cargo'], 1);
 
                 $arrBaggageKg[] = round($val['arr_bagg'], 1);
                 $depBaggageKg[] = round($val['dep_bagg'], 1);
@@ -1289,7 +1455,9 @@ class FlightDailyReportAnalytics
                     'full_date' => date('d M Y', strtotime($dk)),
                     'arr_dom' => 0, 'arr_int' => 0, 'dep_dom' => 0, 'dep_int' => 0,
                     'arr_pax' => 0, 'dep_pax' => 0,
+                    'arr_dom_pax' => 0, 'arr_int_pax' => 0, 'dep_dom_pax' => 0, 'dep_int_pax' => 0,
                     'arr_cargo' => 0.0, 'dep_cargo' => 0.0,
+                    'arr_dom_cargo' => 0.0, 'arr_int_cargo' => 0.0, 'dep_dom_cargo' => 0.0, 'dep_int_cargo' => 0.0,
                     'arr_bagg' => 0.0, 'dep_bagg' => 0.0,
                 ];
             }
@@ -1302,26 +1470,49 @@ class FlightDailyReportAnalytics
                 $tr = strtoupper(trim($r['traffic'] ?? ($r['route_type'] ?? 'DOMESTIC')));
                 $isDom = ($tr === 'DOM' || $tr === 'DOMESTIC');
 
-                if ($isArr) {
-                    if ($isDom) { $dailyMap[$d]['arr_dom']++; } else { $dailyMap[$d]['arr_int']++; }
-                } else {
-                    if ($isDom) { $dailyMap[$d]['dep_dom']++; } else { $dailyMap[$d]['dep_int']++; }
-                }
-
                 $pax = (int)($r['adult'] ?? 0) + (int)($r['child'] ?? 0) + (int)($r['infant'] ?? 0);
                 if ($pax === 0) { $pax = (int)($r['load'] ?? ($r['pax_total'] ?? 0)); }
-                if ($isArr) { $dailyMap[$d]['arr_pax'] += $pax; } else { $dailyMap[$d]['dep_pax'] += $pax; }
 
                 $cKg = (float)($r['cargo_kg'] ?? 0.0);
                 $bKg = (float)($r['baggage_kg'] ?? 0.0);
+
                 if ($isArr) {
+                    if ($isDom) {
+                        $dailyMap[$d]['arr_dom']++;
+                        $dailyMap[$d]['arr_dom_pax'] += $pax;
+                        $dailyMap[$d]['arr_dom_cargo'] += $cKg;
+                    } else {
+                        $dailyMap[$d]['arr_int']++;
+                        $dailyMap[$d]['arr_int_pax'] += $pax;
+                        $dailyMap[$d]['arr_int_cargo'] += $cKg;
+                    }
+                    $dailyMap[$d]['arr_pax'] += $pax;
                     $dailyMap[$d]['arr_cargo'] += $cKg;
                     $dailyMap[$d]['arr_bagg'] += $bKg;
                 } else {
+                    if ($isDom) {
+                        $dailyMap[$d]['dep_dom']++;
+                        $dailyMap[$d]['dep_dom_pax'] += $pax;
+                        $dailyMap[$d]['dep_dom_cargo'] += $cKg;
+                    } else {
+                        $dailyMap[$d]['dep_int']++;
+                        $dailyMap[$d]['dep_int_pax'] += $pax;
+                        $dailyMap[$d]['dep_int_cargo'] += $cKg;
+                    }
+                    $dailyMap[$d]['dep_pax'] += $pax;
                     $dailyMap[$d]['dep_cargo'] += $cKg;
                     $dailyMap[$d]['dep_bagg'] += $bKg;
                 }
             }
+
+            $arrDomPax = [];
+            $arrIntPax = [];
+            $depDomPax = [];
+            $depIntPax = [];
+            $arrDomCargoKg = [];
+            $arrIntCargoKg = [];
+            $depDomCargoKg = [];
+            $depIntCargoKg = [];
 
             foreach ($dailyMap as $dk => $val) {
                 $labels[] = $val['label'];
@@ -1339,6 +1530,10 @@ class FlightDailyReportAnalytics
                 $arrPassengers[] = $val['arr_pax'];
                 $depPassengers[] = $val['dep_pax'];
                 $passengers[] = $val['arr_pax'] + $val['dep_pax'];
+                $arrDomPax[] = $val['arr_dom_pax'];
+                $arrIntPax[] = $val['arr_int_pax'];
+                $depDomPax[] = $val['dep_dom_pax'];
+                $depIntPax[] = $val['dep_int_pax'];
 
                 $arrCargoKg[] = round($val['arr_cargo'], 1);
                 $depCargoKg[] = round($val['dep_cargo'], 1);
@@ -1347,6 +1542,10 @@ class FlightDailyReportAnalytics
                 $cargoTon[] = round($totC / 1000, 2);
                 $arrCargoTon[] = round($val['arr_cargo'] / 1000, 2);
                 $depCargoTon[] = round($val['dep_cargo'] / 1000, 2);
+                $arrDomCargoKg[] = round($val['arr_dom_cargo'], 1);
+                $arrIntCargoKg[] = round($val['arr_int_cargo'], 1);
+                $depDomCargoKg[] = round($val['dep_dom_cargo'], 1);
+                $depIntCargoKg[] = round($val['dep_int_cargo'], 1);
 
                 $arrBaggageKg[] = round($val['arr_bagg'], 1);
                 $depBaggageKg[] = round($val['dep_bagg'], 1);
@@ -1364,15 +1563,17 @@ class FlightDailyReportAnalytics
                     'full_date' => $range,
                     'arr_dom' => 0, 'arr_int' => 0, 'dep_dom' => 0, 'dep_int' => 0,
                     'arr_pax' => 0, 'dep_pax' => 0,
+                    'arr_dom_pax' => 0, 'arr_int_pax' => 0, 'dep_dom_pax' => 0, 'dep_int_pax' => 0,
                     'arr_cargo' => 0.0, 'dep_cargo' => 0.0,
+                    'arr_dom_cargo' => 0.0, 'arr_int_cargo' => 0.0, 'dep_dom_cargo' => 0.0, 'dep_int_cargo' => 0.0,
                     'arr_bagg' => 0.0, 'dep_bagg' => 0.0,
                 ];
             }
 
             foreach ($records as $r) {
-                $isArr = ($r['direction'] ?? '') === 'ARRIVAL';
-                $tr = strtoupper(trim($r['traffic'] ?? ($r['route_type'] ?? 'DOMESTIC')));
-                $isDom = ($tr === 'DOM' || $tr === 'DOMESTIC');
+                $isArr = ($r['direction'] ?? '') === 'ARRIVAL' || ($r['movement_type'] ?? '') === 'A' || ($r['flow'] ?? '') === 'ARR';
+                $tr = strtoupper(trim($r['traffic'] ?? ($r['route_type'] ?? ($r['dom_int'] ?? 'DOMESTIC'))));
+                $isDom = ($tr === 'DOM' || $tr === 'DOMESTIC' || $tr === 'D');
 
                 $ts = '';
                 if ($timeBasis === 'actual') {
@@ -1387,28 +1588,51 @@ class FlightDailyReportAnalytics
                 }
                 if ($h < 0 || $h > 23) $h = 0;
 
-                if ($isArr) {
-                    if ($isDom) { $hourlyMap[$h]['arr_dom']++; } else { $hourlyMap[$h]['arr_int']++; }
-                } else {
-                    if ($isDom) { $hourlyMap[$h]['dep_dom']++; } else { $hourlyMap[$h]['dep_int']++; }
-                }
-
                 $pax = (int)($r['adult'] ?? 0) + (int)($r['child'] ?? 0) + (int)($r['infant'] ?? 0);
                 if ($pax === 0) {
-                    $pax = (int)($r['load'] ?? ($r['pax_total'] ?? 0));
+                    $pax = (int)($r['load'] ?? ($r['pax_total'] ?? ($r['total_passenger'] ?? 0)));
                 }
-                if ($isArr) { $hourlyMap[$h]['arr_pax'] += $pax; } else { $hourlyMap[$h]['dep_pax'] += $pax; }
 
                 $cKg = (float)($r['cargo_kg'] ?? 0.0);
                 $bKg = (float)($r['baggage_kg'] ?? 0.0);
+
                 if ($isArr) {
+                    if ($isDom) {
+                        $hourlyMap[$h]['arr_dom']++;
+                        $hourlyMap[$h]['arr_dom_pax'] += $pax;
+                        $hourlyMap[$h]['arr_dom_cargo'] += $cKg;
+                    } else {
+                        $hourlyMap[$h]['arr_int']++;
+                        $hourlyMap[$h]['arr_int_pax'] += $pax;
+                        $hourlyMap[$h]['arr_int_cargo'] += $cKg;
+                    }
+                    $hourlyMap[$h]['arr_pax'] += $pax;
                     $hourlyMap[$h]['arr_cargo'] += $cKg;
                     $hourlyMap[$h]['arr_bagg'] += $bKg;
                 } else {
+                    if ($isDom) {
+                        $hourlyMap[$h]['dep_dom']++;
+                        $hourlyMap[$h]['dep_dom_pax'] += $pax;
+                        $hourlyMap[$h]['dep_dom_cargo'] += $cKg;
+                    } else {
+                        $hourlyMap[$h]['dep_int']++;
+                        $hourlyMap[$h]['dep_int_pax'] += $pax;
+                        $hourlyMap[$h]['dep_int_cargo'] += $cKg;
+                    }
+                    $hourlyMap[$h]['dep_pax'] += $pax;
                     $hourlyMap[$h]['dep_cargo'] += $cKg;
                     $hourlyMap[$h]['dep_bagg'] += $bKg;
                 }
             }
+
+            $arrDomPax = [];
+            $arrIntPax = [];
+            $depDomPax = [];
+            $depIntPax = [];
+            $arrDomCargoKg = [];
+            $arrIntCargoKg = [];
+            $depDomCargoKg = [];
+            $depIntCargoKg = [];
 
             for ($h = 0; $h < 24; $h++) {
                 $labels[] = $hourlyMap[$h]['label'];
@@ -1426,6 +1650,10 @@ class FlightDailyReportAnalytics
                 $arrPassengers[] = $hourlyMap[$h]['arr_pax'];
                 $depPassengers[] = $hourlyMap[$h]['dep_pax'];
                 $passengers[] = $hourlyMap[$h]['arr_pax'] + $hourlyMap[$h]['dep_pax'];
+                $arrDomPax[] = $hourlyMap[$h]['arr_dom_pax'];
+                $arrIntPax[] = $hourlyMap[$h]['arr_int_pax'];
+                $depDomPax[] = $hourlyMap[$h]['dep_dom_pax'];
+                $depIntPax[] = $hourlyMap[$h]['dep_int_pax'];
 
                 $arrCargoKg[] = round($hourlyMap[$h]['arr_cargo'], 1);
                 $depCargoKg[] = round($hourlyMap[$h]['dep_cargo'], 1);
@@ -1434,6 +1662,10 @@ class FlightDailyReportAnalytics
                 $cargoTon[] = round($totC / 1000, 2);
                 $arrCargoTon[] = round($hourlyMap[$h]['arr_cargo'] / 1000, 2);
                 $depCargoTon[] = round($hourlyMap[$h]['dep_cargo'] / 1000, 2);
+                $arrDomCargoKg[] = round($hourlyMap[$h]['arr_dom_cargo'], 1);
+                $arrIntCargoKg[] = round($hourlyMap[$h]['arr_int_cargo'], 1);
+                $depDomCargoKg[] = round($hourlyMap[$h]['dep_dom_cargo'], 1);
+                $depIntCargoKg[] = round($hourlyMap[$h]['dep_int_cargo'], 1);
 
                 $arrBaggageKg[] = round($hourlyMap[$h]['arr_bagg'], 1);
                 $depBaggageKg[] = round($hourlyMap[$h]['dep_bagg'], 1);
@@ -1455,9 +1687,17 @@ class FlightDailyReportAnalytics
             'total_flights'        => $totalFlights,
             'arr_passengers'       => $arrPassengers,
             'dep_passengers'       => $depPassengers,
+            'arr_dom_passengers'   => $arrDomPax,
+            'arr_int_passengers'   => $arrIntPax,
+            'dep_dom_passengers'   => $depDomPax,
+            'dep_int_passengers'   => $depIntPax,
             'passengers'           => $passengers,
             'arr_cargo_kg'         => $arrCargoKg,
             'dep_cargo_kg'         => $depCargoKg,
+            'arr_dom_cargo_kg'     => $arrDomCargoKg,
+            'arr_int_cargo_kg'     => $arrIntCargoKg,
+            'dep_dom_cargo_kg'     => $depDomCargoKg,
+            'dep_int_cargo_kg'     => $depIntCargoKg,
             'cargo_kg'             => $cargoKg,
             'cargo_ton'            => $cargoTon,
             'arr_cargo_ton'        => $arrCargoTon,

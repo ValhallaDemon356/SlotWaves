@@ -142,7 +142,9 @@
                             class="w-full text-xs font-semibold rounded-xl border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
                         <option value="ALL">ALL AIRLINE</option>
                         @foreach($airlines as $al)
-                            <option value="{{ $al }}">{{ $al }}</option>
+                            @if(strcasecmp($al, 'PAX ALL') !== 0 && strcasecmp($al, 'ALL AIRLINE') !== 0)
+                                <option value="{{ $al }}">{{ $al }}</option>
+                            @endif
                         @endforeach
                     </select>
                 </div>
@@ -438,9 +440,29 @@
 
                 </div>
 
-                {{-- Delay Distribution (minutes) Histogram --}}
-                <div class="space-y-1.5">
-                    <div class="text-[11px] font-bold text-slate-700">Delay Distribution (minutes)</div>
+                {{-- SCHEDULE VARIANCE DISTRIBUTION Histogram --}}
+                <div class="space-y-2">
+                    <div>
+                        <div class="text-[11px] font-black uppercase tracking-wider text-slate-800">SCHEDULE VARIANCE DISTRIBUTION</div>
+                        <p class="text-[10px] text-slate-400 font-medium">How early or late actual movement occurred compared with schedule.</p>
+                    </div>
+
+                    {{-- Grouped visual banner: EARLY (4 buckets), ON TIME (1 bucket), LATE (4 buckets) --}}
+                    <div class="grid grid-cols-9 gap-1 text-center text-[9px] font-bold">
+                        <div class="col-span-4 bg-blue-50 text-blue-700 rounded-md py-1 border border-blue-200 flex items-center justify-center gap-1 shadow-2xs">
+                            <span class="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                            <span>EARLY (4 BUCKETS)</span>
+                        </div>
+                        <div class="col-span-1 bg-emerald-50 text-emerald-700 rounded-md py-1 border border-emerald-200 flex items-center justify-center gap-0.5 truncate px-0.5 shadow-2xs">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            <span>ON TIME</span>
+                        </div>
+                        <div class="col-span-4 bg-rose-50 text-rose-700 rounded-md py-1 border border-rose-200 flex items-center justify-center gap-1 shadow-2xs">
+                            <span class="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
+                            <span>LATE (4 BUCKETS)</span>
+                        </div>
+                    </div>
+
                     <div class="h-36 w-full relative">
                         <canvas id="fdrDelayHistChart"></canvas>
                     </div>
@@ -490,47 +512,74 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     
                     {{-- DONUT 1: Passenger Composition (Adult, Child, Infant) --}}
-                    <div class="flex flex-col items-center bg-slate-50/60 rounded-xl p-3 border border-slate-100/80">
+                    <div class="flex flex-col items-center bg-slate-50/60 rounded-xl p-3.5 border border-slate-100/80">
                         <div class="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-2">
                             Passenger Composition
                         </div>
                         <div class="relative w-36 h-36 flex items-center justify-center">
                             <canvas id="fdrPaxCompDonutChart"></canvas>
                             {{-- Centered Text --}}
-                            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-                                <span class="text-[8.5px] uppercase font-bold text-slate-400 leading-tight">Total Pax</span>
-                                <span class="text-sm font-black text-slate-900 font-mono tracking-tight" x-text="((paxAnalytics.composition.adult || 0) + (paxAnalytics.composition.child || 0) + (paxAnalytics.composition.infant || 0)).toLocaleString()">
+                            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-1">
+                                <span class="text-[8px] uppercase font-extrabold text-slate-400 tracking-wider leading-tight">TOTAL PASSENGER</span>
+                                <span class="text-sm font-black text-slate-900 font-mono tracking-tight mt-0.5"
+                                      x-show="((paxAnalytics.composition.adult || 0) + (paxAnalytics.composition.child || 0) + (paxAnalytics.composition.infant || 0)) > 0"
+                                      x-text="((paxAnalytics.composition.adult || 0) + (paxAnalytics.composition.child || 0) + (paxAnalytics.composition.infant || 0)).toLocaleString()">
                                     25,627
+                                </span>
+                                <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-tight mt-0.5"
+                                      x-show="((paxAnalytics.composition.adult || 0) + (paxAnalytics.composition.child || 0) + (paxAnalytics.composition.infant || 0)) === 0">
+                                    NO PASSENGER DATA
                                 </span>
                             </div>
                         </div>
                         {{-- Donut Legend --}}
-                        <div class="flex items-center justify-center gap-3 mt-2 text-[10px] font-semibold text-slate-600">
-                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>Adult</span>
-                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>Child</span>
-                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>Infant</span>
+                        <div class="w-full flex flex-col gap-1 mt-3 pt-2 border-t border-slate-200/60 text-[10px] text-slate-600 font-medium">
+                            <div class="flex items-center justify-between">
+                                <span class="flex items-center gap-1.5 font-bold"><span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>Adult</span>
+                                <span class="font-mono text-slate-700"><strong x-text="(paxAnalytics.composition.adult || 0).toLocaleString() + ' Pax'"></strong> (<span x-text="getPaxPct('adult')"></span>)</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="flex items-center gap-1.5 font-bold"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>Child</span>
+                                <span class="font-mono text-slate-700"><strong x-text="(paxAnalytics.composition.child || 0).toLocaleString() + ' Pax'"></strong> (<span x-text="getPaxPct('child')"></span>)</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="flex items-center gap-1.5 font-bold"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>Infant</span>
+                                <span class="font-mono text-slate-700"><strong x-text="(paxAnalytics.composition.infant || 0).toLocaleString() + ' Pax'"></strong> (<span x-text="getPaxPct('infant')"></span>)</span>
+                            </div>
                         </div>
                     </div>
 
                     {{-- DONUT 2: Payload Composition (Cargo, Baggage) --}}
-                    <div class="flex flex-col items-center bg-slate-50/60 rounded-xl p-3 border border-slate-100/80">
+                    <div class="flex flex-col items-center bg-slate-50/60 rounded-xl p-3.5 border border-slate-100/80">
                         <div class="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-2">
                             Payload Composition
                         </div>
                         <div class="relative w-36 h-36 flex items-center justify-center">
                             <canvas id="fdrPayloadCompDonutChart"></canvas>
                             {{-- Centered Text --}}
-                            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-                                <span class="text-[8.5px] uppercase font-bold text-slate-400 leading-tight">Total Payload</span>
-                                <span class="text-xs font-black text-slate-900 font-mono tracking-tight" x-text="formatPayloadWeight((kpis.total_cargo_kg || 0) + (kpis.total_baggage_kg || 0))">
-                                    356.4 t
+                            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-1">
+                                <span class="text-[8px] uppercase font-extrabold text-slate-400 tracking-wider leading-tight">TOTAL PAYLOAD</span>
+                                <span class="text-xs font-black text-slate-900 font-mono tracking-tight mt-0.5"
+                                      x-show="((kpis.total_cargo_kg || 0) + (kpis.total_baggage_kg || 0)) > 0"
+                                      x-text="formatPayloadWeightKg((kpis.total_cargo_kg || 0) + (kpis.total_baggage_kg || 0))">
+                                    725,017 kg
+                                </span>
+                                <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-tight mt-0.5"
+                                      x-show="((kpis.total_cargo_kg || 0) + (kpis.total_baggage_kg || 0)) === 0">
+                                    NO PAYLOAD DATA
                                 </span>
                             </div>
                         </div>
                         {{-- Donut Legend --}}
-                        <div class="flex items-center justify-center gap-3 mt-2 text-[10px] font-semibold text-slate-600">
-                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>Cargo</span>
-                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>Baggage</span>
+                        <div class="w-full flex flex-col gap-1 mt-3 pt-2 border-t border-slate-200/60 text-[10px] text-slate-600 font-medium">
+                            <div class="flex items-center justify-between">
+                                <span class="flex items-center gap-1.5 font-bold"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>Cargo</span>
+                                <span class="font-mono text-slate-700"><strong x-text="formatPayloadWeightKg(kpis.total_cargo_kg || 0)"></strong> (<span x-text="getPayloadPct('cargo')"></span>)</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="flex items-center gap-1.5 font-bold"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>Baggage</span>
+                                <span class="font-mono text-slate-700"><strong x-text="formatPayloadWeightKg(kpis.total_baggage_kg || 0)"></strong> (<span x-text="getPayloadPct('baggage')"></span>)</span>
+                            </div>
                         </div>
                     </div>
 
@@ -1037,18 +1086,18 @@
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                         <div>
                             <h3 class="text-xs font-black uppercase tracking-wider text-slate-800">
-                                B. Passenger Trend
+                                PASSENGER TREND
                             </h3>
                             <p class="text-[10px] text-slate-400 font-medium">
-                                Clean line chart aligned to identical X-axis &amp; active filters
+                                Passenger movement by time based on active filters.
                             </p>
                         </div>
                         <div class="flex items-center gap-3 text-[10px] font-semibold text-slate-600">
                             <template x-if="filters.leg !== 'DEP' && filters.leg !== 'DEPARTURE'">
-                                <span class="flex items-center gap-1"><span class="w-2.5 h-1 rounded-full bg-[#F59E0B]"></span>Arr Pax</span>
+                                <span class="flex items-center gap-1"><span class="w-2.5 h-1 rounded-full bg-[#F59E0B]"></span>Arrival Pax</span>
                             </template>
                             <template x-if="filters.leg !== 'ARR' && filters.leg !== 'ARRIVAL'">
-                                <span class="flex items-center gap-1"><span class="w-2.5 h-1 rounded-full bg-[#2563EB]"></span>Dep Pax</span>
+                                <span class="flex items-center gap-1"><span class="w-2.5 h-1 rounded-full bg-[#2563EB]"></span>Departure Pax</span>
                             </template>
                         </div>
                     </div>
@@ -1062,18 +1111,18 @@
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                         <div>
                             <h3 class="text-xs font-black uppercase tracking-wider text-slate-800">
-                                C. Cargo Trend
+                                CARGO TREND
                             </h3>
                             <p class="text-[10px] text-slate-400 font-medium">
-                                Operational freight volume aligned to identical X-axis &amp; active filters
+                                Cargo movement by time based on active filters.
                             </p>
                         </div>
                         <div class="flex items-center gap-3 text-[10px] font-semibold text-slate-600">
                             <template x-if="filters.leg !== 'DEP' && filters.leg !== 'DEPARTURE'">
-                                <span class="flex items-center gap-1"><span class="w-2.5 h-1 rounded-full bg-[#10B981]"></span>Arr Cargo</span>
+                                <span class="flex items-center gap-1"><span class="w-2.5 h-1 rounded-full bg-[#14B8A6]"></span>Arrival Cargo</span>
                             </template>
                             <template x-if="filters.leg !== 'ARR' && filters.leg !== 'ARRIVAL'">
-                                <span class="flex items-center gap-1"><span class="w-2.5 h-1 rounded-full bg-[#059669]"></span>Dep Cargo</span>
+                                <span class="flex items-center gap-1"><span class="w-2.5 h-1 rounded-full bg-[#059669]"></span>Departure Cargo</span>
                             </template>
                         </div>
                     </div>
@@ -1390,21 +1439,13 @@ function fdrDashboardController() {
                 _fdrCharts.delayHist = null;
             }
 
-            const histData = this.schedVsReal.histogram || [];
+            const histData = (this.schedVsReal.hist_bins && this.schedVsReal.hist_bins.length === 9)
+                ? this.schedVsReal.hist_bins
+                : (this.schedVsReal.histogram || []);
+
             const labels = histData.map(b => b.label);
             const counts = histData.map(b => b.count);
-
-            const colors = [
-                '#EF4444', // <-60
-                '#F97316', // -60~-31
-                '#FBBF24', // -30~-16
-                '#2DD4BF', // -15~-6
-                '#10B981', // -5~5
-                '#2DD4BF', // 6~15
-                '#FBBF24', // 16~30
-                '#F97316', // 31~60
-                '#EF4444', // >60
-            ];
+            const bgColors = histData.map(b => b.color || '#64748B');
 
             _fdrCharts.delayHist = new Chart(ctx, {
                 type: 'bar',
@@ -1413,7 +1454,7 @@ function fdrDashboardController() {
                     datasets: [{
                         label: 'Flights',
                         data: counts,
-                        backgroundColor: colors.slice(0, labels.length),
+                        backgroundColor: bgColors,
                         borderRadius: 4,
                         barPercentage: 0.65,
                     }]
@@ -1424,16 +1465,37 @@ function fdrDashboardController() {
                     plugins: {
                         legend: { display: false },
                         tooltip: {
+                            backgroundColor: '#0F172A',
+                            titleColor: '#94A3B8',
+                            bodyColor: '#FFFFFF',
+                            titleFont: { size: 10, weight: 'bold' },
+                            bodyFont: { size: 11 },
+                            padding: 8,
+                            cornerRadius: 6,
                             callbacks: {
-                                title: (items) => `Variance: ${items[0].label} min`,
-                                label: (item) => ` ${item.parsed.y} flights`
+                                title: (items) => {
+                                    const bin = histData[items[0].dataIndex] || {};
+                                    return `Category: ${bin.group || 'VARIANCE'}`;
+                                },
+                                label: (item) => {
+                                    const bin = histData[item.dataIndex] || {};
+                                    return [
+                                        `Variance: ${bin.desc || bin.label}`,
+                                        `Flights: ${item.parsed.y}`
+                                    ];
+                                }
                             }
                         }
                     },
                     scales: {
                         x: {
                             grid: { display: false },
-                            ticks: { font: { size: 10, weight: 'bold' }, color: '#64748B' }
+                            ticks: {
+                                font: { size: 8.5, weight: 'bold' },
+                                color: '#64748B',
+                                maxRotation: 25,
+                                minRotation: 0,
+                            }
                         },
                         y: {
                             beginAtZero: true,
@@ -1459,16 +1521,27 @@ function fdrDashboardController() {
             const infant = comp.infant || 0;
             const total = adult + child + infant;
 
+            const hasData = total > 0;
+            const dataVals = hasData ? [adult, child, infant] : [1];
+            const bgColors = hasData ? ['#2563EB', '#F59E0B', '#10B981'] : ['#E2E8F0'];
+
+            const metaSegments = [
+                { formattedValue: adult.toLocaleString() + ' Pax', percentage: total > 0 ? ((adult / total) * 100).toFixed(1) + '%' : '0.0%' },
+                { formattedValue: child.toLocaleString() + ' Pax', percentage: total > 0 ? ((child / total) * 100).toFixed(1) + '%' : '0.0%' },
+                { formattedValue: infant.toLocaleString() + ' Pax', percentage: total > 0 ? ((infant / total) * 100).toFixed(1) + '%' : '0.0%' },
+            ];
+
             _fdrCharts.paxDonut = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Adult', 'Child', 'Infant'],
+                    labels: hasData ? ['Adult', 'Child', 'Infant'] : ['No Data'],
                     datasets: [{
-                        data: [adult, child, infant],
-                        backgroundColor: ['#2563EB', '#F59E0B', '#10B981'],
+                        data: dataVals,
+                        backgroundColor: bgColors,
                         borderColor: '#FFFFFF',
                         borderWidth: 2,
-                        hoverOffset: 4,
+                        hoverOffset: hasData ? 4 : 0,
+                        metaSegments: hasData ? metaSegments : null,
                     }]
                 },
                 options: {
@@ -1478,21 +1551,20 @@ function fdrDashboardController() {
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            backgroundColor: '#1E293B',
-                            titleFont: { size: 11, weight: 'bold' },
-                            bodyFont: { size: 10 },
-                            padding: 8,
-                            callbacks: {
-                                label: (item) => {
-                                    const val = item.parsed;
-                                    const pct = total > 0 ? ((val / total) * 100).toFixed(1) : '0';
-                                    return ` ${item.label}: ${val.toLocaleString()} (${pct}%)`;
-                                }
-                            }
+                            enabled: false,
+                            external: hasData ? (context) => this.renderExternalDonutTooltip(context) : null,
                         }
                     }
                 }
             });
+
+            ctx.onmouseleave = () => {
+                const el = document.getElementById('fdr-donut-floating-tooltip');
+                if (el) {
+                    el.style.opacity = '0';
+                    el.style.transform = 'scale(0.96)';
+                }
+            };
         },
 
         buildPayloadDonutChart() {
@@ -1507,16 +1579,26 @@ function fdrDashboardController() {
             const baggage = Math.round(this.kpis.total_baggage_kg || 0);
             const total = cargo + baggage;
 
+            const hasData = total > 0;
+            const dataVals = hasData ? [cargo, baggage] : [1];
+            const bgColors = hasData ? ['#10B981', '#3B82F6'] : ['#E2E8F0'];
+
+            const metaSegments = [
+                { formattedValue: this.formatPayloadWeightKg(cargo), percentage: total > 0 ? ((cargo / total) * 100).toFixed(1) + '%' : '0.0%' },
+                { formattedValue: this.formatPayloadWeightKg(baggage), percentage: total > 0 ? ((baggage / total) * 100).toFixed(1) + '%' : '0.0%' },
+            ];
+
             _fdrCharts.payloadDonut = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Cargo', 'Baggage'],
+                    labels: hasData ? ['Cargo', 'Baggage'] : ['No Data'],
                     datasets: [{
-                        data: [cargo, baggage],
-                        backgroundColor: ['#10B981', '#3B82F6'],
+                        data: dataVals,
+                        backgroundColor: bgColors,
                         borderColor: '#FFFFFF',
                         borderWidth: 2,
-                        hoverOffset: 4,
+                        hoverOffset: hasData ? 4 : 0,
+                        metaSegments: hasData ? metaSegments : null,
                     }]
                 },
                 options: {
@@ -1526,22 +1608,94 @@ function fdrDashboardController() {
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            backgroundColor: '#1E293B',
-                            titleFont: { size: 11, weight: 'bold' },
-                            bodyFont: { size: 10 },
-                            padding: 8,
-                            callbacks: {
-                                label: (item) => {
-                                    const val = item.parsed;
-                                    const pct = total > 0 ? ((val / total) * 100).toFixed(1) : '0';
-                                    const valFmt = val >= 1000 ? (val / 1000).toFixed(2) + ' t' : val.toLocaleString() + ' kg';
-                                    return ` ${item.label}: ${valFmt} (${pct}%)`;
-                                }
-                            }
+                            enabled: false,
+                            external: hasData ? (context) => this.renderExternalDonutTooltip(context) : null,
                         }
                     }
                 }
             });
+
+            ctx.onmouseleave = () => {
+                const el = document.getElementById('fdr-donut-floating-tooltip');
+                if (el) {
+                    el.style.opacity = '0';
+                    el.style.transform = 'scale(0.96)';
+                }
+            };
+        },
+
+        renderExternalDonutTooltip(context) {
+            let tooltipEl = document.getElementById('fdr-donut-floating-tooltip');
+            if (!tooltipEl) {
+                tooltipEl = document.createElement('div');
+                tooltipEl.id = 'fdr-donut-floating-tooltip';
+                tooltipEl.style.position = 'fixed';
+                tooltipEl.style.zIndex = '9999';
+                tooltipEl.style.pointerEvents = 'none';
+                tooltipEl.style.backgroundColor = '#0F172A';
+                tooltipEl.style.color = '#FFFFFF';
+                tooltipEl.style.padding = '8px 12px';
+                tooltipEl.style.borderRadius = '8px';
+                tooltipEl.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3)';
+                tooltipEl.style.border = '1px solid rgba(255, 255, 255, 0.12)';
+                tooltipEl.style.fontSize = '11px';
+                tooltipEl.style.lineHeight = '1.35';
+                tooltipEl.style.opacity = '0';
+                tooltipEl.style.transition = 'opacity 130ms ease-out, transform 130ms ease-out';
+                tooltipEl.style.transform = 'scale(0.96)';
+                document.body.appendChild(tooltipEl);
+            }
+
+            const tooltipModel = context.tooltip;
+            if (tooltipModel.opacity === 0 || !tooltipModel.dataPoints || tooltipModel.dataPoints.length === 0) {
+                tooltipEl.style.opacity = '0';
+                tooltipEl.style.transform = 'scale(0.96)';
+                return;
+            }
+
+            const dp = tooltipModel.dataPoints[0];
+            const segmentLabel = dp.label;
+            const metaInfo = dp.dataset.metaSegments ? dp.dataset.metaSegments[dp.dataIndex] : null;
+
+            let valueText = '';
+            let pctText = '';
+            if (metaInfo) {
+                valueText = metaInfo.formattedValue;
+                pctText = metaInfo.percentage;
+            } else {
+                valueText = (dp.parsed || 0).toLocaleString();
+            }
+
+            tooltipEl.innerHTML = `
+                <div style="font-weight: 700; font-size: 11px; color: #FFFFFF; line-height: 1.2;">${segmentLabel}</div>
+                <div style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; font-weight: 800; color: #F8FAFC; margin-top: 2px;">${valueText}</div>
+                <div style="font-size: 10px; font-weight: 600; color: #94A3B8; margin-top: 2px;">${pctText}</div>
+            `;
+
+            const canvasRect = context.chart.canvas.getBoundingClientRect();
+            const cursorX = canvasRect.left + tooltipModel.caretX;
+            const cursorY = canvasRect.top + tooltipModel.caretY;
+
+            const tipW = tooltipEl.offsetWidth || 120;
+            const tipH = tooltipEl.offsetHeight || 60;
+            const offset = 14;
+
+            let posX = cursorX + offset;
+            let posY = cursorY - (tipH / 2);
+
+            if (posX + tipW > window.innerWidth - 12) {
+                posX = cursorX - tipW - offset;
+            }
+            if (posY + tipH > window.innerHeight - 12) {
+                posY = window.innerHeight - tipH - 12;
+            }
+            if (posY < 12) posY = 12;
+            if (posX < 12) posX = 12;
+
+            tooltipEl.style.left = posX + 'px';
+            tooltipEl.style.top = posY + 'px';
+            tooltipEl.style.opacity = '1';
+            tooltipEl.style.transform = 'scale(1)';
         },
 
         buildFlightMovementChart() {
@@ -1690,12 +1844,15 @@ function fdrDashboardController() {
                     label: 'Arrival Pax',
                     data: trend.arr_passengers || [],
                     borderColor: '#F59E0B',
-                    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+                    backgroundColor: 'rgba(245, 158, 11, 0.12)',
                     borderWidth: 2,
-                    pointRadius: 2.5,
+                    pointRadius: 0,
                     pointHoverRadius: 5,
-                    fill: leg === 'ARR' || leg === 'ARRIVAL',
-                    tension: 0.25,
+                    pointBackgroundColor: '#FFFFFF',
+                    pointBorderColor: '#F59E0B',
+                    pointBorderWidth: 2,
+                    fill: true,
+                    tension: 0.35,
                 });
             }
 
@@ -1704,12 +1861,15 @@ function fdrDashboardController() {
                     label: 'Departure Pax',
                     data: trend.dep_passengers || [],
                     borderColor: '#2563EB',
-                    backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                    backgroundColor: 'rgba(37, 99, 235, 0.12)',
                     borderWidth: 2,
-                    pointRadius: 2.5,
+                    pointRadius: 0,
                     pointHoverRadius: 5,
-                    fill: leg === 'DEP' || leg === 'DEPARTURE',
-                    tension: 0.25,
+                    pointBackgroundColor: '#FFFFFF',
+                    pointBorderColor: '#2563EB',
+                    pointBorderWidth: 2,
+                    fill: true,
+                    tension: 0.35,
                 });
             }
 
@@ -1729,16 +1889,52 @@ function fdrDashboardController() {
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            backgroundColor: '#1E293B',
+                            backgroundColor: '#0F172A',
+                            titleColor: '#94A3B8',
+                            bodyColor: '#FFFFFF',
                             titleFont: { size: 11, weight: 'bold' },
                             bodyFont: { size: 10 },
-                            padding: 8,
+                            padding: 10,
+                            cornerRadius: 6,
                             callbacks: {
                                 title: (items) => {
                                     const idx = items[0].dataIndex;
                                     return trend.time_ranges ? trend.time_ranges[idx] : items[0].label;
                                 },
-                                label: (item) => ` ${item.dataset.label}: ${item.parsed.y.toLocaleString()} Pax`
+                                label: (item) => ` ${item.dataset.label}: ${item.parsed.y.toLocaleString()} Pax`,
+                                afterBody: (items) => {
+                                    const idx = items[0].dataIndex;
+                                    const lines = [];
+                                    if (leg === 'ALL') {
+                                        const arrDom = (trend.arr_dom_passengers && trend.arr_dom_passengers[idx]) || 0;
+                                        const arrInt = (trend.arr_int_passengers && trend.arr_int_passengers[idx]) || 0;
+                                        const depDom = (trend.dep_dom_passengers && trend.dep_dom_passengers[idx]) || 0;
+                                        const depInt = (trend.dep_int_passengers && trend.dep_int_passengers[idx]) || 0;
+                                        const arrTot = (trend.arr_passengers && trend.arr_passengers[idx]) || 0;
+                                        const depTot = (trend.dep_passengers && trend.dep_passengers[idx]) || 0;
+                                        lines.push('');
+                                        lines.push(`ARRIVAL: Dom ${arrDom.toLocaleString()} | Int ${arrInt.toLocaleString()} (Total: ${arrTot.toLocaleString()} Pax)`);
+                                        lines.push(`DEPARTURE: Dom ${depDom.toLocaleString()} | Int ${depInt.toLocaleString()} (Total: ${depTot.toLocaleString()} Pax)`);
+                                        lines.push(`TOTAL: ${(arrTot + depTot).toLocaleString()} Pax`);
+                                    } else if (leg === 'ARR' || leg === 'ARRIVAL') {
+                                        const arrDom = (trend.arr_dom_passengers && trend.arr_dom_passengers[idx]) || 0;
+                                        const arrInt = (trend.arr_int_passengers && trend.arr_int_passengers[idx]) || 0;
+                                        const arrTot = (trend.arr_passengers && trend.arr_passengers[idx]) || 0;
+                                        lines.push('');
+                                        lines.push(`Domestic: ${arrDom.toLocaleString()} Pax`);
+                                        lines.push(`International: ${arrInt.toLocaleString()} Pax`);
+                                        lines.push(`Total Arrival: ${arrTot.toLocaleString()} Pax`);
+                                    } else {
+                                        const depDom = (trend.dep_dom_passengers && trend.dep_dom_passengers[idx]) || 0;
+                                        const depInt = (trend.dep_int_passengers && trend.dep_int_passengers[idx]) || 0;
+                                        const depTot = (trend.dep_passengers && trend.dep_passengers[idx]) || 0;
+                                        lines.push('');
+                                        lines.push(`Domestic: ${depDom.toLocaleString()} Pax`);
+                                        lines.push(`International: ${depInt.toLocaleString()} Pax`);
+                                        lines.push(`Total Departure: ${depTot.toLocaleString()} Pax`);
+                                    }
+                                    return lines;
+                                }
                             }
                         }
                     },
@@ -1773,40 +1969,39 @@ function fdrDashboardController() {
             const labels = trend.labels || [];
             const leg = (this.filters.leg || 'ALL').toUpperCase();
 
-            // Format as Ton if magnitude is >= 1000 kg
-            const totalKg = trend.total_cargo_kg || 0;
-            const useTon = totalKg >= 1000;
-
-            const arrData = useTon ? (trend.arr_cargo_ton || []) : (trend.arr_cargo_kg || []);
-            const depData = useTon ? (trend.dep_cargo_ton || []) : (trend.dep_cargo_kg || []);
-
             const datasets = [];
 
             if (leg !== 'DEP' && leg !== 'DEPARTURE') {
                 datasets.push({
                     label: 'Arrival Cargo',
-                    data: arrData,
-                    borderColor: '#10B981',
-                    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                    data: trend.arr_cargo_kg || [],
+                    borderColor: '#14B8A6',
+                    backgroundColor: 'rgba(20, 184, 166, 0.12)',
                     borderWidth: 2,
-                    pointRadius: 2.5,
+                    pointRadius: 0,
                     pointHoverRadius: 5,
-                    fill: leg === 'ARR' || leg === 'ARRIVAL',
-                    tension: 0.25,
+                    pointBackgroundColor: '#FFFFFF',
+                    pointBorderColor: '#14B8A6',
+                    pointBorderWidth: 2,
+                    fill: true,
+                    tension: 0.35,
                 });
             }
 
             if (leg !== 'ARR' && leg !== 'ARRIVAL') {
                 datasets.push({
                     label: 'Departure Cargo',
-                    data: depData,
+                    data: trend.dep_cargo_kg || [],
                     borderColor: '#059669',
-                    backgroundColor: 'rgba(5, 150, 105, 0.08)',
+                    backgroundColor: 'rgba(5, 150, 105, 0.12)',
                     borderWidth: 2,
-                    pointRadius: 2.5,
+                    pointRadius: 0,
                     pointHoverRadius: 5,
-                    fill: leg === 'DEP' || leg === 'DEPARTURE',
-                    tension: 0.25,
+                    pointBackgroundColor: '#FFFFFF',
+                    pointBorderColor: '#059669',
+                    pointBorderWidth: 2,
+                    fill: true,
+                    tension: 0.35,
                 });
             }
 
@@ -1826,22 +2021,51 @@ function fdrDashboardController() {
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            backgroundColor: '#1E293B',
+                            backgroundColor: '#0F172A',
+                            titleColor: '#94A3B8',
+                            bodyColor: '#FFFFFF',
                             titleFont: { size: 11, weight: 'bold' },
                             bodyFont: { size: 10 },
-                            padding: 8,
+                            padding: 10,
+                            cornerRadius: 6,
                             callbacks: {
                                 title: (items) => {
                                     const idx = items[0].dataIndex;
                                     return trend.time_ranges ? trend.time_ranges[idx] : items[0].label;
                                 },
-                                label: (item) => {
-                                    const val = item.parsed.y;
-                                    if (useTon) {
-                                        const kg = Math.round(val * 1000);
-                                        return ` ${item.dataset.label}: ${val.toFixed(2)} Ton (${kg.toLocaleString()} kg)`;
+                                label: (item) => ` ${item.dataset.label}: ${Math.round(item.parsed.y).toLocaleString()} kg`,
+                                afterBody: (items) => {
+                                    const idx = items[0].dataIndex;
+                                    const lines = [];
+                                    if (leg === 'ALL') {
+                                        const arrDom = Math.round((trend.arr_dom_cargo_kg && trend.arr_dom_cargo_kg[idx]) || 0);
+                                        const arrInt = Math.round((trend.arr_int_cargo_kg && trend.arr_int_cargo_kg[idx]) || 0);
+                                        const depDom = Math.round((trend.dep_dom_cargo_kg && trend.dep_dom_cargo_kg[idx]) || 0);
+                                        const depInt = Math.round((trend.dep_int_cargo_kg && trend.dep_int_cargo_kg[idx]) || 0);
+                                        const arrTot = Math.round((trend.arr_cargo_kg && trend.arr_cargo_kg[idx]) || 0);
+                                        const depTot = Math.round((trend.dep_cargo_kg && trend.dep_cargo_kg[idx]) || 0);
+                                        lines.push('');
+                                        lines.push(`ARRIVAL CARGO: Dom ${arrDom.toLocaleString()} kg | Int ${arrInt.toLocaleString()} kg (Total: ${arrTot.toLocaleString()} kg)`);
+                                        lines.push(`DEPARTURE CARGO: Dom ${depDom.toLocaleString()} kg | Int ${depInt.toLocaleString()} kg (Total: ${depTot.toLocaleString()} kg)`);
+                                        lines.push(`TOTAL CARGO: ${(arrTot + depTot).toLocaleString()} kg`);
+                                    } else if (leg === 'ARR' || leg === 'ARRIVAL') {
+                                        const arrDom = Math.round((trend.arr_dom_cargo_kg && trend.arr_dom_cargo_kg[idx]) || 0);
+                                        const arrInt = Math.round((trend.arr_int_cargo_kg && trend.arr_int_cargo_kg[idx]) || 0);
+                                        const arrTot = Math.round((trend.arr_cargo_kg && trend.arr_cargo_kg[idx]) || 0);
+                                        lines.push('');
+                                        lines.push(`Domestic: ${arrDom.toLocaleString()} kg`);
+                                        lines.push(`International: ${arrInt.toLocaleString()} kg`);
+                                        lines.push(`Total: ${arrTot.toLocaleString()} kg`);
+                                    } else {
+                                        const depDom = Math.round((trend.dep_dom_cargo_kg && trend.dep_dom_cargo_kg[idx]) || 0);
+                                        const depInt = Math.round((trend.dep_int_cargo_kg && trend.dep_int_cargo_kg[idx]) || 0);
+                                        const depTot = Math.round((trend.dep_cargo_kg && trend.dep_cargo_kg[idx]) || 0);
+                                        lines.push('');
+                                        lines.push(`Domestic: ${depDom.toLocaleString()} kg`);
+                                        lines.push(`International: ${depInt.toLocaleString()} kg`);
+                                        lines.push(`Total: ${depTot.toLocaleString()} kg`);
                                     }
-                                    return ` ${item.dataset.label}: ${val.toLocaleString()} kg`;
+                                    return lines;
                                 }
                             }
                         }
@@ -1853,13 +2077,44 @@ function fdrDashboardController() {
                         },
                         y: {
                             beginAtZero: true,
-                            title: { display: true, text: useTon ? 'Cargo (Ton)' : 'Cargo (kg)', font: { size: 10, weight: 'bold' }, color: '#059669' },
-                            ticks: { font: { size: 9 }, color: '#059669' },
+                            title: { display: true, text: 'Cargo (kg)', font: { size: 10, weight: 'bold' }, color: '#059669' },
+                            ticks: {
+                                callback: (val) => val >= 1000 ? (val / 1000).toLocaleString() + 'k kg' : val.toLocaleString() + ' kg',
+                                font: { size: 9 }, color: '#059669'
+                            },
                             grid: { color: '#F1F5F9' }
                         }
                     }
                 }
             });
+        },
+
+        getPaxPct(type) {
+            const comp = this.paxAnalytics.composition || {};
+            const adult = comp.adult || 0;
+            const child = comp.child || 0;
+            const infant = comp.infant || 0;
+            const total = adult + child + infant;
+            if (total <= 0) return '0.0%';
+            const val = comp[type] || 0;
+            return ((val / total) * 100).toFixed(1) + '%';
+        },
+
+        getPayloadPct(type) {
+            const cargo = Math.round(this.kpis.total_cargo_kg || 0);
+            const baggage = Math.round(this.kpis.total_baggage_kg || 0);
+            const total = cargo + baggage;
+            if (total <= 0) return '0.0%';
+            const val = type === 'cargo' ? cargo : baggage;
+            return ((val / total) * 100).toFixed(1) + '%';
+        },
+
+        formatPayloadWeightKg(val) {
+            val = Math.round(val || 0);
+            if (val >= 1000000) {
+                return (val / 1000000).toFixed(2) + ' M kg';
+            }
+            return val.toLocaleString() + ' kg';
         },
 
         setLegFilter(val) {
@@ -1889,13 +2144,11 @@ function fdrDashboardController() {
             if (this.filters.traffic === 'DOM' || this.filters.traffic === 'DOMESTIC') trafLbl = 'DOMESTIC';
             else if (this.filters.traffic === 'INTL' || this.filters.traffic === 'INTERNATIONAL' || this.filters.traffic === 'INT') trafLbl = 'INTERNATIONAL';
 
-            return `${legLbl} • ${trafLbl}`;
+            return `Movement: ${legLbl} • Traffic: ${trafLbl}`;
         },
 
         formatPayloadWeight(val) {
-            if (!val || val === 0) return '0 kg';
-            if (val >= 1000) return (val / 1000).toFixed(1) + ' t';
-            return Math.round(val).toLocaleString() + ' kg';
+            return this.formatPayloadWeightKg(val);
         },
 
         triggerFilter(page = 1) {

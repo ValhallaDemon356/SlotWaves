@@ -434,6 +434,35 @@ class FlightDailyReportParser
         } elseif (preg_match('/(operator|airline|maskapai)\s*[:=]\s*([^\n\r<]+)/i', $metaText, $opMatch)) {
             $operator = strtoupper(trim($opMatch[2]));
         }
+        if (strcasecmp($operator, 'PAX ALL') === 0 || stripos($operator, 'PAX ALL') !== false) {
+            $operator = 'ALL AIRLINE';
+        }
+
+        // Extract Source Passenger Summary from raw rows if present (e.g. PAX ALL row)
+        $sourcePassengerSummary = null;
+        foreach ($rows as $rRow) {
+            $rowStr = implode(' ', (array)$rRow);
+            if (preg_match('/pax\s*all/i', $rowStr)) {
+                $pAll = null;
+                $pAdl = null;
+                $pTr = null;
+                if (preg_match('/pax\s*all[^\d]*\(?(\d[\d,\.]*)\)?/i', $rowStr, $pm)) {
+                    $pAll = (int)str_replace([',', '.'], '', $pm[1]);
+                }
+                if (preg_match('/(?:adult|child|infant|dewasa)[^\d]*\(?(\d[\d,\.]*)\)?/i', $rowStr, $am)) {
+                    $pAdl = (int)str_replace([',', '.'], '', $am[1]);
+                }
+                if (preg_match('/transit[^\d]*\(?(\d[\d,\.]*)\)?/i', $rowStr, $tm)) {
+                    $pTr = (int)str_replace([',', '.'], '', $tm[1]);
+                }
+                $sourcePassengerSummary = [
+                    'pax_all'            => $pAll,
+                    'adult_child_infant' => $pAdl,
+                    'transit'            => $pTr,
+                ];
+                break;
+            }
+        }
 
         // 3. Period / Dates (transactions_dateFDR or header)
         $startDate = null;
@@ -502,8 +531,9 @@ class FlightDailyReportParser
             'suffix'        => $suffix,
             'realization'   => $realization,
             'data_type'     => $dataType,
-            'source_system' => 'OASYS',
-            'report_name'   => 'FLIGHT DAILY REPORT',
+            'source_system'            => 'OASYS',
+            'report_name'              => 'FLIGHT DAILY REPORT',
+            'source_passenger_summary' => $sourcePassengerSummary,
         ];
     }
 
@@ -613,7 +643,86 @@ class FlightDailyReportParser
 
             // Skip empty rows or summary/total footer rows
             $firstCell = trim((string)($row[0] ?? ''));
-            $rowText = implode(' ', $row);
+            $rowText = implode(' ', (array)$row);
+
+            // Detect PAX ALL and other summary rows (Section 10: row_type = SUMMARY, NOT MOVEMENT, NOT airline = PAX ALL)
+            $isPaxAllSummary = preg_match('/pax\s*all/i', $rowText)
+                || preg_match('/-(pax\s*all|adult,\s*child,\s*infant|transit)-/i', $rowText)
+                || (isset($map['air_line']) && preg_match('/pax\s*all/i', (string)($row[$map['air_line']] ?? '')));
+
+            if ($isPaxAllSummary) {
+                $paxAllCount = 0;
+                if (preg_match('/pax\s*all[^\d]*\(?(\d[\d,\.]*)\)?/i', $rowText, $pm)) {
+                    $paxAllCount = (int)str_replace([',', '.'], '', $pm[1]);
+                }
+                $records[] = [
+                    'index'                        => count($records) + 1,
+                    'row_type'                     => 'SUMMARY', // NOT MOVEMENT
+                    'air_line'                     => 'N/A',     // NOT PAX ALL
+                    'flight_no'                    => 'N/A',
+                    'flight_no_base'               => 'N/A',
+                    'flight_suffix'                => '',
+                    'paired_no'                    => 'N/A',
+                    'desc'                         => 'PAX ALL SOURCE SUMMARY',
+                    'sibt'                         => 'N/A',
+                    'sobt'                         => 'N/A',
+                    'aibt'                         => 'N/A',
+                    'aobt'                         => 'N/A',
+                    'sched_display'                => 'N/A',
+                    'actual_display'               => 'N/A',
+                    'scheduled_datetime'           => null,
+                    'actual_datetime'              => null,
+                    'scheduled_arrival_datetime'   => null,
+                    'actual_arrival_datetime'      => null,
+                    'scheduled_departure_datetime' => null,
+                    'actual_departure_datetime'    => null,
+                    'operational_date'             => $meta['period_start'] ?? date('Y-m-d'),
+                    'actual_operational_date'      => null,
+                    'flight_date'                  => $meta['period_start'] ?? date('Y-m-d'),
+                    'scheduled_hour'               => null,
+                    'actual_hour'                  => null,
+                    'operational_hour'             => 0,
+                    'hour'                         => 0,
+                    'operational_datetime'         => ($meta['period_start'] ?? date('Y-m-d')) . ' 00:00:00',
+                    'leg'                          => 'N/A',
+                    'raw_leg'                      => 'N/A',
+                    'direction'                    => 'N/A',
+                    'sched_type'                   => 'SUMMARY',
+                    'is_scheduled'                 => false,
+                    'city_1'                       => 'N/A',
+                    'city_2'                       => 'N/A',
+                    'route'                        => 'N/A',
+                    'traffic'                      => 'N/A',
+                    'route_type'                   => 'N/A',
+                    'mtow'                         => 'N/A',
+                    'reg_no'                       => 'N/A',
+                    'cap'                          => 0,
+                    'load'                         => $paxAllCount,
+                    'load_factor'                  => 'N/A',
+                    'adult'                        => 0,
+                    'child'                        => 0,
+                    'infant'                       => 0,
+                    'transit'                      => 0,
+                    'transfer'                     => 0,
+                    'divert'                       => 0,
+                    'miss'                         => 0,
+                    'crw'                          => 0,
+                    'ex_crw'                       => 0,
+                    'cargo_kg'                     => 0.0,
+                    'baggage_kg'                   => 0.0,
+                    'pos_kg'                       => 0.0,
+                    'stand'                        => 'N/A',
+                    'runway'                       => 'N/A',
+                    'final'                        => 'N/A',
+                    'final_time'                   => 'N/A',
+                    'branch'                       => 'N/A',
+                    'delay_minutes'                => 0,
+                    'is_irregular'                 => false,
+                    'is_realized'                  => false,
+                ];
+                continue;
+            }
+
             if (empty(array_filter($row)) || preg_match('/^(total|grand\s*total|jumlah|subtotal|summary)/i', $firstCell) || preg_match('/^(grand\s*total|halaman)/i', $rowText)) {
                 continue;
             }
@@ -822,6 +931,7 @@ class FlightDailyReportParser
 
             $records[] = [
                 'index'                        => count($records) + 1,
+                'row_type'                     => 'MOVEMENT',
                 'air_line'                     => $airLine,
                 'flight_no'                    => $flightNo,
                 'flight_no_base'               => $flightNoBase,

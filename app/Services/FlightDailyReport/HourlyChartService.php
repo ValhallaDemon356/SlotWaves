@@ -62,6 +62,9 @@ class HourlyChartService
 
         // ── Aggregate records into hourly bins ───────────────────────────────────
         foreach ($records as $r) {
+            if (($r['row_type'] ?? '') === 'SUMMARY' || strcasecmp($r['air_line'] ?? '', 'PAX ALL') === 0 || strcasecmp($r['operator'] ?? '', 'PAX ALL') === 0) {
+                continue;
+            }
             $isArr  = (($r['direction'] ?? '') === 'ARRIVAL');
             $isIrreg = !empty($r['is_irregular']) || !empty($r['irregular']);
             $isRealized = array_key_exists('is_realized', $r)
@@ -614,7 +617,7 @@ class HourlyChartService
     }
 
     /**
-     * Render SVG for Passenger Trend line in PDF export.
+     * Render SVG for Passenger Trend Area + Line in PDF export.
      */
     public function renderCombinedPaxTrendSvg(array $trend, string $legFilter = 'ALL', int $width = 750, int $height = 150): string
     {
@@ -634,12 +637,12 @@ class HourlyChartService
 
         $lines = [];
         if ($legFilter === 'ALL') {
-            $lines[] = ['name' => 'Arrival Pax', 'data' => $arrPax, 'color' => '#F59E0B'];
-            $lines[] = ['name' => 'Departure Pax', 'data' => $depPax, 'color' => '#2563EB'];
+            $lines[] = ['name' => 'Arrival Pax', 'data' => $arrPax, 'color' => '#F59E0B', 'fill' => '#FEF3C7'];
+            $lines[] = ['name' => 'Departure Pax', 'data' => $depPax, 'color' => '#2563EB', 'fill' => '#DBEAFE'];
         } elseif ($showArr) {
-            $lines[] = ['name' => 'Arrival Pax', 'data' => $arrPax, 'color' => '#F59E0B'];
+            $lines[] = ['name' => 'Arrival Pax', 'data' => $arrPax, 'color' => '#F59E0B', 'fill' => '#FEF3C7'];
         } else {
-            $lines[] = ['name' => 'Departure Pax', 'data' => $depPax, 'color' => '#2563EB'];
+            $lines[] = ['name' => 'Departure Pax', 'data' => $depPax, 'color' => '#2563EB', 'fill' => '#DBEAFE'];
         }
 
         $maxY = 100;
@@ -671,10 +674,16 @@ class HourlyChartService
                 $pts[] = "{$x},{$y}";
             }
             if (!empty($pts)) {
+                $firstX = $padding['left'];
+                $lastX = $padding['left'] + (($n - 1) * $colWidth);
+                $bottomY = $padding['top'] + $plotH;
+                $areaPoints = "{$firstX},{$bottomY} " . implode(' ', $pts) . " {$lastX},{$bottomY}";
+                $svg .= "<polygon points=\"{$areaPoints}\" fill=\"{$ln['fill']}\" opacity=\"0.55\" />\n";
+
                 $svg .= "<polyline points=\"" . implode(' ', $pts) . "\" fill=\"none\" stroke=\"{$ln['color']}\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n";
                 foreach ($pts as $pt) {
                     [$px, $py] = explode(',', $pt);
-                    $svg .= "<circle cx=\"{$px}\" cy=\"{$py}\" r=\"2\" fill=\"{$ln['color']}\" />\n";
+                    $svg .= "<circle cx=\"{$px}\" cy=\"{$py}\" r=\"2.5\" fill=\"#FFFFFF\" stroke=\"{$ln['color']}\" stroke-width=\"1.5\" />\n";
                 }
             }
         }
@@ -692,7 +701,7 @@ class HourlyChartService
     }
 
     /**
-     * Render SVG for Cargo Trend area/line in PDF export.
+     * Render SVG for Cargo Trend Area + Line in PDF export.
      */
     public function renderCombinedCargoTrendSvg(array $trend, string $legFilter = 'ALL', int $width = 750, int $height = 150): string
     {
@@ -706,20 +715,25 @@ class HourlyChartService
 
         $arrCargo = $trend['arr_cargo_ton'] ?? [];
         $depCargo = $trend['dep_cargo_ton'] ?? [];
-        $totCargo = $trend['cargo_ton'] ?? [];
 
-        $data = $totCargo;
-        $color = '#10B981';
-        if ($legFilter === 'ARR' || $legFilter === 'ARRIVAL') {
-            $data = $arrCargo;
-        } elseif ($legFilter === 'DEP' || $legFilter === 'DEPARTURE') {
-            $data = $depCargo;
-            $color = '#059669';
+        $showArr = ($legFilter === 'ALL' || $legFilter === 'ARR' || $legFilter === 'ARRIVAL');
+        $showDep = ($legFilter === 'ALL' || $legFilter === 'DEP' || $legFilter === 'DEPARTURE');
+
+        $lines = [];
+        if ($legFilter === 'ALL') {
+            $lines[] = ['name' => 'Arrival Cargo', 'data' => $arrCargo, 'color' => '#14B8A6', 'fill' => '#CCFBF1'];
+            $lines[] = ['name' => 'Departure Cargo', 'data' => $depCargo, 'color' => '#059669', 'fill' => '#D1FAE5'];
+        } elseif ($showArr) {
+            $lines[] = ['name' => 'Arrival Cargo', 'data' => $arrCargo, 'color' => '#14B8A6', 'fill' => '#CCFBF1'];
+        } else {
+            $lines[] = ['name' => 'Departure Cargo', 'data' => $depCargo, 'color' => '#059669', 'fill' => '#D1FAE5'];
         }
 
         $maxY = 5;
-        foreach ($data as $v) {
-            if ($v > $maxY) $maxY = $v;
+        foreach ($lines as $ln) {
+            foreach ($ln['data'] as $v) {
+                if ($v > $maxY) $maxY = $v;
+            }
         }
         $maxY = ceil($maxY * 1.15);
 
@@ -734,25 +748,27 @@ class HourlyChartService
             $svg .= "<text x=\"" . ($padding['left'] - 6) . "\" y=\"" . ($y + 3) . "\" fill=\"#64748B\" font-size=\"8.5\" text-anchor=\"end\">{$val} t</text>\n";
         }
 
-        $pts = [];
-        for ($i = 0; $i < $n; $i++) {
-            $val = $data[$i] ?? 0;
-            $x = $padding['left'] + ($i * $colWidth);
-            $y = $padding['top'] + $plotH - (($val / $maxY) * $plotH);
-            $pts[] = "{$x},{$y}";
-        }
+        foreach ($lines as $ln) {
+            $pts = [];
+            for ($i = 0; $i < $n; $i++) {
+                $val = $ln['data'][$i] ?? 0;
+                $x = $padding['left'] + ($i * $colWidth);
+                $y = $padding['top'] + $plotH - (($val / $maxY) * $plotH);
+                $pts[] = "{$x},{$y}";
+            }
 
-        if (!empty($pts)) {
-            $firstX = $padding['left'];
-            $lastX = $padding['left'] + (($n - 1) * $colWidth);
-            $bottomY = $padding['top'] + $plotH;
-            $areaPoints = "{$firstX},{$bottomY} " . implode(' ', $pts) . " {$lastX},{$bottomY}";
-            $svg .= "<polygon points=\"{$areaPoints}\" fill=\"#ECFDF5\" />\n";
+            if (!empty($pts)) {
+                $firstX = $padding['left'];
+                $lastX = $padding['left'] + (($n - 1) * $colWidth);
+                $bottomY = $padding['top'] + $plotH;
+                $areaPoints = "{$firstX},{$bottomY} " . implode(' ', $pts) . " {$lastX},{$bottomY}";
+                $svg .= "<polygon points=\"{$areaPoints}\" fill=\"{$ln['fill']}\" opacity=\"0.55\" />\n";
 
-            $svg .= "<polyline points=\"" . implode(' ', $pts) . "\" fill=\"none\" stroke=\"{$color}\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n";
-            foreach ($pts as $pt) {
-                [$px, $py] = explode(',', $pt);
-                $svg .= "<circle cx=\"{$px}\" cy=\"{$py}\" r=\"2\" fill=\"{$color}\" />\n";
+                $svg .= "<polyline points=\"" . implode(' ', $pts) . "\" fill=\"none\" stroke=\"{$ln['color']}\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n";
+                foreach ($pts as $pt) {
+                    [$px, $py] = explode(',', $pt);
+                    $svg .= "<circle cx=\"{$px}\" cy=\"{$py}\" r=\"2.5\" fill=\"#FFFFFF\" stroke=\"{$ln['color']}\" stroke-width=\"1.5\" />\n";
+                }
             }
         }
 
@@ -762,6 +778,117 @@ class HourlyChartService
                 $x = $padding['left'] + ($i * $colWidth);
                 $svg .= "<text x=\"{$x}\" y=\"" . ($height - 8) . "\" fill=\"#64748B\" font-size=\"8.5\" text-anchor=\"middle\">{$labels[$i]}</text>\n";
             }
+        }
+
+        $svg .= "</svg>\n";
+        return $svg;
+    }
+
+    /**
+     * Render SVG for Schedule Variance Distribution (9 semantic buckets) in PDF export.
+     */
+    public function renderScheduleVarianceDistributionSvg(array $schedVsReal, int $width = 720, int $height = 145): string
+    {
+        $rawBins = $schedVsReal['hist_bins'] ?? ($schedVsReal['histogram'] ?? []);
+        $bins = array_values($rawBins);
+        if (empty($bins) || count($bins) !== 9) {
+            // Fallback default 9 bins if structure not present
+            $bins = [
+                ['label' => '>60 MIN EARLY', 'group' => 'EARLY', 'count' => 0, 'color' => '#1E3A8A'],
+                ['label' => '31–60 MIN EARLY', 'group' => 'EARLY', 'count' => 0, 'color' => '#2563EB'],
+                ['label' => '16–30 MIN EARLY', 'group' => 'EARLY', 'count' => 0, 'color' => '#60A5FA'],
+                ['label' => '6–15 MIN EARLY', 'group' => 'EARLY', 'count' => 0, 'color' => '#93C5FD'],
+                ['label' => 'ON TIME ±5 MIN', 'group' => 'ON TIME', 'count' => 0, 'color' => '#10B981'],
+                ['label' => '6–15 MIN LATE', 'group' => 'LATE', 'count' => 0, 'color' => '#FCD34D'],
+                ['label' => '16–30 MIN LATE', 'group' => 'LATE', 'count' => 0, 'color' => '#F59E0B'],
+                ['label' => '31–60 MIN LATE', 'group' => 'LATE', 'count' => 0, 'color' => '#EA580C'],
+                ['label' => '>60 MIN LATE', 'group' => 'LATE', 'count' => 0, 'color' => '#DC2626'],
+            ];
+        }
+
+        $padding = ['top' => 30, 'right' => 15, 'bottom' => 30, 'left' => 30];
+        $plotW = $width - $padding['left'] - $padding['right'];
+        $plotH = $height - $padding['top'] - $padding['bottom'];
+
+        $colWidth = $plotW / 9;
+        $barWidth = max(8, min(42, $colWidth * 0.65));
+
+        $maxVal = 5;
+        foreach ($bins as $b) {
+            $cnt = (int)($b['count'] ?? 0);
+            if ($cnt > $maxVal) $maxVal = $cnt;
+        }
+        $maxY = ceil($maxVal * 1.15);
+
+        $svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{$width}\" height=\"{$height}\" viewBox=\"0 0 {$width} {$height}\" style=\"background-color:#ffffff; font-family:sans-serif;\">\n";
+
+        // Group Header Badges (EARLY: bins 0-3, ON TIME: bin 4, LATE: bins 5-8)
+        $earlyW = 4 * $colWidth;
+        $onTimeW = 1 * $colWidth;
+        $lateW = 4 * $colWidth;
+
+        // Early Group Header
+        $earlyX = $padding['left'];
+        $svg .= "<rect x=\"{$earlyX}\" y=\"6\" width=\"" . ($earlyW - 4) . "\" height=\"18\" rx=\"4\" fill=\"#EFF6FF\" stroke=\"#BFDBFE\" stroke-width=\"1\" />\n";
+        $svg .= "<text x=\"" . ($earlyX + ($earlyW / 2) - 2) . "\" y=\"18\" fill=\"#1E40AF\" font-size=\"8.5\" font-weight=\"bold\" text-anchor=\"middle\">EARLY (4 BUCKETS)</text>\n";
+
+        // On-Time Group Header
+        $onTimeX = $earlyX + $earlyW;
+        $svg .= "<rect x=\"{$onTimeX}\" y=\"6\" width=\"" . ($onTimeW - 4) . "\" height=\"18\" rx=\"4\" fill=\"#ECFDF5\" stroke=\"#A7F3D0\" stroke-width=\"1\" />\n";
+        $svg .= "<text x=\"" . ($onTimeX + ($onTimeW / 2) - 2) . "\" y=\"18\" fill=\"#065F46\" font-size=\"8.5\" font-weight=\"bold\" text-anchor=\"middle\">ON TIME (±5 MIN)</text>\n";
+
+        // Late Group Header
+        $lateX = $onTimeX + $onTimeW;
+        $svg .= "<rect x=\"{$lateX}\" y=\"6\" width=\"" . ($lateW - 4) . "\" height=\"18\" rx=\"4\" fill=\"#FEF2F2\" stroke=\"#FECACA\" stroke-width=\"1\" />\n";
+        $svg .= "<text x=\"" . ($lateX + ($lateW / 2) - 2) . "\" y=\"18\" fill=\"#991B1B\" font-size=\"8.5\" font-weight=\"bold\" text-anchor=\"middle\">LATE (4 BUCKETS)</text>\n";
+
+        // Vertical Section Separators
+        $sep1X = $earlyX + $earlyW - 2;
+        $sep2X = $onTimeX + $onTimeW - 2;
+        $yBottom = $padding['top'] + $plotH;
+        $svg .= "<line x1=\"{$sep1X}\" y1=\"{$padding['top']}\" x2=\"{$sep1X}\" y2=\"{$yBottom}\" stroke=\"#CBD5E1\" stroke-width=\"1\" stroke-dasharray=\"3,3\" />\n";
+        $svg .= "<line x1=\"{$sep2X}\" y1=\"{$padding['top']}\" x2=\"{$sep2X}\" y2=\"{$yBottom}\" stroke=\"#CBD5E1\" stroke-width=\"1\" stroke-dasharray=\"3,3\" />\n";
+
+        // Horizontal Grid Lines
+        for ($t = 0; $t <= 3; $t++) {
+            $val = round(($maxY / 3) * $t);
+            $y = $padding['top'] + $plotH - ($plotH * ($val / $maxY));
+            $svg .= "<line x1=\"{$padding['left']}\" y1=\"{$y}\" x2=\"" . ($width - $padding['right']) . "\" y2=\"{$y}\" stroke=\"#F1F5F9\" stroke-width=\"1\" />\n";
+            $svg .= "<text x=\"" . ($padding['left'] - 6) . "\" y=\"" . ($y + 3) . "\" fill=\"#64748B\" font-size=\"8\" text-anchor=\"end\">{$val}</text>\n";
+        }
+
+        // Section 3 exact user-friendly labels for PDF bottom axis
+        $axisLabels = [
+            '>60 MIN EARLY',
+            '31–60 MIN EARLY',
+            '16–30 MIN EARLY',
+            '6–15 MIN EARLY',
+            'ON TIME ±5 MIN',
+            '6–15 MIN LATE',
+            '16–30 MIN LATE',
+            '31–60 MIN LATE',
+            '>60 MIN LATE'
+        ];
+
+        // Draw Bars
+        for ($i = 0; $i < 9; $i++) {
+            $b = $bins[$i];
+            $cnt = (int)($b['count'] ?? 0);
+            $color = $b['color'] ?? '#64748B';
+
+            $xCenter = $padding['left'] + ($i * $colWidth) + ($colWidth / 2);
+            $xBar = $xCenter - ($barWidth / 2);
+
+            $hBar = ($maxY > 0) ? ($cnt / $maxY) * $plotH : 0;
+            $yBar = $padding['top'] + $plotH - $hBar;
+
+            if ($hBar > 0) {
+                $svg .= "<rect x=\"{$xBar}\" y=\"{$yBar}\" width=\"{$barWidth}\" height=\"{$hBar}\" fill=\"{$color}\" rx=\"2.5\" />\n";
+                $svg .= "<text x=\"{$xCenter}\" y=\"" . max(28, $yBar - 3) . "\" fill=\"#334155\" font-size=\"8\" font-weight=\"bold\" text-anchor=\"middle\">{$cnt}</text>\n";
+            }
+
+            $label = $axisLabels[$i] ?? ($b['label'] ?? '');
+            $svg .= "<text x=\"{$xCenter}\" y=\"" . ($height - 10) . "\" fill=\"#64748B\" font-size=\"6.8\" font-weight=\"bold\" text-anchor=\"middle\">{$label}</text>\n";
         }
 
         $svg .= "</svg>\n";

@@ -53,6 +53,7 @@ class FlightDailyReportPdfExport
         $svgFlightMovement = $this->hourlyChartService->renderCombinedFlightMovementSvg($combinedTrend, $legFilter, $trafficFilter, 720, 150);
         $svgPaxTrend = $this->hourlyChartService->renderCombinedPaxTrendSvg($combinedTrend, $legFilter, 720, 120);
         $svgCargoTrend = $this->hourlyChartService->renderCombinedCargoTrendSvg($combinedTrend, $legFilter, 720, 120);
+        $svgScheduleVariance = $this->hourlyChartService->renderScheduleVarianceDistributionSvg($analyticsData['schedule_vs_realization'], 720, 135);
 
         // Generate Donut SVGs (Passenger Composition & Payload Composition)
         $paxComp = $analyticsData['passenger_analytics']['composition'] ?? [];
@@ -113,6 +114,7 @@ class FlightDailyReportPdfExport
             'svgCargoTrend'         => $svgCargoTrend,
             'svgPaxDonut'           => $svgPaxDonut,
             'svgPayloadDonut'       => $svgPayloadDonut,
+            'svgScheduleVariance'   => $svgScheduleVariance,
             'schedVsReal'           => $analyticsData['schedule_vs_realization'],
             'paxAnalytics'          => $analyticsData['passenger_analytics'],
             'airlineRoute'          => $analyticsData['airline_route'],

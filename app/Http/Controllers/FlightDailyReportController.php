@@ -114,7 +114,10 @@ class FlightDailyReportController extends Controller
         $airlines = [];
         $airports = [];
         foreach ($records as $r) {
-            if (!empty($r['air_line']) && $r['air_line'] !== 'N/A') $airlines[$r['air_line']] = true;
+            if (($r['row_type'] ?? 'MOVEMENT') === 'SUMMARY') continue;
+            $al = trim($r['air_line'] ?? '');
+            if ($al === '' || $al === 'N/A' || strcasecmp($al, 'PAX ALL') === 0 || stripos($al, 'PAX ALL') !== false) continue;
+            $airlines[$al] = true;
             if (!empty($r['city_1']) && $r['city_1'] !== 'N/A') $airports[$r['city_1']] = true;
             if (!empty($r['city_2']) && $r['city_2'] !== 'N/A') $airports[$r['city_2']] = true;
         }
@@ -300,7 +303,10 @@ class FlightDailyReportController extends Controller
         $airlines = [];
         $airports = [];
         foreach ($rawRecords as $r) {
-            if (!empty($r['air_line']) && $r['air_line'] !== 'N/A') $airlines[$r['air_line']] = true;
+            if (($r['row_type'] ?? 'MOVEMENT') === 'SUMMARY') continue;
+            $al = trim($r['air_line'] ?? '');
+            if ($al === '' || $al === 'N/A' || strcasecmp($al, 'PAX ALL') === 0 || stripos($al, 'PAX ALL') !== false) continue;
+            $airlines[$al] = true;
             if (!empty($r['city_1']) && $r['city_1'] !== 'N/A') $airports[$r['city_1']] = true;
             if (!empty($r['city_2']) && $r['city_2'] !== 'N/A') $airports[$r['city_2']] = true;
         }
@@ -709,20 +715,25 @@ class FlightDailyReportController extends Controller
 
         $sourceType = $meta['source_type'] ?? FlightDailyReportParser::detectGranularity($startDate, $endDate);
 
+        $movementRecords = array_filter($rawRecords, fn($r) => ($r['row_type'] ?? 'MOVEMENT') !== 'SUMMARY' && stripos($r['air_line'] ?? '', 'PAX ALL') === false);
+        $totalFlights = count($movementRecords);
+
         return [
-            'total_flights'  => count($rawRecords),
-            'days_count'     => $daysCount,
-            'start_date'     => $startDate,
-            'end_date'       => $endDate,
-            'start_label'    => date('d-m-Y', strtotime($startDate)),
-            'end_label'      => date('d-m-Y', strtotime($endDate)),
-            'period_label'   => date('d-m-Y', strtotime($startDate)) . ' → ' . date('d-m-Y', strtotime($endDate)),
-            'days_available' => "{$daysCount} DAYS AVAILABLE",
-            'source_type'    => $sourceType,
-            'is_daily'       => ($sourceType === 'DAILY'),
-            'is_monthly'     => ($sourceType === 'MONTHLY'),
-            'is_yearly'      => ($sourceType === 'YEARLY'),
-            'is_custom'      => ($sourceType === 'CUSTOM RANGE'),
+            'total_flights'            => $totalFlights,
+            'days_count'               => $daysCount,
+            'start_date'               => $startDate,
+            'end_date'                 => $endDate,
+            'start_label'              => date('d-m-Y', strtotime($startDate)),
+            'end_label'                => date('d-m-Y', strtotime($endDate)),
+            'period_label'             => date('d-m-Y', strtotime($startDate)) . ' → ' . date('d-m-Y', strtotime($endDate)),
+            'days_available'           => "{$daysCount} DAYS AVAILABLE",
+            'source_type'              => $sourceType,
+            'is_daily'                 => ($sourceType === 'DAILY'),
+            'is_monthly'               => ($sourceType === 'MONTHLY'),
+            'is_yearly'                => ($sourceType === 'YEARLY'),
+            'is_custom'                => ($sourceType === 'CUSTOM RANGE'),
+            'source_passenger_summary' => $meta['source_passenger_summary'] ?? null,
+            'pax_summary'              => $meta['source_passenger_summary'] ?? null,
         ];
     }
 

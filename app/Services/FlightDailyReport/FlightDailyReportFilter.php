@@ -11,7 +11,16 @@ class FlightDailyReportFilter
     public function apply(array $records, array $filters, array $meta = []): array
     {
         $filtered = [];
-        $totalCount = count($records);
+
+        // Filter out summary rows (Section 10 & 11: PAX ALL summary rows must not affect analytics or movement filtering)
+        $movementRecords = [];
+        foreach ($records as $r) {
+            if (($r['row_type'] ?? 'MOVEMENT') === 'SUMMARY') continue;
+            $al = trim($r['air_line'] ?? '');
+            if (strcasecmp($al, 'PAX ALL') === 0 || stripos($al, 'PAX ALL') !== false) continue;
+            $movementRecords[] = $r;
+        }
+        $totalCount = count($movementRecords);
 
         // Normalize filters with defaults
         $airport      = strtoupper(trim($filters['airport'] ?? 'ALL'));
@@ -86,7 +95,7 @@ class FlightDailyReportFilter
 
         $excludedReasons = [];
 
-        foreach ($records as $r) {
+        foreach ($movementRecords as $r) {
             $rDate = self::standardizeDate($r['operational_date'] ?? ($r['flight_date'] ?? ''));
 
             // 0. Analysis Scope Filter (DAILY / MONTHLY / YEARLY)
