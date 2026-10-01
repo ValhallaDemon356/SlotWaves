@@ -8,18 +8,41 @@ class FlightDailyReportFilter
      * Apply filter cascade to raw FDR records.
      * Raw Records → Filter State → Aggregated Metrics Payload → Charts & Table
      */
+    /**
+     * Classify records into movement records and summary rows.
+     */
+    public function classifyRows(array $records): array
+    {
+        $movementRecords = [];
+        $summaryRecords = [];
+        foreach ($records as $r) {
+            if (($r['row_type'] ?? 'MOVEMENT') === 'SUMMARY'
+                || strcasecmp(trim($r['air_line'] ?? ''), 'PAX ALL') === 0
+                || stripos(trim($r['air_line'] ?? ''), 'PAX ALL') !== false
+                || stripos(trim($r['desc'] ?? ''), 'PAX ALL') !== false) {
+                $summaryRecords[] = $r;
+                continue;
+            }
+            $movementRecords[] = $r;
+        }
+        return [
+            'movement_records' => array_values($movementRecords),
+            'summary_rows'     => array_values($summaryRecords),
+            0                  => array_values($movementRecords),
+            1                  => array_values($summaryRecords),
+        ];
+    }
+
+    /**
+     * Apply filter cascade to raw FDR records.
+     * Raw Records → Classify Rows → Movement Records → Global Filters → Date Scope → Filtered Records
+     */
     public function apply(array $records, array $filters, array $meta = []): array
     {
         $filtered = [];
 
-        // Filter out summary rows (Section 10 & 11: PAX ALL summary rows must not affect analytics or movement filtering)
-        $movementRecords = [];
-        foreach ($records as $r) {
-            if (($r['row_type'] ?? 'MOVEMENT') === 'SUMMARY') continue;
-            $al = trim($r['air_line'] ?? '');
-            if (strcasecmp($al, 'PAX ALL') === 0 || stripos($al, 'PAX ALL') !== false) continue;
-            $movementRecords[] = $r;
-        }
+        // 1. Classify rows and exclude summary rows (Section 8, 9, 10 & 11)
+        [$movementRecords, $summaryRecords] = $this->classifyRows($records);
         $totalCount = count($movementRecords);
 
         // Normalize filters with defaults
@@ -34,63 +57,83 @@ class FlightDailyReportFilter
         $startDate    = trim($filters['start_date'] ?? '');
         $endDate      = trim($filters['end_date'] ?? '');
         $search        = strtolower(trim($filters['search'] ?? ''));
-        $analysisDate  = trim($filters['analysis_date'] ?? '');
-        $analysisLevel = strtoupper(trim($filters['analysis_level'] ?? 'DAILY'));
+        $rawDateScope  = strtoupper(trim($filters['date_scope'] ?? ''));
+        $rawAnalysisDate = trim($filters['analysis_date'] ?? '');
+        $analysisLevel = strtoupper(trim($filters['analysis_level'] ?? ''));
         $analysisMonth = trim($filters['analysis_month'] ?? '');
         $analysisYear  = trim($filters['analysis_year'] ?? '');
         $reportMode    = (int)($filters['report_mode'] ?? 1);
         $reqVersion    = $filters['v'] ?? ($filters['req_id'] ?? time());
 
+        // Resolve explicit date scope state (Section 3, 4, 5, 6 & 23)
+        if ($rawDateScope === 'ALL_PERIOD' || $rawDateScope === 'FULL_RANGE' || $rawDateScope === 'FULL' || $rawAnalysisDate === 'ALL' || $analysisLevel === 'FULL' || $analysisLevel === 'ALL_PERIOD' || ($rawDateScope === '' && ($rawAnalysisDate === '' || $rawAnalysisDate === null))) {
+            $dateScope = 'ALL_PERIOD';
+            $stdAnalysisDate = null;
+            $analysisLevel = 'FULL';
+        } elseif ($rawDateScope === 'DAY' || (!empty($rawAnalysisDate) && $rawAnalysisDate !== 'ALL' && $rawAnalysisDate !== 'N/A')) {
+            $dateScope = 'DAY';
+            $stdAnalysisDate = self::standardizeDate($rawAnalysisDate);
+            $analysisLevel = 'DAILY';
+        } elseif ($rawDateScope === 'RANGE' || (!empty($startDate) && !empty($endDate))) {
+            $dateScope = 'RANGE';
+            $stdAnalysisDate = null;
+            $analysisLevel = 'RANGE';
+        } else {
+            $dateScope = 'ALL_PERIOD';
+            $stdAnalysisDate = null;
+            $analysisLevel = 'FULL';
+        }
+
         $activeChips = [];
 
-        $stdAnalysisDate = (!empty($analysisDate) && $analysisDate !== 'ALL') ? self::standardizeDate($analysisDate) : null;
-
-        // Format analysis scope chips based on analysis level
-        if ($analysisLevel === 'DAILY') {
+        // Active chip for date scope
+        if ($dateScope === 'ALL_PERIOD') {
+            $activeChips[] = ['key' => 'date_scope', 'label' => 'Period: FULL RANGE', 'text' => 'Period: FULL RANGE', 'value' => 'ALL_PERIOD'];
+        } elseif ($dateScope === 'DAY') {
             if ($stdAnalysisDate !== null && $stdAnalysisDate !== 'N/A') {
                 $displayDate = date('d-m-Y', strtotime($stdAnalysisDate));
-                $activeChips[] = ['key' => 'analysis_date', 'label' => "Date: {$displayDate}", 'value' => $stdAnalysisDate];
+                $activeChips[] = ['key' => 'analysis_date', 'label' => "Date: {$displayDate}", 'text' => "Date: {$displayDate}", 'value' => $stdAnalysisDate];
             }
         } elseif ($analysisLevel === 'MONTHLY') {
             $monthTarget = !empty($analysisMonth) ? $analysisMonth : ($stdAnalysisDate ? substr($stdAnalysisDate, 0, 7) : substr($startDate, 0, 7));
             if (!empty($monthTarget)) {
                 $displayMonth = date('F Y', strtotime($monthTarget . '-01'));
-                $activeChips[] = ['key' => 'analysis_level', 'label' => "Month: {$displayMonth}", 'value' => $monthTarget];
+                $activeChips[] = ['key' => 'analysis_level', 'label' => "Month: {$displayMonth}", 'text' => "Month: {$displayMonth}", 'value' => $monthTarget];
             }
         } elseif ($analysisLevel === 'YEARLY') {
             $yearTarget = !empty($analysisYear) ? $analysisYear : ($stdAnalysisDate ? substr($stdAnalysisDate, 0, 4) : substr($startDate, 0, 4));
             if (!empty($yearTarget)) {
-                $activeChips[] = ['key' => 'analysis_level', 'label' => "Year: {$yearTarget}", 'value' => $yearTarget];
+                $activeChips[] = ['key' => 'analysis_level', 'label' => "Year: {$yearTarget}", 'text' => "Year: {$yearTarget}", 'value' => $yearTarget];
             }
         }
 
         if ($airport !== 'ALL' && !empty($airport)) {
-            $activeChips[] = ['key' => 'airport', 'label' => "Airport: {$airport}", 'value' => $airport];
+            $activeChips[] = ['key' => 'airport', 'label' => "Airport: {$airport}", 'text' => "Airport: {$airport}", 'value' => $airport];
         }
         if ($leg !== 'ALL' && !empty($leg)) {
-            $activeChips[] = ['key' => 'leg', 'label' => "Leg: {$leg}", 'value' => $leg];
+            $activeChips[] = ['key' => 'leg', 'label' => "Leg: {$leg}", 'text' => "Leg: {$leg}", 'value' => $leg];
         }
         if ($operator !== 'ALL' && !empty($operator)) {
-            $activeChips[] = ['key' => 'operator', 'label' => "Operator: {$operator}", 'value' => $operator];
+            $activeChips[] = ['key' => 'operator', 'label' => "Operator: {$operator}", 'text' => "Operator: {$operator}", 'value' => $operator];
         }
         if ($traffic !== 'ALL' && !empty($traffic)) {
-            $activeChips[] = ['key' => 'traffic', 'label' => "Traffic: {$traffic}", 'value' => $traffic];
+            $activeChips[] = ['key' => 'traffic', 'label' => "Traffic: {$traffic}", 'text' => "Traffic: {$traffic}", 'value' => $traffic];
         }
         if ($realization !== 'ALL' && !empty($realization)) {
-            $activeChips[] = ['key' => 'realization', 'label' => "Realized: {$realization}", 'value' => $realization];
+            $activeChips[] = ['key' => 'realization', 'label' => "Realized: {$realization}", 'text' => "Realized: {$realization}", 'value' => $realization];
         }
         if (!empty($flightNo)) {
-            $activeChips[] = ['key' => 'flight_no', 'label' => "Flight: {$flightNo}", 'value' => $flightNo];
+            $activeChips[] = ['key' => 'flight_no', 'label' => "Flight: {$flightNo}", 'text' => "Flight: {$flightNo}", 'value' => $flightNo];
         }
         if (!empty($suffix)) {
-            $activeChips[] = ['key' => 'suffix', 'label' => "Suffix: {$suffix}", 'value' => $suffix];
+            $activeChips[] = ['key' => 'suffix', 'label' => "Suffix: {$suffix}", 'text' => "Suffix: {$suffix}", 'value' => $suffix];
         }
         if (!empty($startDate) || !empty($endDate)) {
             $lbl = trim("{$startDate} to {$endDate}");
-            $activeChips[] = ['key' => 'date_range', 'label' => "Range: {$lbl}", 'value' => $lbl];
+            $activeChips[] = ['key' => 'date_range', 'label' => "Range: {$lbl}", 'text' => "Range: {$lbl}", 'value' => $lbl];
         }
         if (!empty($search)) {
-            $activeChips[] = ['key' => 'search', 'label' => "Query: {$search}", 'value' => $search];
+            $activeChips[] = ['key' => 'search', 'label' => "Query: {$search}", 'text' => "Query: {$search}", 'value' => $search];
         }
 
         $excludedReasons = [];
@@ -98,11 +141,26 @@ class FlightDailyReportFilter
         foreach ($movementRecords as $r) {
             $rDate = self::standardizeDate($r['operational_date'] ?? ($r['flight_date'] ?? ''));
 
-            // 0. Analysis Scope Filter (DAILY / MONTHLY / YEARLY)
-            if ($analysisLevel === 'DAILY') {
+            // 0. Date Scope Filter (Explicit Section 3, 4, 5 & 23)
+            if ($dateScope === 'DAY') {
                 if ($stdAnalysisDate !== null && $stdAnalysisDate !== 'N/A') {
                     if ($rDate !== $stdAnalysisDate) {
                         $excludedReasons['Outside selected analysis date (' . ($rDate ?: 'N/A') . ')'] = ($excludedReasons['Outside selected analysis date (' . ($rDate ?: 'N/A') . ')'] ?? 0) + 1;
+                        continue;
+                    }
+                }
+            } elseif ($dateScope === 'RANGE') {
+                if (!empty($startDate)) {
+                    $stdStart = self::standardizeDate($startDate);
+                    if ($rDate !== 'N/A' && $rDate < $stdStart) {
+                        $excludedReasons['Date earlier than start range'] = ($excludedReasons['Date earlier than start range'] ?? 0) + 1;
+                        continue;
+                    }
+                }
+                if (!empty($endDate)) {
+                    $stdEnd = self::standardizeDate($endDate);
+                    if ($rDate !== 'N/A' && $rDate > $stdEnd) {
+                        $excludedReasons['Date later than end range'] = ($excludedReasons['Date later than end range'] ?? 0) + 1;
                         continue;
                     }
                 }
@@ -119,6 +177,7 @@ class FlightDailyReportFilter
                     continue;
                 }
             }
+            // For ALL_PERIOD: NO DATE FILTER IS APPLIED! Every valid movement record is retained.
 
             // 1. Airport Filter
             if ($airport !== 'ALL' && !empty($airport)) {
@@ -260,11 +319,12 @@ class FlightDailyReportFilter
                 'is_reconciled'     => ($excludedCount === 0),
                 'exclusion_reasons' => $excludedReasons,
             ],
-            'counter_text'   => "Showing {$filteredCount} of {$totalCount} records",
+            'counter_text'   => 'Showing ' . number_format($filteredCount) . ' of ' . number_format($totalCount) . ' records',
             'active_chips'   => $activeChips,
             'filters'        => [
+                'date_scope'     => $dateScope,
                 'analysis_level' => $analysisLevel,
-                'analysis_date'  => $stdAnalysisDate ?? $analysisDate,
+                'analysis_date'  => $stdAnalysisDate ?? ($rawAnalysisDate ?: null),
                 'analysis_month' => $analysisMonth,
                 'analysis_year'  => $analysisYear,
                 'airport'        => $airport,

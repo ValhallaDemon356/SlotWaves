@@ -58,27 +58,78 @@ class FlightDailyReportParser
     ];
 
     /**
-     * Detect exact format of FDR source file.
+     * Detect actual markup and container format of FDR source file (Prompt Item 12 & 13).
+     * Possible: HTML_XLS, XLS, XLSX, XML, CSV
      */
-    public function detectFormat(string $filePath, string $content): string
+    public function detectActualFormat(string $content, string $fileName = ''): string
     {
-        if ($this->isHtmlTable($content)) {
-            return 'OASYS HTML XLS';
-        }
+        $head = substr($content, 0, 32768);
+        $lower = strtolower($head);
 
+        // 1. Native XLS binary OLE2 container
         if (strncmp($content, "\xD0\xCF\x11\xE0", 4) === 0) {
-            return 'NATIVE XLS';
+            return 'XLS';
         }
 
+        // 2. OpenXML ZIP archive (.xlsx)
         if (strncmp($content, "PK\x03\x04", 4) === 0) {
             return 'XLSX';
         }
 
-        if (strtolower(pathinfo($filePath, PATHINFO_EXTENSION)) === 'csv') {
+        // 3. XML Spreadsheet 2003 / XML
+        if ($this->isXmlSpreadsheet($content) || (str_starts_with(trim($lower), '<?xml') && !str_contains($lower, '<html'))) {
+            return 'XML';
+        }
+
+        // 4. OASYS HTML XLS (disguised HTML table in .xls container)
+        if ($this->isHtmlTable($content) || str_contains($lower, '<html') || str_contains($lower, '<table') || str_contains($lower, '<!doctype')) {
+            return 'HTML_XLS';
+        }
+
+        // 5. CSV format
+        if (strtolower(pathinfo($fileName, PATHINFO_EXTENSION)) === 'csv' || $this->isCsvContent($head)) {
             return 'CSV';
         }
 
-        return 'OASYS HTML XLS';
+        return 'HTML_XLS';
+    }
+
+    /**
+     * Detect exact format of FDR source file.
+     */
+    public function detectFormat(string $filePath, string $content): string
+    {
+        $actual = $this->detectActualFormat($content, basename($filePath));
+        if ($actual === 'HTML_XLS') {
+            return 'OASYS HTML XLS';
+        }
+        if ($actual === 'XLS') {
+            return 'NATIVE XLS';
+        }
+        return $actual;
+    }
+
+    /**
+     * Check if content is XML spreadsheet or XML document.
+     */
+    public function isXmlSpreadsheet(string $content): bool
+    {
+        $head = strtolower(substr($content, 0, 4096));
+        return (str_starts_with(trim($head), '<?xml') && (str_contains($head, '<workbook') || str_contains($head, '<table') || str_contains($head, 'urn:schemas-microsoft-com:office:spreadsheet')));
+    }
+
+    /**
+     * Check if content resembles CSV structure.
+     */
+    public function isCsvContent(string $head): bool
+    {
+        $lines = explode("\n", substr($head, 0, 2048));
+        if (count($lines) >= 2) {
+            $first = str_getcsv($lines[0]);
+            $second = str_getcsv($lines[1]);
+            return (count($first) >= 4 && count($first) === count($second));
+        }
+        return false;
     }
 
     /**
@@ -98,9 +149,11 @@ class FlightDailyReportParser
         $metaHeaders = [];
         $detectedFormat = $this->detectFormat($filePath, $content);
 
-        if ($this->isHtmlTable($content)) {
+        if ($detectedFormat === 'OASYS HTML XLS' || $this->isHtmlTable($content)) {
             [$metaHeaders, $rawRows] = $this->parseHtmlTable($content);
-        } elseif (strtolower(pathinfo($filePath, PATHINFO_EXTENSION)) === 'csv') {
+        } elseif ($detectedFormat === 'XML' || $this->isXmlSpreadsheet($content)) {
+            [$metaHeaders, $rawRows] = $this->parseXmlTable($content);
+        } elseif ($detectedFormat === 'CSV' || strtolower(pathinfo($filePath, PATHINFO_EXTENSION)) === 'csv') {
             [$metaHeaders, $rawRows] = $this->parseCsv($filePath);
         } else {
             [$metaHeaders, $rawRows] = $this->parseSpreadsheet($filePath);
@@ -117,12 +170,89 @@ class FlightDailyReportParser
         // Derive multi-day / multi-month period from actual records if not explicit
         $meta = $this->refineMetadataWithRecords($meta, $records);
 
+        // Compute diagnostics
+        $classification = $this->classifyRows($records);
+        $htmlDataRows = max(0, count($rawRows) - ($columnMap['header_row_index'] >= 0 ? $columnMap['header_row_index'] + 1 : 0));
+        $meta['diagnostics'] = [
+            'html_data_rows'   => $htmlDataRows ?: count($records),
+            'source_rows'      => $htmlDataRows ?: count($records),
+            'movement_rows'    => $classification['movement_count'],
+            'summary_rows'     => $classification['summary_count'],
+            'rejected_rows'    => max(0, $htmlDataRows - count($records)),
+        ];
+
         return [
             'meta'            => $meta,
             'records'         => $records,
             'summary'         => $this->buildFastSummary($records, $meta),
             'detected_format' => $detectedFormat,
         ];
+    }
+
+    /**
+     * Separate raw normalized records into operational flight movements and summary rows.
+     * Section 8 & 9: Exclude summary row from movementRecords.
+     */
+    public function classifyRows(array $records): array
+    {
+        $movementRecords = [];
+        $summaryRecords = [];
+        foreach ($records as $r) {
+            if (($r['row_type'] ?? 'MOVEMENT') === 'SUMMARY'
+                || strcasecmp(trim($r['air_line'] ?? ''), 'PAX ALL') === 0
+                || stripos(trim($r['air_line'] ?? ''), 'PAX ALL') !== false
+                || stripos(trim($r['desc'] ?? ''), 'PAX ALL') !== false) {
+                $summaryRecords[] = $r;
+                continue;
+            }
+            $movementRecords[] = $r;
+        }
+
+        return [
+            'movement_records' => array_values($movementRecords),
+            'summary_rows'     => array_values($summaryRecords),
+            'movements'        => array_values($movementRecords),
+            'summaries'        => array_values($summaryRecords),
+            'movement_count'   => count($movementRecords),
+            'summary_count'    => count($summaryRecords),
+            0                  => array_values($movementRecords),
+            1                  => array_values($summaryRecords),
+        ];
+    }
+
+    /**
+     * Parse XML spreadsheet table format.
+     */
+    protected function parseXmlTable(string $xmlContent): array
+    {
+        $metaHeaders = [];
+        $rows = [];
+        try {
+            $xml = @simplexml_load_string($xmlContent);
+            if ($xml) {
+                // Register XML namespaces
+                $ns = $xml->getDocNamespaces(true);
+                foreach ($ns as $prefix => $uri) {
+                    $xml->registerXPathNamespace($prefix ?: 'ss', $uri);
+                }
+                $tableNodes = $xml->xpath('//ss:Worksheet//ss:Table | //Table');
+                if (!empty($tableNodes)) {
+                    foreach ($tableNodes[0]->xpath('.//ss:Row | .//Row') as $rowNode) {
+                        $row = [];
+                        foreach ($rowNode->xpath('.//ss:Cell | .//Cell') as $cellNode) {
+                            $data = $cellNode->xpath('.//ss:Data | .//Data');
+                            $val = !empty($data) ? (string)$data[0] : (string)$cellNode;
+                            $row[] = trim($val);
+                        }
+                        if (!empty(array_filter($row))) {
+                            $rows[] = $row;
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $e) {}
+
+        return [$metaHeaders, $rows];
     }
 
     /**
@@ -135,14 +265,18 @@ class FlightDailyReportParser
             return false;
         }
 
-        $head = substr($content, 0, 16384);
+        $head = substr($content, 0, 32768);
         $lower = strtolower($head);
         return (strpos($lower, '<html') !== false
+            || strpos($lower, '<!doctype') !== false
             || strpos($lower, '<table') !== false
             || strpos($lower, '<center') !== false
             || strpos($lower, '<title') !== false
+            || strpos($lower, '<form') !== false
             || strpos($lower, '<td') !== false
             || strpos($lower, '<tr') !== false
+            || strpos($lower, 'transactions_datefdr') !== false
+            || strpos($lower, 'aeronautical') !== false
             || strpos($lower, 'oasys') !== false);
     }
 
@@ -440,25 +574,72 @@ class FlightDailyReportParser
 
         // Extract Source Passenger Summary from raw rows if present (e.g. PAX ALL row)
         $sourcePassengerSummary = null;
+        $sourceSummary = null;
         foreach ($rows as $rRow) {
             $rowStr = implode(' ', (array)$rRow);
-            if (preg_match('/pax\s*all/i', $rowStr)) {
+            if (preg_match('/pax\s*all/i', $rowStr) || preg_match('/-(?:pax\s*all|adult,\s*child,\s*infant|transit)-/i', $rowStr)) {
                 $pAll = null;
                 $pAdl = null;
                 $pTr = null;
                 if (preg_match('/pax\s*all[^\d]*\(?(\d[\d,\.]*)\)?/i', $rowStr, $pm)) {
                     $pAll = (int)str_replace([',', '.'], '', $pm[1]);
                 }
-                if (preg_match('/(?:adult|child|infant|dewasa)[^\d]*\(?(\d[\d,\.]*)\)?/i', $rowStr, $am)) {
+                if (preg_match('/(?:adult,\s*child,\s*infant|adult|child|infant|dewasa)[^\d]*\(?(\d[\d,\.]*)\)?/i', $rowStr, $am)) {
                     $pAdl = (int)str_replace([',', '.'], '', $am[1]);
                 }
                 if (preg_match('/transit[^\d]*\(?(\d[\d,\.]*)\)?/i', $rowStr, $tm)) {
                     $pTr = (int)str_replace([',', '.'], '', $tm[1]);
                 }
+
+                $adultVal = 0; $childVal = 0; $infantVal = 0; $transitVal = $pTr ?: 0; $transferVal = 0;
+                $divertVal = 0; $missVal = 0; $crewVal = 0; $cargoVal = 0.0; $baggageVal = 0.0; $posVal = 0.0;
+                $standVal = 0; $runwayVal = 0;
+
+                foreach ($rRow as $cell) {
+                    $cellClean = trim(preg_replace('/\s+/', ' ', (string)$cell));
+                    if (preg_match('/^(?:ADU\s*LT|ADULT)\s*(\d+)$/i', $cellClean, $m)) $adultVal = (int)$m[1];
+                    if (preg_match('/^(?:CHI\s*LD|CHILD)\s*(\d+)$/i', $cellClean, $m)) $childVal = (int)$m[1];
+                    if (preg_match('/^(?:INF\s*ANT|INFANT)\s*(\d+)$/i', $cellClean, $m)) $infantVal = (int)$m[1];
+                    if (preg_match('/^(?:TRAN\s*SIT|TRANSIT)\s*(\d+)$/i', $cellClean, $m)) $transitVal = (int)$m[1];
+                    if (preg_match('/^(?:TRAN\s*FER|TRANSFER)\s*(\d+)$/i', $cellClean, $m)) $transferVal = (int)$m[1];
+                    if (preg_match('/^(?:DIV\s*ERT|DIVERT)\s*(\d+)$/i', $cellClean, $m)) $divertVal = (int)$m[1];
+                    if (preg_match('/^MISS\s*(\d+)$/i', $cellClean, $m)) $missVal = (int)$m[1];
+                    if (preg_match('/^CRW\s*(\d+)$/i', $cellClean, $m)) $crewVal = (int)$m[1];
+                    if (preg_match('/^CAR\.?\s*\(?KG\)?\s*(\d+)$/i', $cellClean, $m)) $cargoVal = (float)$m[1];
+                    if (preg_match('/^BAGG?\.?\s*\(?KG\)?\s*(\d+)$/i', $cellClean, $m)) $baggageVal = (float)$m[1];
+                    if (preg_match('/^POS\.?\s*\(?KG\)?\s*(\d+)$/i', $cellClean, $m)) $posVal = (float)$m[1];
+                    if (preg_match('/^STAND\s*(?:Use)?\s*(\d+)$/i', $cellClean, $m)) $standVal = (int)$m[1];
+                    if (preg_match('/^(?:RUN\s*WAY|RUNWAY)\s*(\d+)$/i', $cellClean, $m)) $runwayVal = (int)$m[1];
+                }
+
+                $passengerCore = ($adultVal + $childVal + $infantVal) ?: $pAdl;
+
                 $sourcePassengerSummary = [
                     'pax_all'            => $pAll,
-                    'adult_child_infant' => $pAdl,
-                    'transit'            => $pTr,
+                    'adult_child_infant' => $passengerCore,
+                    'adult'              => $adultVal,
+                    'child'              => $childVal,
+                    'infant'             => $infantVal,
+                    'transit'            => $transitVal,
+                    'transfer'           => $transferVal,
+                ];
+
+                $sourceSummary = [
+                    'pax_all'        => $pAll,
+                    'adult'          => $adultVal,
+                    'child'          => $childVal,
+                    'infant'         => $infantVal,
+                    'passenger_core' => $passengerCore,
+                    'transit'        => $transitVal,
+                    'transfer'       => $transferVal,
+                    'divert'         => $divertVal,
+                    'miss'           => $missVal,
+                    'crew'           => $crewVal,
+                    'cargo_kg'       => $cargoVal,
+                    'baggage_kg'     => $baggageVal,
+                    'pos_kg'         => $posVal,
+                    'stand_use'      => $standVal,
+                    'runway_use'     => $runwayVal,
                 ];
                 break;
             }
@@ -515,25 +696,29 @@ class FlightDailyReportParser
         }
 
         return [
-            'airport'       => $airportCode,
-            'airport_code'  => $airportCode,
-            'airport_name'  => $airportName,
-            'operator'      => $operator,
-            'date_start'    => $pStart,
-            'date_end'      => $pEnd,
-            'period_start'  => $pStart,
-            'period_end'    => $pEnd,
-            'period_label'  => "{$pStart} s/d {$pEnd}",
-            'source_type'   => $sourceType,
-            'direction'     => $direction,
-            'leg'           => $direction,
-            'route_type'    => $routeType,
-            'suffix'        => $suffix,
-            'realization'   => $realization,
-            'data_type'     => $dataType,
+            'airport'                  => $airportCode,
+            'airport_code'             => $airportCode,
+            'airport_name'             => $airportName,
+            'operator'                 => $operator,
+            'date_start'               => $pStart,
+            'date_end'                 => $pEnd,
+            'period_start'             => $pStart,
+            'period_end'               => $pEnd,
+            'source_start'             => $pStart,
+            'source_end'               => $pEnd,
+            'period_label'             => "{$pStart} s/d {$pEnd}",
+            'source_type'              => $sourceType,
+            'source_granularity'       => str_replace(' ', '_', $sourceType),
+            'direction'                => $direction,
+            'leg'                      => $direction,
+            'route_type'               => $routeType,
+            'suffix'                   => $suffix,
+            'realization'              => $realization,
+            'data_type'                => $dataType,
             'source_system'            => 'OASYS',
             'report_name'              => 'FLIGHT DAILY REPORT',
             'source_passenger_summary' => $sourcePassengerSummary,
+            'source_summary'           => $sourceSummary,
         ];
     }
 
@@ -604,21 +789,25 @@ class FlightDailyReportParser
             sort($sortedDates);
             $minDate = reset($sortedDates);
             $maxDate = end($sortedDates);
+            $meta['available_days'] = count($sortedDates);
 
-            // If header was generic or record span is smaller/larger, synchronize
-            if (empty($meta['period_start']) || $meta['period_start'] > $minDate || $meta['period_end'] < $maxDate) {
+            // If header was empty, use record min/max date
+            if (empty($meta['period_start'])) {
                 $meta['date_start'] = $minDate;
                 $meta['date_end'] = $maxDate;
                 $meta['period_start'] = $minDate;
                 $meta['period_end'] = $maxDate;
+                $meta['source_start'] = $minDate;
+                $meta['source_end'] = $maxDate;
                 $meta['period_label'] = "{$minDate} s/d {$maxDate}";
             }
         }
 
         // Re-evaluate granularity after record inspection
-        $meta['source_type'] = self::detectGranularity($meta['period_start'], $meta['period_end']);
+        $meta['source_type'] = self::detectGranularity($meta['period_start'] ?? '', $meta['period_end'] ?? '');
+        $meta['source_granularity'] = str_replace(' ', '_', $meta['source_type']);
 
-        if (!$hasActuals && $meta['realization'] === 'YES') {
+        if (!$hasActuals && ($meta['realization'] ?? 'YES') === 'YES') {
             $meta['realization'] = 'NO';
         }
 
@@ -647,7 +836,7 @@ class FlightDailyReportParser
 
             // Detect PAX ALL and other summary rows (Section 10: row_type = SUMMARY, NOT MOVEMENT, NOT airline = PAX ALL)
             $isPaxAllSummary = preg_match('/pax\s*all/i', $rowText)
-                || preg_match('/-(pax\s*all|adult,\s*child,\s*infant|transit)-/i', $rowText)
+                || preg_match('/-(?:pax\s*all|adult,\s*child,\s*infant|transit)-/i', $rowText)
                 || (isset($map['air_line']) && preg_match('/pax\s*all/i', (string)($row[$map['air_line']] ?? '')));
 
             if ($isPaxAllSummary) {
@@ -655,6 +844,7 @@ class FlightDailyReportParser
                 if (preg_match('/pax\s*all[^\d]*\(?(\d[\d,\.]*)\)?/i', $rowText, $pm)) {
                     $paxAllCount = (int)str_replace([',', '.'], '', $pm[1]);
                 }
+                $srcSum = $meta['source_summary'] ?? [];
                 $records[] = [
                     'index'                        => count($records) + 1,
                     'row_type'                     => 'SUMMARY', // NOT MOVEMENT
@@ -697,22 +887,22 @@ class FlightDailyReportParser
                     'mtow'                         => 'N/A',
                     'reg_no'                       => 'N/A',
                     'cap'                          => 0,
-                    'load'                         => $paxAllCount,
+                    'load'                         => $paxAllCount ?: ($srcSum['pax_all'] ?? 0),
                     'load_factor'                  => 'N/A',
-                    'adult'                        => 0,
-                    'child'                        => 0,
-                    'infant'                       => 0,
-                    'transit'                      => 0,
-                    'transfer'                     => 0,
-                    'divert'                       => 0,
-                    'miss'                         => 0,
-                    'crw'                          => 0,
+                    'adult'                        => $srcSum['adult'] ?? 0,
+                    'child'                        => $srcSum['child'] ?? 0,
+                    'infant'                       => $srcSum['infant'] ?? 0,
+                    'transit'                      => $srcSum['transit'] ?? 0,
+                    'transfer'                     => $srcSum['transfer'] ?? 0,
+                    'divert'                       => $srcSum['divert'] ?? 0,
+                    'miss'                         => $srcSum['miss'] ?? 0,
+                    'crw'                          => $srcSum['crew'] ?? 0,
                     'ex_crw'                       => 0,
-                    'cargo_kg'                     => 0.0,
-                    'baggage_kg'                   => 0.0,
-                    'pos_kg'                       => 0.0,
-                    'stand'                        => 'N/A',
-                    'runway'                       => 'N/A',
+                    'cargo_kg'                     => (float)($srcSum['cargo_kg'] ?? 0.0),
+                    'baggage_kg'                   => (float)($srcSum['baggage_kg'] ?? 0.0),
+                    'pos_kg'                       => (float)($srcSum['pos_kg'] ?? 0.0),
+                    'stand'                        => (string)($srcSum['stand_use'] ?? 'N/A'),
+                    'runway'                       => (string)($srcSum['runway_use'] ?? 'N/A'),
                     'final'                        => 'N/A',
                     'final_time'                   => 'N/A',
                     'branch'                       => 'N/A',
@@ -1080,7 +1270,8 @@ class FlightDailyReportParser
      */
     protected function buildFastSummary(array $records, array $meta): array
     {
-        $totalFlights = count($records);
+        $movementRecords = array_filter($records, fn($r) => ($r['row_type'] ?? 'MOVEMENT') !== 'SUMMARY' && stripos($r['air_line'] ?? '', 'PAX ALL') === false);
+        $totalFlights = count($movementRecords);
         $arrivals = 0;
         $departures = 0;
         $totalPax = 0;
@@ -1090,17 +1281,17 @@ class FlightDailyReportParser
         $misses = 0;
         $unscheduled = 0;
 
-        foreach ($records as $r) {
-            if ($r['direction'] === 'ARRIVAL') $arrivals++;
+        foreach ($movementRecords as $r) {
+            if (($r['direction'] ?? '') === 'ARRIVAL') $arrivals++;
             else $departures++;
 
-            $totalPax += ($r['adult'] + $r['child'] + $r['infant']);
-            $totalCap += $r['cap'];
-            $totalLoad += $r['load'];
+            $totalPax += ((int)($r['adult'] ?? 0) + (int)($r['child'] ?? 0) + (int)($r['infant'] ?? 0));
+            $totalCap += (int)($r['cap'] ?? 0);
+            $totalLoad += (int)($r['load'] ?? 0);
 
-            if ($r['divert'] > 0) $diverts += $r['divert'];
-            if ($r['miss'] > 0) $misses += $r['miss'];
-            if (in_array($r['sched_type'], ['UNSCHED', 'UNSCHEDULED'], true)) $unscheduled++;
+            if (($r['divert'] ?? 0) > 0) $diverts += (int)$r['divert'];
+            if (($r['miss'] ?? 0) > 0) $misses += (int)$r['miss'];
+            if (in_array($r['sched_type'] ?? '', ['UNSCHED', 'UNSCHEDULED'], true)) $unscheduled++;
         }
 
         $avgLf = ($totalCap > 0) ? round(($totalLoad / $totalCap) * 100, 1) . '%' : 'N/A';
@@ -1114,8 +1305,12 @@ class FlightDailyReportParser
             'diverts'         => $diverts,
             'misses'          => $misses,
             'unscheduled'     => $unscheduled,
-            'airport'         => $meta['airport'],
-            'period'          => $meta['period_label'],
+            'airport'         => $meta['airport'] ?? 'CGK',
+            'period'          => $meta['period_label'] ?? '',
+            'source_summary'  => $meta['source_summary'] ?? null,
+            'diagnostics'     => $meta['diagnostics'] ?? null,
         ];
     }
+
+
 }

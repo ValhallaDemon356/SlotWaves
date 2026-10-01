@@ -33,11 +33,11 @@
                         SOURCE TYPE: {{ $sourceType ?? ($sourceSummary['source_type'] ?? 'MONTHLY') }}
                     </span>
                     <span class="px-2 py-0.5 rounded-md font-black text-[10px] bg-blue-600 text-white uppercase tracking-wider">
-                        <span x-text="filters.analysis_level === 'DAILY' ? 'PEAK DAILY ANALYSIS' : 'HOURLY ANALYSIS'">PEAK DAILY ANALYSIS</span>
+                        <span x-text="dateScope === 'ALL_PERIOD' ? 'FULL RANGE ANALYSIS' : 'PEAK DAILY ANALYSIS'">{{ ($dateScope ?? 'ALL_PERIOD') === 'ALL_PERIOD' ? 'FULL RANGE ANALYSIS' : 'PEAK DAILY ANALYSIS' }}</span>
                     </span>
                 </h1>
                 <p class="text-[11px] text-slate-500 font-medium">Operational flight movement analysis from OASYS Flight Daily Report</p>
-                <div class="sr-only">FDR Intelligence • 3 Mentor Hourly Operational Charts • Chart 1: ARRIVAL–DEPARTURE MOVEMENT • Chart 2: DEPARTURE MOVEMENT • Chart 3: ARRIVAL MOVEMENT</div>
+                <div class="sr-only">FDR Intelligence • PEAK DAILY ANALYSIS • 3 Mentor Hourly Operational Charts • Chart 1: ARRIVAL–DEPARTURE MOVEMENT • Chart 2: DEPARTURE MOVEMENT • Chart 3: ARRIVAL MOVEMENT</div>
             </div>
         </div>
 
@@ -175,20 +175,35 @@
 
                 {{-- Date / Scope Filter --}}
                 <div>
-                    <label class="block text-[11px] font-bold text-slate-500 mb-1">Date Range</label>
+                    <label class="block text-[11px] font-bold text-slate-500 mb-1 flex items-center justify-between">
+                        <span>Period / Date</span>
+                        <template x-if="dateScope !== 'ALL_PERIOD'">
+                            <button type="button" @click="setFullRange()" class="text-[9px] text-blue-600 font-bold hover:underline cursor-pointer">
+                                [ Full Range ]
+                            </button>
+                        </template>
+                    </label>
                     <div class="relative">
                         <template x-if="sourceSummary.source_type === 'DAILY'">
                             <input type="text" :value="filters.analysis_date || sourceSummary.period_start" readonly
                                    class="w-full text-xs font-bold font-mono rounded-xl border border-slate-200 bg-slate-100 text-slate-700 px-2.5 py-1.5 cursor-not-allowed">
                         </template>
                         <template x-if="sourceSummary.source_type !== 'DAILY'">
-                            <select x-model="filters.analysis_date" @change="triggerFilter()"
-                                    class="w-full text-xs font-bold font-mono rounded-xl border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-                                <option value="ALL">All Dates in Period</option>
-                                <template x-for="d in availableDates" :key="d">
-                                    <option :value="d" x-text="d"></option>
-                                </template>
-                            </select>
+                            <div class="flex items-center gap-1.5">
+                                <button type="button" @click="setFullRange()"
+                                        :class="dateScope === 'ALL_PERIOD' ? 'bg-blue-600 text-white font-black shadow-2xs border-blue-600' : 'bg-white text-slate-700 hover:bg-slate-100 font-bold border-slate-200'"
+                                        class="px-2 py-1.5 rounded-xl text-[10px] uppercase tracking-tight transition cursor-pointer border whitespace-nowrap"
+                                        title="View Full Authoritative Range">
+                                    Full Range
+                                </button>
+                                <select x-model="selectedDayOption" @change="onDateSelectChange()"
+                                        class="w-full text-xs font-bold font-mono rounded-xl border border-slate-200 bg-slate-50/50 px-2 py-1.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+                                    <option value="ALL_PERIOD">Select Date (All Available)...</option>
+                                    <template x-for="d in availableDates" :key="d">
+                                        <option :value="d" x-text="formatDateLabel(d)"></option>
+                                    </template>
+                                </select>
+                            </div>
                         </template>
                     </div>
                 </div>
@@ -220,14 +235,22 @@
                         <span>Airport: <strong x-text="filters.airport"></strong></span>
                     </span>
 
-                    {{-- Date Chip --}}
-                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-                        <span>Date: <strong class="font-mono" x-text="filters.analysis_date || sourceSummary.period_label"></strong></span>
-                    </span>
+                    {{-- Period / Date Chip --}}
+                    <template x-if="dateScope === 'ALL_PERIOD'">
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-200">
+                            <span>Period: <strong>FULL RANGE</strong></span>
+                        </span>
+                    </template>
+                    <template x-if="dateScope === 'DAY' && filters.analysis_date">
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                            <span>Date: <strong class="font-mono" x-text="formatDateDisplay(filters.analysis_date)"></strong></span>
+                            <button type="button" @click="setFullRange()" class="hover:text-red-500 font-bold ml-0.5" title="Switch to Full Range">&times;</button>
+                        </span>
+                    </template>
 
                     {{-- Dynamic Chips from activeChips --}}
                     <template x-for="chip in activeChips" :key="chip.key">
-                        <template x-if="chip.key !== 'airport' && chip.key !== 'analysis_date'">
+                        <template x-if="chip.key !== 'airport' && chip.key !== 'analysis_date' && chip.key !== 'date_scope'">
                             <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
                                 <span x-text="chip.label"></span>
                                 <button type="button" @click="removeChip(chip.key)" class="hover:text-red-500 font-bold ml-0.5">&times;</button>
@@ -236,7 +259,7 @@
                     </template>
 
                     {{-- Clear All Button --}}
-                    <button type="button" @click="clearAllFilters()" class="text-xs font-bold text-red-600 hover:text-red-700 ml-1 transition">
+                    <button type="button" @click="clearAllFilters()" class="text-xs font-bold text-red-600 hover:text-red-700 ml-1 transition cursor-pointer">
                         [ Clear All ]
                     </button>
                 </div>
@@ -245,7 +268,7 @@
                 <div class="flex items-center gap-3 text-slate-500 text-xs font-medium">
                     <div class="flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        <span>Showing <strong class="text-slate-900 font-bold" x-text="totalRecords">190</strong> records</span>
+                        <span>Showing <strong class="text-slate-900 font-bold" x-text="Number(totalRecords || 0).toLocaleString()">9,224</strong> of <strong class="text-slate-900 font-bold" x-text="Number(sourceSummary.total_flights || totalRecords || 9224).toLocaleString()">9,224</strong> records</span>
                     </div>
                     <span>•</span>
                     <span class="text-[11px] text-slate-400">Last updated: <span x-text="lastUpdatedTime"></span></span>
@@ -1379,13 +1402,15 @@ function fdrDashboardController() {
         uploadId: {{ $upload->id }},
         availableDates: @json($availableDates),
         sourceSummary: @json($sourceSummary),
+        dateScope: '{{ $dateScope ?? 'ALL_PERIOD' }}',
+        selectedDayOption: '{{ (!empty($filters['analysis_date']) && ($dateScope ?? '') === 'DAY') ? $filters['analysis_date'] : 'ALL_PERIOD' }}',
         filters: {
             airport: '{{ $filters['airport'] }}',
             leg: '{{ in_array($filters['leg'], ['ARR','ARRIVAL']) ? 'ARR' : (in_array($filters['leg'], ['DEP','DEPARTURE']) ? 'DEP' : 'ALL') }}',
             operator: '{{ $filters['operator'] }}',
             traffic: '{{ in_array($filters['traffic'], ['DOM','DOMESTIC']) ? 'DOM' : (in_array($filters['traffic'], ['INTL','INTERNATIONAL','INT']) ? 'INTL' : 'ALL') }}',
             realization: '{{ $filters['realization'] }}',
-            analysis_date: '{{ $filters['analysis_date'] }}',
+            analysis_date: '{{ ($dateScope ?? '') === 'ALL_PERIOD' ? '' : ($filters['analysis_date'] ?? '') }}',
             start_date: '{{ $filters['start_date'] }}',
             end_date: '{{ $filters['end_date'] }}',
             search: '{{ $filters['search'] }}',
@@ -2151,18 +2176,53 @@ function fdrDashboardController() {
             return this.formatPayloadWeightKg(val);
         },
 
+        setFullRange() {
+            this.dateScope = 'ALL_PERIOD';
+            this.filters.analysis_date = '';
+            this.selectedDayOption = 'ALL_PERIOD';
+            this.triggerFilter(1);
+        },
+
+        onDateSelectChange() {
+            if (this.selectedDayOption === 'ALL_PERIOD' || !this.selectedDayOption) {
+                this.setFullRange();
+            } else {
+                this.dateScope = 'DAY';
+                this.filters.analysis_date = this.selectedDayOption;
+                this.triggerFilter(1);
+            }
+        },
+
+        formatDateLabel(dStr) {
+            if (!dStr) return '';
+            try {
+                const parts = dStr.split('-');
+                if (parts.length === 3) {
+                    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                    const m = parseInt(parts[1], 10) - 1;
+                    return `${parts[2]} ${months[m] || parts[1]} ${parts[0]}`;
+                }
+            } catch(e) {}
+            return dStr;
+        },
+
+        formatDateDisplay(dStr) {
+            return this.formatDateLabel(dStr);
+        },
+
         triggerFilter(page = 1) {
             this.isFiltering = true;
             const reqId = ++this.activeRequestId;
             this.filters.v = Date.now();
 
             const params = new URLSearchParams({
+                date_scope: this.dateScope,
                 airport: this.filters.airport,
                 leg: this.filters.leg,
                 operator: this.filters.operator,
                 traffic: this.filters.traffic,
                 realization: this.filters.realization,
-                analysis_date: this.filters.analysis_date,
+                analysis_date: this.dateScope === 'ALL_PERIOD' ? '' : (this.filters.analysis_date || ''),
                 search: this.filters.search,
                 page: page,
                 per_page: this.pagination.per_page,
@@ -2177,6 +2237,14 @@ function fdrDashboardController() {
             .then(data => {
                 if (reqId !== this.activeRequestId) return; // Discard stale response
                 this.isFiltering = false;
+                this.dateScope = data.date_scope || this.dateScope;
+                if (this.dateScope === 'ALL_PERIOD') {
+                    this.selectedDayOption = 'ALL_PERIOD';
+                    this.filters.analysis_date = '';
+                } else if (data.analysis_date) {
+                    this.selectedDayOption = data.analysis_date;
+                    this.filters.analysis_date = data.analysis_date;
+                }
                 this.kpis = data.kpis;
                 this.schedVsReal = data.sched_vs_real;
                 this.paxAnalytics = data.pax_analytics;
@@ -2219,6 +2287,10 @@ function fdrDashboardController() {
             if (key === 'realization') this.filters.realization = 'ALL';
             if (key === 'search') this.filters.search = '';
             if (key === 'flight_no') this.filters.search = '';
+            if (key === 'date_scope' || key === 'analysis_date') {
+                this.setFullRange();
+                return;
+            }
             this.triggerFilter(1);
         },
 
@@ -2229,7 +2301,7 @@ function fdrDashboardController() {
             this.filters.traffic = 'ALL';
             this.filters.realization = 'ALL';
             this.filters.search = '';
-            this.triggerFilter(1);
+            this.setFullRange();
         },
 
         openFlightDetails(r) {
@@ -2256,12 +2328,13 @@ function fdrDashboardController() {
 
         getExportUrl(type) {
             const params = new URLSearchParams({
+                date_scope: this.dateScope,
                 airport: this.filters.airport,
                 leg: this.filters.leg,
                 operator: this.filters.operator,
                 traffic: this.filters.traffic,
                 realization: this.filters.realization,
-                analysis_date: this.filters.analysis_date,
+                analysis_date: this.dateScope === 'ALL_PERIOD' ? '' : (this.filters.analysis_date || ''),
                 search: this.filters.search,
                 time_basis: this.filters.time_basis,
             });

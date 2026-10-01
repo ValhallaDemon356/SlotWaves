@@ -67,13 +67,15 @@ class FlightDailyReportController extends Controller
         $templatePath = $this->resolveReferenceTemplatePath();
         if ($templatePath && file_exists($templatePath)) {
             $parsed = $this->parser->parse($templatePath);
+            $classified = $this->parser->classifyRows($parsed['records']);
+            $movementCount = count($classified['movement_records']);
             $upload = Upload::create([
                 'original_filename'  => 'CGK FDR.xls',
                 'stored_path'        => 'templates/CGK FDR.xls',
                 'status'             => 'completed',
                 'report_type'        => 'fdr',
-                'total_rows'         => count($parsed['records']),
-                'valid_rows'         => count($parsed['records']),
+                'total_rows'         => $movementCount,
+                'valid_rows'         => $movementCount,
                 'invalid_rows'       => 0,
                 'duplicate_rows'     => 0,
                 'parsing_confidence' => 1.0,
@@ -172,14 +174,16 @@ class FlightDailyReportController extends Controller
 
         // Parse and normalize records
         $parsed = $this->parser->parse($fullPath);
+        $classified = $this->parser->classifyRows($parsed['records']);
+        $movementCount = count($classified['movement_records']);
 
         $upload = Upload::create([
             'original_filename'  => $origName,
             'stored_path'        => $storedPath,
             'status'             => 'completed',
             'report_type'        => 'fdr',
-            'total_rows'         => count($parsed['records']),
-            'valid_rows'         => count($parsed['records']),
+            'total_rows'         => $movementCount,
+            'valid_rows'         => $movementCount,
             'invalid_rows'       => 0,
             'duplicate_rows'     => 0,
             'parsing_confidence' => 1.0,
@@ -214,14 +218,16 @@ class FlightDailyReportController extends Controller
         }
 
         $parsed = $this->parser->parse($templatePath);
+        $classified = $this->parser->classifyRows($parsed['records']);
+        $movementCount = count($classified['movement_records']);
 
         $upload = Upload::create([
             'original_filename'  => 'OASYS-FDR-TEMPLATE.xls',
             'stored_path'        => 'templates/OASYS-FDR-TEMPLATE.xls',
             'status'             => 'completed',
             'report_type'        => 'fdr',
-            'total_rows'         => count($parsed['records']),
-            'valid_rows'         => count($parsed['records']),
+            'total_rows'         => $movementCount,
+            'valid_rows'         => $movementCount,
             'invalid_rows'       => 0,
             'duplicate_rows'     => 0,
             'parsing_confidence' => 1.0,
@@ -265,6 +271,7 @@ class FlightDailyReportController extends Controller
 
         // Read active filters from request query
         $filters = [
+            'date_scope'     => $scope['date_scope'],
             'analysis_level' => $scope['analysis_level'],
             'analysis_date'  => $scope['analysis_date'],
             'analysis_month' => $scope['analysis_month'],
@@ -296,6 +303,7 @@ class FlightDailyReportController extends Controller
             'time_basis'     => $filters['time_basis'],
             'report_date'    => $scope['analysis_date'],
             'analysis_level' => $scope['analysis_level'],
+            'date_scope'     => $scope['date_scope'],
             'otp_tolerance'  => $filters['otp_tolerance'],
         ]);
 
@@ -324,6 +332,7 @@ class FlightDailyReportController extends Controller
             'airlines'        => array_keys($airlines),
             'airports'        => array_keys($airports),
             'rawRecordsCount' => count($rawRecords),
+            'dateScope'       => $scope['date_scope'],
             'analysisLevel'   => $scope['analysis_level'],
             'analysisDate'    => $scope['analysis_date'],
             'analysisMonth'   => $scope['analysis_month'],
@@ -355,6 +364,7 @@ class FlightDailyReportController extends Controller
         $scope = $this->resolveAnalysisScope($request, $sourceSummary, $availableDates);
 
         $filters = [
+            'date_scope'     => $scope['date_scope'],
             'analysis_level' => $scope['analysis_level'],
             'analysis_date'  => $scope['analysis_date'],
             'analysis_month' => $scope['analysis_month'],
@@ -389,6 +399,7 @@ class FlightDailyReportController extends Controller
             'time_basis'     => $filters['time_basis'],
             'report_date'    => $scope['analysis_date'],
             'analysis_level' => $scope['analysis_level'],
+            'date_scope'     => $scope['date_scope'],
             'otp_tolerance'  => $filters['otp_tolerance'],
         ]);
 
@@ -397,31 +408,34 @@ class FlightDailyReportController extends Controller
         $offset = ($page - 1) * $perPage;
         $pagedRecords = array_slice($filteredRecords, $offset, $perPage);
 
-        $counterScope = ($scope['analysis_level'] === 'DAILY')
+        $counterScope = ($scope['date_scope'] === 'DAY' && !empty($scope['analysis_date']))
             ? date('d M Y', strtotime($scope['analysis_date']))
             : (($scope['analysis_level'] === 'MONTHLY')
                 ? date('F Y', strtotime($scope['analysis_month'] . '-01'))
-                : "Year " . $scope['analysis_year']);
+                : (($scope['analysis_level'] === 'YEARLY') ? "Year " . $scope['analysis_year'] : 'FULL RANGE'));
+
+        $totalMovements = $sourceSummary['total_flights'] ?? $filterResult['source_count'];
 
         return response()->json([
             'version'             => $filters['v'],
+            'date_scope'          => $scope['date_scope'],
             'analysis_level'      => $scope['analysis_level'],
             'analysis_date'       => $scope['analysis_date'],
             'analysis_month'      => $scope['analysis_month'],
             'analysis_year'       => $scope['analysis_year'],
-            'analysis_date_label' => date('d-m-Y', strtotime($scope['analysis_date'])),
-            'analysis_date_title' => strtoupper(date('d F Y', strtotime($scope['analysis_date']))),
+            'analysis_date_label' => $scope['analysis_date'] ? date('d-m-Y', strtotime($scope['analysis_date'])) : 'FULL RANGE',
+            'analysis_date_title' => $scope['analysis_date'] ? strtoupper(date('d F Y', strtotime($scope['analysis_date']))) : 'FULL RANGE',
             'source_summary'      => $sourceSummary,
             'source_type'         => $scope['source_type'],
             'available_dates'     => $availableDates,
-            'total_count'         => $filterResult['total_count'],
-            'source_count'        => $filterResult['source_count'],
-            'normalized_count'    => $filterResult['normalized_count'],
+            'total_count'         => $totalMovements,
+            'source_count'        => $totalMovements,
+            'normalized_count'    => $totalMovements,
             'filtered_count'      => $filterResult['filtered_count'],
             'excluded_count'      => $filterResult['excluded_count'],
             'reconciliation'      => $filterResult['reconciliation'],
             'exclusion_reasons'   => $filterResult['reconciliation']['exclusion_reasons'],
-            'counter_text'        => "Showing {$total} records for {$counterScope}",
+            'counter_text'        => "Showing " . number_format($total) . " of " . number_format($totalMovements) . " records",
             'active_chips'        => $filterResult['active_chips'],
             'kpis'                => $analytics['kpis'],
             'hourly_charts'       => $analytics['hourly_charts'],
@@ -484,6 +498,7 @@ class FlightDailyReportController extends Controller
         $scope = $this->resolveAnalysisScope($request, $sourceSummary, $availableDates);
 
         $filters = [
+            'date_scope'     => $scope['date_scope'],
             'analysis_level' => $scope['analysis_level'],
             'analysis_date'  => $scope['analysis_date'],
             'analysis_month' => $scope['analysis_month'],
@@ -525,7 +540,9 @@ class FlightDailyReportController extends Controller
             fputcsv($handle, ['Airport:', $meta['airport'] ?? 'CGK', 'Name:', $meta['airport_name'] ?? 'N/A']);
             fputcsv($handle, ['Source Period:', $sourceSummary['period_label'] ?? 'N/A', 'Source Type:', $sourceSummary['source_type']]);
             fputcsv($handle, ['Analysis Level:', $scope['analysis_level']]);
-            if ($scope['analysis_level'] === 'DAILY') {
+            if ($scope['date_scope'] === 'ALL_PERIOD') {
+                fputcsv($handle, ['Analysis Scope:', 'FULL RANGE (' . ($sourceSummary['period_label'] ?? 'All Dates') . ')']);
+            } elseif ($scope['analysis_level'] === 'DAILY') {
                 fputcsv($handle, ['Peak Analysis Date:', date('d-m-Y', strtotime($scope['analysis_date'])) . ' (' . date('d F Y', strtotime($scope['analysis_date'])) . ')']);
             } elseif ($scope['analysis_level'] === 'MONTHLY') {
                 fputcsv($handle, ['Analysis Month:', date('F Y', strtotime($scope['analysis_month'] . '-01'))]);
@@ -610,6 +627,7 @@ class FlightDailyReportController extends Controller
         $scope = $this->resolveAnalysisScope($request, $sourceSummary, $availableDates);
 
         $filters = [
+            'date_scope'     => $scope['date_scope'],
             'analysis_level' => $scope['analysis_level'],
             'analysis_date'  => $scope['analysis_date'],
             'analysis_month' => $scope['analysis_month'],
@@ -642,40 +660,48 @@ class FlightDailyReportController extends Controller
         $startDate  = $sourceSummary['start_date'] ?? date('Y-m-d');
         $endDate    = $sourceSummary['end_date'] ?? date('Y-m-d');
 
-        // Determine analysis level permitted by source
-        $reqLevel = strtoupper(trim($request->query('analysis_level', '')));
+        $reqDateScope = strtoupper(trim($request->query('date_scope', '')));
+        $reqAnalysisDate = trim($request->query('analysis_date', ''));
+
         if ($sourceType === 'DAILY') {
+            $dateScope     = 'DAY';
             $analysisLevel = 'DAILY';
-        } elseif ($sourceType === 'MONTHLY') {
-            $analysisLevel = in_array($reqLevel, ['DAILY', 'MONTHLY'], true) ? $reqLevel : 'DAILY';
-        } elseif ($sourceType === 'YEARLY') {
-            $analysisLevel = in_array($reqLevel, ['DAILY', 'MONTHLY', 'YEARLY'], true) ? $reqLevel : 'DAILY';
+            $analysisDate  = $startDate;
         } else {
-            $analysisLevel = in_array($reqLevel, ['DAILY', 'FULL'], true) ? $reqLevel : 'DAILY';
-        }
+            // Multi-day / Multi-month source
+            $isExplicitDay = ($reqDateScope === 'DAY');
+            $hasDateParam = (!empty($reqAnalysisDate) && !in_array(strtoupper($reqAnalysisDate), ['ALL', 'ALL_PERIOD', 'FULL', 'FULL_RANGE'], true));
 
-        // Determine analysis date
-        if ($sourceType === 'DAILY') {
-            $analysisDate = $startDate;
-        } else {
-            $reqAnalysisDate = trim($request->query('analysis_date', ''));
-            $stdReqDate = !empty($reqAnalysisDate) ? FlightDailyReportFilter::standardizeDate($reqAnalysisDate) : '';
+            if ($isExplicitDay || $hasDateParam) {
+                $stdReqDate = FlightDailyReportFilter::standardizeDate($reqAnalysisDate);
+                $isValidDate = (!empty($stdReqDate) && $stdReqDate !== 'N/A' && in_array($stdReqDate, $availableDates, true));
 
-            $isValidDate = (!empty($stdReqDate) && $stdReqDate !== 'N/A' && $stdReqDate >= $startDate && $stdReqDate <= $endDate);
-
-            if ($isValidDate && in_array($stdReqDate, $availableDates, true)) {
-                $analysisDate = $stdReqDate;
-            } elseif (!empty($availableDates)) {
-                $analysisDate = reset($availableDates);
+                if ($isValidDate) {
+                    $dateScope     = 'DAY';
+                    $analysisLevel = 'DAILY';
+                    $analysisDate  = $stdReqDate;
+                } elseif ($isExplicitDay && !empty($availableDates)) {
+                    $dateScope     = 'DAY';
+                    $analysisLevel = 'DAILY';
+                    $analysisDate  = reset($availableDates);
+                } else {
+                    $dateScope     = 'ALL_PERIOD';
+                    $analysisLevel = 'FULL';
+                    $analysisDate  = null;
+                }
             } else {
-                $analysisDate = $startDate;
+                // ALL_PERIOD / FULL RANGE
+                $dateScope     = 'ALL_PERIOD';
+                $analysisLevel = 'FULL';
+                $analysisDate  = null;
             }
         }
 
-        $analysisMonth = trim($request->query('analysis_month', substr($analysisDate, 0, 7)));
-        $analysisYear  = trim($request->query('analysis_year', substr($analysisDate, 0, 4)));
+        $analysisMonth = trim($request->query('analysis_month', $analysisDate ? substr($analysisDate, 0, 7) : substr($startDate, 0, 7)));
+        $analysisYear  = trim($request->query('analysis_year', $analysisDate ? substr($analysisDate, 0, 4) : substr($startDate, 0, 4)));
 
         return [
+            'date_scope'     => $dateScope,
             'analysis_level' => $analysisLevel,
             'analysis_date'  => $analysisDate,
             'analysis_month' => $analysisMonth,

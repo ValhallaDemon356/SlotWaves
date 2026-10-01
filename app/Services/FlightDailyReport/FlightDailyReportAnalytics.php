@@ -96,6 +96,7 @@ class FlightDailyReportAnalytics
             'pax_analytics'           => $paxAnalytics,
             'airline_route'           => $airlineRoute,
             'airline_analysis'        => $airlineRoute['ranked_airlines'] ?? [],
+            'airline_share'           => $airlineRoute['ranked_airlines'] ?? [],
             'fleet_performance'       => $fleetPerformance,
             'ground_operations'       => $groundOps,
             'ground_ops'              => $groundOps,
@@ -1334,6 +1335,17 @@ class FlightDailyReportAnalytics
         $depBaggageKg = [];
         $baggageKg = [];
 
+        $dateScope = strtoupper(trim($options['date_scope'] ?? ''));
+        if (empty($dateScope)) {
+            if ($analysisLevel === 'FULL' || $analysisLevel === 'ALL') {
+                $dateScope = 'ALL_PERIOD';
+            } elseif ($analysisLevel === 'DAILY') {
+                $dateScope = 'DAY';
+            } else {
+                $dateScope = (count($dateKeys) > 1) ? 'ALL_PERIOD' : 'DAY';
+            }
+        }
+
         $granularity = 'daily';
 
         if ($analysisLevel === 'YEARLY' && count($dateKeys) > 31) {
@@ -1445,8 +1457,8 @@ class FlightDailyReportAnalytics
                 $depBaggageKg[] = round($val['dep_bagg'], 1);
                 $baggageKg[] = round($val['arr_bagg'] + $val['dep_bagg'], 1);
             }
-        } elseif (count($dateKeys) > 1 && $analysisLevel !== 'DAILY') {
-            // Multi-day granularity
+        } elseif ($dateScope === 'ALL_PERIOD' || ($dateScope !== 'DAY' && count($dateKeys) > 1)) {
+            // Multi-day / Full-Range granularity: Daily timeline
             $granularity = 'daily';
             $dailyMap = [];
             foreach ($dateKeys as $dk) {
@@ -1464,7 +1476,14 @@ class FlightDailyReportAnalytics
 
             foreach ($records as $r) {
                 $d = $r['operational_date'] ?? ($r['flight_date'] ?? '');
-                if (!isset($dailyMap[$d])) continue;
+                $stdD = FlightDailyReportFilter::standardizeDate($d);
+                if (!isset($dailyMap[$stdD])) {
+                    if (isset($dailyMap[$d])) {
+                        $stdD = $d;
+                    } else {
+                        continue;
+                    }
+                }
 
                 $isArr = ($r['direction'] ?? '') === 'ARRIVAL';
                 $tr = strtoupper(trim($r['traffic'] ?? ($r['route_type'] ?? 'DOMESTIC')));
@@ -1478,30 +1497,30 @@ class FlightDailyReportAnalytics
 
                 if ($isArr) {
                     if ($isDom) {
-                        $dailyMap[$d]['arr_dom']++;
-                        $dailyMap[$d]['arr_dom_pax'] += $pax;
-                        $dailyMap[$d]['arr_dom_cargo'] += $cKg;
+                        $dailyMap[$stdD]['arr_dom']++;
+                        $dailyMap[$stdD]['arr_dom_pax'] += $pax;
+                        $dailyMap[$stdD]['arr_dom_cargo'] += $cKg;
                     } else {
-                        $dailyMap[$d]['arr_int']++;
-                        $dailyMap[$d]['arr_int_pax'] += $pax;
-                        $dailyMap[$d]['arr_int_cargo'] += $cKg;
+                        $dailyMap[$stdD]['arr_int']++;
+                        $dailyMap[$stdD]['arr_int_pax'] += $pax;
+                        $dailyMap[$stdD]['arr_int_cargo'] += $cKg;
                     }
-                    $dailyMap[$d]['arr_pax'] += $pax;
-                    $dailyMap[$d]['arr_cargo'] += $cKg;
-                    $dailyMap[$d]['arr_bagg'] += $bKg;
+                    $dailyMap[$stdD]['arr_pax'] += $pax;
+                    $dailyMap[$stdD]['arr_cargo'] += $cKg;
+                    $dailyMap[$stdD]['arr_bagg'] += $bKg;
                 } else {
                     if ($isDom) {
-                        $dailyMap[$d]['dep_dom']++;
-                        $dailyMap[$d]['dep_dom_pax'] += $pax;
-                        $dailyMap[$d]['dep_dom_cargo'] += $cKg;
+                        $dailyMap[$stdD]['dep_dom']++;
+                        $dailyMap[$stdD]['dep_dom_pax'] += $pax;
+                        $dailyMap[$stdD]['dep_dom_cargo'] += $cKg;
                     } else {
-                        $dailyMap[$d]['dep_int']++;
-                        $dailyMap[$d]['dep_int_pax'] += $pax;
-                        $dailyMap[$d]['dep_int_cargo'] += $cKg;
+                        $dailyMap[$stdD]['dep_int']++;
+                        $dailyMap[$stdD]['dep_int_pax'] += $pax;
+                        $dailyMap[$stdD]['dep_int_cargo'] += $cKg;
                     }
-                    $dailyMap[$d]['dep_pax'] += $pax;
-                    $dailyMap[$d]['dep_cargo'] += $cKg;
-                    $dailyMap[$d]['dep_bagg'] += $bKg;
+                    $dailyMap[$stdD]['dep_pax'] += $pax;
+                    $dailyMap[$stdD]['dep_cargo'] += $cKg;
+                    $dailyMap[$stdD]['dep_bagg'] += $bKg;
                 }
             }
 
@@ -1714,6 +1733,13 @@ class FlightDailyReportAnalytics
             'total_cargo_kg'       => round(array_sum($cargoKg), 1),
             'total_cargo_ton'      => round(array_sum($cargoTon), 2),
             'total_baggage_kg'     => round(array_sum($baggageKg), 1),
+            'series'               => [
+                'arrival'   => $arrivals,
+                'departure' => $departures,
+                'flights'   => $totalFlights,
+                'passenger' => $passengers,
+                'cargo'     => $cargoKg,
+            ],
         ];
     }
 }
