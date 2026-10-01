@@ -114,17 +114,24 @@ class FlightDailyReportController extends Controller
         $recordsCount = count($records);
 
         $airlines = [];
-        $airports = [];
+        $reportAirports = [];
+        $mainAirport = strtoupper(trim($meta['report_airport'] ?? ($meta['airport'] ?? 'CGK')));
+        if (!empty($mainAirport)) {
+            $reportAirports[$mainAirport] = true;
+        }
         foreach ($records as $r) {
             if (($r['row_type'] ?? 'MOVEMENT') === 'SUMMARY') continue;
             $al = trim($r['air_line'] ?? '');
             if ($al === '' || $al === 'N/A' || strcasecmp($al, 'PAX ALL') === 0 || stripos($al, 'PAX ALL') !== false) continue;
             $airlines[$al] = true;
-            if (!empty($r['city_1']) && $r['city_1'] !== 'N/A') $airports[$r['city_1']] = true;
-            if (!empty($r['city_2']) && $r['city_2'] !== 'N/A') $airports[$r['city_2']] = true;
+            $rap = strtoupper(trim($r['report_airport'] ?? ($r['branch'] ?? '')));
+            if (!empty($rap) && $rap !== 'N/A') {
+                $reportAirports[$rap] = true;
+            }
         }
         ksort($airlines);
-        ksort($airports);
+        $airports = array_keys($reportAirports);
+        sort($airports);
 
         return view('fdr.config', [
             'upload'       => $upload,
@@ -308,18 +315,27 @@ class FlightDailyReportController extends Controller
         ]);
 
         // Distinct filter lists for reactive dropdowns
+        // Airport dropdown strictly contains REPORT AIRPORTS, NEVER route endpoints (Prompt Items 2, 3, 4, 15, 16)
         $airlines = [];
-        $airports = [];
+        $reportAirports = [];
+        $mainAirport = strtoupper(trim($meta['report_airport'] ?? ($meta['airport'] ?? 'CGK')));
+        if (!empty($mainAirport)) {
+            $reportAirports[$mainAirport] = true;
+        }
+
         foreach ($rawRecords as $r) {
             if (($r['row_type'] ?? 'MOVEMENT') === 'SUMMARY') continue;
             $al = trim($r['air_line'] ?? '');
             if ($al === '' || $al === 'N/A' || strcasecmp($al, 'PAX ALL') === 0 || stripos($al, 'PAX ALL') !== false) continue;
             $airlines[$al] = true;
-            if (!empty($r['city_1']) && $r['city_1'] !== 'N/A') $airports[$r['city_1']] = true;
-            if (!empty($r['city_2']) && $r['city_2'] !== 'N/A') $airports[$r['city_2']] = true;
+            $rap = strtoupper(trim($r['report_airport'] ?? ($r['branch'] ?? '')));
+            if (!empty($rap) && $rap !== 'N/A') {
+                $reportAirports[$rap] = true;
+            }
         }
         ksort($airlines);
-        ksort($airports);
+        $airports = array_keys($reportAirports);
+        sort($airports);
 
         return view('fdr.dashboard', [
             'upload'          => $upload,
@@ -330,7 +346,7 @@ class FlightDailyReportController extends Controller
             'records'         => array_slice($filteredRecords, 0, 50), // first 50 rows for initial view
             'totalRecords'    => count($filteredRecords),
             'airlines'        => array_keys($airlines),
-            'airports'        => array_keys($airports),
+            'airports'        => $airports,
             'rawRecordsCount' => count($rawRecords),
             'dateScope'       => $scope['date_scope'],
             'analysisLevel'   => $scope['analysis_level'],
@@ -369,7 +385,7 @@ class FlightDailyReportController extends Controller
             'analysis_date'  => $scope['analysis_date'],
             'analysis_month' => $scope['analysis_month'],
             'analysis_year'  => $scope['analysis_year'],
-            'airport'        => strtoupper(trim($request->query('airport', 'ALL'))),
+            'airport'        => strtoupper(trim($request->query('airport', $meta['airport'] ?? 'ALL'))),
             'leg'            => strtoupper(trim($request->query('leg', 'ALL'))),
             'operator'       => trim($request->query('operator', 'ALL')),
             'traffic'        => strtoupper(trim($request->query('traffic', 'ALL'))),

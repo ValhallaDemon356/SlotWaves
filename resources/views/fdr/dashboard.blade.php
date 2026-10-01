@@ -107,19 +107,42 @@
             {{-- Top Controls Grid: 7 inputs --}}
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 items-end">
                 
-                {{-- Airport Filter --}}
+                {{-- Airport Filter (Locked to Report Airport Scope, Prompt Items 3, 4, 14, 15, 16) --}}
                 <div>
-                    <label class="block text-[11px] font-bold text-slate-500 mb-1">Airport</label>
-                    <select x-model="filters.airport" @change="triggerFilter()"
-                            class="w-full text-xs font-semibold rounded-xl border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-                        <option value="ALL">ALL AIRPORTS</option>
-                        <option value="CGK" selected>CGK — Soekarno-Hatta</option>
-                        @foreach($airports as $ap)
-                            @if($ap !== 'CGK' && $ap !== 'ALL')
-                                <option value="{{ $ap }}">{{ $ap }}</option>
-                            @endif
-                        @endforeach
-                    </select>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-[11px] font-bold text-slate-500">Airport</label>
+                        @if(count($airports) <= 1)
+                            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-amber-100 text-amber-800 border border-amber-200" title="Airport scope is determined by OASYS BRANCH_CODE.">
+                                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                LOCKED
+                            </span>
+                        @endif
+                    </div>
+                    @if(count($airports) <= 1)
+                        @php
+                            $lockedAp = $airports[0] ?? ($meta['report_airport'] ?? ($meta['airport'] ?? 'HLP'));
+                            $lockedName = \App\Services\FlightDailyReport\FlightDailyReportParser::resolveAirportName($lockedAp);
+                        @endphp
+                        <div class="relative group" title="Airport scope is determined by OASYS BRANCH_CODE.">
+                            <input type="text" readonly
+                                   value="{{ $lockedAp }} — {{ $lockedName }} 🔒"
+                                   class="w-full text-xs font-bold rounded-xl border border-slate-300 bg-slate-100/90 px-2.5 py-1.5 text-slate-800 cursor-not-allowed select-none shadow-xs">
+                            <div class="text-[9.5px] font-semibold text-slate-400 mt-0.5">
+                                Source Airport from OASYS: <span class="font-bold text-slate-600">{{ $lockedAp }}</span>
+                            </div>
+                        </div>
+                    @else
+                        <select x-model="filters.airport" @change="triggerFilter()"
+                                class="w-full text-xs font-semibold rounded-xl border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+                            <option value="ALL">ALL REPORT AIRPORTS</option>
+                            @foreach($airports as $ap)
+                                <option value="{{ $ap }}">{{ $ap }} — {{ \App\Services\FlightDailyReport\FlightDailyReportParser::resolveAirportName($ap) }}</option>
+                            @endforeach
+                        </select>
+                        <div class="text-[9.5px] font-semibold text-slate-400 mt-0.5">
+                            Source Airport from OASYS: <span class="font-bold text-slate-600">{{ implode(', ', $airports) }}</span>
+                        </div>
+                    @endif
                 </div>
 
                 {{-- Leg Filter --}}
@@ -962,20 +985,27 @@
         <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
             
             {{-- Header --}}
-            <div class="border-b border-slate-100 pb-3">
-                <div class="flex items-center gap-2">
-                    <div class="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/>
-                        </svg>
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/>
+                            </svg>
+                        </div>
+                        <h2 class="text-xs font-black uppercase tracking-wider text-slate-900">
+                            FLIGHT / PASSENGER / CARGO ANALYTICS
+                        </h2>
                     </div>
-                    <h2 class="text-xs font-black uppercase tracking-wider text-slate-900">
-                        FLIGHT / PASSENGER / CARGO ANALYTICS
-                    </h2>
+                    <p class="text-[11px] text-slate-500 font-medium mt-1">
+                        Operational trend based on the active FDR filters and analysis period.
+                    </p>
                 </div>
-                <p class="text-[11px] text-slate-500 font-medium mt-1">
-                    Operational trend based on the active FDR filters and analysis period.
-                </p>
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-extrabold uppercase bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs">
+                        SOURCE AIRPORT: <span class="text-blue-700 font-black">{{ $meta['report_airport'] ?? ($meta['airport'] ?? 'HLP') }}</span>
+                    </span>
+                </div>
             </div>
 
             {{-- Coordinated Segmented-Control Filter Bar directly above charts --}}
@@ -1215,6 +1245,7 @@
                             <th class="py-2.5 px-3 text-right">LF%</th>
                             <th class="py-2.5 px-3 text-right">Passenger</th>
                             <th class="py-2.5 px-3 text-right">Cargo (kg)</th>
+                            <th class="py-2.5 px-3 text-right">Baggage (kg)</th>
                             <th class="py-2.5 px-3">Stand</th>
                             <th class="py-2.5 px-3">Runway</th>
                             <th class="py-2.5 px-3 text-center">Status</th>
@@ -1244,6 +1275,7 @@
                                     x-text="r.load_factor !== 'N/A' ? r.load_factor + '%' : 'N/A'"></td>
                                 <td class="py-2.5 px-3 text-right font-sans text-slate-800 font-semibold" x-text="(r.adult + r.child + r.infant).toLocaleString()"></td>
                                 <td class="py-2.5 px-3 text-right text-slate-600" x-text="r.cargo_kg ? r.cargo_kg.toLocaleString() : '0'"></td>
+                                <td class="py-2.5 px-3 text-right text-slate-600" x-text="r.baggage_kg ? r.baggage_kg.toLocaleString() : '0'"></td>
                                 <td class="py-2.5 px-3 font-sans text-slate-700 font-semibold" x-text="r.stand"></td>
                                 <td class="py-2.5 px-3 font-mono text-slate-600" x-text="r.runway"></td>
                                 <td class="py-2.5 px-3 text-center font-sans">
@@ -2280,7 +2312,7 @@ function fdrDashboardController() {
         },
 
         removeChip(key) {
-            if (key === 'airport') this.filters.airport = 'ALL';
+            if (key === 'airport') this.filters.airport = '{{ $meta['report_airport'] ?? ($meta['airport'] ?? 'ALL') }}';
             if (key === 'leg') this.filters.leg = 'ALL';
             if (key === 'operator') this.filters.operator = 'ALL';
             if (key === 'traffic') this.filters.traffic = 'ALL';
@@ -2295,7 +2327,7 @@ function fdrDashboardController() {
         },
 
         clearAllFilters() {
-            this.filters.airport = 'CGK';
+            this.filters.airport = '{{ $meta['report_airport'] ?? ($meta['airport'] ?? 'ALL') }}';
             this.filters.leg = 'ALL';
             this.filters.operator = 'ALL';
             this.filters.traffic = 'ALL';

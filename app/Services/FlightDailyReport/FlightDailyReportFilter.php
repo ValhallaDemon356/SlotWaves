@@ -107,7 +107,8 @@ class FlightDailyReportFilter
             }
         }
 
-        if ($airport !== 'ALL' && !empty($airport)) {
+        $isSingleAirport = (bool)($meta['is_single_airport'] ?? (count($meta['report_airports'] ?? []) <= 1));
+        if ($airport !== 'ALL' && !empty($airport) && !$isSingleAirport) {
             $activeChips[] = ['key' => 'airport', 'label' => "Airport: {$airport}", 'text' => "Airport: {$airport}", 'value' => $airport];
         }
         if ($leg !== 'ALL' && !empty($leg)) {
@@ -179,13 +180,12 @@ class FlightDailyReportFilter
             }
             // For ALL_PERIOD: NO DATE FILTER IS APPLIED! Every valid movement record is retained.
 
-            // 1. Airport Filter
+            // 1. Airport Filter (REPORT AIRPORT Scope, Prompt Items 3, 10, 23)
+            // Never implement airport == CITY 1 OR airport == CITY 2
             if ($airport !== 'ALL' && !empty($airport)) {
-                $c1 = strtoupper($r['city_1'] ?? '');
-                $c2 = strtoupper($r['city_2'] ?? '');
-                $metaAp = strtoupper($meta['airport'] ?? '');
-                if ($c1 !== $airport && $c2 !== $airport && $metaAp !== $airport) {
-                    $excludedReasons["Airport mismatch (expected {$airport})"] = ($excludedReasons["Airport mismatch (expected {$airport})"] ?? 0) + 1;
+                $recAirport = strtoupper($r['report_airport'] ?? ($r['branch'] ?? ($meta['airport'] ?? '')));
+                if ($recAirport !== $airport) {
+                    $excludedReasons["Airport mismatch (expected {$airport}, got {$recAirport})"] = ($excludedReasons["Airport mismatch (expected {$airport}, got {$recAirport})"] ?? 0) + 1;
                     continue;
                 }
             }

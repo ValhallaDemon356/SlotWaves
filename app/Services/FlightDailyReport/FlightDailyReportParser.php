@@ -211,6 +211,7 @@ class FlightDailyReportParser
         return [
             'movement_records' => array_values($movementRecords),
             'summary_rows'     => array_values($summaryRecords),
+            'summary_records'  => array_values($summaryRecords),
             'movements'        => array_values($movementRecords),
             'summaries'        => array_values($summaryRecords),
             'movement_count'   => count($movementRecords),
@@ -531,35 +532,42 @@ class FlightDailyReportParser
             $metaText .= "\n" . implode(' ', $rows[$i]);
         }
 
-        // 1. Airport Code (BRANCH_CODE or header inspection)
-        $airportCode = 'CGK';
-        $airportName = 'Soekarno-Hatta (Jakarta)';
+        // 1. Airport Code (BRANCH_CODE is authoritative for REPORT AIRPORT, Prompt Items 1, 3, 10)
+        $airportCode = null;
         if (!empty($metaMap['BRANCH_CODE'])) {
-            $airportCode = strtoupper($metaMap['BRANCH_CODE']);
-        } elseif (preg_match('/\b([A-Z]{3})\b/', $metaText, $m)) {
-            foreach (self::DOMESTIC_AIRPORTS as $ap) {
-                if (stripos($metaText, "($ap)") !== false || stripos($metaText, " - $ap") !== false || stripos($metaText, " $ap ") !== false) {
-                    $airportCode = $ap;
-                    break;
+            $airportCode = strtoupper(trim($metaMap['BRANCH_CODE']));
+        } elseif (preg_match('/Flight\s*Daily\s*Report\s*([A-Z]{3})\b/i', $metaText, $fdrBranchMatch)) {
+            $airportCode = strtoupper(trim($fdrBranchMatch[1]));
+        }
+
+        if (empty($airportCode)) {
+            if (preg_match('/(HALIM|HLP)/i', $metaText)) {
+                $airportCode = 'HLP';
+            } elseif (preg_match('/(TANGERANG|SOEKARNO HATTA|CGK)/i', $metaText)) {
+                $airportCode = 'CGK';
+            } elseif (preg_match('/(HUSEIN|BANDUNG|BDO)/i', $metaText)) {
+                $airportCode = 'BDO';
+            } elseif (preg_match('/(SULTAN ISKANDAR MUDA|BANDA ACEH|BTJ)/i', $metaText)) {
+                $airportCode = 'BTJ';
+            } elseif (preg_match('/(JUANDA|SURABAYA|SUB)/i', $metaText)) {
+                $airportCode = 'SUB';
+            } elseif (preg_match('/(NGURAH RAI|BALI|DENPASAR|DPS)/i', $metaText)) {
+                $airportCode = 'DPS';
+            } elseif (preg_match('/\b([A-Z]{3})\b/', $metaText, $m)) {
+                foreach (self::DOMESTIC_AIRPORTS as $ap) {
+                    if (stripos($metaText, "($ap)") !== false || stripos($metaText, " - $ap") !== false || stripos($metaText, " $ap ") !== false) {
+                        $airportCode = $ap;
+                        break;
+                    }
                 }
             }
         }
-        if (preg_match('/(TANGERANG|SOEKARNO HATTA|CGK)/i', $metaText)) {
+
+        if (empty($airportCode)) {
             $airportCode = 'CGK';
-            $airportName = 'Soekarno-Hatta (Jakarta)';
-        } elseif (preg_match('/(HUSEIN|BANDUNG|BDO)/i', $metaText)) {
-            $airportCode = 'BDO';
-            $airportName = 'Husein Sastranegara (Bandung)';
-        } elseif (preg_match('/(SULTAN ISKANDAR MUDA|BANDA ACEH|BTJ)/i', $metaText)) {
-            $airportCode = 'BTJ';
-            $airportName = 'Sultan Iskandar Muda (Banda Aceh)';
-        } elseif (preg_match('/(JUANDA|SURABAYA|SUB)/i', $metaText)) {
-            $airportCode = 'SUB';
-            $airportName = 'Juanda (Surabaya)';
-        } elseif (preg_match('/(NGURAH RAI|BALI|DENPASAR|DPS)/i', $metaText)) {
-            $airportCode = 'DPS';
-            $airportName = 'I Gusti Ngurah Rai (Bali)';
         }
+
+        $airportName = self::resolveAirportName($airportCode);
 
         // 2. Operator
         $operator = 'ALL AIRLINE';
@@ -699,6 +707,9 @@ class FlightDailyReportParser
             'airport'                  => $airportCode,
             'airport_code'             => $airportCode,
             'airport_name'             => $airportName,
+            'report_airport'           => $airportCode,
+            'report_airports'          => [$airportCode],
+            'is_single_airport'        => true,
             'operator'                 => $operator,
             'date_start'               => $pStart,
             'date_end'                 => $pEnd,
@@ -720,6 +731,44 @@ class FlightDailyReportParser
             'source_passenger_summary' => $sourcePassengerSummary,
             'source_summary'           => $sourceSummary,
         ];
+    }
+
+    /**
+     * Resolve descriptive airport name from 3-letter IATA code.
+     */
+    public static function resolveAirportName(string $code): string
+    {
+        $code = strtoupper(trim($code));
+        $names = [
+            'HLP' => 'Halim Perdanakusuma (Jakarta)',
+            'CGK' => 'Soekarno-Hatta (Jakarta)',
+            'BDO' => 'Husein Sastranegara (Bandung)',
+            'BTJ' => 'Sultan Iskandar Muda (Banda Aceh)',
+            'SUB' => 'Juanda (Surabaya)',
+            'DPS' => 'I Gusti Ngurah Rai (Bali)',
+            'KNO' => 'Kualanamu (Medan)',
+            'BPN' => 'Sultan Aji Muhammad Sulaiman Sepinggan (Balikpapan)',
+            'JOG' => 'Adisutjipto (Yogyakarta)',
+            'MLG' => 'Abdul Rachman Saleh (Malang)',
+            'UPG' => 'Sultan Hasanuddin (Makassar)',
+            'SRG' => 'Jenderal Ahmad Yani (Semarang)',
+            'SOC' => 'Adi Soemarmo (Solo)',
+            'PDG' => 'Minangkabau (Padang)',
+            'PKU' => 'Sultan Syarif Kasim II (Pekanbaru)',
+            'PLM' => 'Sultan Mahmud Badaruddin II (Palembang)',
+            'BDJ' => 'Syamsudin Noor (Banjarmasin)',
+            'MDC' => 'Sam Ratulangi (Manado)',
+            'AAP' => 'Aji Pangeran Tumenggung Pranoto (Samarinda)',
+            'DJB' => 'Sultan Thaha (Jambi)',
+            'PGK' => 'Depati Amir (Pangkal Pinang)',
+            'TJQ' => 'H.A.S. Hanandjoeddin (Belitung)',
+            'TNJ' => 'Raja Haji Fisabilillah (Tanjung Pinang)',
+            'DTB' => 'Silangit (Tapanuli Utara)',
+            'BWX' => 'Banyuwangi (Banyuwangi)',
+            'KJT' => 'Kertajati (Majalengka)',
+        ];
+
+        return $names[$code] ?? "{$code} Airport";
     }
 
     /**
@@ -807,6 +856,18 @@ class FlightDailyReportParser
         $meta['source_type'] = self::detectGranularity($meta['period_start'] ?? '', $meta['period_end'] ?? '');
         $meta['source_granularity'] = str_replace(' ', '_', $meta['source_type']);
 
+        $branches = [];
+        foreach ($records as $r) {
+            $b = $r['report_airport'] ?? ($r['branch'] ?? null);
+            if (!empty($b) && $b !== 'N/A') {
+                $branches[strtoupper($b)] = true;
+            }
+        }
+        if (!empty($branches)) {
+            $meta['report_airports'] = array_keys($branches);
+            $meta['is_single_airport'] = (count($branches) === 1);
+        }
+
         if (!$hasActuals && ($meta['realization'] ?? 'YES') === 'YES') {
             $meta['realization'] = 'NO';
         }
@@ -882,6 +943,9 @@ class FlightDailyReportParser
                     'city_1'                       => 'N/A',
                     'city_2'                       => 'N/A',
                     'route'                        => 'N/A',
+                    'report_airport'               => $meta['airport'] ?? 'N/A',
+                    'origin_airport'               => 'N/A',
+                    'destination_airport'          => 'N/A',
                     'traffic'                      => 'N/A',
                     'route_type'                   => 'N/A',
                     'mtow'                         => 'N/A',
@@ -1180,6 +1244,9 @@ class FlightDailyReportParser
                 'final'                => $final,
                 'final_time'           => $finalTime,
                 'branch'               => $branch,
+                'report_airport'       => !empty($branch) && $branch !== 'N/A' ? strtoupper($branch) : ($meta['airport'] ?? 'CGK'),
+                'origin_airport'       => $city1,
+                'destination_airport'  => $city2,
                 'delay_minutes'        => $delayMinutes,
                 'is_irregular'         => $isIrregular,
                 'is_realized'          => $isRealized,
