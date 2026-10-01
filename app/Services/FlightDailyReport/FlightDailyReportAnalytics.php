@@ -69,6 +69,10 @@ class FlightDailyReportAnalytics
         // 8. Primary Combined Trend (Arrivals/Departures bar + Pax/Cargo line)
         $combinedTrend = $this->computeCombinedTrend($records, $options);
 
+        // 8b. FDR Hourly Movement Distribution (strictly 24 buckets 00:00 to 23:00)
+        $hourlyDistribution = $this->computeHourlyMovementDistribution($records, $options, $meta);
+        $combinedTrend['hourly_distribution'] = $hourlyDistribution;
+
         // 9. Reconciliation Engine (Modes 7 & 8)
         $reconciliationApps   = $this->reconciliationEngine->reconcileOasysVsApps($records);
         $reconciliationEdifly = $this->reconciliationEngine->reconcileOasysVsEdifly($records);
@@ -89,6 +93,7 @@ class FlightDailyReportAnalytics
             'kpis'                    => $kpis,
             'kpi'                     => $kpis,
             'hourly_charts'           => $hourlyCharts,
+            'hourly_distribution'     => $hourlyDistribution,
             'combined_trend'          => $combinedTrend,
             'schedule_vs_realization' => $schedVsReal,
             'sched_vs_real'           => $schedVsReal,
@@ -1740,6 +1745,211 @@ class FlightDailyReportAnalytics
                 'passenger' => $passengers,
                 'cargo'     => $cargoKg,
             ],
+        ];
+    }
+
+    /**
+     * FDR Hourly Movement Distribution strictly covering 24 hourly buckets (00:00 to 23:00).
+     * Period-wide aggregation across the selected source period (single-day, monthly, yearly, full-range).
+     * Conceptually aligned with hourly distribution, without any capacity constraints or envelopes.
+     *
+     * @param array $records Filtered operational records
+     * @param array $options Options including 'time_basis', 'date_scope', 'analysis_date', etc.
+     * @param array $meta Upload metadata (for period dates)
+     * @return array
+     */
+    public function computeHourlyMovementDistribution(array $records, array $options = [], array $meta = []): array
+    {
+        $timeBasis = in_array(strtolower($options['time_basis'] ?? 'actual'), ['scheduled', 'actual'], true)
+            ? strtolower($options['time_basis'])
+            : 'actual';
+
+        // 1. Gather all distinct dates and date span across records
+        $dates = [];
+        foreach ($records as $r) {
+            $d = $r['operational_date'] ?? ($r['flight_date'] ?? '');
+            if ($d && $d !== 'N/A') {
+                $dates[$d] = true;
+            }
+        }
+        $distinctDaysCount = count($dates);
+
+        $dateScope = strtoupper(trim($options['date_scope'] ?? ''));
+        $analysisDate = trim($options['analysis_date'] ?? '');
+
+        if ($dateScope === 'DAY' && !empty($analysisDate)) {
+            $periodDays = 1;
+            $periodLabel = date('d M Y', strtotime($analysisDate));
+        } else {
+            $start = $meta['period_start'] ?? (!empty($dates) ? min(array_keys($dates)) : null);
+            $end = $meta['period_end'] ?? (!empty($dates) ? max(array_keys($dates)) : null);
+
+            if ($start && $end) {
+                try {
+                    $periodDays = max(1, (int)Carbon::parse($start)->diffInDays(Carbon::parse($end)) + 1);
+                    $periodLabel = strtoupper(date('d M Y', strtotime($start))) . ' → ' . strtoupper(date('d M Y', strtotime($end)));
+                } catch (\Exception $e) {
+                    $periodDays = max(1, $distinctDaysCount);
+                    $periodLabel = 'SELECTED PERIOD';
+                }
+            } else {
+                $periodDays = max(1, $distinctDaysCount);
+                $periodLabel = 'SELECTED PERIOD';
+            }
+        }
+
+        $avgDenominator = max(1, $periodDays);
+
+        // 2. Initialize exactly 24 hourly buckets (00:00 to 23:00)
+        $buckets = [];
+        $labels = [];
+        $timeRanges = [];
+        for ($h = 0; $h < 24; $h++) {
+            $hStr = str_pad((string)$h, 2, '0', STR_PAD_LEFT);
+            $labels[] = "{$hStr}:00";
+            $timeRanges[] = "{$hStr}:00–{$hStr}:59";
+            $buckets[$h] = [
+                'hour'            => $h,
+                'label'           => "{$hStr}:00",
+                'time_range'      => "{$hStr}:00–{$hStr}:59",
+                'arr_dom'         => 0,
+                'arr_int'         => 0,
+                'dep_dom'         => 0,
+                'dep_int'         => 0,
+                'arr_total'       => 0,
+                'dep_total'       => 0,
+                'total'           => 0,
+                'average_per_day' => 0.0,
+            ];
+        }
+
+        $validArrEvaluated = 0;
+        $validDepEvaluated = 0;
+
+        // 3. Process each valid movement record into its hour bucket
+        foreach ($records as $r) {
+            // Guardrail: skip summary rows and PAX ALL
+            if (($r['row_type'] ?? '') === 'SUMMARY') continue;
+            $al = trim($r['air_line'] ?? ($r['operator'] ?? ''));
+            if (strcasecmp($al, 'PAX ALL') === 0 || stripos($al, 'PAX ALL') !== false) continue;
+
+            $isArr = (($r['direction'] ?? '') === 'ARRIVAL' || ($r['movement_type'] ?? '') === 'A' || ($r['flow'] ?? '') === 'ARR');
+            $tr = strtoupper(trim($r['traffic'] ?? ($r['route_type'] ?? ($r['dom_int'] ?? 'DOMESTIC'))));
+            $isDom = in_array($tr, ['DOM', 'DOMESTIC', 'D'], true);
+
+            $hour = null;
+
+            if ($timeBasis === 'actual') {
+                // Section 8 & 43: Actual mode uses AIBT for Arrival, AOBT for Departure
+                $ts = $isArr ? ($r['aibt'] ?? ($r['arr_actual'] ?? null)) : ($r['aobt'] ?? ($r['dep_actual'] ?? null));
+                if (!empty($ts) && $ts !== 'N/A' && preg_match('/(?:^|\s|T)(\d{1,2}):(\d{2})/', (string)$ts, $m)) {
+                    $hour = (int)$m[1];
+                }
+            } else {
+                // Section 7 & 43: Scheduled mode uses SIBT for Arrival, SOBT for Departure
+                $ts = $isArr ? ($r['sibt'] ?? ($r['arr_sched'] ?? null)) : ($r['sobt'] ?? ($r['dep_sched'] ?? null));
+                if (!empty($ts) && $ts !== 'N/A' && preg_match('/(?:^|\s|T)(\d{1,2}):(\d{2})/', (string)$ts, $m)) {
+                    $hour = (int)$m[1];
+                } elseif (isset($r['hour']) && is_numeric($r['hour'])) {
+                    $hour = (int)$r['hour'];
+                }
+            }
+
+            if ($hour === null || $hour < 0 || $hour > 23) {
+                continue;
+            }
+
+            if ($isArr) {
+                $validArrEvaluated++;
+                if ($isDom) {
+                    $buckets[$hour]['arr_dom']++;
+                } else {
+                    $buckets[$hour]['arr_int']++;
+                }
+                $buckets[$hour]['arr_total']++;
+            } else {
+                $validDepEvaluated++;
+                if ($isDom) {
+                    $buckets[$hour]['dep_dom']++;
+                } else {
+                    $buckets[$hour]['dep_int']++;
+                }
+                $buckets[$hour]['dep_total']++;
+            }
+
+            $buckets[$hour]['total']++;
+        }
+
+        // 4. Calculate average per day for each hour
+        for ($h = 0; $h < 24; $h++) {
+            $buckets[$h]['average_per_day'] = round($buckets[$h]['total'] / $avgDenominator, 2);
+        }
+
+        // 5. Build series arrays
+        $arrDom = array_column($buckets, 'arr_dom');
+        $arrInt = array_column($buckets, 'arr_int');
+        $depDom = array_column($buckets, 'dep_dom');
+        $depInt = array_column($buckets, 'dep_int');
+        $arrTotal = array_column($buckets, 'arr_total');
+        $depTotal = array_column($buckets, 'dep_total');
+        $total = array_column($buckets, 'total');
+        $avgPerDay = array_column($buckets, 'average_per_day');
+
+        // 6. Compute Peak Hour KPI (Section 25)
+        $maxMovements = max(0, ...$total);
+        $peakHourObj = null;
+
+        if ($maxMovements > 0) {
+            $peakH = null;
+            for ($h = 0; $h < 24; $h++) {
+                if ($buckets[$h]['total'] === $maxMovements) {
+                    $peakH = $h;
+                    break;
+                }
+            }
+            $peakHourRange = $buckets[$peakH]['time_range'];
+            $peakAvg = $buckets[$peakH]['average_per_day'];
+            $peakDisplay = "{$peakHourRange} with " . number_format($maxMovements) . " movements";
+
+            $peakHourObj = [
+                'hour'            => $peakH,
+                'time_range'      => $peakHourRange,
+                'movements'       => $maxMovements,
+                'average_per_day' => $peakAvg,
+                'display'         => $peakDisplay,
+            ];
+        } else {
+            $peakHourObj = [
+                'hour'            => null,
+                'time_range'      => 'N/A',
+                'movements'       => 0,
+                'average_per_day' => 0.0,
+                'display'         => 'N/A',
+            ];
+        }
+
+        return [
+            'labels'             => $labels,
+            'time_ranges'        => $timeRanges,
+            'hours'              => range(0, 23),
+            'time_basis'         => $timeBasis,
+            'time_basis_desc'    => ($timeBasis === 'actual') ? 'AIBT / AOBT' : 'SIBT / SOBT',
+            'period_label'       => $periodLabel,
+            'period_days'        => $periodDays,
+            'available_days'     => $distinctDaysCount,
+            'arr_dom'            => $arrDom,
+            'arr_int'            => $arrInt,
+            'dep_dom'            => $depDom,
+            'dep_int'            => $depInt,
+            'arr_total'          => $arrTotal,
+            'dep_total'          => $depTotal,
+            'total'              => $total,
+            'average_per_day'    => $avgPerDay,
+            'buckets'            => array_values($buckets),
+            'peak_hour'          => $peakHourObj,
+            'valid_arr_count'    => $validArrEvaluated,
+            'valid_dep_count'    => $validDepEvaluated,
+            'total_evaluated'    => array_sum($total),
         ];
     }
 }

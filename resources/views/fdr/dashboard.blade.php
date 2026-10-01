@@ -1021,15 +1021,15 @@
                                     class="px-3 py-1 text-xs rounded-md transition cursor-pointer">
                                 ALL
                             </button>
-                            <button type="button" @click="setLegFilter('DEP')"
-                                    :class="(filters.leg === 'DEP' || filters.leg === 'DEPARTURE') ? 'bg-blue-600 text-white shadow-2xs font-extrabold' : 'text-slate-600 hover:text-slate-900 font-semibold'"
-                                    class="px-3 py-1 text-xs rounded-md transition cursor-pointer">
-                                DEP
-                            </button>
                             <button type="button" @click="setLegFilter('ARR')"
                                     :class="(filters.leg === 'ARR' || filters.leg === 'ARRIVAL') ? 'bg-blue-600 text-white shadow-2xs font-extrabold' : 'text-slate-600 hover:text-slate-900 font-semibold'"
                                     class="px-3 py-1 text-xs rounded-md transition cursor-pointer">
                                 ARR
+                            </button>
+                            <button type="button" @click="setLegFilter('DEP')"
+                                    :class="(filters.leg === 'DEP' || filters.leg === 'DEPARTURE') ? 'bg-blue-600 text-white shadow-2xs font-extrabold' : 'text-slate-600 hover:text-slate-900 font-semibold'"
+                                    class="px-3 py-1 text-xs rounded-md transition cursor-pointer">
+                                DEP
                             </button>
                         </div>
                     </div>
@@ -1089,44 +1089,71 @@
                 </div>
             </div>
 
-            {{-- VISUAL A: FLIGHT MOVEMENT (Grouped Bar Chart - Full Width) --}}
+            {{-- VISUAL A: FLIGHT MOVEMENT (Hourly Distribution - Full Width) --}}
             <div class="p-4 rounded-xl border border-slate-200/90 bg-white shadow-2xs space-y-3">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                     <div>
-                        <h3 class="text-xs font-black uppercase tracking-wider text-slate-800">
-                            A. Flight Movement
-                        </h3>
-                        <p class="text-[10px] text-slate-400 font-medium">
-                            Grouped bars: Arrival (Amber) vs Departure (Blue) &bull; Domestic (Light) vs International (Dark)
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h3 class="text-xs font-black uppercase tracking-wider text-slate-800">
+                                FLIGHT MOVEMENT — HOURLY DISTRIBUTION
+                            </h3>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-slate-100 text-slate-700 border border-slate-200"
+                                  x-text="getHourlyPeriodContext()">
+                                01 JUL 2026 → 31 DEC 2026 • 184 DAYS
+                            </span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider"
+                                  :class="filters.time_basis === 'actual' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'"
+                                  x-text="'TIME BASIS: ' + (filters.time_basis || 'actual').toUpperCase() + (filters.time_basis === 'actual' ? ' (AIBT/AOBT)' : ' (SIBT/SOBT)')">
+                                TIME BASIS: ACTUAL (AIBT/AOBT)
+                            </span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 font-medium mt-0.5">
+                            Aggregated across selected source period &bull; Exactly 24 hourly buckets (00:00–23:00)
                         </p>
                     </div>
 
-                    {{-- Dynamic Legend based on active filters --}}
-                    <div class="flex flex-wrap items-center gap-3 text-[11px] font-semibold text-slate-600">
-                        <template x-if="filters.leg !== 'DEP' && filters.leg !== 'DEPARTURE'">
-                            <div class="flex items-center gap-3">
-                                <template x-if="filters.traffic !== 'INTL' && filters.traffic !== 'INTERNATIONAL' && filters.traffic !== 'INT'">
-                                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-xs bg-[#FCD34D] border border-[#F59E0B]"></span>Arr Dom</span>
-                                </template>
-                                <template x-if="filters.traffic !== 'DOM' && filters.traffic !== 'DOMESTIC'">
-                                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-xs bg-[#D97706] border border-[#B45309]"></span>Arr Intl</span>
-                                </template>
+                    <div class="flex flex-wrap items-center gap-4">
+                        {{-- Peak Hour KPI Pill (Section 25) --}}
+                        <div class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-amber-50/90 border border-amber-200 text-amber-900 shadow-2xs">
+                            <div class="flex flex-col">
+                                <span class="text-[9px] font-extrabold uppercase tracking-wider text-amber-700">PEAK HOUR</span>
+                                <div class="flex items-baseline gap-1.5">
+                                    <span class="text-xs font-black font-mono text-amber-950" x-text="getHourlyPeakHourRange()">10:00–10:59</span>
+                                    <span class="text-[11px] font-bold text-amber-800" x-text="getHourlyPeakMovements()">1,245 mov</span>
+                                    <template x-if="getHourlyPeakAverage()">
+                                        <span class="text-[10px] text-amber-700 font-medium" x-text="'• Avg ' + getHourlyPeakAverage() + '/day'"></span>
+                                    </template>
+                                </div>
                             </div>
-                        </template>
-                        <template x-if="filters.leg !== 'ARR' && filters.leg !== 'ARRIVAL'">
-                            <div class="flex items-center gap-3">
-                                <template x-if="filters.traffic !== 'INTL' && filters.traffic !== 'INTERNATIONAL' && filters.traffic !== 'INT'">
-                                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-xs bg-[#93C5FD] border border-[#3B82F6]"></span>Dep Dom</span>
-                                </template>
-                                <template x-if="filters.traffic !== 'DOM' && filters.traffic !== 'DOMESTIC'">
-                                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-xs bg-[#1E40AF] border border-[#172554]"></span>Dep Intl</span>
-                                </template>
-                            </div>
-                        </template>
+                        </div>
+
+                        {{-- Dynamic Legend based on active filters (Section 15, 17, 18) --}}
+                        <div class="flex flex-wrap items-center gap-3 text-[11px] font-semibold text-slate-600">
+                            <template x-if="filters.leg !== 'DEP' && filters.leg !== 'DEPARTURE'">
+                                <div class="flex items-center gap-2">
+                                    <template x-if="filters.traffic !== 'INTL' && filters.traffic !== 'INTERNATIONAL' && filters.traffic !== 'INT'">
+                                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-xs bg-[#FCD34D] border border-[#F59E0B]"></span>Arr Dom</span>
+                                    </template>
+                                    <template x-if="filters.traffic !== 'DOM' && filters.traffic !== 'DOMESTIC'">
+                                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-xs bg-[#D97706] border border-[#B45309]"></span>Arr Intl</span>
+                                    </template>
+                                </div>
+                            </template>
+                            <template x-if="filters.leg !== 'ARR' && filters.leg !== 'ARRIVAL'">
+                                <div class="flex items-center gap-2">
+                                    <template x-if="filters.traffic !== 'INTL' && filters.traffic !== 'INTERNATIONAL' && filters.traffic !== 'INT'">
+                                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-xs bg-[#93C5FD] border border-[#3B82F6]"></span>Dep Dom</span>
+                                    </template>
+                                    <template x-if="filters.traffic !== 'DOM' && filters.traffic !== 'DOMESTIC'">
+                                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-xs bg-[#1E40AF] border border-[#172554]"></span>Dep Intl</span>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
                     </div>
                 </div>
 
-                <div class="h-56 w-full relative">
+                <div class="h-60 w-full relative">
                     <canvas id="fdrFlightMovementChart"></canvas>
                 </div>
             </div>
@@ -1457,6 +1484,7 @@ function fdrDashboardController() {
         fleetPerformance: @json($analytics['fleet_performance'] ?? []),
         groundOps: @json($analytics['ground_operations']),
         combinedTrend: @json($analytics['combined_trend'] ?? null),
+        hourlyDistribution: @json($analytics['hourly_distribution'] ?? null),
         flightRecords: @json($records),
         totalRecords: {{ $filterResult['filtered_count'] }},
         panel3Tab: 'operators',
@@ -1763,73 +1791,80 @@ function fdrDashboardController() {
                 _fdrCharts.flightMovement = null;
             }
 
-            const trend = this.combinedTrend || {};
-            const labels = trend.labels || [];
+            const dist = this.hourlyDistribution || {};
+            const labels = dist.labels || [
+                '00:00','01:00','02:00','03:00','04:00','05:00',
+                '06:00','07:00','08:00','09:00','10:00','11:00',
+                '12:00','13:00','14:00','15:00','16:00','17:00',
+                '18:00','19:00','20:00','21:00','22:00','23:00'
+            ];
             const leg = (this.filters.leg || 'ALL').toUpperCase();
             const traffic = (this.filters.traffic || 'ALL').toUpperCase();
 
-            const datasets = [];
-
-            // Arrival Domestic: Light Amber (#FCD34D)
+            // Active series filters
             const showArrDom = (leg !== 'DEP' && leg !== 'DEPARTURE') && (traffic !== 'INTL' && traffic !== 'INTERNATIONAL' && traffic !== 'INT');
-            // Arrival International: Dark Amber (#D97706)
             const showArrInt = (leg !== 'DEP' && leg !== 'DEPARTURE') && (traffic !== 'DOM' && traffic !== 'DOMESTIC');
-            // Departure Domestic: Light Blue (#93C5FD)
             const showDepDom = (leg !== 'ARR' && leg !== 'ARRIVAL') && (traffic !== 'INTL' && traffic !== 'INTERNATIONAL' && traffic !== 'INT');
-            // Departure International: Dark Blue (#1E40AF)
             const showDepInt = (leg !== 'ARR' && leg !== 'ARRIVAL') && (traffic !== 'DOM' && traffic !== 'DOMESTIC');
 
-            const arrDomData = trend.arr_dom_flights || [];
-            const arrIntData = trend.arr_int_flights || [];
-            const depDomData = trend.dep_dom_flights || [];
-            const depIntData = trend.dep_int_flights || [];
+            const datasets = [];
 
+            // Stacking configuration (Section 15, 16, 17, 18, 19):
+            // In ALL mode: exactly 2 compact columns side-by-side per hour:
+            //   1) ARRIVAL stack (light amber #FCD34D + dark amber #D97706)
+            //   2) DEPARTURE stack (light blue #93C5FD + dark blue #1E40AF)
+            // In ARR mode: only 1 ARRIVAL stacked column
+            // In DEP mode: only 1 DEPARTURE stacked column
             if (showArrDom) {
                 datasets.push({
                     label: 'Arrival Domestic',
-                    data: arrDomData,
+                    data: dist.arr_dom || new Array(24).fill(0),
                     backgroundColor: '#FCD34D',
                     borderColor: '#F59E0B',
                     borderWidth: 1,
-                    borderRadius: 3,
-                    categoryPercentage: 0.8,
-                    barPercentage: 0.9,
+                    borderRadius: (showArrInt ? 0 : 3),
+                    stack: 'arrival',
+                    categoryPercentage: 0.72,
+                    barPercentage: 0.88,
                 });
             }
             if (showArrInt) {
                 datasets.push({
                     label: 'Arrival International',
-                    data: arrIntData,
+                    data: dist.arr_int || new Array(24).fill(0),
                     backgroundColor: '#D97706',
                     borderColor: '#B45309',
                     borderWidth: 1,
-                    borderRadius: 3,
-                    categoryPercentage: 0.8,
-                    barPercentage: 0.9,
+                    borderRadius: { topLeft: 3, topRight: 3 },
+                    stack: 'arrival',
+                    categoryPercentage: 0.72,
+                    barPercentage: 0.88,
                 });
             }
             if (showDepDom) {
                 datasets.push({
                     label: 'Departure Domestic',
-                    data: depDomData,
+                    data: dist.dep_dom || new Array(24).fill(0),
                     backgroundColor: '#93C5FD',
                     borderColor: '#3B82F6',
                     borderWidth: 1,
-                    borderRadius: 3,
-                    categoryPercentage: 0.8,
-                    barPercentage: 0.9,
+                    borderRadius: (showDepInt ? 0 : 3),
+                    stack: 'departure',
+                    categoryPercentage: 0.72,
+                    barPercentage: 0.88,
                 });
             }
             if (showDepInt) {
                 datasets.push({
                     label: 'Departure International',
-                    data: depIntData,
+                    data: dist.dep_int || new Array(24).fill(0),
                     backgroundColor: '#1E40AF',
                     borderColor: '#172554',
                     borderWidth: 1,
-                    borderRadius: 3,
-                    categoryPercentage: 0.8,
-                    barPercentage: 0.9,
+                    borderRadius: { topLeft: 3, topRight: 3 },
+                    stack: 'departure',
+                    categoryPercentage: 0.72,
+                    barPercentage: 0.88,
                 });
             }
 
@@ -1849,31 +1884,49 @@ function fdrDashboardController() {
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            backgroundColor: '#1E293B',
-                            titleFont: { size: 11, weight: 'bold' },
-                            bodyFont: { size: 10 },
-                            padding: 8,
+                            backgroundColor: '#0F172A',
+                            titleFont: { size: 12, weight: 'bold' },
+                            bodyFont: { size: 11 },
+                            padding: 10,
+                            cornerRadius: 8,
                             callbacks: {
                                 title: (items) => {
                                     const idx = items[0].dataIndex;
-                                    return trend.time_ranges ? trend.time_ranges[idx] : items[0].label;
+                                    const range = (dist.time_ranges && dist.time_ranges[idx]) ? dist.time_ranges[idx] : items[0].label;
+                                    return `${items[0].label} (${range})`;
                                 },
-                                label: (item) => ` ${item.dataset.label}: ${item.parsed.y} flights`,
+                                beforeBody: () => {
+                                    const basis = (dist.time_basis || this.filters.time_basis || 'actual').toUpperCase();
+                                    const basisDesc = dist.time_basis_desc || (basis === 'ACTUAL' ? 'AIBT / AOBT' : 'SIBT / SOBT');
+                                    const pLabel = dist.period_label || 'Selected Period';
+                                    const pDays = dist.period_days ? ` • ${dist.period_days} days` : '';
+                                    return `Period: ${pLabel}${pDays}\nTime Basis: ${basis} (${basisDesc})`;
+                                },
+                                label: (item) => ` ${item.dataset.label}: ${item.parsed.y.toLocaleString()} flights`,
                                 afterBody: (items) => {
-                                    const sum = items.reduce((acc, it) => acc + (it.parsed.y || 0), 0);
-                                    return `Total: ${sum} flights`;
+                                    const idx = items[0].dataIndex;
+                                    const total = items.reduce((acc, it) => acc + (it.parsed.y || 0), 0);
+                                    const days = dist.period_days || 1;
+                                    const avg = (total / Math.max(1, days)).toFixed(2);
+                                    let out = `Total: ${total.toLocaleString()} movements`;
+                                    if (days > 1) {
+                                        out += `\nAverage: ${avg} movements/day at ${items[0].label}`;
+                                    }
+                                    return out;
                                 }
                             }
                         }
                     },
                     scales: {
                         x: {
+                            stacked: false,
                             grid: { display: false },
                             ticks: { font: { size: 10, weight: '600' }, color: '#64748B' }
                         },
                         y: {
+                            stacked: true,
                             beginAtZero: true,
-                            title: { display: true, text: 'Flights (Movements)', font: { size: 10, weight: 'bold' }, color: '#64748B' },
+                            title: { display: true, text: 'Flight Movements', font: { size: 10, weight: 'bold' }, color: '#64748B' },
                             ticks: { precision: 0, font: { size: 10 }, color: '#64748B' },
                             grid: { color: '#F1F5F9' }
                         }
@@ -2242,6 +2295,35 @@ function fdrDashboardController() {
             return this.formatDateLabel(dStr);
         },
 
+        getHourlyPeriodContext() {
+            if (this.hourlyDistribution && this.hourlyDistribution.period_label) {
+                const days = this.hourlyDistribution.period_days;
+                return this.hourlyDistribution.period_label + (days ? ` • ${days} ${days === 1 ? 'DAY' : 'DAYS'}` : '');
+            }
+            if (this.dateScope === 'DAY' && this.filters.analysis_date) {
+                return this.formatDateLabel(this.filters.analysis_date) + ' • 1 DAY';
+            }
+            return 'SELECTED PERIOD';
+        },
+
+        getHourlyPeakHourRange() {
+            return (this.hourlyDistribution && this.hourlyDistribution.peak_hour && this.hourlyDistribution.peak_hour.time_range) || 'N/A';
+        },
+
+        getHourlyPeakMovements() {
+            if (this.hourlyDistribution && this.hourlyDistribution.peak_hour && this.hourlyDistribution.peak_hour.movements != null) {
+                return this.hourlyDistribution.peak_hour.movements.toLocaleString() + ' mov';
+            }
+            return '0 mov';
+        },
+
+        getHourlyPeakAverage() {
+            if (this.hourlyDistribution && this.hourlyDistribution.peak_hour && this.hourlyDistribution.peak_hour.average_per_day) {
+                return this.hourlyDistribution.peak_hour.average_per_day;
+            }
+            return null;
+        },
+
         triggerFilter(page = 1) {
             this.isFiltering = true;
             const reqId = ++this.activeRequestId;
@@ -2284,6 +2366,7 @@ function fdrDashboardController() {
                 this.fleetPerformance = data.fleet_performance || [];
                 this.groundOps = data.ground_ops;
                 this.combinedTrend = data.combined_trend;
+                this.hourlyDistribution = data.hourly_distribution || this.hourlyDistribution;
                 this.activeChips = data.active_chips || [];
                 this.flightRecords = data.records || [];
                 this.totalRecords = data.filtered_count ?? (data.pagination ? data.pagination.total : 0);

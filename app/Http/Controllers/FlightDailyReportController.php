@@ -584,7 +584,20 @@ class FlightDailyReportController extends Controller
             'start_date'     => trim($request->query('start_date', $meta['period_start'] ?? '')),
             'end_date'       => trim($request->query('end_date', $meta['period_end'] ?? '')),
             'report_mode'    => (int)$request->query('report_mode', 1),
-            'time_basis'     => in_array($request->query('time_basis', 'scheduled'), ['scheduled','actual']) ? $request->query('time_basis', 'scheduled') : 'scheduled',
+            'time_basis'     => (function() use ($request, $meta, $rawRecords) {
+                $requested = $request->query('time_basis');
+                if (in_array($requested, ['scheduled', 'actual'], true)) return $requested;
+                $realizationMeta = strtoupper(trim($meta['realization'] ?? ''));
+                if (empty($realizationMeta)) {
+                    $hasActual = false;
+                    foreach (array_slice($rawRecords, 0, 100) as $r) {
+                        if (!empty($r['aibt']) && $r['aibt'] !== 'N/A') { $hasActual = true; break; }
+                        if (!empty($r['aobt']) && $r['aobt'] !== 'N/A') { $hasActual = true; break; }
+                    }
+                    $realizationMeta = $hasActual ? 'YES' : 'NO';
+                }
+                return ($realizationMeta === 'NO') ? 'scheduled' : 'actual';
+            })(),
             'otp_tolerance'  => max(1, min(120, (int)$request->query('otp_tolerance', 15))),
             'search'         => trim($request->query('search', '')),
             'v'              => $request->query('v', time()),
@@ -688,7 +701,20 @@ class FlightDailyReportController extends Controller
             'start_date'     => trim($request->query('start_date', '')),
             'end_date'       => trim($request->query('end_date', '')),
             'report_mode'    => (int)$request->query('report_mode', 1),
-            'time_basis'     => in_array($request->query('time_basis', 'scheduled'), ['scheduled','actual']) ? $request->query('time_basis', 'scheduled') : 'scheduled',
+            'time_basis'     => (function() use ($request, $meta, $rawRecords) {
+                $requested = $request->query('time_basis');
+                if (in_array($requested, ['scheduled', 'actual'], true)) return $requested;
+                $realizationMeta = strtoupper(trim($meta['realization'] ?? ''));
+                if (empty($realizationMeta)) {
+                    $hasActual = false;
+                    foreach (array_slice($rawRecords, 0, 100) as $r) {
+                        if (!empty($r['aibt']) && $r['aibt'] !== 'N/A') { $hasActual = true; break; }
+                        if (!empty($r['aobt']) && $r['aobt'] !== 'N/A') { $hasActual = true; break; }
+                    }
+                    $realizationMeta = $hasActual ? 'YES' : 'NO';
+                }
+                return ($realizationMeta === 'NO') ? 'scheduled' : 'actual';
+            })(),
             'otp_tolerance'  => max(1, min(120, (int)$request->query('otp_tolerance', 15))),
             'search'         => trim($request->query('search', '')),
             'v'              => $request->query('v', time()),
@@ -747,6 +773,7 @@ class FlightDailyReportController extends Controller
             'active_chips'        => $filterResult['active_chips'],
             'kpis'                => $analytics['kpis'],
             'hourly_charts'       => $analytics['hourly_charts'],
+            'hourly_distribution' => $analytics['hourly_distribution'] ?? null,
             'combined_trend'      => $analytics['combined_trend'] ?? null,
             'sched_vs_real'       => $analytics['schedule_vs_realization'],
             'pax_analytics'       => $analytics['passenger_analytics'],
