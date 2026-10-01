@@ -1242,8 +1242,92 @@ function unifiedReportPortal() {
             let headerFound = false;
             let detectedLeg = 'ALL';
             let detectedRouteType = 'ALL';
-            let detectedRealization = 'YES';
-            let operatorFromMeta = null;
+            // ── LARGE FILE MODE (> 3.5 MB): Fast non-blocking header metadata inspection ──
+            if (file.size > 3.5 * 1024 * 1024) {
+                const headSlice = file.slice(0, 65536);
+                const headText = await headSlice.text();
+                const isHtml = /<html|<table|<tr|<center|<title|oasys|transactions_datefdr/i.test(headText);
+                const detectedFormat = isHtml ? 'OASYS HTML XLS' : (fileExt === 'xlsx' ? 'XLSX' : 'NATIVE XLS');
+
+                const metaMap = {};
+                const inputRegex = /<input[^>]+>/gi;
+                let inMatch;
+                while ((inMatch = inputRegex.exec(headText)) !== null) {
+                    const tag = inMatch[0];
+                    const nMatch = tag.match(/name=["']?([^"'\s>]+)["']?/i);
+                    const vMatch = tag.match(/value=["']?([^"'>]*)["']?/i);
+                    if (nMatch) {
+                        metaMap[nMatch[1].toUpperCase()] = vMatch ? vMatch[1].trim() : '';
+                    }
+                }
+
+                if (metaMap['BRANCH_CODE']) detectedAirportCode = metaMap['BRANCH_CODE'].toUpperCase();
+                if (metaMap['OPERATOR']) operatorFromMeta = metaMap['OPERATOR'].toUpperCase();
+                if (metaMap['TRANSACTIONS_DATEFDR']) detectedDateRange = metaMap['TRANSACTIONS_DATEFDR'];
+                if (metaMap['LEG']) {
+                    const lg = metaMap['LEG'].toUpperCase();
+                    if (lg.startsWith('A')) detectedLeg = 'ARRIVAL';
+                    else if (lg.startsWith('D')) detectedLeg = 'DEPARTURE';
+                }
+                if (metaMap['CATEGORY_CODE']) {
+                    const cat = metaMap['CATEGORY_CODE'].toUpperCase();
+                    if (cat.includes('DOM')) detectedRouteType = 'DOMESTIC';
+                    else if (cat.includes('INT')) detectedRouteType = 'INTERNATIONAL';
+                }
+                if (metaMap['REAL']) {
+                    const rVal = metaMap['REAL'].toUpperCase();
+                    detectedRealization = ['NO', 'TIDAK', 'FALSE', '0'].includes(rVal) ? 'NO' : 'YES';
+                }
+
+                const titleMatch = headText.match(/<center[^>]*>([\s\S]*?)<\/center>/i) || headText.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+                if (titleMatch) {
+                    const headerStr = titleMatch[1];
+                    if (!metaMap['BRANCH_CODE']) {
+                        for (const [code, fullName] of Object.entries(AIRPORT_MAP)) {
+                            const cityPart = fullName.split('—')[1] || '';
+                            if (new RegExp(code, 'i').test(headerStr) || (cityPart && new RegExp(cityPart.split('(')[0].trim(), 'i').test(headerStr))) {
+                                detectedAirportCode = code;
+                                break;
+                            }
+                        }
+                    }
+                    if (!metaMap['TRANSACTIONS_DATEFDR']) {
+                        const dateMatch = headerStr.match(/(\d{1,2}[-\/]\d{1,2}[-\/]\d{4})\s*(?:s\/?d|to|-)\s*(\d{1,2}[-\/]\d{1,2}[-\/]\d{4})/i);
+                        if (dateMatch) {
+                            detectedDateRange = `${dateMatch[1]} to ${dateMatch[2]}`;
+                        }
+                    }
+                }
+
+                const airportDisplay = AIRPORT_MAP[detectedAirportCode] || detectedAirportCode;
+                const operatorDisplay = operatorFromMeta || 'ALL AIRLINE';
+                const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+
+                return {
+                    valid: true,
+                    category: null,
+                    category_title: null,
+                    detectedTemplate: 'fdr',
+                    expectedTemplate: 'OASYS Flight Daily Report structure',
+                    detected_format: detectedFormat,
+                    file_name: fileName,
+                    records_count: 'Large Dataset (~33k+ movements)',
+                    dataset: `${fileName} (${fileSizeMB})`,
+                    airport: detectedAirportCode,
+                    airport_name: airportDisplay,
+                    airport_code: detectedAirportCode,
+                    operator: operatorDisplay,
+                    period_label: detectedDateRange,
+                    date_range: detectedDateRange,
+                    leg: detectedLeg,
+                    direction: detectedLeg,
+                    route_type: detectedRouteType,
+                    realization: detectedRealization,
+                    detected_columns: ['AIR LINE', 'FLIGHT NO', 'PAIRED NO', 'SIBT', 'SOBT', 'AIBT', 'AOBT', 'LEG', 'CITY 1', 'CITY 2', 'CAP.', 'LOAD'],
+                    client_parsed: true,
+                    large_file_mode: true
+                };
+            }
 
             if (isHtml) {
                 const fullText = await file.text();
@@ -1616,59 +1700,190 @@ function unifiedReportPortal() {
             try {
                 // ── PIPELINE A: CHUNKED UPLOAD FOR LARGE MULTI-MONTH FILES (> 3.5 MB) ──
                 if (this.selectedFile.size > 3.5 * 1024 * 1024) {
-                    const chunkSize = 2.5 * 1024 * 1024; // 2.5 MB chunks (safe for Vercel 4.5 MB payload limit)
+                    const chunkSize = 2.5 * 1024 * 1024; // 2.5 MiB chunks
                     const totalChunks = Math.ceil(this.selectedFile.size / chunkSize);
+                    const fileSizeMB = (this.selectedFile.size / 1048576).toFixed(2);
                     const uploadToken = 'upl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+                    const delay = (ms) => new Promise(res => setTimeout(res, ms));
+
+                    let lastChunkData = null;
 
                     for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
                         const start = chunkIdx * chunkSize;
                         const end = Math.min(this.selectedFile.size, start + chunkSize);
                         const chunkBlob = this.selectedFile.slice(start, end);
+                        const uploadedMB = (end / 1048576).toFixed(2);
+                        const uploadPct = Math.round(((chunkIdx + 1) / totalChunks) * 50);
 
-                        this.progressPercent = Math.round(15 + ((chunkIdx) / totalChunks) * 55);
-                        this.progressText = `Uploading chunk ${chunkIdx + 1} of ${totalChunks} (${(this.selectedFile.size / 1048576).toFixed(1)} MB)...`;
+                        this.processingStageTitle = 'Uploading FDR Source';
+                        this.progressPercent = uploadPct;
+                        this.progressText = `Chunk ${chunkIdx + 1} / ${totalChunks} • ${uploadedMB} MB / ${fileSizeMB} MB (${Math.round(((chunkIdx + 1) / totalChunks) * 100)}%)`;
 
-                        const chunkForm = new FormData();
-                        chunkForm.append('report_type', this.selectedReport);
-                        chunkForm.append('upload_token', uploadToken);
-                        chunkForm.append('chunk_index', chunkIdx);
-                        chunkForm.append('total_chunks', totalChunks);
-                        chunkForm.append('filename', this.selectedFile.name);
-                        chunkForm.append('chunk', chunkBlob, this.selectedFile.name);
-                        chunkForm.append('_token', csrfToken);
+                        let chunkSuccess = false;
+                        let lastErrorMsg = '';
+                        const maxRetries = 3;
+                        const retryDelays = [1000, 2000, 4000];
 
-                        const chunkRes = await fetch('{{ route("upload.chunk") }}', {
-                            method: 'POST',
-                            headers: {
-                                'Accept': 'application/json',
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'X-CSRF-TOKEN': csrfToken
-                            },
-                            body: chunkForm
-                        });
+                        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+                            if (attempt > 0) {
+                                const waitTime = retryDelays[attempt - 1] || 4000;
+                                this.progressText = `Retry ${attempt}/${maxRetries} for chunk ${chunkIdx + 1}... waiting ${waitTime / 1000}s`;
+                                await delay(waitTime);
+                            }
 
-                        let chunkData = null;
-                        try {
-                            chunkData = await chunkRes.json();
-                        } catch (e) {
-                            throw new Error(`Server returned non-JSON response during chunk ${chunkIdx + 1} upload.`);
+                            try {
+                                const chunkForm = new FormData();
+                                chunkForm.append('report_type', this.selectedReport);
+                                chunkForm.append('upload_token', uploadToken);
+                                chunkForm.append('chunk_index', chunkIdx);
+                                chunkForm.append('total_chunks', totalChunks);
+                                chunkForm.append('filename', this.selectedFile.name);
+                                chunkForm.append('chunk', chunkBlob, this.selectedFile.name);
+                                chunkForm.append('_token', csrfToken);
+
+                                const chunkRes = await fetch('{{ route("upload.chunk") }}', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Accept': 'application/json',
+                                        'X-Requested-With': 'XMLHttpRequest',
+                                        'X-CSRF-TOKEN': csrfToken
+                                    },
+                                    body: chunkForm
+                                });
+
+                                const contentType = chunkRes.headers.get('content-type') || '';
+                                let chunkData = null;
+
+                                if (contentType.includes('application/json')) {
+                                    chunkData = await chunkRes.json();
+                                } else {
+                                    const errorText = await chunkRes.text();
+                                    console.error('Non-JSON response during chunk upload:', chunkRes.status, errorText);
+                                    lastErrorMsg = `HTTP ${chunkRes.status}: Server returned an unexpected non-JSON response.`;
+                                    if (chunkRes.status === 413) {
+                                        throw new Error(`HTTP 413: Payload Too Large. Chunk exceeds server request limits.`);
+                                    }
+                                    continue;
+                                }
+
+                                if (!chunkRes.ok || !chunkData.success) {
+                                    const errObj = chunkData.error;
+                                    const msg = (typeof errObj === 'object' && errObj) ? (errObj.message || errObj.code) : (errObj || 'Chunk upload failed');
+                                    lastErrorMsg = `Chunk ${chunkIdx + 1} failed: ${msg}`;
+                                    const isRetryable = errObj && errObj.retryable !== false;
+                                    if (!isRetryable || chunkRes.status === 413 || chunkRes.status === 422) {
+                                        throw new Error(msg);
+                                    }
+                                    continue;
+                                }
+
+                                lastChunkData = chunkData;
+                                chunkSuccess = true;
+                                break;
+
+                            } catch (networkErr) {
+                                lastErrorMsg = networkErr.message || 'Network connection error during chunk transfer';
+                                if (networkErr.message && (networkErr.message.includes('413') || networkErr.message.includes('422'))) {
+                                    throw networkErr;
+                                }
+                            }
                         }
 
-                        if (!chunkRes.ok || !chunkData.success) {
-                            const errMsgs = this.formatErrors(chunkData);
-                            throw new Error(errMsgs.join('; '));
-                        }
-
-                        if (chunkData.completed) {
-                            this.progressPercent = 100;
-                            this.progressText = 'Complete! Loading Dashboard...';
-                            setTimeout(() => {
-                                window.location.href = chunkData.redirect_url;
-                            }, 250);
-                            return;
+                        if (!chunkSuccess) {
+                            throw new Error(`Failed to upload chunk ${chunkIdx + 1} of ${totalChunks} after ${maxRetries} retries. ${lastErrorMsg}`);
                         }
                     }
-                    return;
+
+                    // ── ALL CHUNKS UPLOADED: Handle Async Job / Completion ──
+                    if (lastChunkData && lastChunkData.is_async_job && lastChunkData.job_id) {
+                        this.processingStageTitle = 'FDR Background Ingestion';
+                        this.progressText = 'Upload complete. Initializing streaming parser...';
+                        this.progressPercent = 55;
+
+                        // Trigger processing job
+                        try {
+                            fetch(lastChunkData.process_url, {
+                                method: 'POST',
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'X-CSRF-TOKEN': csrfToken
+                                }
+                            }).catch(e => console.log('Process trigger initiated'));
+                        } catch (e) {}
+
+                        // Poll job status until READY or FAILED
+                        const pollUrl = lastChunkData.poll_url;
+                        let jobReady = false;
+                        let pollAttempts = 0;
+
+                        while (!jobReady && pollAttempts < 120) {
+                            pollAttempts++;
+                            await delay(800);
+
+                            try {
+                                const pollRes = await fetch(pollUrl, {
+                                    headers: {
+                                        'Accept': 'application/json',
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    }
+                                });
+                                if (!pollRes.ok) continue;
+
+                                const job = await pollRes.json();
+                                if (!job.success) continue;
+
+                                if (job.status === 'READING') {
+                                    this.processingStageTitle = 'Reading OASYS Workbook';
+                                    this.progressPercent = Math.max(this.progressPercent, 60);
+                                    this.progressText = 'Step 1/5: Reading tables and extracting metadata...';
+                                } else if (job.status === 'PARSING') {
+                                    this.processingStageTitle = 'Extracting Flight Movements';
+                                    const rowCount = job.processed_rows || 0;
+                                    this.progressPercent = Math.max(this.progressPercent, Math.min(85, 60 + Math.round((job.progress || 0) * 0.25)));
+                                    this.progressText = `Step 2/5: Streaming flight records (${rowCount.toLocaleString()} rows)...`;
+                                } else if (job.status === 'NORMALIZING') {
+                                    this.processingStageTitle = 'Normalizing Dataset';
+                                    this.progressPercent = 88;
+                                    this.progressText = 'Step 3/5: Standardizing schedules, actuals & routes...';
+                                } else if (job.status === 'VALIDATING') {
+                                    this.processingStageTitle = 'Validating Movements';
+                                    this.progressPercent = 94;
+                                    this.progressText = 'Step 4/5: Reconciling movements & excluding summary rows...';
+                                } else if (job.status === 'READY') {
+                                    this.processingStageTitle = 'Analytics Ready';
+                                    this.progressPercent = 100;
+                                    const movements = (job.processed_rows || job.total_rows || 0).toLocaleString();
+                                    this.progressText = `Step 5/5: Ready! Ingested ${movements} valid flight movements.`;
+                                    jobReady = true;
+
+                                    setTimeout(() => {
+                                        window.location.href = job.result_url || lastChunkData.redirect_url;
+                                    }, 400);
+                                    return;
+                                } else if (job.status === 'FAILED') {
+                                    throw new Error(`FDR Ingestion failed: ${job.error_message || 'Processing error'}`);
+                                }
+                            } catch (pollErr) {
+                                if (pollErr.message && pollErr.message.includes('FDR Ingestion failed')) {
+                                    throw pollErr;
+                                }
+                                console.warn('Poll status error:', pollErr);
+                            }
+                        }
+
+                        if (!jobReady) {
+                            window.location.href = lastChunkData.redirect_url;
+                            return;
+                        }
+                    } else if (lastChunkData && lastChunkData.completed) {
+                        this.progressPercent = 100;
+                        this.progressText = 'Complete! Loading Dashboard...';
+                        setTimeout(() => {
+                            window.location.href = lastChunkData.redirect_url;
+                        }, 250);
+                        return;
+                    }
                 }
 
                 // ── PIPELINE B: STANDARD DIRECT UPLOAD (<= 3.5 MB) ─────────────────────

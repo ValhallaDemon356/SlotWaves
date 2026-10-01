@@ -294,14 +294,24 @@ class FlightDailyReportFeatureTest extends TestCase
 
         $res1->assertStatus(200);
         $res1->assertJson([
-            'success'     => true,
-            'completed'   => true,
-            'report_type' => 'fdr',
-            'status'      => 'completed',
+            'success'      => true,
+            'completed'    => true,
+            'report_type'  => 'fdr',
+            'status'       => 'QUEUED',
+            'is_async_job' => true,
         ]);
         $this->assertNotEmpty($res1->json('upload_id'));
+        $this->assertNotEmpty($res1->json('job_id'));
         $this->assertStringContainsString('/dashboard', $res1->json('redirect_url'));
-        $this->assertGreaterThan(0, $res1->json('valid_rows'));
+
+        // Process the queued job
+        $procRes = $this->post(route('fdr.jobs.process', $res1->json('job_id')));
+        $procRes->assertStatus(200);
+        $procRes->assertJson([
+            'success' => true,
+            'status'  => 'READY',
+        ]);
+        $this->assertGreaterThan(0, $procRes->json('movement_rows'));
     }
 
     /**

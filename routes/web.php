@@ -20,6 +20,7 @@ Route::post('/upload',                    [UploadController::class, 'store'])->n
 Route::post('/upload/validate-template',  [UploadController::class, 'validateTemplate'])->name('upload.validate-template');
 Route::post('/upload/compare-file',       [UploadController::class, 'uploadCompareFile'])->name('upload.compare-file');
 Route::post('/upload/chunk',              [UploadController::class, 'uploadChunk'])->name('upload.chunk');
+Route::get('/upload/chunk/status',       [UploadController::class, 'chunkStatus'])->name('upload.chunk.status');
 Route::get('/upload/{upload}/status',     [UploadController::class, 'status'])->name('upload.status');
 Route::post('/upload/{upload}/process',   [UploadController::class, 'process'])->name('upload.process');
 
@@ -52,6 +53,9 @@ Route::prefix('fdr')->name('fdr.')->group(function () {
     Route::get('/config/{upload?}',           [FlightDailyReportController::class, 'config'])->name('config');
     Route::post('/upload',                    [FlightDailyReportController::class, 'store'])->name('upload');
     Route::post('/use-reference',             [FlightDailyReportController::class, 'useReference'])->name('use-reference');
+    Route::get('/jobs/{job}/status',          [FlightDailyReportController::class, 'jobStatus'])->name('jobs.status');
+    Route::post('/jobs/{job}/process',        [FlightDailyReportController::class, 'processJob'])->name('jobs.process');
+    Route::get('/jobs/{job}',                 [FlightDailyReportController::class, 'showJob'])->name('jobs.show');
     Route::get('/{upload}/dashboard',         [FlightDailyReportController::class, 'dashboard'])->name('dashboard');
     Route::get('/{upload}/filter',            [FlightDailyReportController::class, 'filterApi'])->name('filter');
     Route::get('/{upload}/flight/{flightIndex}', [FlightDailyReportController::class, 'flightDetails'])->name('flight-details');

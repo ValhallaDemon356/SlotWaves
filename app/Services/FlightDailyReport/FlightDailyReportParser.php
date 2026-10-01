@@ -134,8 +134,9 @@ class FlightDailyReportParser
 
     /**
      * Parse raw FDR workbook content or path.
+     * Uses high-efficiency streaming parser for HTML-XLS files to handle 45 MB+ files with minimal memory.
      */
-    public function parse(string $filePath): array
+    public function parse(string $filePath, ?callable $onProgress = null): array
     {
         if (!file_exists($filePath)) {
             throw new \InvalidArgumentException("File not found: {$filePath}");
@@ -144,14 +145,25 @@ class FlightDailyReportParser
         @ini_set('pcre.backtrack_limit', '10000000');
         @ini_set('memory_limit', '512M');
 
+        // Probe first 4KB to detect format before reading whole file
+        $handle = @fopen($filePath, 'rb');
+        $head = $handle ? fread($handle, 4096) : '';
+        if ($handle) {
+            fclose($handle);
+        }
+
+        $detectedFormat = $this->detectFormat($filePath, $head);
+
+        // For OASYS HTML XLS files (including large 45 MB+ files), use streaming parser
+        if ($detectedFormat === 'OASYS HTML XLS' || $this->isHtmlTable($head)) {
+            return $this->parseHtmlStream($filePath, $onProgress);
+        }
+
         $content = file_get_contents($filePath);
         $rawRows = [];
         $metaHeaders = [];
-        $detectedFormat = $this->detectFormat($filePath, $content);
 
-        if ($detectedFormat === 'OASYS HTML XLS' || $this->isHtmlTable($content)) {
-            [$metaHeaders, $rawRows] = $this->parseHtmlTable($content);
-        } elseif ($detectedFormat === 'XML' || $this->isXmlSpreadsheet($content)) {
+        if ($detectedFormat === 'XML' || $this->isXmlSpreadsheet($content)) {
             [$metaHeaders, $rawRows] = $this->parseXmlTable($content);
         } elseif ($detectedFormat === 'CSV' || strtolower(pathinfo($filePath, PATHINFO_EXTENSION)) === 'csv') {
             [$metaHeaders, $rawRows] = $this->parseCsv($filePath);
@@ -190,6 +202,154 @@ class FlightDailyReportParser
     }
 
     /**
+     * High-performance streaming HTML parser for large OASYS FDR files (e.g. 45 MB, 33k+ rows).
+     * Avoids giant preg_match_all strings and loads records row-by-row with minimal memory footprint.
+     */
+    public function parseHtmlStream(string $filePath, ?callable $onProgress = null): array
+    {
+        if (!file_exists($filePath)) {
+            throw new \InvalidArgumentException("File not found: {$filePath}");
+        }
+
+        $handle = fopen($filePath, 'r');
+        if (!$handle) {
+            throw new \RuntimeException("Failed to open FDR file: {$filePath}");
+        }
+
+        $lead = fread($handle, 65536);
+        $metaHeaders = [];
+        if (preg_match_all('/<input[^>]+type=["\']hidden["\'][^>]*>/i', $lead, $mInputs)) {
+            foreach ($mInputs[0] as $input) {
+                $name = '';
+                $value = '';
+                if (preg_match('/name=["\']([^"\']+)["\']/i', $input, $n)) $name = $n[1];
+                if (preg_match('/value=["\']([^"\']*)["\']/i', $input, $v)) $value = $v[1];
+                if ($name !== '') $metaHeaders[] = strtoupper($name) . ': ' . trim($value);
+            }
+        }
+
+        if (preg_match('/<title[^>]*>(.*?)<\/title>/is', $lead, $titleMatch)) {
+            $metaHeaders[] = trim(strip_tags($titleMatch[1]));
+        }
+        if (preg_match_all('/<center[^>]*>(.*?)<\/center>/is', $lead, $centerMatches)) {
+            foreach ($centerMatches[1] as $c) {
+                $metaHeaders[] = trim(strip_tags(str_ireplace(['<br>', '<br/>', '<br />'], "\n", $c)));
+            }
+        }
+
+        $meta = $this->extractMetadata($metaHeaders, []);
+        $meta['detected_format'] = 'OASYS HTML XLS';
+
+        $buffer = $lead;
+        $headerCols = [];
+        $columnMap = [];
+        $records = [];
+        $htmlDataRows = 0;
+        $fileSize = filesize($filePath);
+        $bytesRead = strlen($lead);
+
+        if ($onProgress) {
+            $onProgress('READING', 10, 0);
+        }
+
+        while (!feof($handle) || strlen($buffer) > 0) {
+            $trPos = stripos($buffer, '<tr');
+            if ($trPos === false) {
+                if (!feof($handle)) {
+                    $chunk = fread($handle, 131072);
+                    $bytesRead += strlen($chunk);
+                    $buffer .= $chunk;
+                    continue;
+                } else {
+                    break;
+                }
+            }
+
+            $endTrPos = stripos($buffer, '</tr>', $trPos);
+            if ($endTrPos === false) {
+                if (!feof($handle)) {
+                    $chunk = fread($handle, 131072);
+                    $bytesRead += strlen($chunk);
+                    $buffer .= $chunk;
+                    continue;
+                } else {
+                    $endTrPos = strlen($buffer);
+                }
+            }
+
+            $trLen = ($endTrPos + 5) - $trPos;
+            $trHtml = substr($buffer, $trPos, $trLen);
+            $buffer = substr($buffer, $endTrPos + 5);
+
+            if (preg_match_all('/<(td|th)([^>]*)>(.*?)<\/\1>/is', $trHtml, $cMatches, PREG_SET_ORDER)) {
+                $cells = [];
+                foreach ($cMatches as $c) {
+                    $cellClean = trim(html_entity_decode(strip_tags($c[3]), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+                    $cellClean = trim(preg_replace('/\s+/', ' ', $cellClean));
+                    $cells[] = $cellClean;
+                }
+
+                if (empty($cells) || (count($cells) === 1 && $cells[0] === '')) continue;
+
+                $rowStr = implode(' ', $cells);
+                if (empty($headerCols) && (stripos($rowStr, 'AIR LINE') !== false || stripos($rowStr, 'FLIGHT NO') !== false || stripos($rowStr, 'SIBT') !== false)) {
+                    $headerCols = $cells;
+                    $colInfo = $this->identifyColumns([$headerCols]);
+                    $columnMap = $colInfo['mapping'];
+                    continue;
+                }
+
+                if (empty($headerCols)) {
+                    continue;
+                }
+
+                $htmlDataRows++;
+                $colInfo = ['header_row_index' => 0, 'mapping' => $columnMap];
+                $norm = $this->normalizeRecords([$headerCols, $cells], $colInfo, $meta);
+                if (!empty($norm)) {
+                    $normRecord = $norm[0];
+                    $normRecord['index'] = count($records) + 1;
+                    $records[] = $normRecord;
+                }
+
+                if ($onProgress && ($htmlDataRows % 2500 === 0)) {
+                    $pct = min(85, (int)(15 + ($bytesRead / max(1, $fileSize)) * 70));
+                    $onProgress('PARSING', $pct, count($records));
+                }
+            }
+        }
+        fclose($handle);
+
+        if ($onProgress) {
+            $onProgress('NORMALIZING', 90, count($records));
+        }
+
+        // Derive multi-day / multi-month period from actual records if not explicit
+        $meta = $this->refineMetadataWithRecords($meta, $records);
+
+        // Compute diagnostics
+        $classification = $this->classifyRows($records);
+        $meta['diagnostics'] = [
+            'html_data_rows'   => $htmlDataRows,
+            'source_rows'      => $htmlDataRows,
+            'movement_rows'    => $classification['movement_count'],
+            'summary_rows'     => $classification['summary_count'],
+            'rejected_rows'    => max(0, $htmlDataRows - count($records)),
+        ];
+
+        if ($onProgress) {
+            $onProgress('VALIDATING', 95, count($records));
+        }
+
+        return [
+            'meta'            => $meta,
+            'records'         => $records,
+            'summary'         => $this->buildFastSummary($records, $meta),
+            'detected_format' => 'OASYS HTML XLS',
+        ];
+    }
+
+    /**
      * Separate raw normalized records into operational flight movements and summary rows.
      * Section 8 & 9: Exclude summary row from movementRecords.
      */
@@ -209,15 +369,15 @@ class FlightDailyReportParser
         }
 
         return [
-            'movement_records' => array_values($movementRecords),
-            'summary_rows'     => array_values($summaryRecords),
-            'summary_records'  => array_values($summaryRecords),
-            'movements'        => array_values($movementRecords),
-            'summaries'        => array_values($summaryRecords),
+            'movement_records' => $movementRecords,
+            'summary_rows'     => $summaryRecords,
+            'summary_records'  => $summaryRecords,
+            'movements'        => $movementRecords,
+            'summaries'        => $summaryRecords,
             'movement_count'   => count($movementRecords),
             'summary_count'    => count($summaryRecords),
-            0                  => array_values($movementRecords),
-            1                  => array_values($summaryRecords),
+            0                  => $movementRecords,
+            1                  => $summaryRecords,
         ];
     }
 

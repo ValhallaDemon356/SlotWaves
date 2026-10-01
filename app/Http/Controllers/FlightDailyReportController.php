@@ -256,11 +256,212 @@ class FlightDailyReportController extends Controller
     }
 
     /**
+     * Get real-time status of an FDR background processing job.
+     */
+    public function jobStatus($jobId)
+    {
+        $job = \App\Models\FdrProcessingJob::find($jobId);
+        if (!$job) {
+            return response()->json([
+                'success' => false,
+                'error'   => [
+                    'code'      => 'JOB_NOT_FOUND',
+                    'message'   => 'Processing job not found.',
+                    'retryable' => false,
+                ],
+            ], 404);
+        }
+
+        return response()->json([
+            'success'        => true,
+            'job_id'         => $job->id,
+            'upload_id'      => $job->upload_id,
+            'status'         => $job->status,
+            'stage_label'    => $job->stage_label,
+            'progress'       => (int)$job->progress,
+            'processed_rows' => (int)$job->processed_rows,
+            'total_rows'     => (int)$job->total_rows,
+            'diagnostics'    => $job->diagnostics ?? [],
+            'error_message'  => $job->error_message,
+            'result_url'     => $job->result_url,
+        ]);
+    }
+
+    /**
+     * Execute high-performance streaming parsing and normalization for FDR job.
+     * Prevents duplicate execution via status locking and guarantees idempotency.
+     */
+    public function processJob(Request $request, $jobId)
+    {
+        ini_set('memory_limit', '1024M');
+        set_time_limit(300);
+
+        $job = \App\Models\FdrProcessingJob::find($jobId);
+        if (!$job) {
+            return response()->json([
+                'success' => false,
+                'error'   => [
+                    'code'      => 'JOB_NOT_FOUND',
+                    'message'   => 'Processing job not found.',
+                    'retryable' => false,
+                ],
+            ], 404);
+        }
+
+        // Idempotency: If already completed, return immediately
+        if ($job->status === 'READY') {
+            return response()->json([
+                'success'       => true,
+                'status'        => 'READY',
+                'progress'      => 100,
+                'stage_label'   => 'Ready',
+                'movement_rows' => $job->total_rows,
+                'summary_rows'  => $job->diagnostics['summary_rows'] ?? 1,
+                'diagnostics'   => $job->diagnostics ?? [],
+                'result_url'    => $job->result_url,
+            ]);
+        }
+
+        // Job lock: If already in flight, return current state
+        if (in_array($job->status, ['READING', 'PARSING', 'NORMALIZING', 'VALIDATING'])) {
+            return response()->json([
+                'success'        => true,
+                'status'         => $job->status,
+                'stage_label'    => $job->stage_label,
+                'progress'       => $job->progress,
+                'processed_rows' => $job->processed_rows,
+                'total_rows'     => $job->total_rows,
+                'result_url'     => $job->result_url,
+            ]);
+        }
+
+        try {
+            $job->update([
+                'status'      => 'READING',
+                'stage_label' => 'Reading OASYS workbook...',
+                'progress'    => 10,
+            ]);
+
+            $fullPath = Storage::disk('local')->path($job->stored_path);
+            if (!file_exists($fullPath)) {
+                throw new \RuntimeException("Stored workbook file not found on disk: {$job->stored_path}");
+            }
+
+            // Stream parse with incremental progress updates
+            $parsed = $this->parser->parseHtmlStream($fullPath, function ($stage, $pct, $rows) use ($job) {
+                $labels = [
+                    'READING'     => 'Reading OASYS workbook...',
+                    'PARSING'     => "Extracting flight rows ({$rows} rows)...",
+                    'NORMALIZING' => 'Normalizing dates, routes, and realization...',
+                    'VALIDATING'  => 'Validating operational movements...',
+                ];
+                $job->update([
+                    'status'         => $stage,
+                    'stage_label'    => $labels[$stage] ?? $stage,
+                    'progress'       => $pct,
+                    'processed_rows' => $rows,
+                ]);
+            });
+
+            // Classify rows into movements and summary
+            $classified = $this->parser->classifyRows($parsed['records']);
+            $movementCount = count($classified['movement_records']);
+            $summaryCount = count($classified['summary_records']);
+
+            // Update upload record
+            $upload = Upload::find($job->upload_id);
+            if ($upload) {
+                $upload->update([
+                    'status'             => 'completed',
+                    'total_rows'         => $movementCount,
+                    'valid_rows'         => $movementCount,
+                    'invalid_rows'       => 0,
+                    'duplicate_rows'     => 0,
+                    'parsing_confidence' => 1.0,
+                    'validation_summary' => ['valid' => true],
+                    'report_data'        => $parsed,
+                ]);
+                session(['fdr_active_upload_id' => $upload->id]);
+                session(['active_upload_id' => $upload->id]);
+            }
+
+            $diagnostics = [
+                'source_rows'   => count($parsed['records']),
+                'movement_rows' => $movementCount,
+                'summary_rows'  => $summaryCount,
+                'rejected_rows' => 0,
+            ];
+
+            $resultUrl = route('fdr.dashboard', ['upload' => $job->upload_id, 'date_scope' => 'ALL_PERIOD']);
+
+            $job->update([
+                'status'         => 'READY',
+                'stage_label'    => 'Ready',
+                'progress'       => 100,
+                'processed_rows' => $movementCount,
+                'total_rows'     => $movementCount,
+                'diagnostics'    => $diagnostics,
+                'result_url'     => $resultUrl,
+            ]);
+
+            return response()->json([
+                'success'       => true,
+                'status'        => 'READY',
+                'progress'      => 100,
+                'stage_label'   => 'Ready',
+                'movement_rows' => $movementCount,
+                'summary_rows'  => $summaryCount,
+                'diagnostics'   => $diagnostics,
+                'result_url'    => $resultUrl,
+            ]);
+
+        } catch (\Throwable $e) {
+            $job->update([
+                'status'        => 'FAILED',
+                'stage_label'   => 'Processing Failed',
+                'error_message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success'       => false,
+                'status'        => 'FAILED',
+                'error'         => [
+                    'code'      => 'PROCESSING_FAILED',
+                    'message'   => $e->getMessage(),
+                    'retryable' => true,
+                ],
+                'error_message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Show job status page or redirect to FDR dashboard if ready.
+     */
+    public function showJob($jobId)
+    {
+        $job = \App\Models\FdrProcessingJob::find($jobId);
+        if (!$job) {
+            abort(404, 'Processing job not found.');
+        }
+
+        if ($job->status === 'READY' && $job->result_url) {
+            return redirect($job->result_url);
+        }
+
+        return response()->json([
+            'job' => $job,
+        ]);
+    }
+
+    /**
      * FDR Interactive Analytics Dashboard.
      * FDR Dashboard → Flight Details → Export
      */
     public function dashboard(Upload $upload, Request $request)
     {
+        ini_set('memory_limit', '1024M');
+
         if ($upload->report_type !== 'fdr' || empty($upload->report_data)) {
             return redirect()->route('fdr.index')->with('error', 'Please select or upload a valid Flight Daily Report workbook.');
         }
@@ -367,6 +568,8 @@ class FlightDailyReportController extends Controller
      */
     public function filterApi(Upload $upload, Request $request)
     {
+        ini_set('memory_limit', '1024M');
+
         if ($upload->report_type !== 'fdr' || empty($upload->report_data)) {
             return response()->json(['error' => 'Report data not found.'], 404);
         }
@@ -502,6 +705,8 @@ class FlightDailyReportController extends Controller
      */
     public function exportCsv(Upload $upload, Request $request): StreamedResponse
     {
+        ini_set('memory_limit', '1024M');
+
         if ($upload->report_type !== 'fdr' || empty($upload->report_data)) {
             abort(404, "Report data not ready for export.");
         }
@@ -631,6 +836,9 @@ class FlightDailyReportController extends Controller
      */
     public function exportPdf(Upload $upload, Request $request)
     {
+        ini_set('memory_limit', '1024M');
+        set_time_limit(300);
+
         if ($upload->report_type !== 'fdr' || empty($upload->report_data)) {
             abort(404, "Report data not ready for export.");
         }

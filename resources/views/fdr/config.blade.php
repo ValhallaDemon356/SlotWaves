@@ -308,49 +308,180 @@ function fdrConfigForm() {
             const csrfToken = document.querySelector('input[name="_token"]')?.value || '{{ csrf_token() }}';
             const chunkSize = 2.5 * 1024 * 1024;
             const totalChunks = Math.ceil(file.size / chunkSize);
+            const fileSizeMB = (file.size / 1048576).toFixed(2);
             const uploadToken = 'upl_fdr_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+            const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
             try {
+                let lastChunkData = null;
+
                 for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
                     const start = chunkIdx * chunkSize;
                     const end = Math.min(file.size, start + chunkSize);
                     const chunkBlob = file.slice(start, end);
+                    const uploadedMB = (end / 1048576).toFixed(2);
 
-                    this.modalUploadProgress = Math.round(15 + (chunkIdx / totalChunks) * 80);
-                    this.modalUploadText = `Uploading chunk ${chunkIdx + 1} of ${totalChunks} (${(file.size / 1048576).toFixed(1)} MB)...`;
+                    this.modalUploadProgress = Math.round(((chunkIdx + 1) / totalChunks) * 50);
+                    this.modalUploadText = `Chunk ${chunkIdx + 1} / ${totalChunks} • ${uploadedMB} MB / ${fileSizeMB} MB (${Math.round(((chunkIdx + 1) / totalChunks) * 100)}%)`;
 
-                    const chunkForm = new FormData();
-                    chunkForm.append('report_type', 'fdr');
-                    chunkForm.append('upload_token', uploadToken);
-                    chunkForm.append('chunk_index', chunkIdx);
-                    chunkForm.append('total_chunks', totalChunks);
-                    chunkForm.append('filename', file.name);
-                    chunkForm.append('chunk', chunkBlob, file.name);
-                    chunkForm.append('_token', csrfToken);
+                    let chunkSuccess = false;
+                    let lastErrorMsg = '';
+                    const maxRetries = 3;
+                    const retryDelays = [1000, 2000, 4000];
 
-                    const chunkRes = await fetch('{{ route("upload.chunk") }}', {
-                        method: 'POST',
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-CSRF-TOKEN': csrfToken
-                        },
-                        body: chunkForm
-                    });
+                    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+                        if (attempt > 0) {
+                            const waitTime = retryDelays[attempt - 1] || 4000;
+                            this.modalUploadText = `Retry ${attempt}/${maxRetries} for chunk ${chunkIdx + 1}... waiting ${waitTime / 1000}s`;
+                            await delay(waitTime);
+                        }
 
-                    const chunkData = await chunkRes.json();
-                    if (!chunkRes.ok || !chunkData.success) {
-                        throw new Error(chunkData.error || 'Failed to upload chunk ' + (chunkIdx + 1));
+                        try {
+                            const chunkForm = new FormData();
+                            chunkForm.append('report_type', 'fdr');
+                            chunkForm.append('upload_token', uploadToken);
+                            chunkForm.append('chunk_index', chunkIdx);
+                            chunkForm.append('total_chunks', totalChunks);
+                            chunkForm.append('filename', file.name);
+                            chunkForm.append('chunk', chunkBlob, file.name);
+                            chunkForm.append('_token', csrfToken);
+
+                            const chunkRes = await fetch('{{ route("upload.chunk") }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'X-CSRF-TOKEN': csrfToken
+                                },
+                                body: chunkForm
+                            });
+
+                            const contentType = chunkRes.headers.get('content-type') || '';
+                            let chunkData = null;
+
+                            if (contentType.includes('application/json')) {
+                                chunkData = await chunkRes.json();
+                            } else {
+                                const errorText = await chunkRes.text();
+                                console.error('Non-JSON response during chunk upload:', chunkRes.status, errorText);
+                                lastErrorMsg = `HTTP ${chunkRes.status}: Server returned an unexpected non-JSON response.`;
+                                if (chunkRes.status === 413) {
+                                    throw new Error(`HTTP 413: Payload Too Large. Chunk exceeds server request limits.`);
+                                }
+                                continue;
+                            }
+
+                            if (!chunkRes.ok || !chunkData.success) {
+                                const errObj = chunkData.error;
+                                const msg = (typeof errObj === 'object' && errObj) ? (errObj.message || errObj.code) : (errObj || 'Chunk upload failed');
+                                lastErrorMsg = `Chunk ${chunkIdx + 1} failed: ${msg}`;
+                                const isRetryable = errObj && errObj.retryable !== false;
+                                if (!isRetryable || chunkRes.status === 413 || chunkRes.status === 422) {
+                                    throw new Error(msg);
+                                }
+                                continue;
+                            }
+
+                            lastChunkData = chunkData;
+                            chunkSuccess = true;
+                            break;
+
+                        } catch (networkErr) {
+                            lastErrorMsg = networkErr.message || 'Network connection error during chunk transfer';
+                            if (networkErr.message && (networkErr.message.includes('413') || networkErr.message.includes('422'))) {
+                                throw networkErr;
+                            }
+                        }
                     }
 
-                    if (chunkData.completed) {
-                        this.modalUploadProgress = 100;
-                        this.modalUploadText = 'Complete! Loading Configuration...';
-                        setTimeout(() => {
-                            window.location.href = chunkData.redirect_url;
-                        }, 250);
+                    if (!chunkSuccess) {
+                        throw new Error(`Failed to upload chunk ${chunkIdx + 1} of ${totalChunks} after ${maxRetries} retries. ${lastErrorMsg}`);
+                    }
+                }
+
+                // ── ALL CHUNKS UPLOADED: Handle Async Job / Completion ──
+                if (lastChunkData && lastChunkData.is_async_job && lastChunkData.job_id) {
+                    this.modalUploadProgress = 55;
+                    this.modalUploadText = 'Upload complete. Initializing streaming parser...';
+
+                    // Trigger processing job
+                    try {
+                        fetch(lastChunkData.process_url, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': csrfToken
+                            }
+                        }).catch(e => console.log('Process trigger initiated'));
+                    } catch (e) {}
+
+                    // Poll job status until READY or FAILED
+                    const pollUrl = lastChunkData.poll_url;
+                    let jobReady = false;
+                    let pollAttempts = 0;
+
+                    while (!jobReady && pollAttempts < 120) {
+                        pollAttempts++;
+                        await delay(800);
+
+                        try {
+                            const pollRes = await fetch(pollUrl, {
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                }
+                            });
+                            if (!pollRes.ok) continue;
+
+                            const job = await pollRes.json();
+                            if (!job.success) continue;
+
+                            if (job.status === 'READING') {
+                                this.modalUploadProgress = Math.max(this.modalUploadProgress, 60);
+                                this.modalUploadText = 'Reading OASYS tables & metadata...';
+                            } else if (job.status === 'PARSING') {
+                                const rowCount = job.processed_rows || 0;
+                                this.modalUploadProgress = Math.max(this.modalUploadProgress, Math.min(85, 60 + Math.round((job.progress || 0) * 0.25)));
+                                this.modalUploadText = `Streaming flight movements (${rowCount.toLocaleString()} rows)...`;
+                            } else if (job.status === 'NORMALIZING') {
+                                this.modalUploadProgress = 88;
+                                this.modalUploadText = 'Normalizing routes, dates & realization...';
+                            } else if (job.status === 'VALIDATING') {
+                                this.modalUploadProgress = 94;
+                                this.modalUploadText = 'Validating records & excluding summary rows...';
+                            } else if (job.status === 'READY') {
+                                this.modalUploadProgress = 100;
+                                const movements = (job.processed_rows || job.total_rows || 0).toLocaleString();
+                                this.modalUploadText = `Ready! Ingested ${movements} valid flight movements. Loading...`;
+                                jobReady = true;
+
+                                setTimeout(() => {
+                                    window.location.href = job.result_url || lastChunkData.redirect_url;
+                                }, 400);
+                                return;
+                            } else if (job.status === 'FAILED') {
+                                throw new Error(`FDR Ingestion failed: ${job.error_message || 'Processing error'}`);
+                            }
+                        } catch (pollErr) {
+                            if (pollErr.message && pollErr.message.includes('FDR Ingestion failed')) {
+                                throw pollErr;
+                            }
+                            console.warn('Poll status error:', pollErr);
+                        }
+                    }
+
+                    if (!jobReady) {
+                        window.location.href = lastChunkData.redirect_url;
                         return;
                     }
+                } else if (lastChunkData && lastChunkData.completed) {
+                    this.modalUploadProgress = 100;
+                    this.modalUploadText = 'Complete! Loading Configuration...';
+                    setTimeout(() => {
+                        window.location.href = lastChunkData.redirect_url;
+                    }, 250);
+                    return;
                 }
             } catch (err) {
                 this.isUploadingModal = false;

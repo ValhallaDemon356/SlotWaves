@@ -204,6 +204,58 @@ class UploadController extends Controller
     }
 
     /**
+     * Resumable chunk status inquiry.
+     * Returns received chunks so browser can resume upload.
+     */
+    public function chunkStatus(Request $request)
+    {
+        $uploadToken = $request->query('upload_token');
+        $totalChunks = (int)$request->query('total_chunks', 1);
+
+        if (!$uploadToken || !preg_match('/^[a-zA-Z0-9_\-]+$/', $uploadToken)) {
+            return response()->json([
+                'success' => false,
+                'error'   => [
+                    'code'      => 'INVALID_UPLOAD_TOKEN',
+                    'message'   => 'Invalid or missing upload token.',
+                    'retryable' => false,
+                ],
+            ], 422);
+        }
+
+        $chunkDir = "chunks/{$uploadToken}";
+        $uploaded = [];
+        $missing = [];
+
+        for ($i = 0; $i < $totalChunks; $i++) {
+            $chunkExists = Storage::disk('local')->exists("{$chunkDir}/chunk_{$i}");
+            if (!$chunkExists && \Illuminate\Support\Facades\Schema::hasTable('upload_chunks')) {
+                try {
+                    $chunkExists = \Illuminate\Support\Facades\DB::table('upload_chunks')
+                        ->where('upload_token', $uploadToken)
+                        ->where('chunk_index', $i)
+                        ->exists();
+                } catch (\Throwable $e) {}
+            }
+
+            if ($chunkExists) {
+                $uploaded[] = $i;
+            } else {
+                $missing[] = $i;
+            }
+        }
+
+        return response()->json([
+            'success'         => true,
+            'upload_token'    => $uploadToken,
+            'total_chunks'    => $totalChunks,
+            'uploaded_chunks' => $uploaded,
+            'missing_chunks'  => $missing,
+            'completed'       => empty($missing),
+        ]);
+    }
+
+    /**
      * Chunked upload endpoint to support large multi-month files under Vercel's 4.5 MB payload limit.
      */
     public function uploadChunk(Request $request)
@@ -219,7 +271,11 @@ class UploadController extends Controller
                 'success'        => false,
                 'category'       => 'UPLOAD_FAILED',
                 'category_title' => 'UPLOAD FAILED',
-                'error'          => 'Invalid or missing upload token.',
+                'error'          => [
+                    'code'      => 'INVALID_UPLOAD_TOKEN',
+                    'message'   => 'Invalid or missing upload token.',
+                    'retryable' => false,
+                ],
             ], 422);
         }
 
@@ -229,7 +285,11 @@ class UploadController extends Controller
                 'success'        => false,
                 'category'       => 'UPLOAD_FAILED',
                 'category_title' => 'UPLOAD FAILED',
-                'error'          => 'No chunk payload received.',
+                'error'          => [
+                    'code'      => 'MISSING_CHUNK_PAYLOAD',
+                    'message'   => 'No chunk payload received.',
+                    'retryable' => true,
+                ],
             ], 422);
         }
 
@@ -239,7 +299,11 @@ class UploadController extends Controller
                 'success'        => false,
                 'category'       => 'UNSUPPORTED_DAU_TYPE',
                 'category_title' => 'UNSUPPORTED REPORT TYPE',
-                'error'          => "Unsupported report type: {$reportType}",
+                'error'          => [
+                    'code'      => 'UNSUPPORTED_REPORT_TYPE',
+                    'message'   => "Unsupported report type: {$reportType}",
+                    'retryable' => false,
+                ],
             ], 422);
         }
 
@@ -310,7 +374,11 @@ class UploadController extends Controller
                 'success'        => false,
                 'category'       => 'PROCESSING_FAILED',
                 'category_title' => 'PROCESSING FAILED',
-                'error'          => 'Failed to create destination file for assembled chunks.',
+                'error'          => [
+                    'code'      => 'ASSEMBLE_FAILED',
+                    'message'   => 'Failed to create destination file for assembled chunks.',
+                    'retryable' => true,
+                ],
             ], 500);
         }
 
@@ -358,7 +426,11 @@ class UploadController extends Controller
                 'success'        => false,
                 'category'       => $validationResult['category'] ?? 'INVALID_TEMPLATE',
                 'category_title' => $validationResult['category_title'] ?? 'INVALID TEMPLATE',
-                'error'          => $validationResult['error'] ?? implode('; ', $validationResult['errors']),
+                'error'          => [
+                    'code'      => 'INVALID_TEMPLATE',
+                    'message'   => $validationResult['error'] ?? implode('; ', $validationResult['errors']),
+                    'retryable' => false,
+                ],
                 'errors'         => $validationResult['errors'] ?? [],
                 'validation'     => $validationResult,
             ], 422);
@@ -367,24 +439,41 @@ class UploadController extends Controller
         // ── Create Upload Record ──────────────────────────────────────────────
         $airportCode = $validationResult['meta']['airport_code'] ?? 'CGK';
         $airport = \App\Models\Airport::findByIata($airportCode) ?? \App\Models\Airport::findByIata('CGK');
+        $fileHash = @hash_file('sha256', $assembledAbsolutePath) ?: null;
 
         if (strcasecmp($reportType, 'fdr') === 0) {
-            $fdrParser = new \App\Services\FlightDailyReport\FlightDailyReportParser();
-            $parsed = $fdrParser->parse($assembledAbsolutePath);
-
+            // Asynchronous Large File Pipeline:
+            // Do NOT parse synchronously inside the HTTP chunk upload request!
             $upload = Upload::create([
                 'original_filename'  => $filename,
                 'stored_path'        => $assembledRelativePath,
-                'status'             => 'completed',
+                'status'             => 'processing',
                 'report_type'        => 'fdr',
-                'total_rows'         => count($parsed['records']),
-                'valid_rows'         => count($parsed['records']),
+                'total_rows'         => 0,
+                'valid_rows'         => 0,
                 'invalid_rows'       => 0,
                 'duplicate_rows'     => 0,
                 'parsing_confidence' => 1.0,
                 'validation_summary' => $validationResult,
-                'report_data'        => $parsed,
+                'report_data'        => ['meta' => $validationResult['meta'] ?? []],
                 'airport_id'         => $airport?->id,
+            ]);
+
+            $job = \App\Models\FdrProcessingJob::create([
+                'upload_id'      => $upload->id,
+                'upload_token'   => $uploadToken,
+                'filename'       => $filename,
+                'stored_path'    => $assembledRelativePath,
+                'file_size'      => filesize($assembledAbsolutePath),
+                'file_hash'      => $fileHash,
+                'report_type'    => 'fdr',
+                'status'         => 'QUEUED',
+                'stage_label'    => 'Queued for processing',
+                'progress'       => 0,
+                'processed_rows' => 0,
+                'total_rows'     => 0,
+                'meta'           => $validationResult['meta'] ?? [],
+                'result_url'     => route('fdr.dashboard', ['upload' => $upload->id, 'date_scope' => 'ALL_PERIOD']),
             ]);
 
             session(['fdr_active_upload_id' => $upload->id]);
@@ -393,13 +482,15 @@ class UploadController extends Controller
             return response()->json([
                 'success'      => true,
                 'completed'    => true,
+                'is_async_job' => true,
+                'job_id'       => $job->id,
                 'upload_id'    => $upload->id,
                 'report_type'  => 'fdr',
-                'status'       => 'completed',
-                'total_rows'   => $upload->total_rows,
-                'valid_rows'   => $upload->valid_rows,
-                'redirect_url' => route('fdr.dashboard', $upload->id),
-                'message'      => "Flight Daily Report uploaded and processed successfully ({$upload->valid_rows} records).",
+                'status'       => 'QUEUED',
+                'poll_url'     => route('fdr.jobs.status', $job->id),
+                'process_url'  => route('fdr.jobs.process', $job->id),
+                'redirect_url' => route('fdr.dashboard', ['upload' => $upload->id, 'date_scope' => 'ALL_PERIOD']),
+                'message'      => "Flight Daily Report uploaded successfully. Processing job queued.",
             ]);
         }
 

@@ -420,12 +420,12 @@
                 @endphp
                 <tr>
                     <td><strong>{{ $al['airline'] ?? '-' }}</strong></td>
-                    <td>{{ $al ? number_format($al['flights']) : '-' }}</td>
-                    <td>{{ $al ? number_format($al['passengers']) : '-' }}</td>
-                    <td>{{ $al ? number_format($al['cargo_kg'], 1) : '-' }}</td>
+                    <td>{{ ($al && is_numeric($al['flights'] ?? null)) ? number_format((float)$al['flights']) : '-' }}</td>
+                    <td>{{ ($al && is_numeric($al['passengers'] ?? null)) ? number_format((float)$al['passengers']) : '-' }}</td>
+                    <td>{{ ($al && is_numeric($al['cargo_kg'] ?? null)) ? number_format((float)$al['cargo_kg'], 1) : '-' }}</td>
                     <td><span class="badge badge-blue">{{ $al['avg_load_factor'] ?? '-' }}</span></td>
                     <td><strong>{{ $rt['route'] ?? '-' }}</strong></td>
-                    <td>{{ $rt ? number_format($rt['flights']) : '-' }}</td>
+                    <td>{{ ($rt && is_numeric($rt['flights'] ?? null)) ? number_format((float)$rt['flights']) : '-' }}</td>
                     <td><span class="badge badge-green">{{ $rt['avg_load_factor'] ?? '-' }}</span></td>
                 </tr>
             @endfor
@@ -468,7 +468,7 @@
                     <td>{{ $r['cap'] }}</td>
                     <td>{{ $r['load'] }}</td>
                     <td>{{ $r['load_factor'] !== 'N/A' ? $r['load_factor'] . '%' : 'N/A' }}</td>
-                    <td>{{ number_format($r['cargo_kg']) }}</td>
+                    <td>{{ is_numeric($r['cargo_kg'] ?? null) ? number_format((float)$r['cargo_kg']) : ($r['cargo_kg'] ?? '-') }}</td>
                     <td>{{ $r['stand'] }}</td>
                     <td>{{ $r['runway'] }}</td>
                     <td>
