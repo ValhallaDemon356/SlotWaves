@@ -1226,11 +1226,13 @@ function unifiedReportPortal() {
             if (typeof data === 'string') return [cleanErr(data)];
             
             const errors = [];
+            // Priority 1: data.errors
             if (data.errors) {
                 if (Array.isArray(data.errors)) {
                     data.errors.forEach(e => {
                         if (typeof e === 'object' && e !== null) {
-                            errors.push(cleanErr(e.message || JSON.stringify(e)));
+                            const code = e.code ? `${e.code}: ` : '';
+                            errors.push(cleanErr(code + (e.message || JSON.stringify(e))));
                         } else {
                             errors.push(cleanErr(e));
                         }
@@ -1240,7 +1242,8 @@ function unifiedReportPortal() {
                         if (Array.isArray(val)) {
                             val.forEach(item => errors.push(cleanErr(item)));
                         } else if (typeof val === 'object' && val !== null) {
-                            errors.push(cleanErr(val.message || JSON.stringify(val)));
+                            const code = val.code ? `${val.code}: ` : '';
+                            errors.push(cleanErr(code + (val.message || JSON.stringify(val))));
                         } else {
                             errors.push(cleanErr(val));
                         }
@@ -1249,13 +1252,53 @@ function unifiedReportPortal() {
             }
             if (errors.length > 0) return errors;
 
+            // Priority 2: data.error as object with message/code
+            if (data.error && typeof data.error === 'object') {
+                const code = data.error.code || 'PROCESSING_ERROR';
+                const msg = data.error.message || 'Unknown error';
+                return [cleanErr(`${code}: ${msg}`)];
+            }
+
+            // Priority 3: data.error as string
             if (data.error && typeof data.error === 'string') {
                 return [cleanErr(data.error)];
             }
+
+            // Priority 4: data.error_message
+            if (data.error_message && typeof data.error_message === 'string') {
+                return [cleanErr(data.error_message)];
+            }
+
+            // Priority 5: data.message
             if (data.message && typeof data.message === 'string') {
                 return [cleanErr(data.message)];
             }
+
+            // Priority 6: HTTP status based fallback / unknown
             return ['Validation failed. Please verify the template structure.'];
+        },
+
+        extractErrorCategory(data, fallback = 'PROCESSING FAILED') {
+            if (!data) return fallback;
+            if (typeof data === 'string') {
+                if (/not.?found|source.?not.?found/i.test(data)) return 'FILE NOT FOUND';
+                if (/storage|disk|s3/i.test(data)) return 'STORAGE FAILED';
+                if (/parse|html|workbook|fdr_format/i.test(data)) return 'PARSER FAILED';
+                if (/database|sql|connection|db_/i.test(data)) return 'DATABASE FAILED';
+                if (/upload|chunk/i.test(data)) return 'UPLOAD FAILED';
+                if (/validation|template|unsupported|mime/i.test(data)) return 'VALIDATION FAILED';
+                return fallback;
+            }
+            if (data.category_title) return data.category_title;
+            const cat = String(data.category || data.error?.code || data.error_code || '').toUpperCase();
+            if (cat.includes('NOT_FOUND') || cat.includes('SOURCE_NOT_FOUND')) return 'FILE NOT FOUND';
+            if (cat.includes('STORAGE')) return 'STORAGE FAILED';
+            if (cat.includes('PARSER') || cat.includes('PARSE') || cat.includes('FDR_FORMAT')) return 'PARSER FAILED';
+            if (cat.includes('DATABASE') || cat.includes('SQL') || cat.includes('DB_')) return 'DATABASE FAILED';
+            if (cat.includes('UPLOAD') || cat.includes('CHUNK')) return 'UPLOAD FAILED';
+            if (cat.includes('VALIDATION') || cat.includes('TEMPLATE') || cat.includes('UNSUPPORTED')) return 'VALIDATION FAILED';
+            if (cat.includes('PROCESSING') || cat.includes('ASSEMBLE')) return 'PROCESSING FAILED';
+            return fallback;
         },
 
         handleFileSelect(ev) {
@@ -1311,6 +1354,15 @@ function unifiedReportPortal() {
             };
 
             let detectedAirportCode = 'CGK';
+            let detectedDateRange = '01-08-2026 s/d 31-08-2026';
+            let headerFound = false;
+            let detectedLeg = 'ALL';
+            let detectedRouteType = 'ALL';
+            let operatorFromMeta = '';
+            let detectedRealization = 'YES';
+            let rowCount = 0;
+            let airlineCounts = {};
+
             const fnMatch = fileName.match(/\b(CGK|HLP|SUB|DPS|KNO|UPG|BDO|BTJ|JOG|YIA|SRG|BPN|BDJ|MDC|LOP|PLM|PKU|PDG|DJB|TKG|PNK|TRK|KOE|AMQ|DJJ|TIM|SOQ)\b/i);
             if (fnMatch) {
                 detectedAirportCode = fnMatch[1].toUpperCase();
@@ -1325,17 +1377,11 @@ function unifiedReportPortal() {
             const fileExt = extMatch ? extMatch[1].toLowerCase() : '';
             const detectedFormat = isHtml ? 'OASYS HTML XLS' : (fileExt === 'xlsx' ? 'XLSX' : (fileExt === 'csv' ? 'CSV' : 'NATIVE XLS'));
 
-            let rowCount = 0;
-            let airlineCounts = {};
-            let detectedDateRange = '01-08-2026 s/d 31-08-2026';
-            let headerFound = false;
-            let detectedLeg = 'ALL';
-            let detectedRouteType = 'ALL';
-            // ── LARGE FILE MODE (> 3.5 MB): Fast non-blocking header metadata inspection ──
+            // ── LARGE FILE MODE (> 3.5 MB): Fast non-blocking header metadata inspection (Section 14-17) ──
             if (file.size > 3.5 * 1024 * 1024) {
-                const headSlice = file.slice(0, 65536);
+                const headSlice = file.slice(0, 262144);
                 const headText = await headSlice.text();
-                const isHtml = /<html|<table|<tr|<center|<title|oasys|transactions_datefdr/i.test(headText);
+                const isHtml = /<html|<table|<tr|<td|<center|<title|oasys|transactions_datefdr|sibt|sobt|aibt|aobt/i.test(headText);
                 const detectedFormat = isHtml ? 'OASYS HTML XLS' : (fileExt === 'xlsx' ? 'XLSX' : 'NATIVE XLS');
 
                 const metaMap = {};
@@ -1400,7 +1446,7 @@ function unifiedReportPortal() {
                     expectedTemplate: 'OASYS Flight Daily Report structure',
                     detected_format: detectedFormat,
                     file_name: fileName,
-                    records_count: 'Large Dataset (~33k+ movements)',
+                    records_count: 'Large Dataset',
                     dataset: `${fileName} (${fileSizeMB})`,
                     airport: detectedAirportCode,
                     airport_name: airportDisplay,
@@ -1636,8 +1682,8 @@ function unifiedReportPortal() {
             this.errorCategoryTitle = 'INVALID FILE TEMPLATE';
             this.errorBadge = 'REJECTED';
 
-            // Absolute maximum threshold
-            if (file.size > 50 * 1024 * 1024) {
+            // Absolute maximum threshold (FDR supports resumable chunked flow for arbitrarily large files)
+            if (this.selectedReport !== 'fdr' && file.size > 50 * 1024 * 1024) {
                 this.isValidating = false;
                 this.validationStatus = 'invalid';
                 this.errorCategoryTitle = 'FILE TOO LARGE FOR CURRENT UPLOAD PATH';
@@ -1689,7 +1735,7 @@ function unifiedReportPortal() {
                         this.validationResult = clientResult;
                     } else {
                         this.validationStatus = 'invalid';
-                        this.errorCategoryTitle = (clientResult && clientResult.category_title) || 'INVALID FDR TEMPLATE';
+                        this.errorCategoryTitle = (clientResult && clientResult.category_title) || 'VALIDATION FAILED';
                         this.errorBadge = 'REJECTED';
                         this.validationErrors = (clientResult && clientResult.errors) || ['Failed to parse Flight Daily Report workbook.'];
                     }
@@ -1699,7 +1745,7 @@ function unifiedReportPortal() {
                     if (file.size > 3.5 * 1024 * 1024) {
                         this.isValidating = false;
                         this.validationStatus = 'invalid';
-                        this.errorCategoryTitle = 'PARSER FAILURE';
+                        this.errorCategoryTitle = 'PARSER FAILED';
                         this.errorBadge = 'ERROR';
                         this.validationErrors = ['Unable to parse FDR workbook in browser: ' + (parseErr.message || 'Structure error')];
                         return;
@@ -1758,9 +1804,7 @@ function unifiedReportPortal() {
                     this.validationResult = data;
                 } else {
                     this.validationStatus = 'invalid';
-                    this.errorCategoryTitle = (data && data.category_title) 
-                        ? data.category_title 
-                        : ((data && data.category === 'FILE_TOO_LARGE') ? 'FILE TOO LARGE FOR CURRENT UPLOAD PATH' : 'INVALID FILE TEMPLATE');
+                    this.errorCategoryTitle = this.extractErrorCategory(data, (data && data.category === 'FILE_TOO_LARGE') ? 'FILE TOO LARGE FOR CURRENT UPLOAD PATH' : 'VALIDATION FAILED');
                     this.errorBadge = (data && data.category === 'FILE_TOO_LARGE') ? 'OVERSIZED' : 'REJECTED';
                     this.validationErrors = this.formatErrors(data);
                     this.validationResult = data || {};
@@ -1913,12 +1957,14 @@ function unifiedReportPortal() {
                                 }
 
                                 if (!chunkRes.ok || !chunkData.success) {
-                                    const errObj = chunkData.error;
-                                    const msg = (typeof errObj === 'object' && errObj)
-                                        ? (errObj.message || errObj.code)
-                                        : (errObj || 'Chunk upload failed');
+                                    const errMsgs = this.formatErrors(chunkData);
+                                    const msg = errMsgs.join('; ');
                                     lastErrorMsg = `Chunk ${chunkIdx + 1}: ${msg}`;
-                                    if (chunkRes.status === 413 || chunkRes.status === 422) throw new Error(msg);
+                                    if (chunkRes.status === 413 || chunkRes.status === 422) {
+                                        const err = new Error(msg);
+                                        err.category_title = this.extractErrorCategory(chunkData, 'UPLOAD FAILED');
+                                        throw err;
+                                    }
                                     continue;
                                 }
 
@@ -1970,22 +2016,34 @@ function unifiedReportPortal() {
                         this.progressText = 'Upload complete. Initializing streaming parser...';
                         this.progressPercent = 55;
 
-                        try {
-                            fetch(lastChunkData.process_url, {
-                                method: 'POST',
-                                headers: {
-                                    'Accept': 'application/json',
-                                    'X-Requested-With': 'XMLHttpRequest',
-                                    'X-CSRF-TOKEN': csrfToken
+                        // Trigger processing asynchronously, capturing any immediate failure response
+                        fetch(lastChunkData.process_url, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': csrfToken
+                            }
+                        }).then(async (res) => {
+                            try {
+                                const resJson = await res.json();
+                                if (resJson && (!resJson.success || resJson.status === 'PAUSED' || resJson.status === 'FAILED')) {
+                                    const errMsgs = this.formatErrors(resJson);
+                                    this.isProcessing = false;
+                                    this.validationStatus = 'invalid';
+                                    this.errorCategoryTitle = this.extractErrorCategory(resJson, 'PROCESSING FAILED');
+                                    this.errorBadge = 'FAILED';
+                                    this.validationErrors = errMsgs;
                                 }
-                            }).catch(() => {});
-                        } catch (e) {}
+                            } catch (e) {}
+                        }).catch(() => {});
 
                         const pollUrl = lastChunkData.poll_url;
                         let jobReady = false;
                         let pollAttempts = 0;
 
                         while (!jobReady && pollAttempts < 120) {
+                            if (!this.isProcessing) return;
                             pollAttempts++;
                             await delay(800);
 
@@ -1996,10 +2054,44 @@ function unifiedReportPortal() {
                                         'X-Requested-With': 'XMLHttpRequest'
                                     }
                                 });
-                                if (!pollRes.ok) continue;
+                                if (!pollRes.ok) {
+                                    try {
+                                        const errJson = await pollRes.json();
+                                        if (errJson && !errJson.success) {
+                                            const errMsgs = this.formatErrors(errJson);
+                                            this.isProcessing = false;
+                                            this.validationStatus = 'invalid';
+                                            this.errorCategoryTitle = this.extractErrorCategory(errJson, 'PROCESSING FAILED');
+                                            this.errorBadge = 'FAILED';
+                                            this.validationErrors = errMsgs;
+                                            return;
+                                        }
+                                    } catch (e) {}
+                                    continue;
+                                }
 
                                 const job = await pollRes.json();
-                                if (!job.success) continue;
+                                if (!job) continue;
+
+                                if (job.status === 'PAUSED' || job.status === 'FAILED' || (job.success === false && job.error)) {
+                                    const errMsgs = this.formatErrors(job);
+                                    const errMsg = errMsgs.join('; ');
+                                    const errCode = job.error_code || (job.error && job.error.code) || '';
+                                    if (errCode === 'FDR_SOURCE_NOT_FOUND' || !job.can_resume || job.status === 'FAILED' || job.success === false) {
+                                        this.isProcessing = false;
+                                        this.validationStatus = 'invalid';
+                                        this.errorCategoryTitle = this.extractErrorCategory(job, errCode === 'FDR_SOURCE_NOT_FOUND' ? 'FILE NOT FOUND' : 'PROCESSING FAILED');
+                                        this.errorBadge = 'FAILED';
+                                        this.validationErrors = errMsgs;
+                                        return;
+                                    }
+                                    this.isProcessing = false;
+                                    this.isUploadPaused = true;
+                                    this.uploadPausedMessage = `Pemrosesan terhenti: ${errMsg}. Chunk upload selesai. Tekan Generate untuk melanjutkan.`;
+                                    this.uploadPausedChunkIdx = totalChunks;
+                                    this.uploadPausedTotalChunks = totalChunks;
+                                    return;
+                                }
 
                                 if (job.status === 'READING') {
                                     this.processingStageTitle = 'Reading OASYS Workbook';
@@ -2029,17 +2121,32 @@ function unifiedReportPortal() {
                                     }, 400);
                                     return;
                                 } else if (job.status === 'PAUSED') {
+                                    const errMsgs = this.formatErrors(job);
+                                    const errMsg = errMsgs.join('; ');
+                                    const errCode = job.error_code || (job.error && job.error.code) || '';
+                                    if (errCode === 'FDR_SOURCE_NOT_FOUND' || !job.can_resume) {
+                                        this.isProcessing = false;
+                                        this.validationStatus = 'invalid';
+                                        this.errorCategoryTitle = this.extractErrorCategory(job, 'FILE NOT FOUND');
+                                        this.errorBadge = 'FAILED';
+                                        this.validationErrors = [errMsg];
+                                        return;
+                                    }
                                     this.isProcessing = false;
                                     this.isUploadPaused = true;
-                                    this.uploadPausedMessage = `Pemrosesan terhenti: ${job.error_message || 'Server timeout'}. Chunk upload selesai. Tekan Generate untuk melanjutkan.`;
+                                    this.uploadPausedMessage = `Pemrosesan terhenti: ${errMsg}. Chunk upload selesai. Tekan Generate untuk melanjutkan.`;
                                     this.uploadPausedChunkIdx = totalChunks;
                                     this.uploadPausedTotalChunks = totalChunks;
                                     return;
                                 } else if (job.status === 'FAILED') {
-                                    throw new Error(`FDR Ingestion failed: ${job.error_message || 'Processing error'}`);
+                                    const errMsgs = this.formatErrors(job);
+                                    const errMsg = errMsgs.join('; ');
+                                    const err = new Error(errMsg);
+                                    err.category_title = this.extractErrorCategory(job, 'PROCESSING FAILED');
+                                    throw err;
                                 }
                             } catch (pollErr) {
-                                if (pollErr.message && pollErr.message.includes('FDR Ingestion failed')) {
+                                if (pollErr.category_title || (pollErr.message && pollErr.message.includes('FDR Ingestion failed'))) {
                                     throw pollErr;
                                 }
                                 console.warn('Poll error:', pollErr);
@@ -2096,7 +2203,9 @@ function unifiedReportPortal() {
 
                 if (!uploadRes.ok || !uploadData.success) {
                     const errMsgs = this.formatErrors(uploadData);
-                    throw new Error(errMsgs.join('; '));
+                    const err = new Error(errMsgs.join('; '));
+                    err.category_title = this.extractErrorCategory(uploadData, 'UPLOAD FAILED');
+                    throw err;
                 }
 
                 const uploadId = uploadData.upload_id;
@@ -2134,7 +2243,9 @@ function unifiedReportPortal() {
 
                 if (!procRes.ok || !procData.success) {
                     const errMsgs = this.formatErrors(procData);
-                    throw new Error(errMsgs.join('; '));
+                    const err = new Error(errMsgs.join('; '));
+                    err.category_title = this.extractErrorCategory(procData, 'PROCESSING FAILED');
+                    throw err;
                 }
 
                 this.progressPercent = 100;
@@ -2142,13 +2253,13 @@ function unifiedReportPortal() {
                 setTimeout(() => {
                     window.location.href = procData.redirect_url || (this.selectedReport === 'slot_schedule'
                         ? `/schedule/${uploadId}/dashboard`
-                        : (this.selectedReport === 'fdr' ? `/fdr/config/${uploadId}` : `/dau/${uploadId}/dashboard`));
+                        : (this.selectedReport === 'fdr' ? `/fdr/${uploadId}/dashboard` : `/dau/${uploadId}/dashboard`));
                 }, 300);
 
             } catch (err) {
                 this.isProcessing = false;
                 this.validationStatus = 'invalid';
-                this.errorCategoryTitle = 'PROCESSING FAILED';
+                this.errorCategoryTitle = err.category_title || this.extractErrorCategory(err.message, 'PROCESSING FAILED');
                 this.errorBadge = 'FAILED';
                 this.validationErrors = [err.message || 'Processing failed. Please check the file and try again.'];
             }

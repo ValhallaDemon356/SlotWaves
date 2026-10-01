@@ -292,6 +292,11 @@ class FlightDailyReportController extends Controller
             'diagnostics'    => $job->diagnostics ?? [],
             'error_message'  => $job->error_message,
             'error_code'     => $job->error_code,
+            'error'          => $job->error_message ? [
+                'code'      => $job->error_code ?: 'PROCESSING_ERROR',
+                'message'   => $job->error_message,
+                'retryable' => in_array($job->status, ['PAUSED']),
+            ] : null,
             'can_resume'     => in_array($job->status, ['PAUSED', 'FAILED']),
             'result_url'     => $job->result_url,
         ]);
@@ -362,7 +367,7 @@ class FlightDailyReportController extends Controller
             FdrUploadSession::where('upload_token', $job->upload_token)
                 ->update(['status' => FdrUploadSession::STATUS_PROCESSING]);
 
-            // ── Resolve file path: Storage disk -> /tmp -> DB upload_chunks fallback ──
+            // ── Resolve file path: Storage disk -> app storage -> /tmp -> DB upload_chunks fallback ──
             $fullPath = null;
             $storedPath = $job->stored_path;
 
@@ -370,6 +375,10 @@ class FlightDailyReportController extends Controller
                 $fullPath = Storage::disk('local')->path($storedPath);
             } elseif ($storedPath && file_exists($storedPath)) {
                 $fullPath = $storedPath;
+            } elseif ($storedPath && file_exists(storage_path('app/' . $storedPath))) {
+                $fullPath = storage_path('app/' . $storedPath);
+            } elseif ($storedPath && file_exists(storage_path('app/templates/' . basename($storedPath)))) {
+                $fullPath = storage_path('app/templates/' . basename($storedPath));
             } else {
                 $tmpMeta = $job->meta ?? [];
                 $tmpPath = $tmpMeta['tmp_path'] ?? null;
@@ -379,7 +388,7 @@ class FlightDailyReportController extends Controller
             }
 
             // Serverless resilience fallback: Reconstruct file from persistent DB upload_chunks
-            if (!$fullPath || !file_exists($fullPath)) {
+            if (!$fullPath || !file_exists($fullPath) || filesize($fullPath) === 0) {
                 $chunkCount = DB::table('upload_chunks')->where('upload_token', $job->upload_token)->count();
                 if ($chunkCount > 0) {
                     Log::info("Reconstructing FDR file from database upload_chunks for job {$job->id}");
@@ -392,7 +401,11 @@ class FlightDailyReportController extends Controller
                             ->orderBy('chunk_index', 'asc')
                             ->get();
                         foreach ($chunks as $c) {
-                            fwrite($asm, $c->chunk_data);
+                            if (is_resource($c->chunk_data)) {
+                                stream_copy_to_stream($c->chunk_data, $asm);
+                            } else {
+                                fwrite($asm, $c->chunk_data);
+                            }
                         }
                         fclose($asm);
                         if (file_exists($reconstructed) && filesize($reconstructed) > 0) {
@@ -402,11 +415,58 @@ class FlightDailyReportController extends Controller
                 }
             }
 
-            if (!$fullPath || !file_exists($fullPath)) {
-                throw new \RuntimeException(
-                    "Stored workbook file not found in storage, /tmp, or database chunks. " .
-                    "Please re-upload the file."
-                );
+            // Section 8: Storage path verification before processing
+            $fpCheck = ($fullPath && file_exists($fullPath)) ? @fopen($fullPath, 'rb') : false;
+            if (!$fpCheck) {
+                $errCode = 'FDR_SOURCE_NOT_FOUND';
+                $errMsg = 'The uploaded FDR source file is no longer available.';
+                $job->update([
+                    'status'        => 'PAUSED',
+                    'stage'         => 'PAUSED',
+                    'stage_label'   => 'Source File Not Found',
+                    'error_code'    => $errCode,
+                    'error_message' => $errMsg,
+                ]);
+                FdrUploadSession::where('upload_token', $job->upload_token)
+                    ->update(['status' => FdrUploadSession::STATUS_PAUSED]);
+
+                return response()->json([
+                    'success'       => false,
+                    'status'        => 'PAUSED',
+                    'stage'         => 'PAUSED',
+                    'stage_label'   => 'Source File Not Found',
+                    'error'         => [
+                        'code'      => $errCode,
+                        'message'   => $errMsg,
+                        'retryable' => true,
+                    ],
+                    'error_message' => $errMsg,
+                ], 200);
+            }
+            fclose($fpCheck);
+
+            // Verify file size is not empty
+            $actualSize = filesize($fullPath);
+            if ($actualSize < 10) {
+                $errCode = 'FDR_SOURCE_NOT_FOUND';
+                $errMsg = 'The uploaded FDR source file is no longer available.';
+                $job->update([
+                    'status'        => 'PAUSED',
+                    'stage'         => 'PAUSED',
+                    'stage_label'   => 'Source File Not Found',
+                    'error_code'    => $errCode,
+                    'error_message' => $errMsg,
+                ]);
+                return response()->json([
+                    'success'       => false,
+                    'status'        => 'PAUSED',
+                    'error'         => [
+                        'code'      => $errCode,
+                        'message'   => $errMsg,
+                        'retryable' => true,
+                    ],
+                    'error_message' => $errMsg,
+                ], 200);
             }
 
             // Stream parse with incremental progress updates
@@ -497,12 +557,13 @@ class FlightDailyReportController extends Controller
 
         } catch (\Throwable $e) {
             $job = isset($job) ? $job : FdrProcessingJob::find($jobId);
+            $errCode = str_contains(strtolower($e->getMessage()), 'not found') ? 'FDR_SOURCE_NOT_FOUND' : 'PROCESSING_ERROR';
             if ($job) {
                 $job->update([
                     'status'        => 'PAUSED',
                     'stage'         => 'PAUSED',
                     'stage_label'   => 'Processing Paused',
-                    'error_code'    => 'PROCESSING_ERROR',
+                    'error_code'    => $errCode,
                     'error_message' => $e->getMessage(),
                 ]);
                 FdrUploadSession::where('upload_token', $job->upload_token)
@@ -515,12 +576,12 @@ class FlightDailyReportController extends Controller
                 'stage'         => 'PAUSED',
                 'stage_label'   => 'Processing Paused',
                 'error'         => [
-                    'code'      => 'PROCESSING_PAUSED',
+                    'code'      => $errCode,
                     'message'   => $e->getMessage(),
                     'retryable' => true,
                 ],
                 'error_message' => $e->getMessage(),
-            ], 500);
+            ], 200);
         }
     }
 

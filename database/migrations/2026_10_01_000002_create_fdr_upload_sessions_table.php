@@ -30,6 +30,18 @@ return new class extends Migration
                 $table->timestamp('expires_at')->nullable();
                 $table->timestamps();
             });
+        } else {
+            Schema::table('fdr_upload_sessions', function (Blueprint $table) {
+                if (!Schema::hasColumn('fdr_upload_sessions', 'progress')) {
+                    $table->integer('progress')->default(0);
+                }
+                if (!Schema::hasColumn('fdr_upload_sessions', 'last_confirmed_chunk')) {
+                    $table->integer('last_confirmed_chunk')->nullable()->default(-1);
+                }
+                if (!Schema::hasColumn('fdr_upload_sessions', 'failed_chunk')) {
+                    $table->integer('failed_chunk')->nullable();
+                }
+            });
         }
     }
 

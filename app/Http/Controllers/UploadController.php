@@ -713,20 +713,31 @@ class UploadController extends Controller
 
             unset($chunkData); // free memory immediately
 
-            // ── 4. NOT FULLY UPLOADED: Return immediately ────────────────────
-            $isCompleted = $session ? $session->isFullyUploaded() : ($chunkIndex >= $totalChunks - 1);
+            // ── 4. NOT FULLY UPLOADED: Verify all chunk indices 0 to totalChunks - 1 exist (Section 11) ───
+            $chunkIndicesInDb = DB::table('upload_chunks')
+                ->where('upload_token', $uploadToken)
+                ->pluck('chunk_index')
+                ->all();
+            $missing = [];
+            for ($i = 0; $i < $totalChunks; $i++) {
+                if (!in_array($i, $chunkIndicesInDb, true) && !Storage::disk('local')->exists("fdr_chunks/{$uploadToken}/chunk_{$i}.part")) {
+                    $missing[] = $i;
+                }
+            }
+
+            $isCompleted = empty($missing) && ($totalChunks > 0);
             if (!$isCompleted) {
                 return response()->json([
                     'success'              => true,
                     'completed'            => false,
                     'chunk_index'          => $chunkIndex,
                     'total_chunks'         => $totalChunks,
-                    'uploaded_chunks'      => $session ? $session->uploaded_chunks : range(0, $chunkIndex),
-                    'missing_chunks'       => $session ? $session->getMissingChunks() : range($chunkIndex + 1, $totalChunks - 1),
+                    'uploaded_chunks'      => array_values(array_diff(range(0, $totalChunks - 1), $missing)),
+                    'missing_chunks'       => $missing,
                     'assembled_bytes'      => $session ? $session->uploaded_bytes : (file_exists($tmpAssembled) ? filesize($tmpAssembled) : 0),
                     'uploaded_bytes'       => $session ? $session->uploaded_bytes : 0,
                     'last_confirmed_chunk' => $session ? $session->last_confirmed_chunk : $chunkIndex,
-                    'status'               => $session ? $session->status : 'UPLOADING',
+                    'status'               => 'UPLOADING',
                     'message'              => "Chunk {$chunkIndex} of {$totalChunks} received.",
                 ]);
             }
@@ -748,7 +759,7 @@ class UploadController extends Controller
                 if (Storage::disk('local')->exists($partPath)) {
                     $partData = Storage::disk('local')->get($partPath);
                 }
-                if ($partData === null || strlen($partData) === 0) {
+                if ($partData === null || (is_string($partData) && strlen($partData) === 0)) {
                     $row = DB::table('upload_chunks')
                         ->where('upload_token', $uploadToken)
                         ->where('chunk_index', $i)
@@ -770,12 +781,18 @@ class UploadController extends Controller
                     ], 422);
                 }
 
-                fwrite($asmHandle, $partData);
+                if (is_resource($partData)) {
+                    stream_copy_to_stream($partData, $asmHandle);
+                } else {
+                    fwrite($asmHandle, $partData);
+                }
                 unset($partData);
             }
             fclose($asmHandle);
 
             $assembledSize = file_exists($tmpAssembled) ? filesize($tmpAssembled) : 0;
+            $expectedSize = $session ? (int) $session->file_size : 0;
+
             if ($assembledSize < 10) {
                 @unlink($tmpAssembled);
                 return response()->json([
@@ -790,25 +807,51 @@ class UploadController extends Controller
                 ], 422);
             }
 
-            // Persist assembled file to Storage disk
+            // Section 9: Source file size check
+            if ($expectedSize > 0 && abs($assembledSize - $expectedSize) > 2048) {
+                @unlink($tmpAssembled);
+                return response()->json([
+                    'success'        => false,
+                    'category'       => 'PROCESSING_FAILED',
+                    'category_title' => 'SIZE MISMATCH',
+                    'error'          => [
+                        'code'      => 'FILE_SIZE_MISMATCH',
+                        'message'   => "Assembled file size ({$assembledSize} bytes) does not match expected size ({$expectedSize} bytes).",
+                        'retryable' => true,
+                    ],
+                ], 422);
+            }
+
+            // Persist assembled file to Storage disk (Section 5 & 6)
             $storedViaStorage = false;
             try {
-                Storage::disk('local')->put($canonicalRelativePath, fopen($tmpAssembled, 'r'));
-                $assembledAbsolutePath = Storage::disk('local')->path($canonicalRelativePath);
-                $storedViaStorage = true;
+                $fp = fopen($tmpAssembled, 'rb');
+                if ($fp) {
+                    Storage::disk('local')->put($canonicalRelativePath, $fp);
+                    if (is_resource($fp)) fclose($fp);
+                    if (Storage::disk('local')->exists($canonicalRelativePath)) {
+                        $assembledAbsolutePath = Storage::disk('local')->path($canonicalRelativePath);
+                        $storedViaStorage = true;
+                    }
+                }
             } catch (\Throwable $e) {
-                $assembledAbsolutePath = $tmpAssembled;
-                $canonicalRelativePath = $tmpAssembled;
                 Log::warning("Storage disk write failed, using assembled path directly: " . $e->getMessage());
             }
 
-            // ── 6. FDR Validation & Job Queue (NO HEAVY PARSING HERE! §21) ────
+            if (!$storedViaStorage) {
+                $assembledAbsolutePath = $tmpAssembled;
+            }
+
+            // ── 6. FDR Validation & Job Queue (Section 13) ────────────────────
             if ($isFdr) {
-                $head = @file_get_contents($assembledAbsolutePath, false, null, 0, 65536) ?: '';
+                $head = @file_get_contents($tmpAssembled, false, null, 0, 65536) ?: '';
                 $lowerHead = strtolower($head);
                 $isFdrHtml = str_contains($lowerHead, '<table') || str_contains($lowerHead, '<html')
-                    || str_contains($lowerHead, '<tr') || str_contains($lowerHead, 'aeronautical')
-                    || str_contains($lowerHead, 'oasys') || str_contains($lowerHead, 'flight daily');
+                    || str_contains($lowerHead, '<tr') || str_contains($lowerHead, '<td')
+                    || str_contains($lowerHead, 'aeronautical') || str_contains($lowerHead, 'oasys')
+                    || str_contains($lowerHead, 'flight daily') || str_contains($lowerHead, 'sibt')
+                    || str_contains($lowerHead, 'sobt') || str_contains($lowerHead, 'aibt')
+                    || str_contains($lowerHead, 'aobt') || str_contains($lowerHead, 'transactions_datefdr');
 
                 if (!$isFdrHtml) {
                     @unlink($tmpAssembled);
@@ -835,7 +878,7 @@ class UploadController extends Controller
                     $airportCode = strtoupper($bcm2[1]);
                 }
                 $airport = \App\Models\Airport::findByIata($airportCode) ?? \App\Models\Airport::findByIata('CGK');
-                $fileHash = @hash_file('sha256', $assembledAbsolutePath) ?: ($fileHash ?: null);
+                $fileHash = @hash_file('sha256', $tmpAssembled) ?: ($fileHash ?: null);
 
                 if ($session) {
                     $session->update([
@@ -876,7 +919,13 @@ class UploadController extends Controller
                     'progress'       => 0,
                     'processed_rows' => 0,
                     'total_rows'     => 0,
-                    'meta'           => ['airport' => $airportCode, 'tmp_path' => $tmpAssembled],
+                    'meta'           => [
+                        'airport'        => $airportCode,
+                        'tmp_path'       => $tmpAssembled,
+                        'canonical_path' => $canonicalRelativePath,
+                        'file_size'      => $assembledSize,
+                        'file_hash'      => $fileHash,
+                    ],
                     'result_url'     => route('fdr.dashboard', ['upload' => $upload->id, 'date_scope' => 'ALL_PERIOD']),
                 ]);
 
