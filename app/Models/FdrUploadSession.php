@@ -50,7 +50,9 @@ class FdrUploadSession extends Model
         'storage_bucket',
         'storage_path',
         'status',
+        'progress',
         'last_confirmed_chunk',
+        'failed_chunk',
         'expires_at',
     ];
 
@@ -59,7 +61,9 @@ class FdrUploadSession extends Model
         'chunk_size'           => 'integer',
         'total_chunks'         => 'integer',
         'uploaded_bytes'       => 'integer',
+        'progress'             => 'integer',
         'last_confirmed_chunk' => 'integer',
+        'failed_chunk'         => 'integer',
         'uploaded_chunks'      => 'array',
         'expires_at'           => 'datetime',
     ];
@@ -76,7 +80,8 @@ class FdrUploadSession extends Model
             sort($chunks);
             $this->uploaded_chunks = $chunks;
             $this->uploaded_bytes = min($this->file_size > 0 ? $this->file_size : PHP_INT_MAX, $this->uploaded_bytes + $chunkBytes);
-            $this->last_confirmed_chunk = max($this->last_confirmed_chunk, $chunkIndex);
+            $this->last_confirmed_chunk = max($this->last_confirmed_chunk ?? -1, $chunkIndex);
+            $this->progress = $this->total_chunks > 0 ? (int) round((count($chunks) / $this->total_chunks) * 100) : 0;
 
             if (count($chunks) >= $this->total_chunks && $this->total_chunks > 0) {
                 $this->status = self::STATUS_UPLOADED;

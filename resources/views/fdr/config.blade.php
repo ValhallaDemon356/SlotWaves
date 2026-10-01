@@ -317,14 +317,14 @@ function fdrConfigForm() {
                     });
                     if (res.ok) {
                         const data = await res.json();
-                        if (data.success && (data.status === 'PAUSED' || data.status === 'IN_PROGRESS')) {
+                        if (data.success && (data.status === 'PAUSED' || data.status === 'UPLOADING' || data.status === 'IN_PROGRESS' || data.status === 'CREATED')) {
                             this.modalFdrToken = token;
                             this.isModalPaused = true;
                             this.showUploadModal = true;
                             this.modalPausedChunkIdx = (data.total_chunks || 0) - (data.missing_chunks ? data.missing_chunks.length : 0);
                             this.modalPausedTotalChunks = data.total_chunks || 0;
                             this.modalPausedMessage = `Sesi upload sebelumnya (${data.original_filename || 'file'}) ditemukan: ${this.modalPausedChunkIdx}/${this.modalPausedTotalChunks} chunk tersimpan. Pilih kembali file "${data.original_filename}" lalu klik "Lanjutkan Upload".`;
-                        } else if (data.status === 'COMPLETED' || data.status === 'CANCELLED') {
+                        } else if (data.status === 'READY' || data.status === 'COMPLETED' || data.status === 'CANCELLED') {
                             localStorage.removeItem('fdr_config_upload_token');
                         }
                     }

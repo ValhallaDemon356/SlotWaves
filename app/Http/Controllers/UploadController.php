@@ -213,15 +213,45 @@ class UploadController extends Controller
     public function createUploadSession(Request $request)
     {
         try {
-            $token       = $request->input('upload_token') ?: ('upl_fdr_' . time() . '_' . \Illuminate\Support\Str::random(8));
-            $filename    = $request->input('filename', 'dataset.xls');
+            $tokenInput  = $request->input('upload_token');
+            $filename    = $request->input('original_filename') ?: $request->input('filename', 'dataset.xls');
             $fileSize    = (int) $request->input('file_size', 0);
             $chunkSize   = (int) $request->input('chunk_size', 3 * 1024 * 1024);
             $totalChunks = (int) $request->input('total_chunks', ($chunkSize > 0 && $fileSize > 0) ? (int) ceil($fileSize / $chunkSize) : 1);
             $fileHash    = $request->input('file_hash');
             $mimeType    = $request->input('mime_type', 'application/vnd.ms-excel');
 
-            // Duplicate detection (§11 & §55): If exact same file has already been ingested and ready
+            // 1. Direct lookup by active upload token if provided
+            if (!empty($tokenInput)) {
+                $session = FdrUploadSession::where('upload_token', $tokenInput)->first();
+                if ($session) {
+                    if ($session->status === FdrUploadSession::STATUS_PAUSED) {
+                        $session->status = FdrUploadSession::STATUS_UPLOADING;
+                        $session->save();
+                    }
+                    $uploaded = $session->uploaded_chunks ?? [];
+                    $missing  = $session->getMissingChunks();
+                    return response()->json([
+                        'success'               => true,
+                        'is_resume'             => true,
+                        'upload_token'          => $session->upload_token,
+                        'session_id'            => $session->id,
+                        'filename'              => $session->original_filename,
+                        'original_filename'     => $session->original_filename,
+                        'file_size'             => $session->file_size,
+                        'total_chunks'          => $session->total_chunks,
+                        'uploaded_chunks'       => $uploaded,
+                        'uploaded_chunks_count' => count($uploaded),
+                        'missing_chunks'        => $missing,
+                        'uploaded_bytes'        => $session->uploaded_bytes,
+                        'last_confirmed_chunk'  => $session->last_confirmed_chunk,
+                        'status'                => $session->status,
+                        'already_complete'      => empty($missing) && $session->total_chunks > 0,
+                    ]);
+                }
+            }
+
+            // 2. Duplicate detection (§11 & §55): If exact same file has already been ingested and ready
             if (!empty($fileHash)) {
                 $existingJob = FdrProcessingJob::where('file_hash', $fileHash)
                     ->where('status', 'READY')
@@ -246,22 +276,33 @@ class UploadController extends Controller
                     ->latest()
                     ->first();
                 if ($existingSession) {
+                    if ($existingSession->status === FdrUploadSession::STATUS_PAUSED) {
+                        $existingSession->status = FdrUploadSession::STATUS_UPLOADING;
+                        $existingSession->save();
+                    }
+                    $uploaded = $existingSession->uploaded_chunks ?? [];
+                    $missing  = $existingSession->getMissingChunks();
                     return response()->json([
-                        'success'              => true,
-                        'is_resume'            => true,
-                        'upload_token'         => $existingSession->upload_token,
-                        'session_id'           => $existingSession->id,
-                        'filename'             => $existingSession->original_filename,
-                        'file_size'            => $existingSession->file_size,
-                        'total_chunks'         => $existingSession->total_chunks,
-                        'uploaded_chunks'      => $existingSession->uploaded_chunks ?? [],
-                        'missing_chunks'       => $existingSession->getMissingChunks(),
-                        'uploaded_bytes'       => $existingSession->uploaded_bytes,
-                        'last_confirmed_chunk' => $existingSession->last_confirmed_chunk,
-                        'status'               => $existingSession->status,
+                        'success'               => true,
+                        'is_resume'             => true,
+                        'upload_token'          => $existingSession->upload_token,
+                        'session_id'            => $existingSession->id,
+                        'filename'              => $existingSession->original_filename,
+                        'original_filename'     => $existingSession->original_filename,
+                        'file_size'             => $existingSession->file_size,
+                        'total_chunks'          => $existingSession->total_chunks,
+                        'uploaded_chunks'       => $uploaded,
+                        'uploaded_chunks_count' => count($uploaded),
+                        'missing_chunks'        => $missing,
+                        'uploaded_bytes'        => $existingSession->uploaded_bytes,
+                        'last_confirmed_chunk'  => $existingSession->last_confirmed_chunk,
+                        'status'                => $existingSession->status,
+                        'already_complete'      => empty($missing) && $existingSession->total_chunks > 0,
                     ]);
                 }
             }
+
+            $token = $tokenInput ?: ('upl_fdr_' . time() . '_' . \Illuminate\Support\Str::random(8));
 
             $session = FdrUploadSession::firstOrCreate(
                 ['upload_token' => $token],
@@ -279,18 +320,24 @@ class UploadController extends Controller
                 ]
             );
 
+            $uploaded = $session->uploaded_chunks ?? [];
+            $missing  = $session->getMissingChunks();
+
             return response()->json([
-                'success'              => true,
-                'upload_token'         => $session->upload_token,
-                'session_id'           => $session->id,
-                'filename'             => $session->original_filename,
-                'file_size'            => $session->file_size,
-                'total_chunks'         => $session->total_chunks,
-                'uploaded_chunks'      => $session->uploaded_chunks ?? [],
-                'missing_chunks'       => $session->getMissingChunks(),
-                'uploaded_bytes'       => $session->uploaded_bytes,
-                'last_confirmed_chunk' => $session->last_confirmed_chunk,
-                'status'               => $session->status,
+                'success'               => true,
+                'upload_token'          => $session->upload_token,
+                'session_id'            => $session->id,
+                'filename'              => $session->original_filename,
+                'original_filename'     => $session->original_filename,
+                'file_size'             => $session->file_size,
+                'total_chunks'          => $session->total_chunks,
+                'uploaded_chunks'       => $uploaded,
+                'uploaded_chunks_count' => count($uploaded),
+                'missing_chunks'        => $missing,
+                'uploaded_bytes'        => $session->uploaded_bytes,
+                'last_confirmed_chunk'  => $session->last_confirmed_chunk,
+                'status'                => $session->status,
+                'already_complete'      => empty($missing) && $session->total_chunks > 0,
             ]);
         } catch (\Throwable $e) {
             return response()->json([
@@ -323,23 +370,35 @@ class UploadController extends Controller
 
             $job = FdrProcessingJob::where('upload_token', $token)->first();
 
-            return response()->json([
-                'success'              => true,
-                'upload_token'         => $session->upload_token,
-                'session_id'           => $session->id,
-                'filename'             => $session->original_filename,
-                'file_size'            => $session->file_size,
-                'uploaded_bytes'       => $session->uploaded_bytes,
-                'uploaded_chunks'      => $session->uploaded_chunks ?? [],
-                'missing_chunks'       => $session->getMissingChunks(),
-                'total_chunks'         => $session->total_chunks,
-                'last_confirmed_chunk' => $session->last_confirmed_chunk,
-                'status'               => $session->status,
-                'job_id'               => $job?->id,
-                'poll_url'             => $job ? route('fdr.jobs.status', $job->id) : null,
-                'process_url'          => $job ? route('fdr.jobs.process', $job->id) : null,
-                'result_url'           => $job?->result_url,
-            ]);
+            $uploadedChunks = $session->uploaded_chunks ?? [];
+            $missingChunks  = $session->getMissingChunks();
+            $uploadedCount  = count($uploadedChunks);
+
+            $payload = [
+                'upload_token'          => $session->upload_token,
+                'session_id'            => $session->id,
+                'filename'              => $session->original_filename,
+                'original_filename'     => $session->original_filename,
+                'file_size'             => $session->file_size,
+                'uploaded_bytes'        => $session->uploaded_bytes,
+                'uploaded_chunks'       => $uploadedChunks,
+                'uploaded_chunks_count' => $uploadedCount,
+                'missing_chunks'        => $missingChunks,
+                'total_chunks'          => $session->total_chunks,
+                'last_confirmed_chunk'  => $session->last_confirmed_chunk,
+                'failed_chunk'          => $session->failed_chunk,
+                'status'                => $session->status,
+                'progress'              => $session->progress,
+                'job_id'                => $job?->id,
+                'poll_url'              => $job ? route('fdr.jobs.status', $job->id) : null,
+                'process_url'           => $job ? route('fdr.jobs.process', $job->id) : null,
+                'result_url'            => $job?->result_url,
+            ];
+
+            return response()->json(array_merge([
+                'success' => true,
+                'session' => $payload,
+            ], $payload));
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
@@ -351,21 +410,28 @@ class UploadController extends Controller
     /**
      * Pause an active upload session (§16 & §19). Keeps all uploaded chunks.
      */
-    public function pauseUploadSession($token)
+    public function pauseUploadSession(Request $request, $token)
     {
         try {
             $session = FdrUploadSession::where('upload_token', $token)->first();
             if ($session) {
                 $session->status = FdrUploadSession::STATUS_PAUSED;
+                if ($request->has('failed_chunk')) {
+                    $session->failed_chunk = (int)$request->input('failed_chunk');
+                }
                 $session->save();
             }
             return response()->json([
-                'success' => true,
-                'status'  => FdrUploadSession::STATUS_PAUSED,
-                'message' => 'Upload paused. Chunks are preserved.',
+                'success'      => true,
+                'status'       => FdrUploadSession::STATUS_PAUSED,
+                'failed_chunk' => $session?->failed_chunk,
+                'message'      => 'Upload paused. Chunks are preserved.',
             ]);
         } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'error'   => ['code' => 'PAUSE_ERROR', 'message' => $e->getMessage(), 'retryable' => true],
+            ], 500);
         }
     }
 
@@ -377,6 +443,10 @@ class UploadController extends Controller
         try {
             DB::table('upload_chunks')->where('upload_token', $token)->delete();
             Storage::disk('local')->deleteDirectory("fdr_chunks/{$token}");
+            $tmpAssembled = sys_get_temp_dir() . '/fdr_asm_' . $token . '.bin';
+            if (file_exists($tmpAssembled)) {
+                @unlink($tmpAssembled);
+            }
             $session = FdrUploadSession::where('upload_token', $token)->first();
             if ($session) {
                 if ($session->storage_path && Storage::disk('local')->exists($session->storage_path)) {
@@ -389,7 +459,10 @@ class UploadController extends Controller
                 'message' => 'Upload session and files cancelled and purged.',
             ]);
         } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'error'   => ['code' => 'CANCEL_ERROR', 'message' => $e->getMessage(), 'retryable' => false],
+            ], 500);
         }
     }
 

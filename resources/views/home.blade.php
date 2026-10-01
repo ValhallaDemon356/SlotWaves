@@ -965,22 +965,26 @@ function unifiedReportPortal() {
                     return;
                 }
                 const data = await res.json();
-                if (!data.success || !data.session) {
+                if (!data.success) {
                     localStorage.removeItem('fdr_active_upload_token');
                     return;
                 }
-                const sess = data.session;
-                if (sess.status === 'COMPLETED' || sess.status === 'CANCELLED') {
+                const sess = data.session || data;
+                if (sess.status === 'READY' || sess.status === 'COMPLETED' || sess.status === 'CANCELLED') {
                     localStorage.removeItem('fdr_active_upload_token');
                     return;
                 }
                 // Restore paused/in-progress session
                 this.fdrUploadToken = storedToken;
                 this.hasRestoredSession = true;
-                this.restoredSessionFileName = sess.original_filename || 'FDR Upload';
-                const pct = sess.total_chunks > 0
-                    ? Math.round((sess.uploaded_chunks_count / sess.total_chunks) * 100)
-                    : 0;
+                this.restoredSessionFileName = sess.original_filename || sess.filename || 'FDR Upload';
+                const total = sess.total_chunks || 0;
+                const uploadedCount = (sess.uploaded_chunks_count !== undefined)
+                    ? sess.uploaded_chunks_count
+                    : (sess.uploaded_chunks ? sess.uploaded_chunks.length : 0);
+                const pct = total > 0
+                    ? Math.round((uploadedCount / total) * 100)
+                    : (sess.progress || 0);
                 this.restoredSessionProgress = pct;
                 // Navigate to upload step so user sees the resume banner
                 if (this.currentStep === 'select') {
@@ -988,9 +992,9 @@ function unifiedReportPortal() {
                     this.currentStep = 'upload';
                 }
                 this.isUploadPaused = true;
-                this.uploadPausedMessage = `Sesi upload sebelumnya ditemukan: ${sess.original_filename} (${pct}% terupload). Klik "Lanjutkan Upload" untuk melanjutkan.`;
-                this.uploadPausedChunkIdx = sess.uploaded_chunks_count || 0;
-                this.uploadPausedTotalChunks = sess.total_chunks || 0;
+                this.uploadPausedMessage = `Sesi upload sebelumnya ditemukan: ${this.restoredSessionFileName} (${uploadedCount}/${total} chunk terupload, ${pct}%). Klik "Lanjutkan Upload" untuk melanjutkan.`;
+                this.uploadPausedChunkIdx = uploadedCount;
+                this.uploadPausedTotalChunks = total;
             } catch (e) {
                 localStorage.removeItem('fdr_active_upload_token');
             }
@@ -1771,7 +1775,7 @@ function unifiedReportPortal() {
         },
 
         async generateReport() {
-            if (this.validationStatus !== 'valid' || !this.selectedFile || this.isProcessing) {
+            if ((this.validationStatus !== 'valid' && !this.fdrUploadToken) || !this.selectedFile || this.isProcessing) {
                 return;
             }
 
@@ -2157,6 +2161,7 @@ function unifiedReportPortal() {
                 const storedToken = localStorage.getItem('fdr_active_upload_token');
                 if (storedToken) this.fdrUploadToken = storedToken;
             }
+            this.validationStatus = 'valid';
             this.isUploadPaused = false;
             this.uploadPausedMessage = '';
             await this.generateReport();

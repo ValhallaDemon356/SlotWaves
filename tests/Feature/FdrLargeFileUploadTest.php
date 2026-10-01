@@ -19,6 +19,7 @@ class FdrLargeFileUploadTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        \Illuminate\Support\Facades\Artisan::call('migrate');
         ini_set('memory_limit', '1024M');
         gc_collect_cycles();
         $this->parser = app(FlightDailyReportParser::class);
@@ -364,5 +365,112 @@ class FdrLargeFileUploadTest extends TestCase
 
         $res->assertStatus(200);
         $this->assertSame('application/pdf', $res->headers->get('content-type'));
+    }
+
+    /**
+     * Test 9 (Prompt §35): Targeted Resume Test.
+     * chunk 0: SUCCESS, chunk 1: SUCCESS, chunk 2: FAIL x3 -> PAUSED.
+     * Resume continues from chunk 2, NOT chunk 0.
+     */
+    public function test_chunk_pause_and_resume_continues_from_missing_chunk(): void
+    {
+        $token = 'upl_test_resume_' . time();
+        $totalChunks = 15;
+
+        // 1. Create upload session
+        $createRes = $this->postJson(route('upload.session.create'), [
+            'upload_token'      => $token,
+            'original_filename' => 'DAU_1790826066.xls',
+            'file_size'         => 45007926,
+            'total_chunks'      => $totalChunks,
+            'chunk_size'        => 3145728,
+            'report_type'       => 'fdr',
+        ]);
+        $createRes->assertStatus(200);
+        $createRes->assertJson(['success' => true]);
+
+        // 2. Upload Chunk 0 & 1 -> SUCCESS
+        for ($i = 0; $i < 2; $i++) {
+            $tmp = tempnam(sys_get_temp_dir(), "chk{$i}_") . '.tmp';
+            file_put_contents($tmp, "chunk-{$i}-data");
+            $chunkFile = new UploadedFile($tmp, "chunk_{$i}.tmp", 'application/octet-stream', null, true);
+
+            $res = $this->post(route('upload.chunk'), [
+                'report_type'  => 'fdr',
+                'upload_token' => $token,
+                'chunk_index'  => $i,
+                'total_chunks' => $totalChunks,
+                'filename'     => 'DAU_1790826066.xls',
+                'chunk'        => $chunkFile,
+            ]);
+            @unlink($tmp);
+            $res->assertStatus(200);
+        }
+
+        // 3. Simulate chunk 2 failure after 3 retries -> PAUSED
+        $pauseRes = $this->postJson("/upload/session/{$token}/pause", [
+            'failed_chunk' => 2,
+            'reason'       => 'Simulated chunk 2 failure after 3 retries',
+        ]);
+        $pauseRes->assertStatus(200);
+        $pauseRes->assertJson([
+            'success'      => true,
+            'status'       => 'PAUSED',
+            'failed_chunk' => 2,
+        ]);
+
+        // 4. Resume: Query session state
+        $sessionRes = $this->getJson("/upload/session/{$token}");
+        $sessionRes->assertStatus(200);
+        $sessionData = $sessionRes->json();
+
+        $this->assertSame('PAUSED', $sessionData['status']);
+        $this->assertSame([0, 1], $sessionData['uploaded_chunks']);
+        $this->assertSame(2, $sessionData['failed_chunk']);
+
+        // Assert resume continues from chunk 2, NEVER chunk 0 or 1
+        $missing = $sessionData['missing_chunks'];
+        $this->assertCount(13, $missing);
+        $this->assertSame(2, $missing[0], 'Resume must start from missing chunk 2');
+        $this->assertFalse(in_array(0, $missing), 'Chunk 0 must not be re-uploaded');
+        $this->assertFalse(in_array(1, $missing), 'Chunk 1 must not be re-uploaded');
+    }
+
+    /**
+     * Test 10 (Prompt §36): Browser Refresh Test.
+     * After chunks 0..5, refresh browser: session restored, resume continues from chunk 6.
+     */
+    public function test_browser_refresh_restores_session_state(): void
+    {
+        $token = 'upl_test_refresh_' . time();
+        $totalChunks = 15;
+
+        // Upload chunks 0 to 5
+        for ($i = 0; $i <= 5; $i++) {
+            $tmp = tempnam(sys_get_temp_dir(), "chk{$i}_") . '.tmp';
+            file_put_contents($tmp, "chunk-{$i}-data");
+            $chunkFile = new UploadedFile($tmp, "chunk_{$i}.tmp", 'application/octet-stream', null, true);
+
+            $res = $this->post(route('upload.chunk'), [
+                'report_type'  => 'fdr',
+                'upload_token' => $token,
+                'chunk_index'  => $i,
+                'total_chunks' => $totalChunks,
+                'filename'     => 'DAU_1790826066.xls',
+                'chunk'        => $chunkFile,
+            ]);
+            @unlink($tmp);
+            $res->assertStatus(200);
+        }
+
+        // Simulate browser refresh: fetch /upload/session/{token}
+        $refreshRes = $this->getJson("/upload/session/{$token}");
+        $refreshRes->assertStatus(200);
+        $data = $refreshRes->json();
+
+        $this->assertTrue($data['success']);
+        $this->assertCount(6, $data['uploaded_chunks']);
+        $this->assertSame([0, 1, 2, 3, 4, 5], $data['uploaded_chunks']);
+        $this->assertSame(6, $data['missing_chunks'][0], 'Resume after refresh must continue from chunk 6, NOT chunk 0');
     }
 }
