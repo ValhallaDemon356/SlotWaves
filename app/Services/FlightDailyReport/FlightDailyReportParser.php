@@ -304,6 +304,11 @@ class FlightDailyReportParser
                 }
 
                 $htmlDataRows++;
+                $ext = $this->extractSourceSummaryFromRow($cells);
+                if ($ext) {
+                    $meta['source_summary'] = $ext['source_summary'];
+                    $meta['source_passenger_summary'] = $ext['source_passenger_summary'];
+                }
                 $colInfo = ['header_row_index' => 0, 'mapping' => $columnMap];
                 $norm = $this->normalizeRecords([$headerCols, $cells], $colInfo, $meta);
                 if (!empty($norm)) {
@@ -677,6 +682,89 @@ class FlightDailyReportParser
     /**
      * Extract metadata from text headers and workbook rows.
      */
+    /**
+     * Extract source summary metrics from a raw row (e.g. PAX ALL).
+     */
+    public function extractSourceSummaryFromRow(array $rRow): ?array
+    {
+        $rowStr = implode(' ', (array)$rRow);
+        if (!preg_match('/pax\s*all/i', $rowStr) && !preg_match('/-(?:pax\s*all|adult,\s*child,\s*infant|transit)-/i', $rowStr)) {
+            return null;
+        }
+
+        $pAll = null;
+        $pAdl = null;
+        $pTr = null;
+        if (preg_match('/pax\s*all[^\d]*\(?(\d[\d,\.]*)\)?/i', $rowStr, $pm)) {
+            $pAll = (int)str_replace([',', '.'], '', $pm[1]);
+        }
+        if (preg_match('/(?:adult,\s*child,\s*infant|adult|child|infant|dewasa)[^\d]*\(?(\d[\d,\.]*)\)?/i', $rowStr, $am)) {
+            $pAdl = (int)str_replace([',', '.'], '', $am[1]);
+        }
+        if (preg_match('/transit[^\d]*\(?(\d[\d,\.]*)\)?/i', $rowStr, $tm)) {
+            $pTr = (int)str_replace([',', '.'], '', $tm[1]);
+        }
+
+        $adultVal = 0; $childVal = 0; $infantVal = 0; $transitVal = $pTr ?: 0; $transferVal = 0;
+        $divertVal = 0; $missVal = 0; $crewVal = 0; $cargoVal = 0.0; $baggageVal = 0.0; $posVal = 0.0;
+        $standVal = 0; $runwayVal = 0;
+
+        foreach ($rRow as $cell) {
+            $cellClean = trim(preg_replace('/\s+/', ' ', (string)$cell));
+            if (preg_match('/^(?:ADU\s*LT|ADULT)\s*(\d+)$/i', $cellClean, $m)) $adultVal = (int)$m[1];
+            if (preg_match('/^(?:CHI\s*LD|CHILD)\s*(\d+)$/i', $cellClean, $m)) $childVal = (int)$m[1];
+            if (preg_match('/^(?:INF\s*ANT|INFANT)\s*(\d+)$/i', $cellClean, $m)) $infantVal = (int)$m[1];
+            if (preg_match('/^(?:TRAN\s*SIT|TRANSIT)\s*(\d+)$/i', $cellClean, $m)) $transitVal = (int)$m[1];
+            if (preg_match('/^(?:TRAN\s*FER|TRANSFER)\s*(\d+)$/i', $cellClean, $m)) $transferVal = (int)$m[1];
+            if (preg_match('/^(?:DIV\s*ERT|DIVERT)\s*(\d+)$/i', $cellClean, $m)) $divertVal = (int)$m[1];
+            if (preg_match('/^MISS\s*(\d+)$/i', $cellClean, $m)) $missVal = (int)$m[1];
+            if (preg_match('/^CRW\s*(\d+)$/i', $cellClean, $m)) $crewVal = (int)$m[1];
+            if (preg_match('/^CAR\.?\s*\(?KG\)?\s*(\d+)$/i', $cellClean, $m)) $cargoVal = (float)$m[1];
+            if (preg_match('/^BAGG?\.?\s*\(?KG\)?\s*(\d+)$/i', $cellClean, $m)) $baggageVal = (float)$m[1];
+            if (preg_match('/^POS\.?\s*\(?KG\)?\s*(\d+)$/i', $cellClean, $m)) $posVal = (float)$m[1];
+            if (preg_match('/^STAND\s*(?:Use)?\s*(\d+)$/i', $cellClean, $m)) $standVal = (int)$m[1];
+            if (preg_match('/^(?:RUN\s*WAY|RUNWAY)\s*(\d+)$/i', $cellClean, $m)) $runwayVal = (int)$m[1];
+        }
+
+        $passengerCore = ($adultVal + $childVal + $infantVal) ?: $pAdl;
+
+        $sourcePassengerSummary = [
+            'pax_all'            => $pAll,
+            'adult_child_infant' => $passengerCore,
+            'adult'              => $adultVal,
+            'child'              => $childVal,
+            'infant'             => $infantVal,
+            'transit'            => $transitVal,
+            'transfer'           => $transferVal,
+        ];
+
+        $sourceSummary = [
+            'pax_all'        => $pAll,
+            'adult'          => $adultVal,
+            'child'          => $childVal,
+            'infant'         => $infantVal,
+            'passenger_core' => $passengerCore,
+            'transit'        => $transitVal,
+            'transfer'       => $transferVal,
+            'divert'         => $divertVal,
+            'miss'           => $missVal,
+            'crew'           => $crewVal,
+            'cargo_kg'       => $cargoVal,
+            'baggage_kg'     => $baggageVal,
+            'pos_kg'         => $posVal,
+            'stand_use'      => $standVal,
+            'runway_use'     => $runwayVal,
+        ];
+
+        return [
+            'source_summary'           => $sourceSummary,
+            'source_passenger_summary' => $sourcePassengerSummary,
+        ];
+    }
+
+    /**
+     * Extract metadata from headers and raw rows.
+     */
     public function extractMetadata(array $metaHeaders, array $rows): array
     {
         $metaMap = [];
@@ -744,71 +832,10 @@ class FlightDailyReportParser
         $sourcePassengerSummary = null;
         $sourceSummary = null;
         foreach ($rows as $rRow) {
-            $rowStr = implode(' ', (array)$rRow);
-            if (preg_match('/pax\s*all/i', $rowStr) || preg_match('/-(?:pax\s*all|adult,\s*child,\s*infant|transit)-/i', $rowStr)) {
-                $pAll = null;
-                $pAdl = null;
-                $pTr = null;
-                if (preg_match('/pax\s*all[^\d]*\(?(\d[\d,\.]*)\)?/i', $rowStr, $pm)) {
-                    $pAll = (int)str_replace([',', '.'], '', $pm[1]);
-                }
-                if (preg_match('/(?:adult,\s*child,\s*infant|adult|child|infant|dewasa)[^\d]*\(?(\d[\d,\.]*)\)?/i', $rowStr, $am)) {
-                    $pAdl = (int)str_replace([',', '.'], '', $am[1]);
-                }
-                if (preg_match('/transit[^\d]*\(?(\d[\d,\.]*)\)?/i', $rowStr, $tm)) {
-                    $pTr = (int)str_replace([',', '.'], '', $tm[1]);
-                }
-
-                $adultVal = 0; $childVal = 0; $infantVal = 0; $transitVal = $pTr ?: 0; $transferVal = 0;
-                $divertVal = 0; $missVal = 0; $crewVal = 0; $cargoVal = 0.0; $baggageVal = 0.0; $posVal = 0.0;
-                $standVal = 0; $runwayVal = 0;
-
-                foreach ($rRow as $cell) {
-                    $cellClean = trim(preg_replace('/\s+/', ' ', (string)$cell));
-                    if (preg_match('/^(?:ADU\s*LT|ADULT)\s*(\d+)$/i', $cellClean, $m)) $adultVal = (int)$m[1];
-                    if (preg_match('/^(?:CHI\s*LD|CHILD)\s*(\d+)$/i', $cellClean, $m)) $childVal = (int)$m[1];
-                    if (preg_match('/^(?:INF\s*ANT|INFANT)\s*(\d+)$/i', $cellClean, $m)) $infantVal = (int)$m[1];
-                    if (preg_match('/^(?:TRAN\s*SIT|TRANSIT)\s*(\d+)$/i', $cellClean, $m)) $transitVal = (int)$m[1];
-                    if (preg_match('/^(?:TRAN\s*FER|TRANSFER)\s*(\d+)$/i', $cellClean, $m)) $transferVal = (int)$m[1];
-                    if (preg_match('/^(?:DIV\s*ERT|DIVERT)\s*(\d+)$/i', $cellClean, $m)) $divertVal = (int)$m[1];
-                    if (preg_match('/^MISS\s*(\d+)$/i', $cellClean, $m)) $missVal = (int)$m[1];
-                    if (preg_match('/^CRW\s*(\d+)$/i', $cellClean, $m)) $crewVal = (int)$m[1];
-                    if (preg_match('/^CAR\.?\s*\(?KG\)?\s*(\d+)$/i', $cellClean, $m)) $cargoVal = (float)$m[1];
-                    if (preg_match('/^BAGG?\.?\s*\(?KG\)?\s*(\d+)$/i', $cellClean, $m)) $baggageVal = (float)$m[1];
-                    if (preg_match('/^POS\.?\s*\(?KG\)?\s*(\d+)$/i', $cellClean, $m)) $posVal = (float)$m[1];
-                    if (preg_match('/^STAND\s*(?:Use)?\s*(\d+)$/i', $cellClean, $m)) $standVal = (int)$m[1];
-                    if (preg_match('/^(?:RUN\s*WAY|RUNWAY)\s*(\d+)$/i', $cellClean, $m)) $runwayVal = (int)$m[1];
-                }
-
-                $passengerCore = ($adultVal + $childVal + $infantVal) ?: $pAdl;
-
-                $sourcePassengerSummary = [
-                    'pax_all'            => $pAll,
-                    'adult_child_infant' => $passengerCore,
-                    'adult'              => $adultVal,
-                    'child'              => $childVal,
-                    'infant'             => $infantVal,
-                    'transit'            => $transitVal,
-                    'transfer'           => $transferVal,
-                ];
-
-                $sourceSummary = [
-                    'pax_all'        => $pAll,
-                    'adult'          => $adultVal,
-                    'child'          => $childVal,
-                    'infant'         => $infantVal,
-                    'passenger_core' => $passengerCore,
-                    'transit'        => $transitVal,
-                    'transfer'       => $transferVal,
-                    'divert'         => $divertVal,
-                    'miss'           => $missVal,
-                    'crew'           => $crewVal,
-                    'cargo_kg'       => $cargoVal,
-                    'baggage_kg'     => $baggageVal,
-                    'pos_kg'         => $posVal,
-                    'stand_use'      => $standVal,
-                    'runway_use'     => $runwayVal,
-                ];
+            $ext = $this->extractSourceSummaryFromRow((array)$rRow);
+            if ($ext) {
+                $sourceSummary = $ext['source_summary'];
+                $sourcePassengerSummary = $ext['source_passenger_summary'];
                 break;
             }
         }

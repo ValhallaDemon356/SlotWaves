@@ -251,6 +251,20 @@
                     </div>
                 </div>
 
+                {{-- Modal Upload Paused Banner --}}
+                <div x-show="isModalPaused" x-cloak class="space-y-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 text-xs">
+                    <div class="font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">Upload Terhenti (PAUSED)</div>
+                    <div class="text-[11px] text-amber-700 dark:text-amber-400 font-mono" x-text="modalPausedMessage"></div>
+                    <div class="w-full bg-amber-200 dark:bg-amber-900/60 h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-amber-500 h-full rounded-full transition-all duration-300"
+                             :style="`width:${modalPausedTotalChunks > 0 ? Math.round((modalPausedChunkIdx / modalPausedTotalChunks) * 100) : 0}%`"></div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" @click="resumeModalUpload()" class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs transition cursor-pointer">Lanjutkan Upload</button>
+                        <button type="button" @click="cancelModalUpload()" class="px-3 py-1.5 rounded-lg bg-white dark:bg-navy-800 border border-amber-300 text-amber-700 dark:text-amber-300 font-bold text-xs transition cursor-pointer">Batalkan</button>
+                    </div>
+                </div>
+
                 <div class="flex items-center justify-between pt-2">
                     <button type="button" @click="useReferenceDataset()" :disabled="isUploadingModal" class="text-xs text-aviation-600 dark:text-aviation-400 font-bold hover:underline disabled:opacity-50">
                         Use Reference OASYS FDR Dataset
@@ -285,8 +299,40 @@ function fdrConfigForm() {
         hasValidUpload: {{ $upload ? 'true' : 'false' }},
 
         isUploadingModal: false,
+        isModalPaused: false,
         modalUploadProgress: 0,
         modalUploadText: '',
+        modalPausedMessage: '',
+        modalPausedChunkIdx: 0,
+        modalPausedTotalChunks: 0,
+        modalFdrToken: null,
+        modalSelectedFile: null,
+
+        async init() {
+            const token = localStorage.getItem('fdr_config_upload_token');
+            if (token) {
+                try {
+                    const res = await fetch(`/upload/session/${token}`, {
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.success && (data.status === 'PAUSED' || data.status === 'IN_PROGRESS')) {
+                            this.modalFdrToken = token;
+                            this.isModalPaused = true;
+                            this.showUploadModal = true;
+                            this.modalPausedChunkIdx = (data.total_chunks || 0) - (data.missing_chunks ? data.missing_chunks.length : 0);
+                            this.modalPausedTotalChunks = data.total_chunks || 0;
+                            this.modalPausedMessage = `Sesi upload sebelumnya (${data.original_filename || 'file'}) ditemukan: ${this.modalPausedChunkIdx}/${this.modalPausedTotalChunks} chunk tersimpan. Pilih kembali file "${data.original_filename}" lalu klik "Lanjutkan Upload".`;
+                        } else if (data.status === 'COMPLETED' || data.status === 'CANCELLED') {
+                            localStorage.removeItem('fdr_config_upload_token');
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Could not restore config upload session:', e);
+                }
+            }
+        },
 
         async handleModalUpload(event) {
             const form = event.target;
@@ -294,47 +340,103 @@ function fdrConfigForm() {
             const file = fileInput?.files?.[0];
             if (!file) return;
 
+            this.modalSelectedFile = file;
+
             // If file <= 3 MB, standard form submission
             if (file.size <= 3 * 1024 * 1024) {
                 form.submit();
                 return;
             }
 
-            // For files > 3 MB, chunked transfer via /upload/chunk to prevent Vercel 4.5 MB limit
             this.isUploadingModal = true;
+            this.isModalPaused = false;
             this.modalUploadProgress = 10;
             this.modalUploadText = 'Preparing chunked upload for ' + file.name + '...';
 
             const csrfToken = document.querySelector('input[name="_token"]')?.value || '{{ csrf_token() }}';
-            // FDR_CHUNK_SIZE must match PHP server-side FDR_CHUNK_SIZE_BYTES = 3 MiB
-            // Safely under Vercel's 4.5 MB gateway limit with multipart overhead ~200 KB
-            const FDR_CHUNK_SIZE = 3 * 1024 * 1024; // 3 MiB — DO NOT raise above 4.5 MB
+            const FDR_CHUNK_SIZE = 3 * 1024 * 1024; // 3 MiB
             const totalChunks = Math.ceil(file.size / FDR_CHUNK_SIZE);
             const fileSizeMB = (file.size / 1048576).toFixed(2);
-            const uploadToken = 'upl_fdr_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+            const fileHash = file.size + '_' + file.name;
             const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
             try {
+                // Step 1: Create or resume persistent upload session
+                let uploadToken = this.modalFdrToken || localStorage.getItem('fdr_config_upload_token');
+                let missingChunks = null;
+
+                try {
+                    const sessionRes = await fetch('{{ route("upload.session.create") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': csrfToken
+                        },
+                        body: JSON.stringify({
+                            upload_token: uploadToken || undefined,
+                            original_filename: file.name,
+                            file_size: file.size,
+                            total_chunks: totalChunks,
+                            chunk_size: FDR_CHUNK_SIZE,
+                            file_hash: fileHash,
+                            report_type: 'fdr'
+                        })
+                    });
+                    if (sessionRes.ok) {
+                        const sessionData = await sessionRes.json();
+                        if (sessionData.success) {
+                            uploadToken = sessionData.upload_token;
+                            missingChunks = sessionData.missing_chunks;
+                            this.modalFdrToken = uploadToken;
+                            localStorage.setItem('fdr_config_upload_token', uploadToken);
+
+                            if (sessionData.already_complete) {
+                                missingChunks = [];
+                            }
+                            const alreadyDone = totalChunks - (missingChunks ? missingChunks.length : totalChunks);
+                            if (alreadyDone > 0) {
+                                this.modalUploadText = `Resuming: ${alreadyDone} / ${totalChunks} chunks already uploaded...`;
+                                this.modalUploadProgress = Math.round((alreadyDone / totalChunks) * 50);
+                            }
+                        }
+                    }
+                } catch (sessionErr) {
+                    console.warn('Session create failed:', sessionErr);
+                }
+
+                if (!uploadToken) {
+                    uploadToken = 'upl_fdr_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+                    this.modalFdrToken = uploadToken;
+                    localStorage.setItem('fdr_config_upload_token', uploadToken);
+                }
+
+                const chunksToUpload = missingChunks !== null
+                    ? missingChunks
+                    : Array.from({ length: totalChunks }, (_, i) => i);
+
                 let lastChunkData = null;
 
-                for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
+                for (let ci = 0; ci < chunksToUpload.length; ci++) {
+                    const chunkIdx = chunksToUpload[ci];
                     const start = chunkIdx * FDR_CHUNK_SIZE;
                     const end = Math.min(file.size, start + FDR_CHUNK_SIZE);
                     const chunkBlob = file.slice(start, end);
                     const uploadedMB = (end / 1048576).toFixed(2);
 
-                    this.modalUploadProgress = Math.round(((chunkIdx + 1) / totalChunks) * 50);
-                    this.modalUploadText = `Chunk ${chunkIdx + 1} / ${totalChunks} • ${uploadedMB} MB / ${fileSizeMB} MB (${Math.round(((chunkIdx + 1) / totalChunks) * 100)}%)`;
+                    const overallDone = (totalChunks - chunksToUpload.length) + ci + 1;
+                    this.modalUploadProgress = Math.max(10, Math.round((overallDone / totalChunks) * 50));
+                    this.modalUploadText = `Chunk ${chunkIdx + 1} / ${totalChunks} * ${uploadedMB} MB / ${fileSizeMB} MB`;
 
                     let chunkSuccess = false;
                     let lastErrorMsg = '';
-                    const maxRetries = 3;
-                    const retryDelays = [1000, 2000, 4000];
+                    const retryDelays = [500, 1000, 2000];
 
-                    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+                    for (let attempt = 0; attempt <= retryDelays.length; attempt++) {
                         if (attempt > 0) {
-                            const waitTime = retryDelays[attempt - 1] || 4000;
-                            this.modalUploadText = `Retry ${attempt}/${maxRetries} for chunk ${chunkIdx + 1}... waiting ${waitTime / 1000}s`;
+                            const waitTime = retryDelays[attempt - 1] || 2000;
+                            this.modalUploadText = `Retry ${attempt}/${retryDelays.length} chunk ${chunkIdx + 1}... (${waitTime}ms)`;
                             await delay(waitTime);
                         }
 
@@ -365,22 +467,17 @@ function fdrConfigForm() {
                                 chunkData = await chunkRes.json();
                             } else {
                                 const errorText = await chunkRes.text();
-                                console.error('Non-JSON response during chunk upload:', chunkRes.status, errorText);
-                                lastErrorMsg = `HTTP ${chunkRes.status}: Server returned an unexpected non-JSON response.`;
-                                if (chunkRes.status === 413) {
-                                    throw new Error(`HTTP 413: Payload Too Large. Chunk exceeds server request limits.`);
-                                }
+                                console.error('Non-JSON chunk response:', chunkRes.status, errorText.substring(0, 200));
+                                lastErrorMsg = `HTTP ${chunkRes.status}: Unexpected server response.`;
+                                if (chunkRes.status === 413) throw new Error('HTTP 413: Payload Too Large.');
                                 continue;
                             }
 
                             if (!chunkRes.ok || !chunkData.success) {
                                 const errObj = chunkData.error;
                                 const msg = (typeof errObj === 'object' && errObj) ? (errObj.message || errObj.code) : (errObj || 'Chunk upload failed');
-                                lastErrorMsg = `Chunk ${chunkIdx + 1} failed: ${msg}`;
-                                const isRetryable = errObj && errObj.retryable !== false;
-                                if (!isRetryable || chunkRes.status === 413 || chunkRes.status === 422) {
-                                    throw new Error(msg);
-                                }
+                                lastErrorMsg = `Chunk ${chunkIdx + 1}: ${msg}`;
+                                if (chunkRes.status === 413 || chunkRes.status === 422) throw new Error(msg);
                                 continue;
                             }
 
@@ -389,7 +486,7 @@ function fdrConfigForm() {
                             break;
 
                         } catch (networkErr) {
-                            lastErrorMsg = networkErr.message || 'Network connection error during chunk transfer';
+                            lastErrorMsg = networkErr.message || 'Network error';
                             if (networkErr.message && (networkErr.message.includes('413') || networkErr.message.includes('422'))) {
                                 throw networkErr;
                             }
@@ -397,24 +494,38 @@ function fdrConfigForm() {
                     }
 
                     if (!chunkSuccess) {
-                        // Soft pause — save context for "Lanjutkan Upload"
+                        // Pause server-side
+                        try {
+                            await fetch(`/upload/session/${uploadToken}/pause`, {
+                                method: 'POST',
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'Content-Type': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'X-CSRF-TOKEN': csrfToken
+                                },
+                                body: JSON.stringify({ reason: lastErrorMsg })
+                            });
+                        } catch (e) {}
+
                         this.isUploadingModal = false;
-                        this.modalUploadText = 'Chunk ' + (chunkIdx + 1) + ' / ' + totalChunks +
-                            ' gagal setelah retries. ' + lastErrorMsg +
-                            ' Silakan tekan "Lanjutkan Upload" atau ulangi.';
-                        this.modalUploadProgress = Math.round(((chunkIdx) / totalChunks) * 50);
-                        this._fdrUploadResume = { chunkIdx, totalChunks, uploadToken, fileSizeMB, file };
-                        this._fdrUploadPaused = true;
+                        this.isModalPaused = true;
+                        this.modalPausedChunkIdx = chunkIdx;
+                        this.modalPausedTotalChunks = totalChunks;
+                        this.modalPausedMessage = `Chunk ${chunkIdx + 1} / ${totalChunks} gagal setelah 3 retries. ${lastErrorMsg} -- Klik "Lanjutkan Upload".`;
+                        this.modalUploadText = this.modalPausedMessage;
                         return;
                     }
                 }
 
-                // ── ALL CHUNKS UPLOADED: Handle Async Job / Completion ──
+                // All chunks done
+                localStorage.removeItem('fdr_config_upload_token');
+                this.modalFdrToken = null;
+
                 if (lastChunkData && lastChunkData.is_async_job && lastChunkData.job_id) {
                     this.modalUploadProgress = 55;
                     this.modalUploadText = 'Upload complete. Initializing streaming parser...';
 
-                    // Trigger processing job
                     try {
                         fetch(lastChunkData.process_url, {
                             method: 'POST',
@@ -423,10 +534,9 @@ function fdrConfigForm() {
                                 'X-Requested-With': 'XMLHttpRequest',
                                 'X-CSRF-TOKEN': csrfToken
                             }
-                        }).catch(e => console.log('Process trigger initiated'));
+                        }).catch(() => {});
                     } catch (e) {}
 
-                    // Poll job status until READY or FAILED
                     const pollUrl = lastChunkData.poll_url;
                     let jobReady = false;
                     let pollAttempts = 0;
@@ -437,10 +547,7 @@ function fdrConfigForm() {
 
                         try {
                             const pollRes = await fetch(pollUrl, {
-                                headers: {
-                                    'Accept': 'application/json',
-                                    'X-Requested-With': 'XMLHttpRequest'
-                                }
+                                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
                             });
                             if (!pollRes.ok) continue;
 
@@ -465,19 +572,22 @@ function fdrConfigForm() {
                                 const movements = (job.processed_rows || job.total_rows || 0).toLocaleString();
                                 this.modalUploadText = `Ready! Ingested ${movements} valid flight movements. Loading...`;
                                 jobReady = true;
-
                                 setTimeout(() => {
                                     window.location.href = job.result_url || lastChunkData.redirect_url;
                                 }, 400);
+                                return;
+                            } else if (job.status === 'PAUSED') {
+                                this.isUploadingModal = false;
+                                this.isModalPaused = true;
+                                this.modalPausedMessage = `Pemrosesan terhenti: ${job.error_message || 'Server timeout'}. Chunk upload selesai. Coba lagi.`;
+                                this.modalUploadText = this.modalPausedMessage;
                                 return;
                             } else if (job.status === 'FAILED') {
                                 throw new Error(`FDR Ingestion failed: ${job.error_message || 'Processing error'}`);
                             }
                         } catch (pollErr) {
-                            if (pollErr.message && pollErr.message.includes('FDR Ingestion failed')) {
-                                throw pollErr;
-                            }
-                            console.warn('Poll status error:', pollErr);
+                            if (pollErr.message && pollErr.message.includes('FDR Ingestion failed')) throw pollErr;
+                            console.warn('Poll error:', pollErr);
                         }
                     }
 
@@ -488,9 +598,7 @@ function fdrConfigForm() {
                 } else if (lastChunkData && lastChunkData.completed) {
                     this.modalUploadProgress = 100;
                     this.modalUploadText = 'Complete! Loading Configuration...';
-                    setTimeout(() => {
-                        window.location.href = lastChunkData.redirect_url;
-                    }, 250);
+                    setTimeout(() => { window.location.href = lastChunkData.redirect_url; }, 250);
                     return;
                 }
             } catch (err) {
@@ -498,6 +606,53 @@ function fdrConfigForm() {
                 this.modalUploadText = 'Upload gagal: ' + (err.message || 'Server error');
                 this.modalUploadProgress = 0;
             }
+        },
+
+        async resumeModalUpload() {
+            if (!this.modalSelectedFile) {
+                alert('Pilih file terlebih dahulu untuk melanjutkan upload.');
+                return;
+            }
+            if (!this.modalFdrToken) {
+                const storedToken = localStorage.getItem('fdr_config_upload_token');
+                if (storedToken) this.modalFdrToken = storedToken;
+            }
+            this.isModalPaused = false;
+            this.modalPausedMessage = '';
+            // Re-trigger upload with same file
+            const fakeEvent = {
+                target: {
+                    querySelector: (sel) => sel === 'input[name="fdr_file"]'
+                        ? { files: [this.modalSelectedFile] }
+                        : null
+                }
+            };
+            await this.handleModalUpload(fakeEvent);
+        },
+
+        async cancelModalUpload() {
+            const token = this.modalFdrToken || localStorage.getItem('fdr_config_upload_token');
+            if (token) {
+                try {
+                    await fetch(`/upload/session/${token}/cancel`, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({})
+                    });
+                } catch (e) {}
+            }
+            localStorage.removeItem('fdr_config_upload_token');
+            this.modalFdrToken = null;
+            this.isModalPaused = false;
+            this.modalPausedMessage = '';
+            this.modalUploadProgress = 0;
+            this.modalUploadText = '';
+            this.modalSelectedFile = null;
         },
 
         async useReferenceDataset() {

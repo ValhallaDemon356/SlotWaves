@@ -29,14 +29,21 @@ class FdrProcessingJob extends Model
         'file_hash',
         'report_type',
         'status',
+        'stage',
         'stage_label',
         'progress',
         'processed_rows',
         'total_rows',
+        'current_offset',
+        'current_batch',
+        'failed_rows',
+        'error_code',
         'meta',
         'diagnostics',
         'error_message',
         'result_url',
+        'started_at',
+        'completed_at',
     ];
 
     protected $casts = [
@@ -45,7 +52,12 @@ class FdrProcessingJob extends Model
         'progress'       => 'integer',
         'processed_rows' => 'integer',
         'total_rows'     => 'integer',
+        'current_offset' => 'integer',
+        'current_batch'  => 'integer',
+        'failed_rows'    => 'integer',
         'file_size'      => 'integer',
+        'started_at'     => 'datetime',
+        'completed_at'   => 'datetime',
     ];
 
     public function upload()

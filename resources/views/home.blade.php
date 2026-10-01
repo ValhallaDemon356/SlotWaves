@@ -382,6 +382,36 @@
                         </div>
                     </template>
 
+                    {{-- ══ UPLOAD PAUSED BANNER (FDR) ════════════════════════════════ --}}
+                    <div x-show="isUploadPaused && selectedReport === 'fdr'" x-transition
+                         class="mt-4 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 space-y-3">
+                        <div class="flex items-start gap-3">
+                            <svg class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <div class="flex-1">
+                                <div class="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">Upload Terhenti (PAUSED)</div>
+                                <div class="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5 font-mono" x-text="uploadPausedMessage"></div>
+                                <div class="mt-1.5 w-full bg-amber-200 dark:bg-amber-900/60 h-1.5 rounded-full overflow-hidden">
+                                    <div class="bg-amber-500 h-full rounded-full transition-all duration-300"
+                                         :style="`width:${uploadPausedTotalChunks > 0 ? Math.round((uploadPausedChunkIdx / uploadPausedTotalChunks) * 100) : 0}%`"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 pt-1">
+                            <button type="button" @click="resumeUpload()"
+                                    :disabled="!selectedFile"
+                                    class="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                Lanjutkan Upload
+                            </button>
+                            <button type="button" @click="cancelUpload()"
+                                    class="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white dark:bg-navy-800 border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 font-bold text-xs transition hover:bg-amber-50 cursor-pointer">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                Batalkan
+                            </button>
+                            <span x-show="!selectedFile" class="text-[10px] text-amber-600 dark:text-amber-400 font-mono">← Pilih file terlebih dahulu</span>
+                        </div>
+                    </div>
+
                     {{-- ══ PROCESSING INDICATOR ═══════════════════════════════════════ --}}
                     <div x-show="isProcessing" x-transition class="mt-4 p-4 rounded-xl bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-slate-800 space-y-2.5">
                         <div class="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -432,8 +462,8 @@
                     </div>
 
                     {{-- ══ GENERATE BUTTON (DISABLED UNTIL VALID) ════════════════════ --}}
-                    <button type="submit" id="generate-btn" :disabled="validationStatus !== 'valid' || isProcessing"
-                            :class="validationStatus !== 'valid' || isProcessing ? 'opacity-50 cursor-not-allowed bg-slate-400' : 'btn-aviation-primary shadow-lg shadow-aviation-600/25'"
+                    <button type="submit" id="generate-btn" :disabled="validationStatus !== 'valid' || isProcessing || isUploadPaused"
+                            :class="validationStatus !== 'valid' || isProcessing || isUploadPaused ? 'opacity-50 cursor-not-allowed bg-slate-400' : 'btn-aviation-primary shadow-lg shadow-aviation-600/25'"
                             class="mt-4 w-full py-3 px-5 rounded-xl font-bold text-xs sm:text-sm text-white flex items-center justify-center gap-2 transition duration-200 cursor-pointer">
                         <template x-if="!isProcessing">
                             <span class="flex items-center gap-2">
@@ -907,8 +937,63 @@ function unifiedReportPortal() {
         progressText: '',
         processingStageTitle: 'Ingestion Pipeline Active',
 
+        // ── FDR Resumable Upload State ──────────────────────────────────────
+        isUploadPaused: false,
+        uploadPausedMessage: '',
+        uploadPausedChunkIdx: 0,
+        uploadPausedTotalChunks: 0,
+        fdrUploadToken: null,
+        hasRestoredSession: false,
+        restoredSessionFileName: '',
+        restoredSessionProgress: 0,
+
         get selectedReportConfig() {
             return this.reportRegistry[this.selectedReport] || null;
+        },
+
+        // ── Lifecycle: Check for existing FDR upload session on page load ──
+        async init() {
+            const storedToken = localStorage.getItem('fdr_active_upload_token');
+            if (!storedToken) return;
+
+            try {
+                const res = await fetch(`/upload/session/${storedToken}`, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!res.ok) {
+                    localStorage.removeItem('fdr_active_upload_token');
+                    return;
+                }
+                const data = await res.json();
+                if (!data.success || !data.session) {
+                    localStorage.removeItem('fdr_active_upload_token');
+                    return;
+                }
+                const sess = data.session;
+                if (sess.status === 'COMPLETED' || sess.status === 'CANCELLED') {
+                    localStorage.removeItem('fdr_active_upload_token');
+                    return;
+                }
+                // Restore paused/in-progress session
+                this.fdrUploadToken = storedToken;
+                this.hasRestoredSession = true;
+                this.restoredSessionFileName = sess.original_filename || 'FDR Upload';
+                const pct = sess.total_chunks > 0
+                    ? Math.round((sess.uploaded_chunks_count / sess.total_chunks) * 100)
+                    : 0;
+                this.restoredSessionProgress = pct;
+                // Navigate to upload step so user sees the resume banner
+                if (this.currentStep === 'select') {
+                    this.selectedReport = 'fdr';
+                    this.currentStep = 'upload';
+                }
+                this.isUploadPaused = true;
+                this.uploadPausedMessage = `Sesi upload sebelumnya ditemukan: ${sess.original_filename} (${pct}% terupload). Klik "Lanjutkan Upload" untuk melanjutkan.`;
+                this.uploadPausedChunkIdx = sess.uploaded_chunks_count || 0;
+                this.uploadPausedTotalChunks = sess.total_chunks || 0;
+            } catch (e) {
+                localStorage.removeItem('fdr_active_upload_token');
+            }
         },
 
         toggleTheme() {
@@ -1691,6 +1776,7 @@ function unifiedReportPortal() {
             }
 
             this.isProcessing = true;
+            this.isUploadPaused = false;
             this.progressPercent = 10;
             this.progressText = '1/5 Preparing source document...';
 
@@ -1698,62 +1784,100 @@ function unifiedReportPortal() {
                               document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
             try {
-                // ── PIPELINE A: CHUNKED UPLOAD FOR LARGE MULTI-MONTH FILES (> 3 MB) ──
-                // FDR_CHUNK_SIZE must match PHP server-side FDR_CHUNK_SIZE_BYTES = 3 MiB
-                // This is safely under Vercel's 4.5 MB gateway limit (multipart overhead ~200 KB)
+                // == PIPELINE A: CHUNKED UPLOAD FOR LARGE MULTI-MONTH FILES (> 3 MB) ==
                 if (this.selectedFile.size > 3 * 1024 * 1024) {
-                    const FDR_CHUNK_SIZE = 3 * 1024 * 1024; // 3 MiB — DO NOT exceed 4.5 MB
+                    const FDR_CHUNK_SIZE = 3 * 1024 * 1024; // 3 MiB -- DO NOT exceed 4.5 MB
                     const totalChunks = Math.ceil(this.selectedFile.size / FDR_CHUNK_SIZE);
                     const fileSizeMB = (this.selectedFile.size / 1048576).toFixed(2);
-                    const uploadToken = 'upl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+                    const fileHash = this.selectedFile.size + '_' + this.selectedFile.name;
                     const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
-                    let lastChunkData = null;
-                    let resumeFromChunk = 0;
+                    // Step 1: Create or resume persistent upload session
+                    let uploadToken = this.fdrUploadToken || localStorage.getItem('fdr_active_upload_token');
+                    let missingChunks = null;
 
-                    // ── Resume support: check if partial upload exists ──
                     try {
-                        const statusRes = await fetch(
-                            '{{ route("upload.chunk.status") }}?upload_token=' + uploadToken +
-                            '&total_chunks=' + totalChunks + '&chunk_size=' + FDR_CHUNK_SIZE,
-                            { headers: { 'Accept': 'application/json' } }
-                        );
-                        if (statusRes.ok) {
-                            const statusData = await statusRes.json();
-                            if (statusData.success && statusData.uploaded_chunks?.length > 0) {
-                                resumeFromChunk = statusData.uploaded_chunks.length;
-                                this.progressText = `Resuming from chunk ${resumeFromChunk + 1} / ${totalChunks}...`;
+                        const sessionRes = await fetch('{{ route("upload.session.create") }}', {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': csrfToken
+                            },
+                            body: JSON.stringify({
+                                upload_token: uploadToken || undefined,
+                                original_filename: this.selectedFile.name,
+                                file_size: this.selectedFile.size,
+                                total_chunks: totalChunks,
+                                chunk_size: FDR_CHUNK_SIZE,
+                                file_hash: fileHash,
+                                report_type: 'fdr'
+                            })
+                        });
+                        if (sessionRes.ok) {
+                            const sessionData = await sessionRes.json();
+                            if (sessionData.success) {
+                                uploadToken = sessionData.upload_token;
+                                missingChunks = sessionData.missing_chunks;
+                                this.fdrUploadToken = uploadToken;
+                                localStorage.setItem('fdr_active_upload_token', uploadToken);
+
+                                if (sessionData.already_complete) {
+                                    missingChunks = [];
+                                }
+                                const alreadyDone = totalChunks - (missingChunks ? missingChunks.length : totalChunks);
+                                if (alreadyDone > 0) {
+                                    this.progressText = `Resuming: ${alreadyDone} / ${totalChunks} chunks already uploaded...`;
+                                    this.progressPercent = Math.round((alreadyDone / totalChunks) * 50);
+                                }
                             }
                         }
-                    } catch (resumeErr) { /* resume check failed, start from 0 */ }
+                    } catch (sessionErr) {
+                        console.warn('Session create failed, using new token:', sessionErr);
+                    }
 
+                    if (!uploadToken) {
+                        uploadToken = 'upl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+                        this.fdrUploadToken = uploadToken;
+                        localStorage.setItem('fdr_active_upload_token', uploadToken);
+                    }
 
-                    for (let chunkIdx = resumeFromChunk; chunkIdx < totalChunks; chunkIdx++) {
+                    // Determine which chunks still need uploading
+                    const chunksToUpload = missingChunks !== null
+                        ? missingChunks
+                        : Array.from({ length: totalChunks }, (_, i) => i);
+
+                    let lastChunkData = null;
+
+                    for (let ci = 0; ci < chunksToUpload.length; ci++) {
+                        const chunkIdx = chunksToUpload[ci];
                         const start = chunkIdx * FDR_CHUNK_SIZE;
                         const end = Math.min(this.selectedFile.size, start + FDR_CHUNK_SIZE);
                         const chunkBlob = this.selectedFile.slice(start, end);
-                        const uploadedMB = (end / 1048576).toFixed(2);
-                        const uploadPct = Math.round(((chunkIdx + 1) / totalChunks) * 50);
+                        const uploadedEndMB = (end / 1048576).toFixed(2);
+
+                        const overallDone = (totalChunks - chunksToUpload.length) + ci + 1;
+                        const uploadPct = Math.max(10, Math.round((overallDone / totalChunks) * 50));
 
                         this.processingStageTitle = 'Uploading FDR Source';
                         this.progressPercent = uploadPct;
-                        this.progressText = `Chunk ${chunkIdx + 1} / ${totalChunks} • ${uploadedMB} MB / ${fileSizeMB} MB (${Math.round(((chunkIdx + 1) / totalChunks) * 100)}%)`;
+                        this.progressText = `Chunk ${chunkIdx + 1} / ${totalChunks} * ${uploadedEndMB} MB / ${fileSizeMB} MB`;
 
                         let chunkSuccess = false;
                         let lastErrorMsg = '';
-                        const maxRetries = 3;
-                        const retryDelays = [1000, 2000, 4000];
+                        const retryDelays = [500, 1000, 2000]; // spec: 500ms, 1000ms, 2000ms
 
-                        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+                        for (let attempt = 0; attempt <= retryDelays.length; attempt++) {
                             if (attempt > 0) {
-                                const waitTime = retryDelays[attempt - 1] || 4000;
-                                this.progressText = `Retry ${attempt}/${maxRetries} for chunk ${chunkIdx + 1}... waiting ${waitTime / 1000}s`;
+                                const waitTime = retryDelays[attempt - 1] || 2000;
+                                this.progressText = `Retry ${attempt}/${retryDelays.length} chunk ${chunkIdx + 1}... (${waitTime}ms)`;
                                 await delay(waitTime);
                             }
 
                             try {
                                 const chunkForm = new FormData();
-                                chunkForm.append('report_type', this.selectedReport);
+                                chunkForm.append('report_type', 'fdr');
                                 chunkForm.append('upload_token', uploadToken);
                                 chunkForm.append('chunk_index', chunkIdx);
                                 chunkForm.append('total_chunks', totalChunks);
@@ -1778,22 +1902,19 @@ function unifiedReportPortal() {
                                     chunkData = await chunkRes.json();
                                 } else {
                                     const errorText = await chunkRes.text();
-                                    console.error('Non-JSON response during chunk upload:', chunkRes.status, errorText);
-                                    lastErrorMsg = `HTTP ${chunkRes.status}: Server returned an unexpected non-JSON response.`;
-                                    if (chunkRes.status === 413) {
-                                        throw new Error(`HTTP 413: Payload Too Large. Chunk exceeds server request limits.`);
-                                    }
+                                    console.error('Non-JSON chunk response:', chunkRes.status, errorText.substring(0, 200));
+                                    lastErrorMsg = `HTTP ${chunkRes.status}: Server returned unexpected response.`;
+                                    if (chunkRes.status === 413) throw new Error('HTTP 413: Payload Too Large.');
                                     continue;
                                 }
 
                                 if (!chunkRes.ok || !chunkData.success) {
                                     const errObj = chunkData.error;
-                                    const msg = (typeof errObj === 'object' && errObj) ? (errObj.message || errObj.code) : (errObj || 'Chunk upload failed');
-                                    lastErrorMsg = `Chunk ${chunkIdx + 1} failed: ${msg}`;
-                                    const isRetryable = errObj && errObj.retryable !== false;
-                                    if (!isRetryable || chunkRes.status === 413 || chunkRes.status === 422) {
-                                        throw new Error(msg);
-                                    }
+                                    const msg = (typeof errObj === 'object' && errObj)
+                                        ? (errObj.message || errObj.code)
+                                        : (errObj || 'Chunk upload failed');
+                                    lastErrorMsg = `Chunk ${chunkIdx + 1}: ${msg}`;
+                                    if (chunkRes.status === 413 || chunkRes.status === 422) throw new Error(msg);
                                     continue;
                                 }
 
@@ -1802,7 +1923,7 @@ function unifiedReportPortal() {
                                 break;
 
                             } catch (networkErr) {
-                                lastErrorMsg = networkErr.message || 'Network connection error during chunk transfer';
+                                lastErrorMsg = networkErr.message || 'Network error during chunk transfer';
                                 if (networkErr.message && (networkErr.message.includes('413') || networkErr.message.includes('422'))) {
                                     throw networkErr;
                                 }
@@ -1810,25 +1931,41 @@ function unifiedReportPortal() {
                         }
 
                         if (!chunkSuccess) {
-                            // Soft pause: store context so user can resume from this chunk
-                            this._uploadResume = { chunkIdx, totalChunks, uploadToken, fileSizeMB };
+                            // Call /upload/session/{token}/pause to record PAUSED state server-side
+                            try {
+                                await fetch(`/upload/session/${uploadToken}/pause`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Accept': 'application/json',
+                                        'Content-Type': 'application/json',
+                                        'X-Requested-With': 'XMLHttpRequest',
+                                        'X-CSRF-TOKEN': csrfToken
+                                    },
+                                    body: JSON.stringify({ reason: lastErrorMsg })
+                                });
+                            } catch (e) { /* ignore */ }
+
+                            // Pause UI -- DO NOT clear token, DO NOT restart from chunk 0
                             this.isProcessing = false;
+                            this.isUploadPaused = true;
+                            this.uploadPausedChunkIdx = chunkIdx;
+                            this.uploadPausedTotalChunks = totalChunks;
                             this.processingStageTitle = 'Upload Terhenti';
-                            this.progressText = 'Chunk ' + (chunkIdx + 1) + ' / ' + totalChunks +
-                                ' gagal setelah ' + maxRetries + ' retries. ' + lastErrorMsg +
-                                ' — Klik "Lanjutkan Upload" untuk melanjutkan.';
-                            this._uploadPaused = true;
+                            this.uploadPausedMessage = `Chunk ${chunkIdx + 1} / ${totalChunks} gagal setelah 3 retries. ${lastErrorMsg} -- Klik "Lanjutkan Upload" untuk melanjutkan.`;
+                            this.progressText = this.uploadPausedMessage;
                             return;
                         }
                     }
 
-                    // ── ALL CHUNKS UPLOADED: Handle Async Job / Completion ──
+                    // ALL CHUNKS UPLOADED -- clear session token and proceed to processing
+                    localStorage.removeItem('fdr_active_upload_token');
+                    this.fdrUploadToken = null;
+
                     if (lastChunkData && lastChunkData.is_async_job && lastChunkData.job_id) {
                         this.processingStageTitle = 'FDR Background Ingestion';
                         this.progressText = 'Upload complete. Initializing streaming parser...';
                         this.progressPercent = 55;
 
-                        // Trigger processing job
                         try {
                             fetch(lastChunkData.process_url, {
                                 method: 'POST',
@@ -1837,10 +1974,9 @@ function unifiedReportPortal() {
                                     'X-Requested-With': 'XMLHttpRequest',
                                     'X-CSRF-TOKEN': csrfToken
                                 }
-                            }).catch(e => console.log('Process trigger initiated'));
+                            }).catch(() => {});
                         } catch (e) {}
 
-                        // Poll job status until READY or FAILED
                         const pollUrl = lastChunkData.poll_url;
                         let jobReady = false;
                         let pollAttempts = 0;
@@ -1884,10 +2020,16 @@ function unifiedReportPortal() {
                                     const movements = (job.processed_rows || job.total_rows || 0).toLocaleString();
                                     this.progressText = `Step 5/5: Ready! Ingested ${movements} valid flight movements.`;
                                     jobReady = true;
-
                                     setTimeout(() => {
                                         window.location.href = job.result_url || lastChunkData.redirect_url;
                                     }, 400);
+                                    return;
+                                } else if (job.status === 'PAUSED') {
+                                    this.isProcessing = false;
+                                    this.isUploadPaused = true;
+                                    this.uploadPausedMessage = `Pemrosesan terhenti: ${job.error_message || 'Server timeout'}. Chunk upload selesai. Tekan Generate untuk melanjutkan.`;
+                                    this.uploadPausedChunkIdx = totalChunks;
+                                    this.uploadPausedTotalChunks = totalChunks;
                                     return;
                                 } else if (job.status === 'FAILED') {
                                     throw new Error(`FDR Ingestion failed: ${job.error_message || 'Processing error'}`);
@@ -1896,7 +2038,7 @@ function unifiedReportPortal() {
                                 if (pollErr.message && pollErr.message.includes('FDR Ingestion failed')) {
                                     throw pollErr;
                                 }
-                                console.warn('Poll status error:', pollErr);
+                                console.warn('Poll error:', pollErr);
                             }
                         }
 
@@ -1914,7 +2056,7 @@ function unifiedReportPortal() {
                     }
                 }
 
-                // ── PIPELINE B: STANDARD DIRECT UPLOAD (<= 3.5 MB) ─────────────────────
+                // == PIPELINE B: STANDARD DIRECT UPLOAD (<= 3 MB) ==
                 this.progressPercent = 25;
                 this.progressText = '1/5 Staging source file...';
 
@@ -1956,17 +2098,13 @@ function unifiedReportPortal() {
                 const uploadId = uploadData.upload_id;
                 const processUrl = uploadData.process_url || `/upload/${uploadId}/process`;
 
-                // If already completed immediately during store
                 if (uploadData.status === 'completed') {
                     this.progressPercent = 100;
                     this.progressText = 'Report ready! Redirecting...';
-                    setTimeout(() => {
-                        window.location.href = uploadData.redirect_url;
-                    }, 250);
+                    setTimeout(() => { window.location.href = uploadData.redirect_url; }, 250);
                     return;
                 }
 
-                // Trigger Processing Stage if staged as pending
                 this.progressPercent = 60;
                 this.progressText = this.selectedReport === 'slot_schedule'
                     ? '2/5 Extracting & Validating Flights...'
@@ -1997,7 +2135,6 @@ function unifiedReportPortal() {
 
                 this.progressPercent = 100;
                 this.progressText = 'Complete! Loading Dashboard...';
-
                 setTimeout(() => {
                     window.location.href = procData.redirect_url || (this.selectedReport === 'slot_schedule'
                         ? `/schedule/${uploadId}/dashboard`
@@ -2011,6 +2148,47 @@ function unifiedReportPortal() {
                 this.errorBadge = 'FAILED';
                 this.validationErrors = [err.message || 'Processing failed. Please check the file and try again.'];
             }
+        },
+
+        // Resume upload from paused state
+        async resumeUpload() {
+            if (!this.selectedFile) return;
+            if (!this.fdrUploadToken) {
+                const storedToken = localStorage.getItem('fdr_active_upload_token');
+                if (storedToken) this.fdrUploadToken = storedToken;
+            }
+            this.isUploadPaused = false;
+            this.uploadPausedMessage = '';
+            await this.generateReport();
+        },
+
+        // Cancel upload -- purge session + chunks server-side
+        async cancelUpload() {
+            const token = this.fdrUploadToken || localStorage.getItem('fdr_active_upload_token');
+            if (token) {
+                try {
+                    const csrfToken = document.querySelector('input[name="_token"]')?.value ||
+                                      document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                    await fetch(`/upload/session/${token}/cancel`, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': csrfToken
+                        },
+                        body: JSON.stringify({})
+                    });
+                } catch (e) { /* ignore */ }
+            }
+            localStorage.removeItem('fdr_active_upload_token');
+            this.fdrUploadToken = null;
+            this.isUploadPaused = false;
+            this.hasRestoredSession = false;
+            this.uploadPausedMessage = '';
+            this.progressPercent = 0;
+            this.progressText = '';
+            this.processingStageTitle = 'Ingestion Pipeline Active';
         }
     };
 }

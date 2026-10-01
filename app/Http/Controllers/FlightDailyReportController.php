@@ -13,6 +13,10 @@ use App\Services\FlightDailyReport\FlightDailyReportPdfExport;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use App\Models\FdrUploadSession;
+use App\Models\FdrProcessingJob;
 
 class FlightDailyReportController extends Controller
 {
@@ -260,7 +264,7 @@ class FlightDailyReportController extends Controller
      */
     public function jobStatus($jobId)
     {
-        $job = \App\Models\FdrProcessingJob::find($jobId);
+        $job = FdrProcessingJob::find($jobId);
         if (!$job) {
             return response()->json([
                 'success' => false,
@@ -277,12 +281,18 @@ class FlightDailyReportController extends Controller
             'job_id'         => $job->id,
             'upload_id'      => $job->upload_id,
             'status'         => $job->status,
+            'stage'          => $job->stage ?? $job->status,
             'stage_label'    => $job->stage_label,
-            'progress'       => (int)$job->progress,
-            'processed_rows' => (int)$job->processed_rows,
-            'total_rows'     => (int)$job->total_rows,
+            'progress'       => (float) $job->progress,
+            'processed_rows' => (int) $job->processed_rows,
+            'total_rows'     => (int) $job->total_rows,
+            'current_offset' => (int) ($job->current_offset ?? 0),
+            'current_batch'  => (int) ($job->current_batch ?? 0),
+            'failed_rows'    => (int) ($job->failed_rows ?? 0),
             'diagnostics'    => $job->diagnostics ?? [],
             'error_message'  => $job->error_message,
+            'error_code'     => $job->error_code,
+            'can_resume'     => in_array($job->status, ['PAUSED', 'FAILED']),
             'result_url'     => $job->result_url,
         ]);
     }
@@ -290,7 +300,7 @@ class FlightDailyReportController extends Controller
     /**
      * Execute high-performance streaming parsing and normalization for FDR job.
      * Prevents duplicate execution via status locking and guarantees idempotency.
-     * File is resolved from Storage disk first, then from /tmp fallback (Vercel edge case).
+     * Resolves file from Storage disk, /tmp, or seamlessly reconstructs from DB upload_chunks.
      */
     public function processJob(Request $request, $jobId)
     {
@@ -298,7 +308,7 @@ class FlightDailyReportController extends Controller
         set_time_limit(300);
 
         try {
-            $job = \App\Models\FdrProcessingJob::find($jobId);
+            $job = FdrProcessingJob::find($jobId);
             if (!$job) {
                 return response()->json([
                     'success' => false,
@@ -315,6 +325,7 @@ class FlightDailyReportController extends Controller
                 return response()->json([
                     'success'       => true,
                     'status'        => 'READY',
+                    'stage'         => 'READY',
                     'progress'      => 100,
                     'stage_label'   => 'Ready',
                     'movement_rows' => $job->total_rows,
@@ -324,36 +335,42 @@ class FlightDailyReportController extends Controller
                 ]);
             }
 
-            // Job lock: If already in flight, return current state
+            // Job lock: If already actively processing in another call, return current state
             if (in_array($job->status, ['READING', 'PARSING', 'NORMALIZING', 'VALIDATING'])) {
                 return response()->json([
                     'success'        => true,
                     'status'         => $job->status,
+                    'stage'          => $job->stage ?? $job->status,
                     'stage_label'    => $job->stage_label,
-                    'progress'       => $job->progress,
-                    'processed_rows' => $job->processed_rows,
-                    'total_rows'     => $job->total_rows,
+                    'progress'       => (float) $job->progress,
+                    'processed_rows' => (int) $job->processed_rows,
+                    'total_rows'     => (int) $job->total_rows,
+                    'current_offset' => (int) ($job->current_offset ?? 0),
                     'result_url'     => $job->result_url,
                 ]);
             }
 
             $job->update([
                 'status'      => 'READING',
-                'stage_label' => 'Reading OASYS workbook...',
-                'progress'    => 10,
+                'stage'       => 'READING',
+                'stage_label' => 'Reading OASYS workbook structure...',
+                'progress'    => max(10, (int)$job->progress),
+                'started_at'  => $job->started_at ?: now(),
             ]);
 
-            // ── Resolve file path: Storage disk first, then /tmp fallback ──
+            // Update session status
+            FdrUploadSession::where('upload_token', $job->upload_token)
+                ->update(['status' => FdrUploadSession::STATUS_PROCESSING]);
+
+            // ── Resolve file path: Storage disk -> /tmp -> DB upload_chunks fallback ──
             $fullPath = null;
             $storedPath = $job->stored_path;
 
-            if (Storage::disk('local')->exists($storedPath)) {
+            if ($storedPath && Storage::disk('local')->exists($storedPath)) {
                 $fullPath = Storage::disk('local')->path($storedPath);
-            } elseif (file_exists($storedPath)) {
-                // stored_path was set to absolute /tmp path when Storage write failed
+            } elseif ($storedPath && file_exists($storedPath)) {
                 $fullPath = $storedPath;
             } else {
-                // Check if /tmp assembled file still exists (same session)
                 $tmpMeta = $job->meta ?? [];
                 $tmpPath = $tmpMeta['tmp_path'] ?? null;
                 if ($tmpPath && file_exists($tmpPath)) {
@@ -361,26 +378,52 @@ class FlightDailyReportController extends Controller
                 }
             }
 
+            // Serverless resilience fallback: Reconstruct file from persistent DB upload_chunks
+            if (!$fullPath || !file_exists($fullPath)) {
+                $chunkCount = DB::table('upload_chunks')->where('upload_token', $job->upload_token)->count();
+                if ($chunkCount > 0) {
+                    Log::info("Reconstructing FDR file from database upload_chunks for job {$job->id}");
+                    $tmpDir = rtrim(sys_get_temp_dir(), '/\\');
+                    $reconstructed = "{$tmpDir}/fdr_rec_{$job->upload_token}.bin";
+                    $asm = fopen($reconstructed, 'wb');
+                    if ($asm) {
+                        $chunks = DB::table('upload_chunks')
+                            ->where('upload_token', $job->upload_token)
+                            ->orderBy('chunk_index', 'asc')
+                            ->get();
+                        foreach ($chunks as $c) {
+                            fwrite($asm, $c->chunk_data);
+                        }
+                        fclose($asm);
+                        if (file_exists($reconstructed) && filesize($reconstructed) > 0) {
+                            $fullPath = $reconstructed;
+                        }
+                    }
+                }
+            }
+
             if (!$fullPath || !file_exists($fullPath)) {
                 throw new \RuntimeException(
-                    "Stored workbook file not found. Checked Storage path '{$storedPath}' and /tmp. " .
-                    "The Vercel function may have restarted between upload and processing — please re-upload."
+                    "Stored workbook file not found in storage, /tmp, or database chunks. " .
+                    "Please re-upload the file."
                 );
             }
 
             // Stream parse with incremental progress updates
             $parsed = $this->parser->parseHtmlStream($fullPath, function ($stage, $pct, $rows) use ($job) {
                 $labels = [
-                    'READING'     => 'Reading OASYS workbook...',
+                    'READING'     => 'Reading OASYS structure...',
                     'PARSING'     => "Extracting flight rows ({$rows} rows)...",
                     'NORMALIZING' => 'Normalizing dates, routes, and realization...',
                     'VALIDATING'  => 'Validating operational movements...',
                 ];
                 $job->update([
                     'status'         => $stage,
+                    'stage'          => $stage,
                     'stage_label'    => $labels[$stage] ?? $stage,
                     'progress'       => $pct,
                     'processed_rows' => $rows,
+                    'current_offset' => $rows,
                 ]);
             });
 
@@ -406,12 +449,11 @@ class FlightDailyReportController extends Controller
                 session(['active_upload_id' => $upload->id]);
             }
 
-            // Clean up /tmp file now that data is persisted to database
+            // Clean up temporary files
             $tmpMeta = $job->meta ?? [];
             if (!empty($tmpMeta['tmp_path']) && file_exists($tmpMeta['tmp_path'])) {
                 @unlink($tmpMeta['tmp_path']);
             }
-            // Also clean up if fullPath resolved to /tmp
             if ($fullPath && str_starts_with($fullPath, sys_get_temp_dir()) && file_exists($fullPath)) {
                 @unlink($fullPath);
             }
@@ -427,17 +469,24 @@ class FlightDailyReportController extends Controller
 
             $job->update([
                 'status'         => 'READY',
+                'stage'          => 'READY',
                 'stage_label'    => 'Ready',
                 'progress'       => 100,
                 'processed_rows' => $movementCount,
                 'total_rows'     => $movementCount,
+                'current_offset' => $movementCount,
                 'diagnostics'    => $diagnostics,
                 'result_url'     => $resultUrl,
+                'completed_at'   => now(),
             ]);
+
+            FdrUploadSession::where('upload_token', $job->upload_token)
+                ->update(['status' => FdrUploadSession::STATUS_READY]);
 
             return response()->json([
                 'success'       => true,
                 'status'        => 'READY',
+                'stage'         => 'READY',
                 'progress'      => 100,
                 'stage_label'   => 'Ready',
                 'movement_rows' => $movementCount,
@@ -447,21 +496,26 @@ class FlightDailyReportController extends Controller
             ]);
 
         } catch (\Throwable $e) {
-            // Always return JSON — never let exception bubble to HTML
-            $job = isset($job) ? $job : \App\Models\FdrProcessingJob::find($jobId);
+            $job = isset($job) ? $job : FdrProcessingJob::find($jobId);
             if ($job) {
                 $job->update([
-                    'status'        => 'FAILED',
-                    'stage_label'   => 'Processing Failed',
+                    'status'        => 'PAUSED',
+                    'stage'         => 'PAUSED',
+                    'stage_label'   => 'Processing Paused',
+                    'error_code'    => 'PROCESSING_ERROR',
                     'error_message' => $e->getMessage(),
                 ]);
+                FdrUploadSession::where('upload_token', $job->upload_token)
+                    ->update(['status' => FdrUploadSession::STATUS_PAUSED]);
             }
 
             return response()->json([
                 'success'       => false,
-                'status'        => 'FAILED',
+                'status'        => 'PAUSED',
+                'stage'         => 'PAUSED',
+                'stage_label'   => 'Processing Paused',
                 'error'         => [
-                    'code'      => 'PROCESSING_FAILED',
+                    'code'      => 'PROCESSING_PAUSED',
                     'message'   => $e->getMessage(),
                     'retryable' => true,
                 ],

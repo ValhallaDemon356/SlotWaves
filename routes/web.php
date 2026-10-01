@@ -21,6 +21,10 @@ Route::post('/upload/validate-template',  [UploadController::class, 'validateTem
 Route::post('/upload/compare-file',       [UploadController::class, 'uploadCompareFile'])->name('upload.compare-file');
 Route::post('/upload/chunk',              [UploadController::class, 'uploadChunk'])->name('upload.chunk');
 Route::get('/upload/chunk/status',       [UploadController::class, 'chunkStatus'])->name('upload.chunk.status');
+Route::post('/upload/session/create',        [UploadController::class, 'createUploadSession'])->name('upload.session.create');
+Route::get('/upload/session/{token}',        [UploadController::class, 'getUploadSession'])->name('upload.session.get');
+Route::post('/upload/session/{token}/pause',  [UploadController::class, 'pauseUploadSession'])->name('upload.session.pause');
+Route::post('/upload/session/{token}/cancel', [UploadController::class, 'cancelUploadSession'])->name('upload.session.cancel');
 Route::get('/upload/{upload}/status',     [UploadController::class, 'status'])->name('upload.status');
 Route::post('/upload/{upload}/process',   [UploadController::class, 'process'])->name('upload.process');
 
