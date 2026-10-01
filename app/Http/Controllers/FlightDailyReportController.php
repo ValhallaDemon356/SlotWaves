@@ -290,61 +290,82 @@ class FlightDailyReportController extends Controller
     /**
      * Execute high-performance streaming parsing and normalization for FDR job.
      * Prevents duplicate execution via status locking and guarantees idempotency.
+     * File is resolved from Storage disk first, then from /tmp fallback (Vercel edge case).
      */
     public function processJob(Request $request, $jobId)
     {
         ini_set('memory_limit', '1024M');
         set_time_limit(300);
 
-        $job = \App\Models\FdrProcessingJob::find($jobId);
-        if (!$job) {
-            return response()->json([
-                'success' => false,
-                'error'   => [
-                    'code'      => 'JOB_NOT_FOUND',
-                    'message'   => 'Processing job not found.',
-                    'retryable' => false,
-                ],
-            ], 404);
-        }
-
-        // Idempotency: If already completed, return immediately
-        if ($job->status === 'READY') {
-            return response()->json([
-                'success'       => true,
-                'status'        => 'READY',
-                'progress'      => 100,
-                'stage_label'   => 'Ready',
-                'movement_rows' => $job->total_rows,
-                'summary_rows'  => $job->diagnostics['summary_rows'] ?? 1,
-                'diagnostics'   => $job->diagnostics ?? [],
-                'result_url'    => $job->result_url,
-            ]);
-        }
-
-        // Job lock: If already in flight, return current state
-        if (in_array($job->status, ['READING', 'PARSING', 'NORMALIZING', 'VALIDATING'])) {
-            return response()->json([
-                'success'        => true,
-                'status'         => $job->status,
-                'stage_label'    => $job->stage_label,
-                'progress'       => $job->progress,
-                'processed_rows' => $job->processed_rows,
-                'total_rows'     => $job->total_rows,
-                'result_url'     => $job->result_url,
-            ]);
-        }
-
         try {
+            $job = \App\Models\FdrProcessingJob::find($jobId);
+            if (!$job) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => [
+                        'code'      => 'JOB_NOT_FOUND',
+                        'message'   => 'Processing job not found.',
+                        'retryable' => false,
+                    ],
+                ], 404);
+            }
+
+            // Idempotency: If already completed, return immediately
+            if ($job->status === 'READY') {
+                return response()->json([
+                    'success'       => true,
+                    'status'        => 'READY',
+                    'progress'      => 100,
+                    'stage_label'   => 'Ready',
+                    'movement_rows' => $job->total_rows,
+                    'summary_rows'  => $job->diagnostics['summary_rows'] ?? 1,
+                    'diagnostics'   => $job->diagnostics ?? [],
+                    'result_url'    => $job->result_url,
+                ]);
+            }
+
+            // Job lock: If already in flight, return current state
+            if (in_array($job->status, ['READING', 'PARSING', 'NORMALIZING', 'VALIDATING'])) {
+                return response()->json([
+                    'success'        => true,
+                    'status'         => $job->status,
+                    'stage_label'    => $job->stage_label,
+                    'progress'       => $job->progress,
+                    'processed_rows' => $job->processed_rows,
+                    'total_rows'     => $job->total_rows,
+                    'result_url'     => $job->result_url,
+                ]);
+            }
+
             $job->update([
                 'status'      => 'READING',
                 'stage_label' => 'Reading OASYS workbook...',
                 'progress'    => 10,
             ]);
 
-            $fullPath = Storage::disk('local')->path($job->stored_path);
-            if (!file_exists($fullPath)) {
-                throw new \RuntimeException("Stored workbook file not found on disk: {$job->stored_path}");
+            // ── Resolve file path: Storage disk first, then /tmp fallback ──
+            $fullPath = null;
+            $storedPath = $job->stored_path;
+
+            if (Storage::disk('local')->exists($storedPath)) {
+                $fullPath = Storage::disk('local')->path($storedPath);
+            } elseif (file_exists($storedPath)) {
+                // stored_path was set to absolute /tmp path when Storage write failed
+                $fullPath = $storedPath;
+            } else {
+                // Check if /tmp assembled file still exists (same session)
+                $tmpMeta = $job->meta ?? [];
+                $tmpPath = $tmpMeta['tmp_path'] ?? null;
+                if ($tmpPath && file_exists($tmpPath)) {
+                    $fullPath = $tmpPath;
+                }
+            }
+
+            if (!$fullPath || !file_exists($fullPath)) {
+                throw new \RuntimeException(
+                    "Stored workbook file not found. Checked Storage path '{$storedPath}' and /tmp. " .
+                    "The Vercel function may have restarted between upload and processing — please re-upload."
+                );
             }
 
             // Stream parse with incremental progress updates
@@ -385,6 +406,16 @@ class FlightDailyReportController extends Controller
                 session(['active_upload_id' => $upload->id]);
             }
 
+            // Clean up /tmp file now that data is persisted to database
+            $tmpMeta = $job->meta ?? [];
+            if (!empty($tmpMeta['tmp_path']) && file_exists($tmpMeta['tmp_path'])) {
+                @unlink($tmpMeta['tmp_path']);
+            }
+            // Also clean up if fullPath resolved to /tmp
+            if ($fullPath && str_starts_with($fullPath, sys_get_temp_dir()) && file_exists($fullPath)) {
+                @unlink($fullPath);
+            }
+
             $diagnostics = [
                 'source_rows'   => count($parsed['records']),
                 'movement_rows' => $movementCount,
@@ -416,11 +447,15 @@ class FlightDailyReportController extends Controller
             ]);
 
         } catch (\Throwable $e) {
-            $job->update([
-                'status'        => 'FAILED',
-                'stage_label'   => 'Processing Failed',
-                'error_message' => $e->getMessage(),
-            ]);
+            // Always return JSON — never let exception bubble to HTML
+            $job = isset($job) ? $job : \App\Models\FdrProcessingJob::find($jobId);
+            if ($job) {
+                $job->update([
+                    'status'        => 'FAILED',
+                    'stage_label'   => 'Processing Failed',
+                    'error_message' => $e->getMessage(),
+                ]);
+            }
 
             return response()->json([
                 'success'       => false,

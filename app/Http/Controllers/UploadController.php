@@ -205,320 +205,406 @@ class UploadController extends Controller
 
     /**
      * Resumable chunk status inquiry.
-     * Returns received chunks so browser can resume upload.
+     * Checks /tmp-based assembled file size to determine which chunks are present.
      */
     public function chunkStatus(Request $request)
     {
-        $uploadToken = $request->query('upload_token');
-        $totalChunks = (int)$request->query('total_chunks', 1);
+        try {
+            $uploadToken = $request->query('upload_token');
+            $totalChunks = (int)$request->query('total_chunks', 1);
+            $chunkSize   = (int)$request->query('chunk_size', 3 * 1024 * 1024);
 
-        if (!$uploadToken || !preg_match('/^[a-zA-Z0-9_\-]+$/', $uploadToken)) {
+            if (!$uploadToken || !preg_match('/^[a-zA-Z0-9_\-]+$/', $uploadToken)) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => [
+                        'code'      => 'INVALID_UPLOAD_TOKEN',
+                        'message'   => 'Invalid or missing upload token.',
+                        'retryable' => false,
+                    ],
+                ], 422);
+            }
+
+            // Assembled file lives in /tmp — always writable on Vercel
+            $tmpAssembled = sys_get_temp_dir() . '/fdr_asm_' . $uploadToken . '.bin';
+            $uploaded = [];
+            $missing  = [];
+
+            $currentSize = file_exists($tmpAssembled) ? filesize($tmpAssembled) : 0;
+            // Derive which chunks are already written based on assembled size
+            $chunksWritten = ($chunkSize > 0) ? (int) ceil($currentSize / $chunkSize) : 0;
+
+            for ($i = 0; $i < $totalChunks; $i++) {
+                if ($i < $chunksWritten) {
+                    $uploaded[] = $i;
+                } else {
+                    $missing[] = $i;
+                }
+            }
+
+            return response()->json([
+                'success'         => true,
+                'upload_token'    => $uploadToken,
+                'total_chunks'    => $totalChunks,
+                'uploaded_chunks' => $uploaded,
+                'missing_chunks'  => $missing,
+                'completed'       => empty($missing),
+                'assembled_bytes' => $currentSize,
+            ]);
+        } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
                 'error'   => [
-                    'code'      => 'INVALID_UPLOAD_TOKEN',
-                    'message'   => 'Invalid or missing upload token.',
-                    'retryable' => false,
-                ],
-            ], 422);
-        }
-
-        $chunkDir = "chunks/{$uploadToken}";
-        $uploaded = [];
-        $missing = [];
-
-        for ($i = 0; $i < $totalChunks; $i++) {
-            $chunkExists = Storage::disk('local')->exists("{$chunkDir}/chunk_{$i}");
-            if (!$chunkExists && \Illuminate\Support\Facades\Schema::hasTable('upload_chunks')) {
-                try {
-                    $chunkExists = \Illuminate\Support\Facades\DB::table('upload_chunks')
-                        ->where('upload_token', $uploadToken)
-                        ->where('chunk_index', $i)
-                        ->exists();
-                } catch (\Throwable $e) {}
-            }
-
-            if ($chunkExists) {
-                $uploaded[] = $i;
-            } else {
-                $missing[] = $i;
-            }
-        }
-
-        return response()->json([
-            'success'         => true,
-            'upload_token'    => $uploadToken,
-            'total_chunks'    => $totalChunks,
-            'uploaded_chunks' => $uploaded,
-            'missing_chunks'  => $missing,
-            'completed'       => empty($missing),
-        ]);
-    }
-
-    /**
-     * Chunked upload endpoint to support large multi-month files under Vercel's 4.5 MB payload limit.
-     */
-    public function uploadChunk(Request $request)
-    {
-        $reportType  = $request->input('report_type', 'DAU1');
-        $uploadToken = $request->input('upload_token');
-        $chunkIndex  = (int) $request->input('chunk_index', 0);
-        $totalChunks = (int) $request->input('total_chunks', 1);
-        $filename    = $request->input('filename', 'dataset.xls');
-
-        if (!$uploadToken || !preg_match('/^[a-zA-Z0-9_\-]+$/', $uploadToken)) {
-            return response()->json([
-                'success'        => false,
-                'category'       => 'UPLOAD_FAILED',
-                'category_title' => 'UPLOAD FAILED',
-                'error'          => [
-                    'code'      => 'INVALID_UPLOAD_TOKEN',
-                    'message'   => 'Invalid or missing upload token.',
-                    'retryable' => false,
-                ],
-            ], 422);
-        }
-
-        $chunkFile = $request->file('chunk') ?? $request->file('file');
-        if (!$chunkFile) {
-            return response()->json([
-                'success'        => false,
-                'category'       => 'UPLOAD_FAILED',
-                'category_title' => 'UPLOAD FAILED',
-                'error'          => [
-                    'code'      => 'MISSING_CHUNK_PAYLOAD',
-                    'message'   => 'No chunk payload received.',
-                    'retryable' => true,
-                ],
-            ], 422);
-        }
-
-        $conf = ReportTemplateRegistry::find($reportType);
-        if (!$conf) {
-            return response()->json([
-                'success'        => false,
-                'category'       => 'UNSUPPORTED_DAU_TYPE',
-                'category_title' => 'UNSUPPORTED REPORT TYPE',
-                'error'          => [
-                    'code'      => 'UNSUPPORTED_REPORT_TYPE',
-                    'message'   => "Unsupported report type: {$reportType}",
-                    'retryable' => false,
-                ],
-            ], 422);
-        }
-
-        // Store chunk on local storage disk
-        $chunkDir = "chunks/{$uploadToken}";
-        $chunkFilename = "chunk_{$chunkIndex}";
-        Storage::disk('local')->putFileAs($chunkDir, $chunkFile, $chunkFilename);
-
-        // Also store in upload_chunks table if table exists
-        try {
-            if (\Illuminate\Support\Facades\Schema::hasTable('upload_chunks')) {
-                \Illuminate\Support\Facades\DB::table('upload_chunks')->updateOrInsert(
-                    ['upload_token' => $uploadToken, 'chunk_index' => $chunkIndex],
-                    [
-                        'total_chunks' => $totalChunks,
-                        'chunk_size'   => $chunkFile->getSize(),
-                        'chunk_data'   => file_get_contents($chunkFile->getRealPath()),
-                        'created_at'   => now(),
-                    ]
-                );
-            }
-        } catch (\Throwable $e) {}
-
-        // Check if all chunks have been received
-        $allPresent = true;
-        for ($i = 0; $i < $totalChunks; $i++) {
-            if (!Storage::disk('local')->exists("{$chunkDir}/chunk_{$i}")) {
-                $inDb = false;
-                try {
-                    if (\Illuminate\Support\Facades\Schema::hasTable('upload_chunks')) {
-                        $inDb = \Illuminate\Support\Facades\DB::table('upload_chunks')
-                            ->where('upload_token', $uploadToken)
-                            ->where('chunk_index', $i)
-                            ->exists();
-                    }
-                } catch (\Throwable $e) {}
-
-                if (!$inDb) {
-                    $allPresent = false;
-                    break;
-                }
-            }
-        }
-
-        if (!$allPresent) {
-            return response()->json([
-                'success'     => true,
-                'completed'   => false,
-                'chunk_index' => $chunkIndex,
-                'total_chunks'=> $totalChunks,
-                'message'     => "Chunk {$chunkIndex} of {$totalChunks} received.",
-            ]);
-        }
-
-        // ── ALL CHUNKS RECEIVED: Reassemble file ───────────────────────────────
-        $ext = pathinfo($filename, PATHINFO_EXTENSION) ?: 'xls';
-        $assembledRelativePath = "uploads/{$uploadToken}.{$ext}";
-        $assembledAbsolutePath = Storage::disk('local')->path($assembledRelativePath);
-
-        $parentDir = dirname($assembledAbsolutePath);
-        if (!is_dir($parentDir)) {
-            mkdir($parentDir, 0755, true);
-        }
-
-        $outHandle = fopen($assembledAbsolutePath, 'wb');
-        if (!$outHandle) {
-            return response()->json([
-                'success'        => false,
-                'category'       => 'PROCESSING_FAILED',
-                'category_title' => 'PROCESSING FAILED',
-                'error'          => [
-                    'code'      => 'ASSEMBLE_FAILED',
-                    'message'   => 'Failed to create destination file for assembled chunks.',
+                    'code'      => 'STATUS_ERROR',
+                    'message'   => $e->getMessage(),
                     'retryable' => true,
                 ],
             ], 500);
         }
+    }
 
-        for ($i = 0; $i < $totalChunks; $i++) {
-            $chunkPath = "{$chunkDir}/chunk_{$i}";
-            if (Storage::disk('local')->exists($chunkPath)) {
-                $cStream = fopen(Storage::disk('local')->path($chunkPath), 'rb');
-                stream_copy_to_stream($cStream, $outHandle);
-                fclose($cStream);
-            } else {
-                $row = null;
-                try {
-                    if (\Illuminate\Support\Facades\Schema::hasTable('upload_chunks')) {
-                        $row = \Illuminate\Support\Facades\DB::table('upload_chunks')
-                            ->where('upload_token', $uploadToken)
-                            ->where('chunk_index', $i)
-                            ->first();
-                    }
-                } catch (\Throwable $e) {}
+    /**
+     * Chunked upload endpoint — safe for Vercel's hard 4.5 MB request body limit.
+     *
+     * Strategy:
+     * - FDR_CHUNK_SIZE constant = 3 MiB (safely under 4.5 MB with multipart overhead)
+     * - Each chunk is APPENDED to a single assembled file in /tmp (writable on Vercel)
+     * - Per-request work is O(1): only fopen('ab') + fwrite + fclose, no re-reads
+     * - Idempotency: check expected offset before writing (retry-safe)
+     * - Validation runs ONLY on the final (last) chunk, after full file is assembled
+     * - Entire method is wrapped in try/catch → always returns JSON, never HTML
+     */
+    public function uploadChunk(Request $request)
+    {
+        // ── Chunk size constant (must match JS FDR_CHUNK_SIZE = 3 MiB) ─────────
+        // Maximum chunk size: 3 MiB (safely under Vercel's 4.5 MB payload gate)
+        // With multipart boundary + headers, total request stays well under 4 MB.
+        // DO NOT raise above 4.5 MB under any circumstance.
+        if (!defined('FDR_CHUNK_SIZE_BYTES')) {
+            define('FDR_CHUNK_SIZE_BYTES', 3 * 1024 * 1024); // 3 MiB
+        }
 
-                if ($row && $row->chunk_data) {
-                    fwrite($outHandle, $row->chunk_data);
+        try {
+            $reportType  = $request->input('report_type', 'DAU1');
+            $uploadToken = $request->input('upload_token');
+            $chunkIndex  = (int) $request->input('chunk_index', 0);
+            $totalChunks = (int) $request->input('total_chunks', 1);
+            $filename    = $request->input('filename', 'dataset.xls');
+
+            if (!$uploadToken || !preg_match('/^[a-zA-Z0-9_\-]+$/', $uploadToken)) {
+                return response()->json([
+                    'success'        => false,
+                    'category'       => 'UPLOAD_FAILED',
+                    'category_title' => 'UPLOAD FAILED',
+                    'error'          => [
+                        'code'      => 'INVALID_UPLOAD_TOKEN',
+                        'message'   => 'Invalid or missing upload token.',
+                        'retryable' => false,
+                    ],
+                ], 422);
+            }
+
+            $chunkFile = $request->file('chunk') ?? $request->file('file');
+            if (!$chunkFile) {
+                return response()->json([
+                    'success'        => false,
+                    'category'       => 'UPLOAD_FAILED',
+                    'category_title' => 'UPLOAD FAILED',
+                    'error'          => [
+                        'code'      => 'MISSING_CHUNK_PAYLOAD',
+                        'message'   => 'No chunk payload received.',
+                        'retryable' => true,
+                    ],
+                ], 422);
+            }
+
+            // For FDR we bypass ReportTemplateRegistry since it may not include 'fdr'
+            $isFdr = strcasecmp($reportType, 'fdr') === 0;
+            if (!$isFdr) {
+                $conf = ReportTemplateRegistry::find($reportType);
+                if (!$conf) {
+                    return response()->json([
+                        'success'        => false,
+                        'category'       => 'UNSUPPORTED_DAU_TYPE',
+                        'category_title' => 'UNSUPPORTED REPORT TYPE',
+                        'error'          => [
+                            'code'      => 'UNSUPPORTED_REPORT_TYPE',
+                            'message'   => "Unsupported report type: {$reportType}",
+                            'retryable' => false,
+                        ],
+                    ], 422);
                 }
             }
-        }
-        fclose($outHandle);
 
-        // Clean up temporary chunk files and database records
-        Storage::disk('local')->deleteDirectory($chunkDir);
-        try {
-            if (\Illuminate\Support\Facades\Schema::hasTable('upload_chunks')) {
-                \Illuminate\Support\Facades\DB::table('upload_chunks')
-                    ->where('upload_token', $uploadToken)
-                    ->delete();
+            // ── /tmp assembled file path (ALWAYS writable on Vercel) ──────────
+            // Each upload session gets a unique file; concurrent sessions don't collide.
+            $tmpDir      = rtrim(sys_get_temp_dir(), '/\\');
+            $tmpAssembled = "{$tmpDir}/fdr_asm_{$uploadToken}.bin";
+
+            // ── IDEMPOTENCY: Detect if this chunk was already written ─────────
+            // We determine expected byte offset for this chunk.
+            $chunkData    = file_get_contents($chunkFile->getRealPath());
+            $chunkBytes   = strlen($chunkData);
+            $expectedOffset = $chunkIndex * FDR_CHUNK_SIZE_BYTES;
+            $currentSize    = file_exists($tmpAssembled) ? filesize($tmpAssembled) : 0;
+
+            if ($currentSize > $expectedOffset) {
+                // Chunk already written (client retry). Skip to avoid corruption.
+                Log::info("FDR chunk {$chunkIndex} already present (assembled={$currentSize} > offset={$expectedOffset}), skipping write");
+            } else {
+                // Append this chunk to the assembled file
+                $fh = @fopen($tmpAssembled, 'ab');
+                if (!$fh) {
+                    return response()->json([
+                        'success'        => false,
+                        'category'       => 'PROCESSING_FAILED',
+                        'category_title' => 'STORAGE ERROR',
+                        'error'          => [
+                            'code'      => 'TMP_WRITE_FAILED',
+                            'message'   => 'Failed to write chunk to /tmp. Disk may be full.',
+                            'retryable' => true,
+                        ],
+                    ], 500);
+                }
+                fwrite($fh, $chunkData);
+                fclose($fh);
             }
-        } catch (\Throwable $e) {}
+            unset($chunkData); // free memory immediately
 
-        // ── Validate Assembled Template ───────────────────────────────────────
-        $validator = new TemplateValidator();
-        $validationResult = $validator->validate($reportType, $assembledAbsolutePath, false, $filename);
+            // ── NOT LAST CHUNK: Return immediately, O(1) work done ────────────
+            if ($chunkIndex < $totalChunks - 1) {
+                return response()->json([
+                    'success'      => true,
+                    'completed'    => false,
+                    'chunk_index'  => $chunkIndex,
+                    'total_chunks' => $totalChunks,
+                    'assembled_bytes' => file_exists($tmpAssembled) ? filesize($tmpAssembled) : 0,
+                    'message'      => "Chunk {$chunkIndex} of {$totalChunks} received.",
+                ]);
+            }
 
-        if (!$validationResult['valid']) {
-            Storage::disk('local')->delete($assembledRelativePath);
-            return response()->json([
-                'success'        => false,
-                'category'       => $validationResult['category'] ?? 'INVALID_TEMPLATE',
-                'category_title' => $validationResult['category_title'] ?? 'INVALID TEMPLATE',
-                'error'          => [
-                    'code'      => 'INVALID_TEMPLATE',
-                    'message'   => $validationResult['error'] ?? implode('; ', $validationResult['errors']),
-                    'retryable' => false,
-                ],
-                'errors'         => $validationResult['errors'] ?? [],
-                'validation'     => $validationResult,
-            ], 422);
-        }
+            // ── LAST CHUNK: Full file assembled — now validate & create records ──
+            $assembledSize = file_exists($tmpAssembled) ? filesize($tmpAssembled) : 0;
+            if ($assembledSize < 1024) {
+                @unlink($tmpAssembled);
+                return response()->json([
+                    'success'        => false,
+                    'category'       => 'PROCESSING_FAILED',
+                    'category_title' => 'ASSEMBLY INCOMPLETE',
+                    'error'          => [
+                        'code'      => 'ASSEMBLE_INCOMPLETE',
+                        'message'   => "Assembled file is too small ({$assembledSize} bytes). Some chunks may be missing.",
+                        'retryable' => true,
+                    ],
+                ], 422);
+            }
 
-        // ── Create Upload Record ──────────────────────────────────────────────
-        $airportCode = $validationResult['meta']['airport_code'] ?? 'CGK';
-        $airport = \App\Models\Airport::findByIata($airportCode) ?? \App\Models\Airport::findByIata('CGK');
-        $fileHash = @hash_file('sha256', $assembledAbsolutePath) ?: null;
+            // ── Copy assembled file to Storage disk for persistence ───────────
+            // Storage::disk('local') root = storage_path('app/private').
+            // On Vercel this path IS writable during the request (Lambda /var/task is overlayfs
+            // with a writable layer for the request lifetime). If write fails we fall back
+            // to keeping the assembled file in /tmp and referencing it directly.
+            $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION)) ?: 'xls';
+            $assembledRelativePath = "uploads/{$uploadToken}.{$ext}";
 
-        if (strcasecmp($reportType, 'fdr') === 0) {
-            // Asynchronous Large File Pipeline:
-            // Do NOT parse synchronously inside the HTTP chunk upload request!
+            // Try Storage disk first (preferred — survives between requests if using attached storage)
+            $storedViaStorage = false;
+            try {
+                Storage::disk('local')->put(
+                    $assembledRelativePath,
+                    file_get_contents($tmpAssembled)
+                );
+                $assembledAbsolutePath = Storage::disk('local')->path($assembledRelativePath);
+                $storedViaStorage = true;
+            } catch (\Throwable $storageEx) {
+                // Fallback: use /tmp path directly (valid within this request)
+                $assembledAbsolutePath = $tmpAssembled;
+                $assembledRelativePath = $tmpAssembled; // store absolute path as relative
+                Log::warning("FDR chunk assembly: Storage::disk write failed, using /tmp directly: " . $storageEx->getMessage());
+            }
+
+            // Validate assembled file structure (OASYS HTML FDR check)
+            if ($isFdr) {
+                // FDR-specific validation: check for HTML table signature
+                $head = @file_get_contents($assembledAbsolutePath, false, null, 0, 65536) ?: '';
+                $lowerHead = strtolower($head);
+                $isFdrHtml = str_contains($lowerHead, '<table') || str_contains($lowerHead, '<html')
+                    || str_contains($lowerHead, '<tr') || str_contains($lowerHead, 'aeronautical')
+                    || str_contains($lowerHead, 'oasys') || str_contains($lowerHead, 'flight daily');
+
+                if (!$isFdrHtml) {
+                    @unlink($tmpAssembled);
+                    if ($storedViaStorage) {
+                        Storage::disk('local')->delete($assembledRelativePath);
+                    }
+                    return response()->json([
+                        'success'        => false,
+                        'category'       => 'INVALID_TEMPLATE',
+                        'category_title' => 'INVALID FDR FILE',
+                        'error'          => [
+                            'code'      => 'INVALID_FDR_FORMAT',
+                            'message'   => 'Assembled file does not appear to be an OASYS FDR HTML workbook.',
+                            'retryable' => false,
+                        ],
+                        'errors' => ['Not a recognized OASYS FDR HTML table format.'],
+                    ], 422);
+                }
+
+                // ── Create Upload + FdrProcessingJob records ──────────────────
+                $airportCode = 'CGK';
+                // Try to extract BRANCH_CODE from head
+                if (preg_match('/name=[\'"]BRANCH_CODE[\'"][^>]*value=[\'"]([A-Z]{3,4})[\'"]/i', $head, $bcm)) {
+                    $airportCode = strtoupper($bcm[1]);
+                } elseif (preg_match('/value=[\'"]([A-Z]{3,4})[\'"][^>]*name=[\'"]BRANCH_CODE[\'"]/i', $head, $bcm2)) {
+                    $airportCode = strtoupper($bcm2[1]);
+                }
+                $airport = \App\Models\Airport::findByIata($airportCode) ?? \App\Models\Airport::findByIata('CGK');
+                $fileHash = @hash_file('sha256', $assembledAbsolutePath) ?: null;
+
+                $upload = Upload::create([
+                    'original_filename'  => $filename,
+                    'stored_path'        => $assembledRelativePath,
+                    'status'             => 'processing',
+                    'report_type'        => 'fdr',
+                    'total_rows'         => 0,
+                    'valid_rows'         => 0,
+                    'invalid_rows'       => 0,
+                    'duplicate_rows'     => 0,
+                    'parsing_confidence' => 1.0,
+                    'validation_summary' => ['valid' => true, 'meta' => ['airport_code' => $airportCode]],
+                    'report_data'        => ['meta' => ['airport' => $airportCode, 'airport_code' => $airportCode]],
+                    'airport_id'         => $airport?->id,
+                ]);
+
+                $job = \App\Models\FdrProcessingJob::create([
+                    'upload_id'      => $upload->id,
+                    'upload_token'   => $uploadToken,
+                    'filename'       => $filename,
+                    'stored_path'    => $assembledRelativePath,
+                    'file_size'      => $assembledSize,
+                    'file_hash'      => $fileHash,
+                    'report_type'    => 'fdr',
+                    'status'         => 'QUEUED',
+                    'stage_label'    => 'Queued for processing',
+                    'progress'       => 0,
+                    'processed_rows' => 0,
+                    'total_rows'     => 0,
+                    'meta'           => ['airport' => $airportCode, 'tmp_path' => $tmpAssembled],
+                    'result_url'     => route('fdr.dashboard', ['upload' => $upload->id, 'date_scope' => 'ALL_PERIOD']),
+                ]);
+
+                // Clean up /tmp assembled file ONLY if it was successfully copied to storage
+                if ($storedViaStorage) {
+                    @unlink($tmpAssembled);
+                }
+                // else: leave /tmp file for processJob to use directly
+
+                session(['fdr_active_upload_id' => $upload->id]);
+                session(['active_upload_id' => $upload->id]);
+
+                return response()->json([
+                    'success'      => true,
+                    'completed'    => true,
+                    'is_async_job' => true,
+                    'job_id'       => $job->id,
+                    'upload_id'    => $upload->id,
+                    'report_type'  => 'fdr',
+                    'status'       => 'QUEUED',
+                    'poll_url'     => route('fdr.jobs.status', $job->id),
+                    'process_url'  => route('fdr.jobs.process', $job->id),
+                    'redirect_url' => route('fdr.dashboard', ['upload' => $upload->id, 'date_scope' => 'ALL_PERIOD']),
+                    'message'      => "Flight Daily Report uploaded successfully ({$assembledSize} bytes). Processing job queued.",
+                ]);
+            }
+
+            // ── NON-FDR: Validate assembled template ──────────────────────────
+            $conf = ReportTemplateRegistry::find($reportType);
+            if (!$conf) {
+                @unlink($tmpAssembled);
+                return response()->json([
+                    'success'        => false,
+                    'category'       => 'UNSUPPORTED_DAU_TYPE',
+                    'category_title' => 'UNSUPPORTED REPORT TYPE',
+                    'error'          => [
+                        'code'      => 'UNSUPPORTED_REPORT_TYPE',
+                        'message'   => "Unsupported report type: {$reportType}",
+                        'retryable' => false,
+                    ],
+                ], 422);
+            }
+
+            $validator = new TemplateValidator();
+            $validationResult = $validator->validate($reportType, $assembledAbsolutePath, false, $filename);
+
+            if (!$validationResult['valid']) {
+                @unlink($tmpAssembled);
+                if ($storedViaStorage) {
+                    Storage::disk('local')->delete($assembledRelativePath);
+                }
+                return response()->json([
+                    'success'        => false,
+                    'category'       => $validationResult['category'] ?? 'INVALID_TEMPLATE',
+                    'category_title' => $validationResult['category_title'] ?? 'INVALID TEMPLATE',
+                    'error'          => [
+                        'code'      => 'INVALID_TEMPLATE',
+                        'message'   => $validationResult['error'] ?? implode('; ', $validationResult['errors']),
+                        'retryable' => false,
+                    ],
+                    'errors'         => $validationResult['errors'] ?? [],
+                    'validation'     => $validationResult,
+                ], 422);
+            }
+
+            $airportCode = $validationResult['meta']['airport_code'] ?? 'CGK';
+            $airport = \App\Models\Airport::findByIata($airportCode) ?? \App\Models\Airport::findByIata('CGK');
+
             $upload = Upload::create([
-                'original_filename'  => $filename,
-                'stored_path'        => $assembledRelativePath,
-                'status'             => 'processing',
-                'report_type'        => 'fdr',
-                'total_rows'         => 0,
-                'valid_rows'         => 0,
-                'invalid_rows'       => 0,
-                'duplicate_rows'     => 0,
-                'parsing_confidence' => 1.0,
-                'validation_summary' => $validationResult,
-                'report_data'        => ['meta' => $validationResult['meta'] ?? []],
-                'airport_id'         => $airport?->id,
+                'original_filename' => $filename,
+                'stored_path'       => $assembledRelativePath,
+                'report_type'       => $reportType,
+                'status'            => 'pending',
+                'season'            => 'summer',
+                'airport_id'        => $airport?->id,
             ]);
 
-            $job = \App\Models\FdrProcessingJob::create([
-                'upload_id'      => $upload->id,
-                'upload_token'   => $uploadToken,
-                'filename'       => $filename,
-                'stored_path'    => $assembledRelativePath,
-                'file_size'      => filesize($assembledAbsolutePath),
-                'file_hash'      => $fileHash,
-                'report_type'    => 'fdr',
-                'status'         => 'QUEUED',
-                'stage_label'    => 'Queued for processing',
-                'progress'       => 0,
-                'processed_rows' => 0,
-                'total_rows'     => 0,
-                'meta'           => $validationResult['meta'] ?? [],
-                'result_url'     => route('fdr.dashboard', ['upload' => $upload->id, 'date_scope' => 'ALL_PERIOD']),
-            ]);
-
-            session(['fdr_active_upload_id' => $upload->id]);
+            $this->executeDauProcessing($upload);
             session(['active_upload_id' => $upload->id]);
+
+            @unlink($tmpAssembled);
 
             return response()->json([
                 'success'      => true,
                 'completed'    => true,
-                'is_async_job' => true,
-                'job_id'       => $job->id,
                 'upload_id'    => $upload->id,
-                'report_type'  => 'fdr',
-                'status'       => 'QUEUED',
-                'poll_url'     => route('fdr.jobs.status', $job->id),
-                'process_url'  => route('fdr.jobs.process', $job->id),
-                'redirect_url' => route('fdr.dashboard', ['upload' => $upload->id, 'date_scope' => 'ALL_PERIOD']),
-                'message'      => "Flight Daily Report uploaded successfully. Processing job queued.",
+                'report_type'  => $reportType,
+                'status'       => 'completed',
+                'total_rows'   => $upload->total_rows,
+                'valid_rows'   => $upload->valid_rows,
+                'redirect_url' => route('dau.dashboard', $upload->id),
+                'message'      => "{$conf['name']} uploaded and processed successfully ({$upload->valid_rows} records).",
             ]);
+
+        } catch (\Throwable $e) {
+            Log::error('uploadChunk fatal error: ' . $e->getMessage(), [
+                'exception' => $e,
+                'report_type' => $request->input('report_type'),
+                'chunk_index' => $request->input('chunk_index'),
+                'upload_token' => $request->input('upload_token'),
+            ]);
+            return response()->json([
+                'success'        => false,
+                'category'       => 'SERVER_ERROR',
+                'category_title' => 'SERVER ERROR',
+                'error'          => [
+                    'code'      => 'INTERNAL_SERVER_ERROR',
+                    'message'   => 'An unexpected server error occurred: ' . $e->getMessage(),
+                    'retryable' => true,
+                ],
+            ], 500);
         }
-
-        $upload = Upload::create([
-            'original_filename' => $filename,
-            'stored_path'       => $assembledRelativePath,
-            'report_type'       => $reportType,
-            'status'            => 'pending',
-            'season'            => 'summer',
-            'airport_id'        => $airport?->id,
-        ]);
-
-        // Immediate processing with optimized parser
-        $this->executeDauProcessing($upload);
-        session(['active_upload_id' => $upload->id]);
-
-        return response()->json([
-            'success'      => true,
-            'completed'    => true,
-            'upload_id'    => $upload->id,
-            'report_type'  => $reportType,
-            'status'       => 'completed',
-            'total_rows'   => $upload->total_rows,
-            'valid_rows'   => $upload->valid_rows,
-            'redirect_url' => route('dau.dashboard', $upload->id),
-            'message'      => "{$conf['name']} uploaded and processed successfully ({$upload->valid_rows} records).",
-        ]);
     }
+
+
 
     /**
      * Store and stage uploaded file according to selected report type.

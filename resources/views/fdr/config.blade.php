@@ -294,20 +294,22 @@ function fdrConfigForm() {
             const file = fileInput?.files?.[0];
             if (!file) return;
 
-            // If file <= 3.5 MB, standard form submission
-            if (file.size <= 3.5 * 1024 * 1024) {
+            // If file <= 3 MB, standard form submission
+            if (file.size <= 3 * 1024 * 1024) {
                 form.submit();
                 return;
             }
 
-            // For files > 3.5 MB, chunked transfer via /upload/chunk to prevent Vercel 4.5 MB limit
+            // For files > 3 MB, chunked transfer via /upload/chunk to prevent Vercel 4.5 MB limit
             this.isUploadingModal = true;
             this.modalUploadProgress = 10;
             this.modalUploadText = 'Preparing chunked upload for ' + file.name + '...';
 
             const csrfToken = document.querySelector('input[name="_token"]')?.value || '{{ csrf_token() }}';
-            const chunkSize = 2.5 * 1024 * 1024;
-            const totalChunks = Math.ceil(file.size / chunkSize);
+            // FDR_CHUNK_SIZE must match PHP server-side FDR_CHUNK_SIZE_BYTES = 3 MiB
+            // Safely under Vercel's 4.5 MB gateway limit with multipart overhead ~200 KB
+            const FDR_CHUNK_SIZE = 3 * 1024 * 1024; // 3 MiB — DO NOT raise above 4.5 MB
+            const totalChunks = Math.ceil(file.size / FDR_CHUNK_SIZE);
             const fileSizeMB = (file.size / 1048576).toFixed(2);
             const uploadToken = 'upl_fdr_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
             const delay = (ms) => new Promise(res => setTimeout(res, ms));
@@ -316,8 +318,8 @@ function fdrConfigForm() {
                 let lastChunkData = null;
 
                 for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
-                    const start = chunkIdx * chunkSize;
-                    const end = Math.min(file.size, start + chunkSize);
+                    const start = chunkIdx * FDR_CHUNK_SIZE;
+                    const end = Math.min(file.size, start + FDR_CHUNK_SIZE);
                     const chunkBlob = file.slice(start, end);
                     const uploadedMB = (end / 1048576).toFixed(2);
 
@@ -395,7 +397,15 @@ function fdrConfigForm() {
                     }
 
                     if (!chunkSuccess) {
-                        throw new Error(`Failed to upload chunk ${chunkIdx + 1} of ${totalChunks} after ${maxRetries} retries. ${lastErrorMsg}`);
+                        // Soft pause — save context for "Lanjutkan Upload"
+                        this.isUploadingModal = false;
+                        this.modalUploadText = 'Chunk ' + (chunkIdx + 1) + ' / ' + totalChunks +
+                            ' gagal setelah retries. ' + lastErrorMsg +
+                            ' Silakan tekan "Lanjutkan Upload" atau ulangi.';
+                        this.modalUploadProgress = Math.round(((chunkIdx) / totalChunks) * 50);
+                        this._fdrUploadResume = { chunkIdx, totalChunks, uploadToken, fileSizeMB, file };
+                        this._fdrUploadPaused = true;
+                        return;
                     }
                 }
 
@@ -485,7 +495,8 @@ function fdrConfigForm() {
                 }
             } catch (err) {
                 this.isUploadingModal = false;
-                alert('Upload failed: ' + (err.message || 'Server error'));
+                this.modalUploadText = 'Upload gagal: ' + (err.message || 'Server error');
+                this.modalUploadProgress = 0;
             }
         },
 

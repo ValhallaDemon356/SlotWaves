@@ -1698,19 +1698,39 @@ function unifiedReportPortal() {
                               document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
             try {
-                // ── PIPELINE A: CHUNKED UPLOAD FOR LARGE MULTI-MONTH FILES (> 3.5 MB) ──
-                if (this.selectedFile.size > 3.5 * 1024 * 1024) {
-                    const chunkSize = 2.5 * 1024 * 1024; // 2.5 MiB chunks
-                    const totalChunks = Math.ceil(this.selectedFile.size / chunkSize);
+                // ── PIPELINE A: CHUNKED UPLOAD FOR LARGE MULTI-MONTH FILES (> 3 MB) ──
+                // FDR_CHUNK_SIZE must match PHP server-side FDR_CHUNK_SIZE_BYTES = 3 MiB
+                // This is safely under Vercel's 4.5 MB gateway limit (multipart overhead ~200 KB)
+                if (this.selectedFile.size > 3 * 1024 * 1024) {
+                    const FDR_CHUNK_SIZE = 3 * 1024 * 1024; // 3 MiB — DO NOT exceed 4.5 MB
+                    const totalChunks = Math.ceil(this.selectedFile.size / FDR_CHUNK_SIZE);
                     const fileSizeMB = (this.selectedFile.size / 1048576).toFixed(2);
                     const uploadToken = 'upl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
                     const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
                     let lastChunkData = null;
+                    let resumeFromChunk = 0;
 
-                    for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
-                        const start = chunkIdx * chunkSize;
-                        const end = Math.min(this.selectedFile.size, start + chunkSize);
+                    // ── Resume support: check if partial upload exists ──
+                    try {
+                        const statusRes = await fetch(
+                            '{{ route("upload.chunk.status") }}?upload_token=' + uploadToken +
+                            '&total_chunks=' + totalChunks + '&chunk_size=' + FDR_CHUNK_SIZE,
+                            { headers: { 'Accept': 'application/json' } }
+                        );
+                        if (statusRes.ok) {
+                            const statusData = await statusRes.json();
+                            if (statusData.success && statusData.uploaded_chunks?.length > 0) {
+                                resumeFromChunk = statusData.uploaded_chunks.length;
+                                this.progressText = `Resuming from chunk ${resumeFromChunk + 1} / ${totalChunks}...`;
+                            }
+                        }
+                    } catch (resumeErr) { /* resume check failed, start from 0 */ }
+
+
+                    for (let chunkIdx = resumeFromChunk; chunkIdx < totalChunks; chunkIdx++) {
+                        const start = chunkIdx * FDR_CHUNK_SIZE;
+                        const end = Math.min(this.selectedFile.size, start + FDR_CHUNK_SIZE);
                         const chunkBlob = this.selectedFile.slice(start, end);
                         const uploadedMB = (end / 1048576).toFixed(2);
                         const uploadPct = Math.round(((chunkIdx + 1) / totalChunks) * 50);
@@ -1790,7 +1810,15 @@ function unifiedReportPortal() {
                         }
 
                         if (!chunkSuccess) {
-                            throw new Error(`Failed to upload chunk ${chunkIdx + 1} of ${totalChunks} after ${maxRetries} retries. ${lastErrorMsg}`);
+                            // Soft pause: store context so user can resume from this chunk
+                            this._uploadResume = { chunkIdx, totalChunks, uploadToken, fileSizeMB };
+                            this.isProcessing = false;
+                            this.processingStageTitle = 'Upload Terhenti';
+                            this.progressText = 'Chunk ' + (chunkIdx + 1) + ' / ' + totalChunks +
+                                ' gagal setelah ' + maxRetries + ' retries. ' + lastErrorMsg +
+                                ' — Klik "Lanjutkan Upload" untuk melanjutkan.';
+                            this._uploadPaused = true;
+                            return;
                         }
                     }
 
