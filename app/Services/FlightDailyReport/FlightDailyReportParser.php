@@ -32,11 +32,12 @@ class FlightDailyReportParser
         'child'       => '/^(child|anak)$/i',
         'infant'      => '/^(infant|bayi)$/i',
         'transit'     => '/^(transit)$/i',
-        'transfer'    => '/^(transfer)$/i',
+        'transfer'    => '/^(transfer|tranfer)$/i',
         'divert'      => '/^(divert|diverted)$/i',
         'miss'        => '/^(miss|missed|batal|cancel)$/i',
         'crw'         => '/^(crw|crew|awak)$/i',
         'ex_crw'      => '/^(ex\.?\s*crw|extra\s*crew|awak\s*ekstra)$/i',
+        'umroh'       => '/^(umroh|umrah)$/i',
         'cargo_kg'    => '/^(car\.?\s*\(?kg\)?|cargo|kargo)$/i',
         'baggage_kg'  => '/^(bagg?\.?\s*\(?kg\)?|baggage|bagasi)$/i',
         'pos_kg'      => '/^(pos\.?\s*\(?kg\)?|post|mail)$/i',
@@ -97,9 +98,14 @@ class FlightDailyReportParser
     /**
      * Detect exact format of FDR source file.
      */
-    public function detectFormat(string $filePath, string $content): string
+    public function detectFormat(string $filePath, ?string $content = null): string
     {
-        $actual = $this->detectActualFormat($content, basename($filePath));
+        if ($content === null && file_exists($filePath)) {
+            $fp = @fopen($filePath, 'rb');
+            $content = $fp ? fread($fp, 32768) : '';
+            if (is_resource($fp)) fclose($fp);
+        }
+        $actual = $this->detectActualFormat($content ?? '', basename($filePath));
         if ($actual === 'HTML_XLS') {
             return 'OASYS HTML XLS';
         }
@@ -303,11 +309,21 @@ class FlightDailyReportParser
                     continue;
                 }
 
+                $firstCell = $cells[0] ?? '';
+                $isMovement = is_numeric($firstCell) && (int)$firstCell > 0;
+                $isSummary = (stripos($rowStr, 'PAX ALL') !== false || preg_match('/-(?:pax\s*all|adult,\s*child,\s*infant|transit)-/i', $rowStr));
+
+                if (!$isMovement && !$isSummary) {
+                    continue;
+                }
+
                 $htmlDataRows++;
-                $ext = $this->extractSourceSummaryFromRow($cells);
-                if ($ext) {
-                    $meta['source_summary'] = $ext['source_summary'];
-                    $meta['source_passenger_summary'] = $ext['source_passenger_summary'];
+                if ($isSummary) {
+                    $ext = $this->extractSourceSummaryFromRow($cells);
+                    if ($ext) {
+                        $meta['source_summary'] = $ext['source_summary'];
+                        $meta['source_passenger_summary'] = $ext['source_passenger_summary'];
+                    }
                 }
                 $colInfo = ['header_row_index' => 0, 'mapping' => $columnMap];
                 $norm = $this->normalizeRecords([$headerCols, $cells], $colInfo, $meta);
@@ -351,6 +367,141 @@ class FlightDailyReportParser
             'records'         => $records,
             'summary'         => $this->buildFastSummary($records, $meta),
             'detected_format' => 'OASYS HTML XLS',
+        ];
+    }
+
+    /**
+     * Incremental batch parser for large OASYS FDR files (Prompt Section 13 & 14).
+     * Processes batches of rows and yields checkpoints (processed_rows, current_offset, current_batch, progress).
+     * Resumes directly from $offset without restarting from row 1.
+     */
+    public function parseBatch(string $filePath, int $offset = 0, int $batchSize = 2000, ?array $savedMeta = null): array
+    {
+        if (!file_exists($filePath)) {
+            throw new \InvalidArgumentException("File not found: {$filePath}");
+        }
+
+        $fileSize = filesize($filePath);
+        $handle = fopen($filePath, 'rb');
+        if (!$handle) {
+            throw new \RuntimeException("Failed to open FDR file: {$filePath}");
+        }
+
+        $headerByteOffset = $savedMeta['_header_byte_offset'] ?? 0;
+        $headerCols = $savedMeta['_header_cols'] ?? [];
+        $colMap = $savedMeta['_col_map'] ?? [];
+        $meta = $savedMeta ?: [];
+
+        if (empty($headerCols) || $offset <= 0) {
+            $lead = fread($handle, 65536);
+            $metaHeaders = [];
+            if (preg_match_all('/<input[^>]+>/i', $lead, $mInputs)) {
+                foreach ($mInputs[0] as $input) {
+                    $name = '';
+                    $value = '';
+                    if (preg_match('/name=["\']([^"\']+)["\']/i', $input, $n)) $name = $n[1];
+                    if (preg_match('/value=["\']([^"\']*)["\']/i', $input, $v)) $value = $v[1];
+                    if ($name !== '') $metaHeaders[] = strtoupper($name) . ': ' . trim($value);
+                }
+            }
+            if (preg_match('/<title[^>]*>(.*?)<\/title>/is', $lead, $tm)) {
+                $metaHeaders[] = trim(strip_tags($tm[1]));
+            }
+            if (preg_match_all('/<center[^>]*>(.*?)<\/center>/is', $lead, $cm)) {
+                foreach ($cm[1] as $c) {
+                    $metaHeaders[] = trim(strip_tags(str_ireplace(['<br>', '<br/>', '<br />'], "\n", $c)));
+                }
+            }
+
+            $meta = $this->extractMetadata($metaHeaders, []);
+            $meta['detected_format'] = 'OASYS HTML XLS';
+
+            preg_match_all('/<tr[^>]*>(.*?)<\/tr>/is', $lead, $trs);
+            foreach ($trs[1] as $tr) {
+                preg_match_all('/<t[dh][^>]*>(.*?)<\/t[dh]>/is', $tr, $tds);
+                $cells = array_map(function($c) {
+                    return trim(html_entity_decode(strip_tags($c), ENT_QUOTES, 'UTF-8'));
+                }, $tds[1]);
+                $rowStr = implode(' ', $cells);
+                if (stripos($rowStr, 'AIRLINE') !== false || stripos($rowStr, 'AIR LINE') !== false || stripos($rowStr, 'FLIGHT NO') !== false || stripos($rowStr, 'SIBT') !== false) {
+                    $headerCols = $cells;
+                    $headerByteOffset = strpos($lead, '</tr>', stripos($lead, 'AIR')) + 5;
+                    break;
+                }
+            }
+
+            $colInfo = $this->identifyColumns([$headerCols]);
+            $colMap = $colInfo['mapping'];
+            $meta['_header_byte_offset'] = $headerByteOffset;
+            $meta['_header_cols'] = $headerCols;
+            $meta['_col_map'] = $colMap;
+
+            $offset = max(1, $headerByteOffset);
+        }
+
+        fseek($handle, $offset);
+        $buffer = '';
+        $batchRecords = [];
+        $batchSummaries = [];
+        $colInfo = ['header_row_index' => 0, 'mapping' => $colMap];
+
+        while (!feof($handle)) {
+            $chunk = fread($handle, 131072);
+            $buffer .= $chunk;
+
+            while (($trPos = stripos($buffer, '<tr')) !== false) {
+                $endTr = stripos($buffer, '</tr>', $trPos);
+                if ($endTr === false) break;
+
+                $trHtml = substr($buffer, $trPos, ($endTr + 5) - $trPos);
+                $buffer = substr($buffer, $endTr + 5);
+
+                if (preg_match_all('/<t[dh][^>]*>(.*?)<\/t[dh]>/is', $trHtml, $cMatches)) {
+                    $cells = array_map(function($c) {
+                        return trim(html_entity_decode(strip_tags($c), ENT_QUOTES, 'UTF-8'));
+                    }, $cMatches[1]);
+
+                    if (empty($cells) || (count($cells) === 1 && $cells[0] === '')) continue;
+                    $firstCell = $cells[0];
+                    $rowStr = implode(' ', $cells);
+
+                    if (is_numeric($firstCell) && (int)$firstCell > 0) {
+                        $norm = $this->normalizeRecords([$headerCols, $cells], $colInfo, $meta);
+                        if (!empty($norm)) {
+                            $batchRecords[] = $norm[0];
+                        }
+                        if (count($batchRecords) >= $batchSize) {
+                            break 2;
+                        }
+                    } elseif (stripos($rowStr, 'PAX ALL') !== false || preg_match('/-(?:pax\s*all|adult,\s*child,\s*infant|transit)-/i', $rowStr)) {
+                        $ext = $this->extractSourceSummaryFromRow($cells);
+                        if ($ext) {
+                            $meta['source_summary'] = $ext['source_summary'];
+                            $meta['source_passenger_summary'] = $ext['source_passenger_summary'];
+                        }
+                        $norm = $this->normalizeRecords([$headerCols, $cells], $colInfo, $meta);
+                        if (!empty($norm)) {
+                            $batchSummaries[] = $norm[0];
+                        }
+                    }
+                }
+            }
+        }
+
+        $consumedBytes = ftell($handle) - strlen($buffer);
+        $isEof = (feof($handle) && stripos($buffer, '<tr') === false) || ($consumedBytes >= $fileSize);
+        fclose($handle);
+
+        $nextOffset = $isEof ? $fileSize : max($consumedBytes, $offset + 1);
+        $progress = $fileSize > 0 ? min(99, (int) round(($nextOffset / $fileSize) * 85) + 10) : 100;
+
+        return [
+            'records'         => $batchRecords,
+            'summary_records' => $batchSummaries,
+            'next_offset'     => $nextOffset,
+            'is_eof'          => $isEof,
+            'progress'        => $isEof ? 100 : $progress,
+            'meta'            => $meta,
         ];
     }
 
@@ -875,14 +1026,17 @@ class FlightDailyReportParser
 
         // 6. Direction / Leg (Leg input or default ALL)
         $direction = 'ALL';
-        if (!empty($metaMap['LEG'])) {
-            $lg = strtoupper($metaMap['LEG']);
-            if (str_starts_with($lg, 'A')) $direction = 'ARRIVAL';
-            elseif (str_starts_with($lg, 'D')) $direction = 'DEPARTURE';
+        $legMeta = !empty($metaMap['LEG']) ? strtoupper(trim($metaMap['LEG'])) : 'ALL';
+        if ($legMeta === 'ALL') {
+            $direction = 'ALL';
+        } elseif (str_starts_with($legMeta, 'A')) {
+            $direction = 'ARRIVAL';
+        } elseif (str_starts_with($legMeta, 'D')) {
+            $direction = 'DEPARTURE';
         }
 
         // 7. Suffix
-        $suffix = !empty($metaMap['SUFFIX']) ? strtoupper($metaMap['SUFFIX']) : '';
+        $suffix = !empty($metaMap['SUFFIX']) ? strtoupper($metaMap['SUFFIX']) : 'ALL';
 
         // 8. Data Type
         $dataType = 'OPERATIONAL DATA';
@@ -896,6 +1050,7 @@ class FlightDailyReportParser
             'airport_name'             => $airportName,
             'report_airport'           => $airportCode,
             'report_airports'          => [$airportCode],
+            'branch_code'              => $airportCode,
             'is_single_airport'        => true,
             'operator'                 => $operator,
             'date_start'               => $pStart,
@@ -905,13 +1060,16 @@ class FlightDailyReportParser
             'source_start'             => $pStart,
             'source_end'               => $pEnd,
             'period_label'             => "{$pStart} s/d {$pEnd}",
+            'transactions_date_fdr'    => $metaMap['TRANSACTIONS_DATEFDR'] ?? "{$pStart} - {$pEnd}",
             'source_type'              => $sourceType,
             'source_granularity'       => str_replace(' ', '_', $sourceType),
             'direction'                => $direction,
-            'leg'                      => $direction,
+            'leg'                      => $legMeta,
             'route_type'               => $routeType,
+            'category_code'            => $metaMap['CATEGORY_CODE'] ?? 'ALL',
             'suffix'                   => $suffix,
             'realization'              => $realization,
+            'real'                     => $metaMap['REAL'] ?? $realization,
             'data_type'                => $dataType,
             'source_system'            => 'OASYS',
             'report_name'              => 'FLIGHT DAILY REPORT',
@@ -997,7 +1155,7 @@ class FlightDailyReportParser
     /**
      * Refine metadata (dates, operator, airport) from parsed rows if needed.
      */
-    protected function refineMetadataWithRecords(array $meta, array $records): array
+    public function refineMetadataWithRecords(array $meta, array $records): array
     {
         if (empty($records)) {
             return $meta;
@@ -1168,6 +1326,11 @@ class FlightDailyReportParser
                 continue;
             }
 
+            // Movement row detection: First cell must be a positive numeric row number (Section 18)
+            if (!is_numeric($firstCell) || (int)$firstCell <= 0) {
+                continue;
+            }
+
             // Extract raw fields using map
             $get = function (string $key, $default = 'N/A') use ($row, $map) {
                 if (isset($map[$key]) && isset($row[$map[$key]])) {
@@ -1248,6 +1411,7 @@ class FlightDailyReportParser
             $infant   = $getNumeric('infant', 0);
             $transit  = $getNumeric('transit', 0);
             $transfer = $getNumeric('transfer', 0);
+            $umroh    = $getNumeric('umroh', 0);
 
             // If load is 0 but adult+child is present, calculate load
             if ($load === 0 && ($adult > 0 || $child > 0)) {
@@ -1349,10 +1513,10 @@ class FlightDailyReportParser
             $operationalHour = $scheduledHour !== null ? $scheduledHour : ($actualHour !== null ? $actualHour : 0);
             $operationalDatetime = $scheduledDatetime ?: ($actualDatetime ?: "{$operationalDate} 00:00:00");
 
-            // Delay in minutes
+            // Delay in minutes (cross-midnight aware)
             $delayMinutes = 0;
             if ($schedMovementRaw && $actMovementRaw) {
-                $delayMinutes = $this->calculateTimeDifferenceMinutes($schedMovementRaw, $actMovementRaw);
+                $delayMinutes = $this->calculateTimeDifferenceMinutes($schedMovementRaw, $actMovementRaw, $scheduledDatetime, $actualDatetime);
             }
 
             // Irregularity Flag: Divert > 0, Miss > 0, or Unscheduled (PART 13)
@@ -1383,6 +1547,8 @@ class FlightDailyReportParser
                 'sobt'                         => $sobt,
                 'aibt'                         => $aibt,
                 'aobt'                         => $aobt,
+                'sibt_sobt'                    => $sibtSobtVal !== 'N/A' ? $sibtSobtVal : ($direction === 'ARRIVAL' ? $sibt : $sobt),
+                'aibt_aobt'                    => $aibtAobtVal !== 'N/A' ? $aibtAobtVal : ($direction === 'ARRIVAL' ? $aibt : $aobt),
                 'sched_display'                => ($direction === 'ARRIVAL' ? $sibt : $sobt),
                 'actual_display'               => ($direction === 'ARRIVAL' ? $aibt : $aobt),
                 'scheduled_datetime'           => $scheduledDatetime,
@@ -1410,30 +1576,31 @@ class FlightDailyReportParser
                 'traffic'                      => $traffic,
                 'route_type'                   => $traffic,
                 'mtow'                         => $mtow,
-                'reg_no'               => $regNo,
-                'cap'                  => $cap,
-                'load'                 => $load,
-                'load_factor'          => $loadFactor,
-                'adult'                => $adult,
-                'child'                => $child,
-                'infant'               => $infant,
-                'transit'              => $transit,
-                'transfer'             => $transfer,
-                'divert'               => $divert,
-                'miss'                 => $miss,
-                'crw'                  => $crw,
-                'ex_crw'               => $exCrw,
-                'cargo_kg'             => $cargoKg,
-                'baggage_kg'           => $baggageKg,
-                'pos_kg'               => $posKg,
-                'stand'                => $stand,
-                'runway'               => $runway,
-                'final'                => $final,
-                'final_time'           => $finalTime,
-                'branch'               => $branch,
-                'report_airport'       => !empty($branch) && $branch !== 'N/A' ? strtoupper($branch) : ($meta['airport'] ?? 'CGK'),
-                'origin_airport'       => $city1,
-                'destination_airport'  => $city2,
+                'reg_no'                       => $regNo,
+                'cap'                          => $cap,
+                'load'                         => $load,
+                'load_factor'                  => $loadFactor,
+                'adult'                        => $adult,
+                'child'                        => $child,
+                'infant'                       => $infant,
+                'transit'                      => $transit,
+                'transfer'                     => $transfer,
+                'umroh'                        => $umroh,
+                'divert'                       => $divert,
+                'miss'                         => $miss,
+                'crw'                          => $crw,
+                'ex_crw'                       => $exCrw,
+                'cargo_kg'                     => $cargoKg,
+                'baggage_kg'                   => $baggageKg,
+                'pos_kg'                       => $posKg,
+                'stand'                        => $stand,
+                'runway'                       => $runway,
+                'final'                        => $final,
+                'final_time'                   => $finalTime,
+                'branch'                       => $branch,
+                'report_airport'               => !empty($branch) && $branch !== 'N/A' ? strtoupper($branch) : ($meta['airport'] ?? 'CGK'),
+                'origin_airport'               => $city1,
+                'destination_airport'          => $city2,
                 'delay_minutes'        => $delayMinutes,
                 'is_irregular'         => $isIrregular,
                 'is_realized'          => $isRealized,
@@ -1505,9 +1672,15 @@ class FlightDailyReportParser
     /**
      * Calculate difference in minutes between scheduled and actual time.
      */
-    protected function calculateTimeDifferenceMinutes(string $sched, string $act): int
+    public static function calculateTimeDifferenceMinutes(string $sched, string $act, ?string $schedDt = null, ?string $actDt = null): int
     {
         try {
+            if ($schedDt && $actDt) {
+                return (int) Carbon::parse($schedDt)->diffInMinutes(Carbon::parse($actDt), false);
+            }
+            if (preg_match('/(\d{1,2}[-\/]\d{1,2}[-\/]\d{4}\s+\d{1,2}:\d{2})/', $sched) && preg_match('/(\d{1,2}[-\/]\d{1,2}[-\/]\d{4}\s+\d{1,2}:\d{2})/', $act)) {
+                return (int) Carbon::parse(str_replace('/', '-', $sched))->diffInMinutes(Carbon::parse(str_replace('/', '-', $act)), false);
+            }
             preg_match('/(\d{1,2}):(\d{2})/', $sched, $sm);
             preg_match('/(\d{1,2}):(\d{2})/', $act, $am);
             if (!empty($sm) && !empty($am)) {
@@ -1522,7 +1695,7 @@ class FlightDailyReportParser
     /**
      * Build fast summary for rapid verification.
      */
-    protected function buildFastSummary(array $records, array $meta): array
+    public function buildFastSummary(array $records, array $meta): array
     {
         $movementRecords = array_filter($records, fn($r) => ($r['row_type'] ?? 'MOVEMENT') !== 'SUMMARY' && stripos($r['air_line'] ?? '', 'PAX ALL') === false);
         $totalFlights = count($movementRecords);

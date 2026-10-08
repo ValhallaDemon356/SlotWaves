@@ -526,22 +526,43 @@ function fdrConfigForm() {
                     this.modalUploadProgress = 55;
                     this.modalUploadText = 'Upload complete. Initializing streaming parser...';
 
-                    try {
-                        fetch(lastChunkData.process_url, {
-                            method: 'POST',
-                            headers: {
-                                'Accept': 'application/json',
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'X-CSRF-TOKEN': csrfToken
+                    // Drive incremental batch processing steps (Section 12-14)
+                    let isProcessingActive = true;
+                    const runProcessBatch = async () => {
+                        if (!this.isUploadingModal || !isProcessingActive) return;
+                        try {
+                            const res = await fetch(lastChunkData.process_url, {
+                                method: 'POST',
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'X-CSRF-TOKEN': csrfToken
+                                }
+                            });
+                            const resJson = await res.json();
+                            if (!resJson.success || resJson.status === 'PAUSED' || resJson.status === 'FAILED') {
+                                isProcessingActive = false;
+                                const errCode = resJson.error_code || (resJson.error && resJson.error.code) || 'FDR_PROCESSING_ERROR';
+                                const errMsg = resJson.error_message || (resJson.error && resJson.error.message) || 'Processing failed.';
+                                this.isUploadingModal = false;
+                                this.modalPausedMessage = `[${errCode}] ${errMsg}`;
+                                this.modalUploadText = this.modalPausedMessage;
+                                return;
                             }
-                        }).catch(() => {});
-                    } catch (e) {}
+                            if (resJson.status === 'PARSING' && !resJson.is_eof) {
+                                setTimeout(runProcessBatch, 100);
+                            }
+                        } catch (e) {
+                            console.warn('Process batch error:', e);
+                        }
+                    };
+                    runProcessBatch();
 
                     const pollUrl = lastChunkData.poll_url;
                     let jobReady = false;
                     let pollAttempts = 0;
 
-                    while (!jobReady && pollAttempts < 120) {
+                    while (!jobReady && pollAttempts < 180) {
                         pollAttempts++;
                         await delay(800);
 
@@ -559,31 +580,40 @@ function fdrConfigForm() {
                                 this.modalUploadText = 'Reading OASYS tables & metadata...';
                             } else if (job.status === 'PARSING') {
                                 const rowCount = job.processed_rows || 0;
-                                this.modalUploadProgress = Math.max(this.modalUploadProgress, Math.min(85, 60 + Math.round((job.progress || 0) * 0.25)));
-                                this.modalUploadText = `Streaming flight movements (${rowCount.toLocaleString()} rows)...`;
+                                const totalRows = job.total_rows || (rowCount > 0 ? rowCount : 33589);
+                                const pct = job.progress ? job.progress.toFixed(1) : ((rowCount / totalRows) * 100).toFixed(1);
+                                this.modalUploadProgress = Math.max(this.modalUploadProgress, Math.min(88, 60 + Math.round((job.progress || 0) * 0.28)));
+                                this.modalUploadText = `Step 2/5 Parsing: ${rowCount.toLocaleString()} / ${totalRows.toLocaleString()} rows (${pct}%)`;
                             } else if (job.status === 'NORMALIZING') {
-                                this.modalUploadProgress = 88;
+                                this.modalUploadProgress = 92;
                                 this.modalUploadText = 'Normalizing routes, dates & realization...';
                             } else if (job.status === 'VALIDATING') {
-                                this.modalUploadProgress = 94;
+                                this.modalUploadProgress = 96;
                                 this.modalUploadText = 'Validating records & excluding summary rows...';
                             } else if (job.status === 'READY') {
+                                isProcessingActive = false;
                                 this.modalUploadProgress = 100;
                                 const movements = (job.processed_rows || job.total_rows || 0).toLocaleString();
-                                this.modalUploadText = `Ready! Ingested ${movements} valid flight movements. Loading...`;
+                                this.modalUploadText = `Step 5/5: Ready! Ingested ${movements} valid flight movements. Loading...`;
                                 jobReady = true;
                                 setTimeout(() => {
                                     window.location.href = job.result_url || lastChunkData.redirect_url;
                                 }, 400);
                                 return;
                             } else if (job.status === 'PAUSED') {
+                                isProcessingActive = false;
                                 this.isUploadingModal = false;
                                 this.isModalPaused = true;
-                                this.modalPausedMessage = `Pemrosesan terhenti: ${job.error_message || 'Server timeout'}. Chunk upload selesai. Coba lagi.`;
+                                const errCode = job.error_code || (job.error && job.error.code) || 'FDR_PROCESSING_ERROR';
+                                const errMsg = job.error_message || (job.error && job.error.message) || 'Processing paused.';
+                                this.modalPausedMessage = `Pemrosesan terhenti [${errCode}]: ${errMsg}. Chunk upload selesai. Coba lagi.`;
                                 this.modalUploadText = this.modalPausedMessage;
                                 return;
                             } else if (job.status === 'FAILED') {
-                                throw new Error(`FDR Ingestion failed: ${job.error_message || 'Processing error'}`);
+                                isProcessingActive = false;
+                                const errCode = job.error_code || (job.error && job.error.code) || 'FDR_PROCESSING_ERROR';
+                                const errMsg = job.error_message || (job.error && job.error.message) || 'Processing error.';
+                                throw new Error(`[${errCode}] ${errMsg}`);
                             }
                         } catch (pollErr) {
                             if (pollErr.message && pollErr.message.includes('FDR Ingestion failed')) throw pollErr;

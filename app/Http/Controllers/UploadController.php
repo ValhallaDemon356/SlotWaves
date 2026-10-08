@@ -106,9 +106,11 @@ class UploadController extends Controller
             ], 422);
         }
 
-        // File size check: if a non-probe file exceeds 50 MB, prompt to use chunked pipeline
+        // File size check: if a non-probe file exceeds 150 MB for FDR (50 MB for standard uploads), prompt to use chunked pipeline
         $fileSize = $file->getSize();
-        if (!$isProbe && $fileSize > 50 * 1024 * 1024) {
+        $isFdr = strcasecmp($reportType, 'fdr') === 0;
+        $maxLimit = $isFdr ? (150 * 1024 * 1024) : (50 * 1024 * 1024);
+        if (!$isProbe && $fileSize > $maxLimit) {
             return response()->json([
                 'valid'            => false,
                 'category'         => 'FILE_TOO_LARGE',
@@ -675,36 +677,28 @@ class UploadController extends Controller
             $chunkData  = file_get_contents($chunkFile->getRealPath());
             $chunkBytes = strlen($chunkData);
 
-            // ── 3. Store chunk persistently (Database BLOB + Storage Disk Part) ───
-            // Persistent database storage (GUARANTEED across all Vercel Lambda invocations):
-            DB::table('upload_chunks')->updateOrInsert(
-                ['upload_token' => $uploadToken, 'chunk_index' => $chunkIndex],
-                [
-                    'total_chunks' => $totalChunks,
-                    'chunk_size'   => $chunkBytes,
-                    'chunk_data'   => $chunkData,
-                    'created_at'   => now(),
-                ]
-            );
-
-            // Also write to storage disk as cached part
-            try {
-                Storage::disk('local')->put("fdr_chunks/{$uploadToken}/chunk_{$chunkIndex}.part", $chunkData);
-            } catch (\Throwable $e) {
-                // Non-fatal, DB is primary persistent source
+            // ── 3. Store chunk persistently (Database BLOB for DAU + Storage Disk Part for FDR) ───
+            if (!$isFdr) {
+                DB::table('upload_chunks')->updateOrInsert(
+                    ['upload_token' => $uploadToken, 'chunk_index' => $chunkIndex],
+                    [
+                        'total_chunks' => $totalChunks,
+                        'chunk_size'   => $chunkBytes,
+                        'chunk_data'   => $chunkData,
+                        'created_at'   => now(),
+                    ]
+                );
             }
 
-            // Maintain /tmp assembled file for fast single-container execution
-            $tmpDir = rtrim(sys_get_temp_dir(), '/\\');
-            $tmpAssembled = "{$tmpDir}/fdr_asm_{$uploadToken}.bin";
-            $expectedOffset = $chunkIndex * FDR_CHUNK_SIZE_BYTES;
-            $currentTmpSize = file_exists($tmpAssembled) ? filesize($tmpAssembled) : 0;
-            if ($currentTmpSize <= $expectedOffset) {
-                $fh = @fopen($tmpAssembled, 'ab');
-                if ($fh) {
-                    fwrite($fh, $chunkData);
-                    fclose($fh);
+            // Write to storage disk as chunk part
+            try {
+                $storageDisk = config('filesystems.default', 'local');
+                Storage::disk($storageDisk)->put("fdr_chunks/{$uploadToken}/chunk_{$chunkIndex}.part", $chunkData);
+                if ($storageDisk !== 'local') {
+                    Storage::disk('local')->put("fdr_chunks/{$uploadToken}/chunk_{$chunkIndex}.part", $chunkData);
                 }
+            } catch (\Throwable $e) {
+                Storage::disk('local')->put("fdr_chunks/{$uploadToken}/chunk_{$chunkIndex}.part", $chunkData);
             }
 
             if ($session) {
@@ -713,14 +707,15 @@ class UploadController extends Controller
 
             unset($chunkData); // free memory immediately
 
-            // ── 4. NOT FULLY UPLOADED: Verify all chunk indices 0 to totalChunks - 1 exist (Section 11) ───
-            $chunkIndicesInDb = DB::table('upload_chunks')
-                ->where('upload_token', $uploadToken)
-                ->pluck('chunk_index')
-                ->all();
+            // ── 4. NOT FULLY UPLOADED: Verify all chunk indices exist ───
             $missing = [];
+            $storageDisk = config('filesystems.default', 'local');
             for ($i = 0; $i < $totalChunks; $i++) {
-                if (!in_array($i, $chunkIndicesInDb, true) && !Storage::disk('local')->exists("fdr_chunks/{$uploadToken}/chunk_{$i}.part")) {
+                if ($session && $session->hasChunk($i)) {
+                    continue;
+                }
+                if (!Storage::disk($storageDisk)->exists("fdr_chunks/{$uploadToken}/chunk_{$i}.part") &&
+                    !Storage::disk('local')->exists("fdr_chunks/{$uploadToken}/chunk_{$i}.part")) {
                     $missing[] = $i;
                 }
             }
@@ -734,7 +729,7 @@ class UploadController extends Controller
                     'total_chunks'         => $totalChunks,
                     'uploaded_chunks'      => array_values(array_diff(range(0, $totalChunks - 1), $missing)),
                     'missing_chunks'       => $missing,
-                    'assembled_bytes'      => $session ? $session->uploaded_bytes : (file_exists($tmpAssembled) ? filesize($tmpAssembled) : 0),
+                    'assembled_bytes'      => $session ? $session->uploaded_bytes : 0,
                     'uploaded_bytes'       => $session ? $session->uploaded_bytes : 0,
                     'last_confirmed_chunk' => $session ? $session->last_confirmed_chunk : $chunkIndex,
                     'status'               => 'UPLOADING',
@@ -742,11 +737,81 @@ class UploadController extends Controller
                 ]);
             }
 
-            // ── 5. ALL CHUNKS RECEIVED: Assemble canonical file ───────────────
+            // ── 5. FDR LAST CHUNK: Record completion & return job immediately (Prompt Section 11) ───
+            if ($isFdr) {
+                $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION)) ?: 'xls';
+                $canonicalRelativePath = "uploads/fdr/{$uploadToken}.{$ext}";
+
+                if ($session) {
+                    $session->update([
+                        'storage_path'         => $canonicalRelativePath,
+                        'status'               => FdrUploadSession::STATUS_UPLOADED,
+                        'uploaded_bytes'       => $fileSize ?: $session->uploaded_bytes,
+                        'last_confirmed_chunk' => $totalChunks - 1,
+                    ]);
+                }
+
+                $upload = Upload::create([
+                    'original_filename'  => $filename,
+                    'stored_path'        => $canonicalRelativePath,
+                    'status'             => 'processing',
+                    'report_type'        => 'fdr',
+                    'total_rows'         => 0,
+                    'valid_rows'         => 0,
+                    'invalid_rows'       => 0,
+                    'duplicate_rows'     => 0,
+                    'parsing_confidence' => 1.0,
+                    'validation_summary' => ['valid' => true, 'meta' => ['airport_code' => 'CGK']],
+                    'report_data'        => ['meta' => ['airport' => 'CGK', 'airport_code' => 'CGK']],
+                ]);
+
+                $job = FdrProcessingJob::create([
+                    'upload_id'      => $upload->id,
+                    'upload_token'   => $uploadToken,
+                    'filename'       => $filename,
+                    'stored_path'    => $canonicalRelativePath,
+                    'file_size'      => $fileSize ?: ($session?->file_size ?? 0),
+                    'file_hash'      => $fileHash,
+                    'report_type'    => 'fdr',
+                    'status'         => 'UPLOADED',
+                    'stage'          => 'UPLOADED',
+                    'stage_label'    => 'Upload complete. Ready for processing.',
+                    'progress'       => 0,
+                    'processed_rows' => 0,
+                    'total_rows'     => 0,
+                    'current_offset' => 0,
+                    'current_batch'  => 0,
+                    'meta'           => [
+                        'canonical_path' => $canonicalRelativePath,
+                        'file_size'      => $fileSize ?: ($session?->file_size ?? 0),
+                    ],
+                    'result_url'     => route('fdr.dashboard', ['upload' => $upload->id, 'date_scope' => 'ALL_PERIOD']),
+                ]);
+
+                session(['fdr_active_upload_id' => $upload->id]);
+                session(['active_upload_id' => $upload->id]);
+
+                return response()->json([
+                    'success'      => true,
+                    'completed'    => true,
+                    'is_async_job' => true,
+                    'job_id'       => $job->id,
+                    'upload_id'    => $upload->id,
+                    'report_type'  => 'fdr',
+                    'status'       => 'UPLOADED',
+                    'poll_url'     => route('fdr.jobs.status', $job->id),
+                    'process_url'  => route('fdr.jobs.process', $job->id),
+                    'redirect_url' => $job->result_url,
+                    'result_url'   => $job->result_url,
+                    'message'      => "Upload complete ({$fileSize} bytes). Processing job created.",
+                ]);
+            }
+
+            // ── 6. NON-FDR: Assemble canonical file for DAU ───────────────
             $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION)) ?: 'xls';
             $canonicalRelativePath = "uploads/fdr/{$uploadToken}.{$ext}";
-
-            // Open assembly target in /tmp
+            $tmpDir = rtrim(sys_get_temp_dir(), '/\\');
+            $tmpAssembled = "{$tmpDir}/fdr_asm_{$uploadToken}.bin";
             $asmHandle = fopen($tmpAssembled, 'wb');
             if (!$asmHandle) {
                 throw new \RuntimeException("Failed to initialize assembled file in {$tmpAssembled}");
@@ -807,7 +872,6 @@ class UploadController extends Controller
                 ], 422);
             }
 
-            // Section 9: Source file size check
             if ($expectedSize > 0 && abs($assembledSize - $expectedSize) > 2048) {
                 @unlink($tmpAssembled);
                 return response()->json([
@@ -822,7 +886,6 @@ class UploadController extends Controller
                 ], 422);
             }
 
-            // Persist assembled file to Storage disk (Section 5 & 6)
             $storedViaStorage = false;
             try {
                 $fp = fopen($tmpAssembled, 'rb');
@@ -840,115 +903,6 @@ class UploadController extends Controller
 
             if (!$storedViaStorage) {
                 $assembledAbsolutePath = $tmpAssembled;
-            }
-
-            // ── 6. FDR Validation & Job Queue (Section 13) ────────────────────
-            if ($isFdr) {
-                $head = @file_get_contents($tmpAssembled, false, null, 0, 65536) ?: '';
-                $lowerHead = strtolower($head);
-                $isFdrHtml = str_contains($lowerHead, '<table') || str_contains($lowerHead, '<html')
-                    || str_contains($lowerHead, '<tr') || str_contains($lowerHead, '<td')
-                    || str_contains($lowerHead, 'aeronautical') || str_contains($lowerHead, 'oasys')
-                    || str_contains($lowerHead, 'flight daily') || str_contains($lowerHead, 'sibt')
-                    || str_contains($lowerHead, 'sobt') || str_contains($lowerHead, 'aibt')
-                    || str_contains($lowerHead, 'aobt') || str_contains($lowerHead, 'transactions_datefdr');
-
-                if (!$isFdrHtml) {
-                    @unlink($tmpAssembled);
-                    if ($storedViaStorage) {
-                        Storage::disk('local')->delete($canonicalRelativePath);
-                    }
-                    return response()->json([
-                        'success'        => false,
-                        'category'       => 'INVALID_TEMPLATE',
-                        'category_title' => 'INVALID FDR FILE',
-                        'error'          => [
-                            'code'      => 'INVALID_FDR_FORMAT',
-                            'message'   => 'Assembled file does not appear to be an OASYS FDR HTML workbook.',
-                            'retryable' => false,
-                        ],
-                        'errors' => ['Not a recognized OASYS FDR HTML table format.'],
-                    ], 422);
-                }
-
-                $airportCode = 'CGK';
-                if (preg_match('/name=[\'"]BRANCH_CODE[\'"][^>]*value=[\'"]([A-Z]{3,4})[\'"]/i', $head, $bcm)) {
-                    $airportCode = strtoupper($bcm[1]);
-                } elseif (preg_match('/value=[\'"]([A-Z]{3,4})[\'"][^>]*name=[\'"]BRANCH_CODE[\'"]/i', $head, $bcm2)) {
-                    $airportCode = strtoupper($bcm2[1]);
-                }
-                $airport = \App\Models\Airport::findByIata($airportCode) ?? \App\Models\Airport::findByIata('CGK');
-                $fileHash = @hash_file('sha256', $tmpAssembled) ?: ($fileHash ?: null);
-
-                if ($session) {
-                    $session->update([
-                        'file_hash'            => $fileHash,
-                        'storage_path'         => $canonicalRelativePath,
-                        'status'               => FdrUploadSession::STATUS_UPLOADED,
-                        'uploaded_bytes'       => $assembledSize,
-                        'last_confirmed_chunk' => $totalChunks - 1,
-                    ]);
-                }
-
-                $upload = Upload::create([
-                    'original_filename'  => $filename,
-                    'stored_path'        => $canonicalRelativePath,
-                    'status'             => 'processing',
-                    'report_type'        => 'fdr',
-                    'total_rows'         => 0,
-                    'valid_rows'         => 0,
-                    'invalid_rows'       => 0,
-                    'duplicate_rows'     => 0,
-                    'parsing_confidence' => 1.0,
-                    'validation_summary' => ['valid' => true, 'meta' => ['airport_code' => $airportCode]],
-                    'report_data'        => ['meta' => ['airport' => $airportCode, 'airport_code' => $airportCode]],
-                    'airport_id'         => $airport?->id,
-                ]);
-
-                $job = FdrProcessingJob::create([
-                    'upload_id'      => $upload->id,
-                    'upload_token'   => $uploadToken,
-                    'filename'       => $filename,
-                    'stored_path'    => $canonicalRelativePath,
-                    'file_size'      => $assembledSize,
-                    'file_hash'      => $fileHash,
-                    'report_type'    => 'fdr',
-                    'status'         => 'QUEUED',
-                    'stage'          => 'QUEUED',
-                    'stage_label'    => 'Queued for processing',
-                    'progress'       => 0,
-                    'processed_rows' => 0,
-                    'total_rows'     => 0,
-                    'meta'           => [
-                        'airport'        => $airportCode,
-                        'tmp_path'       => $tmpAssembled,
-                        'canonical_path' => $canonicalRelativePath,
-                        'file_size'      => $assembledSize,
-                        'file_hash'      => $fileHash,
-                    ],
-                    'result_url'     => route('fdr.dashboard', ['upload' => $upload->id, 'date_scope' => 'ALL_PERIOD']),
-                ]);
-
-                if ($session) {
-                    $session->update(['status' => FdrUploadSession::STATUS_PROCESSING]);
-                }
-
-                session(['fdr_active_upload_id' => $upload->id]);
-                session(['active_upload_id' => $upload->id]);
-
-                return response()->json([
-                    'success'      => true,
-                    'completed'    => true,
-                    'is_async_job' => true,
-                    'job_id'       => $job->id,
-                    'upload_id'    => $upload->id,
-                    'report_type'  => 'fdr',
-                    'status'       => 'QUEUED',
-                    'poll_url'     => route('fdr.jobs.status', $job->id),
-                    'process_url'  => route('fdr.jobs.process', $job->id),
-                    'redirect_url' => route('fdr.dashboard', ['upload' => $upload->id, 'date_scope' => 'ALL_PERIOD']),
-                    'message'      => "Flight Daily Report uploaded successfully ({$assembledSize} bytes). Processing job queued.",
-                ]);
             }
 
             // ── NON-FDR: Validate assembled template ──────────────────────────

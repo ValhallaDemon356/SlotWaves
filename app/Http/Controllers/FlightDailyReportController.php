@@ -340,159 +340,186 @@ class FlightDailyReportController extends Controller
                 ]);
             }
 
-            // Job lock: If already actively processing in another call, return current state
-            if (in_array($job->status, ['READING', 'PARSING', 'NORMALIZING', 'VALIDATING'])) {
-                return response()->json([
-                    'success'        => true,
-                    'status'         => $job->status,
-                    'stage'          => $job->stage ?? $job->status,
-                    'stage_label'    => $job->stage_label,
-                    'progress'       => (float) $job->progress,
-                    'processed_rows' => (int) $job->processed_rows,
-                    'total_rows'     => (int) $job->total_rows,
-                    'current_offset' => (int) ($job->current_offset ?? 0),
-                    'result_url'     => $job->result_url,
-                ]);
-            }
-
-            $job->update([
-                'status'      => 'READING',
-                'stage'       => 'READING',
-                'stage_label' => 'Reading OASYS workbook structure...',
-                'progress'    => max(10, (int)$job->progress),
-                'started_at'  => $job->started_at ?: now(),
-            ]);
-
             // Update session status
             FdrUploadSession::where('upload_token', $job->upload_token)
                 ->update(['status' => FdrUploadSession::STATUS_PROCESSING]);
 
-            // ── Resolve file path: Storage disk -> app storage -> /tmp -> DB upload_chunks fallback ──
+            $disk = config('filesystems.default', 'local');
+            $storedPath = $job->stored_path ?: "uploads/fdr/{$job->upload_token}.xls";
             $fullPath = null;
-            $storedPath = $job->stored_path;
 
-            if ($storedPath && Storage::disk('local')->exists($storedPath)) {
-                $fullPath = Storage::disk('local')->path($storedPath);
-            } elseif ($storedPath && file_exists($storedPath)) {
-                $fullPath = $storedPath;
-            } elseif ($storedPath && file_exists(storage_path('app/' . $storedPath))) {
-                $fullPath = storage_path('app/' . $storedPath);
-            } elseif ($storedPath && file_exists(storage_path('app/templates/' . basename($storedPath)))) {
-                $fullPath = storage_path('app/templates/' . basename($storedPath));
-            } else {
-                $tmpMeta = $job->meta ?? [];
-                $tmpPath = $tmpMeta['tmp_path'] ?? null;
-                if ($tmpPath && file_exists($tmpPath)) {
-                    $fullPath = $tmpPath;
+            // ── 1. Assemble source file from chunks if not already assembled on storage disk ──
+            if (!Storage::disk($disk)->exists($storedPath) && !Storage::disk('local')->exists($storedPath)) {
+                $session = FdrUploadSession::where('upload_token', $job->upload_token)->first();
+                $totalChunks = $session ? $session->total_chunks : 1;
+                $tmpAssembled = sys_get_temp_dir() . '/fdr_asm_' . $job->upload_token . '.bin';
+                $asmHandle = @fopen($tmpAssembled, 'wb');
+                if (!$asmHandle) {
+                    throw new \RuntimeException("FDR_STORAGE_ERROR: Failed to create temporary assembly target.");
                 }
-            }
 
-            // Serverless resilience fallback: Reconstruct file from persistent DB upload_chunks
-            if (!$fullPath || !file_exists($fullPath) || filesize($fullPath) === 0) {
-                $chunkCount = DB::table('upload_chunks')->where('upload_token', $job->upload_token)->count();
-                if ($chunkCount > 0) {
-                    Log::info("Reconstructing FDR file from database upload_chunks for job {$job->id}");
-                    $tmpDir = rtrim(sys_get_temp_dir(), '/\\');
-                    $reconstructed = "{$tmpDir}/fdr_rec_{$job->upload_token}.bin";
-                    $asm = fopen($reconstructed, 'wb');
-                    if ($asm) {
-                        $chunks = DB::table('upload_chunks')
-                            ->where('upload_token', $job->upload_token)
-                            ->orderBy('chunk_index', 'asc')
-                            ->get();
-                        foreach ($chunks as $c) {
-                            if (is_resource($c->chunk_data)) {
-                                stream_copy_to_stream($c->chunk_data, $asm);
-                            } else {
-                                fwrite($asm, $c->chunk_data);
-                            }
-                        }
-                        fclose($asm);
-                        if (file_exists($reconstructed) && filesize($reconstructed) > 0) {
-                            $fullPath = $reconstructed;
-                        }
+                for ($i = 0; $i < $totalChunks; $i++) {
+                    $partPath = "fdr_chunks/{$job->upload_token}/chunk_{$i}.part";
+                    $stream = null;
+                    if (Storage::disk($disk)->exists($partPath)) {
+                        $stream = Storage::disk($disk)->readStream($partPath);
+                    } elseif (Storage::disk('local')->exists($partPath)) {
+                        $stream = Storage::disk('local')->readStream($partPath);
+                    }
+
+                    if ($stream) {
+                        stream_copy_to_stream($stream, $asmHandle);
+                        if (is_resource($stream)) fclose($stream);
                     }
                 }
+                fclose($asmHandle);
+
+                if (file_exists($tmpAssembled) && filesize($tmpAssembled) > 0) {
+                    $fp = fopen($tmpAssembled, 'rb');
+                    Storage::disk($disk)->put($storedPath, $fp);
+                    if (is_resource($fp)) fclose($fp);
+                    @unlink($tmpAssembled);
+
+                    // Clean up temporary chunk parts
+                    try {
+                        Storage::disk($disk)->deleteDirectory("fdr_chunks/{$job->upload_token}");
+                        Storage::disk('local')->deleteDirectory("fdr_chunks/{$job->upload_token}");
+                    } catch (\Throwable $e) {}
+                }
             }
 
-            // Section 8: Storage path verification before processing
-            $fpCheck = ($fullPath && file_exists($fullPath)) ? @fopen($fullPath, 'rb') : false;
-            if (!$fpCheck) {
-                $errCode = 'FDR_SOURCE_NOT_FOUND';
-                $errMsg = 'The uploaded FDR source file is no longer available.';
-                $job->update([
-                    'status'        => 'PAUSED',
-                    'stage'         => 'PAUSED',
-                    'stage_label'   => 'Source File Not Found',
-                    'error_code'    => $errCode,
-                    'error_message' => $errMsg,
-                ]);
-                FdrUploadSession::where('upload_token', $job->upload_token)
-                    ->update(['status' => FdrUploadSession::STATUS_PAUSED]);
-
-                return response()->json([
-                    'success'       => false,
-                    'status'        => 'PAUSED',
-                    'stage'         => 'PAUSED',
-                    'stage_label'   => 'Source File Not Found',
-                    'error'         => [
-                        'code'      => $errCode,
-                        'message'   => $errMsg,
-                        'retryable' => true,
-                    ],
-                    'error_message' => $errMsg,
-                ], 200);
+            // Resolve full filesystem path
+            if (Storage::disk($disk)->exists($storedPath)) {
+                $fullPath = Storage::disk($disk)->path($storedPath);
+            } elseif (Storage::disk('local')->exists($storedPath)) {
+                $fullPath = Storage::disk('local')->path($storedPath);
+            } elseif (file_exists($storedPath)) {
+                $fullPath = $storedPath;
+            } elseif (file_exists(storage_path('app/' . $storedPath))) {
+                $fullPath = storage_path('app/' . $storedPath);
+            } elseif (file_exists(storage_path('app/templates/' . basename($storedPath)))) {
+                $fullPath = storage_path('app/templates/' . basename($storedPath));
             }
-            fclose($fpCheck);
 
-            // Verify file size is not empty
+            if (!$fullPath || !file_exists($fullPath) || filesize($fullPath) < 10) {
+                throw new \RuntimeException("FDR_SOURCE_NOT_FOUND: The uploaded FDR source file is no longer available on persistent storage.");
+            }
+
             $actualSize = filesize($fullPath);
-            if ($actualSize < 10) {
-                $errCode = 'FDR_SOURCE_NOT_FOUND';
-                $errMsg = 'The uploaded FDR source file is no longer available.';
-                $job->update([
-                    'status'        => 'PAUSED',
-                    'stage'         => 'PAUSED',
-                    'stage_label'   => 'Source File Not Found',
-                    'error_code'    => $errCode,
-                    'error_message' => $errMsg,
-                ]);
-                return response()->json([
-                    'success'       => false,
-                    'status'        => 'PAUSED',
-                    'error'         => [
-                        'code'      => $errCode,
-                        'message'   => $errMsg,
-                        'retryable' => true,
-                    ],
-                    'error_message' => $errMsg,
-                ], 200);
+
+            // ── 2. Incremental Batch Processing Loop (Prompt Section 13 & 14) ──
+            $offset = (int) ($job->current_offset ?? 0);
+            $processedRows = (int) ($job->processed_rows ?? 0);
+            $currentBatch = (int) ($job->current_batch ?? 0);
+            $meta = $job->meta ?? [];
+
+            $accumPath = "reports/tmp_rec_{$job->id}.json.gz";
+            $records = [];
+            if ($offset > 0 && Storage::disk($disk)->exists($accumPath)) {
+                try {
+                    $raw = Storage::disk($disk)->get($accumPath);
+                    $records = json_decode(gzdecode($raw), true) ?: [];
+                } catch (\Throwable $e) {}
             }
 
-            // Stream parse with incremental progress updates
-            $parsed = $this->parser->parseHtmlStream($fullPath, function ($stage, $pct, $rows) use ($job) {
-                $labels = [
-                    'READING'     => 'Reading OASYS structure...',
-                    'PARSING'     => "Extracting flight rows ({$rows} rows)...",
-                    'NORMALIZING' => 'Normalizing dates, routes, and realization...',
-                    'VALIDATING'  => 'Validating operational movements...',
-                ];
-                $job->update([
-                    'status'         => $stage,
-                    'stage'          => $stage,
-                    'stage_label'    => $labels[$stage] ?? $stage,
-                    'progress'       => $pct,
-                    'processed_rows' => $rows,
-                    'current_offset' => $rows,
-                ]);
-            });
+            $startTime = microtime(true);
+            $isEof = false;
 
-            // Classify rows into movements and summary
-            $classified = $this->parser->classifyRows($parsed['records']);
-            $movementCount = count($classified['movement_records']);
-            $summaryCount = count($classified['summary_records']);
+            while (!$isEof) {
+                $batchResult = $this->parser->parseBatch($fullPath, $offset, 2000, $meta);
+                $offset = $batchResult['next_offset'];
+                $isEof = $batchResult['is_eof'];
+                $meta = array_merge($meta, $batchResult['meta']);
 
-            // Update upload record
+                if (!empty($batchResult['records'])) {
+                    $records = array_merge($records, $batchResult['records']);
+                    $processedRows = count($records);
+                }
+                if (!empty($batchResult['summary_records'])) {
+                    $meta['_summaries'] = array_merge($meta['_summaries'] ?? [], $batchResult['summary_records']);
+                }
+
+                $currentBatch++;
+                $progress = $isEof ? 90 : $batchResult['progress'];
+
+                // Live checkpoint update every 2 batches for real-time polling accuracy
+                if ($currentBatch % 2 === 0 || $isEof) {
+                    $job->update([
+                        'status'         => 'PARSING',
+                        'stage'          => 'PARSING',
+                        'stage_label'    => "Parsing flight movements ({$processedRows} rows)...",
+                        'progress'       => $progress,
+                        'processed_rows' => $processedRows,
+                        'total_rows'     => $job->total_rows ?: $processedRows,
+                        'current_offset' => $offset,
+                        'current_batch'  => $currentBatch,
+                        'meta'           => $meta,
+                    ]);
+                }
+
+                // Checkpoint and yield every 3.5s to maintain responsive browser UX and prevent gateway timeout
+                if (!$isEof && (microtime(true) - $startTime) > 3.5) {
+                    try {
+                        Storage::disk($disk)->put($accumPath, gzencode(json_encode($records)));
+                    } catch (\Throwable $e) {}
+
+                    $job->update([
+                        'status'         => 'PARSING',
+                        'stage'          => 'PARSING',
+                        'stage_label'    => "Parsing flight movements ({$processedRows} rows)...",
+                        'progress'       => $progress,
+                        'processed_rows' => $processedRows,
+                        'total_rows'     => $job->total_rows ?: $processedRows,
+                        'current_offset' => $offset,
+                        'current_batch'  => $currentBatch,
+                        'meta'           => $meta,
+                    ]);
+
+                    return response()->json([
+                        'success'        => true,
+                        'status'         => 'PARSING',
+                        'stage'          => 'PARSING',
+                        'stage_label'    => "Parsing flight movements ({$processedRows} rows)...",
+                        'progress'       => $progress,
+                        'processed_rows' => $processedRows,
+                        'total_rows'     => $job->total_rows ?: $processedRows,
+                        'current_offset' => $offset,
+                        'current_batch'  => $currentBatch,
+                        'result_url'     => $job->result_url,
+                    ]);
+                }
+            }
+
+            // ── 3. Normalization, Validation, and Finalization (Stage: READY) ──
+            $job->update([
+                'status'      => 'NORMALIZING',
+                'stage'       => 'NORMALIZING',
+                'stage_label' => 'Standardizing routes, schedules, and realization...',
+                'progress'    => 92,
+            ]);
+
+            $meta = $this->parser->refineMetadataWithRecords($meta, $records);
+            $classified = $this->parser->classifyRows($records);
+            $movementRecords = $classified['movement_records'];
+            $summaryRecords = array_merge($classified['summary_records'], $meta['_summaries'] ?? []);
+            $movementCount = count($movementRecords);
+            $summaryCount = count($summaryRecords);
+
+            $job->update([
+                'status'      => 'VALIDATING',
+                'stage'       => 'VALIDATING',
+                'stage_label' => 'Validating operational movements...',
+                'progress'    => 96,
+            ]);
+
+            $fastSummary = $this->parser->buildFastSummary($records, $meta);
+
+            // Clean up temporary accumulator file
+            try {
+                Storage::disk($disk)->delete($accumPath);
+            } catch (\Throwable $e) {}
+
+            // Update Upload record (Upload model automatically offloads large records to compressed disk storage)
             $upload = Upload::find($job->upload_id);
             if ($upload) {
                 $upload->update([
@@ -503,23 +530,19 @@ class FlightDailyReportController extends Controller
                     'duplicate_rows'     => 0,
                     'parsing_confidence' => 1.0,
                     'validation_summary' => ['valid' => true],
-                    'report_data'        => $parsed,
+                    'report_data'        => [
+                        'meta'            => $meta,
+                        'records'         => $records,
+                        'summary'         => $fastSummary,
+                        'detected_format' => 'OASYS HTML XLS',
+                    ],
                 ]);
                 session(['fdr_active_upload_id' => $upload->id]);
                 session(['active_upload_id' => $upload->id]);
             }
 
-            // Clean up temporary files
-            $tmpMeta = $job->meta ?? [];
-            if (!empty($tmpMeta['tmp_path']) && file_exists($tmpMeta['tmp_path'])) {
-                @unlink($tmpMeta['tmp_path']);
-            }
-            if ($fullPath && str_starts_with($fullPath, sys_get_temp_dir()) && file_exists($fullPath)) {
-                @unlink($fullPath);
-            }
-
             $diagnostics = [
-                'source_rows'   => count($parsed['records']),
+                'source_rows'   => $movementCount + $summaryCount,
                 'movement_rows' => $movementCount,
                 'summary_rows'  => $summaryCount,
                 'rejected_rows' => 0,
@@ -534,7 +557,7 @@ class FlightDailyReportController extends Controller
                 'progress'       => 100,
                 'processed_rows' => $movementCount,
                 'total_rows'     => $movementCount,
-                'current_offset' => $movementCount,
+                'current_offset' => $offset,
                 'diagnostics'    => $diagnostics,
                 'result_url'     => $resultUrl,
                 'completed_at'   => now(),
@@ -542,6 +565,20 @@ class FlightDailyReportController extends Controller
 
             FdrUploadSession::where('upload_token', $job->upload_token)
                 ->update(['status' => FdrUploadSession::STATUS_READY]);
+
+            Log::info('FDR Large File Ingestion Completed', [
+                'upload_id'       => $job->upload_id,
+                'file_size'       => $actualSize,
+                'storage_path'    => $storedPath,
+                'source_period'   => ($meta['period_start'] ?? '') . ' to ' . ($meta['period_end'] ?? ''),
+                'detected_format' => 'OASYS HTML XLS',
+                'movement_rows'   => $movementCount,
+                'summary_rows'    => $summaryCount,
+                'processed_rows'  => $movementCount,
+                'current_offset'  => $offset,
+                'processing_time' => round(microtime(true) - $startTime, 3),
+                'error_code'      => null,
+            ]);
 
             return response()->json([
                 'success'       => true,
@@ -557,18 +594,35 @@ class FlightDailyReportController extends Controller
 
         } catch (\Throwable $e) {
             $job = isset($job) ? $job : FdrProcessingJob::find($jobId);
-            $errCode = str_contains(strtolower($e->getMessage()), 'not found') ? 'FDR_SOURCE_NOT_FOUND' : 'PROCESSING_ERROR';
+            $msg = $e->getMessage();
+            $errCode = 'FDR_PARSER_ERROR';
+
+            if (str_contains($msg, 'FDR_SOURCE_NOT_FOUND') || str_contains(strtolower($msg), 'not found') || str_contains(strtolower($msg), 'no longer available')) {
+                $errCode = 'FDR_SOURCE_NOT_FOUND';
+            } elseif ($e instanceof \Illuminate\Database\QueryException) {
+                $errCode = 'FDR_DATABASE_ERROR';
+            } elseif (str_contains($msg, 'FDR_STORAGE_ERROR') || str_contains(strtolower($msg), 'storage') || str_contains(strtolower($msg), 'disk')) {
+                $errCode = 'FDR_STORAGE_ERROR';
+            } elseif (str_contains(strtolower($msg), 'timeout') || str_contains(strtolower($msg), 'maximum execution time')) {
+                $errCode = 'FDR_PROCESSING_TIMEOUT';
+            }
+
             if ($job) {
                 $job->update([
                     'status'        => 'PAUSED',
                     'stage'         => 'PAUSED',
                     'stage_label'   => 'Processing Paused',
                     'error_code'    => $errCode,
-                    'error_message' => $e->getMessage(),
+                    'error_message' => $msg,
                 ]);
                 FdrUploadSession::where('upload_token', $job->upload_token)
                     ->update(['status' => FdrUploadSession::STATUS_PAUSED]);
             }
+
+            Log::error("FDR Job {$jobId} Failed", [
+                'error_code'    => $errCode,
+                'error_message' => $msg,
+            ]);
 
             return response()->json([
                 'success'       => false,
@@ -577,10 +631,11 @@ class FlightDailyReportController extends Controller
                 'stage_label'   => 'Processing Paused',
                 'error'         => [
                     'code'      => $errCode,
-                    'message'   => $e->getMessage(),
+                    'message'   => $msg,
                     'retryable' => true,
                 ],
-                'error_message' => $e->getMessage(),
+                'error_code'    => $errCode,
+                'error_message' => $msg,
             ], 200);
         }
     }

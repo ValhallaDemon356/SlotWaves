@@ -67,9 +67,9 @@ class FlightDailyReportValidator
         }
 
         try {
-            // Fast structural check for probe slices or large files (> 3.5 MB)
+            // Fast structural check for probe slices or large files (> 3 MB)
             $fileSizeBytes = file_exists($filePath) ? filesize($filePath) : 0;
-            if ($isProbe || $fileSizeBytes > 3.5 * 1024 * 1024) {
+            if ($isProbe || $fileSizeBytes > 3 * 1024 * 1024) {
                 $handle = @fopen($filePath, 'rb');
                 $lead = $handle ? fread($handle, 131072) : '';
                 if ($handle) {
@@ -88,7 +88,7 @@ class FlightDailyReportValidator
 
                 if ($hasFdrSignatures) {
                     $metaHeaders = [];
-                    if (preg_match_all('/<input[^>]+type=["\']hidden["\'][^>]*>/i', $lead, $mInputs)) {
+                    if (preg_match_all('/<input[^>]+>/i', $lead, $mInputs)) {
                         foreach ($mInputs[0] as $input) {
                             $name = '';
                             $value = '';

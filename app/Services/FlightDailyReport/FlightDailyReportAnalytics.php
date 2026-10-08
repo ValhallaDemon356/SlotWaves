@@ -1761,7 +1761,7 @@ class FlightDailyReportAnalytics
     public function computeHourlyMovementDistribution(array $records, array $options = [], array $meta = []): array
     {
         $timeBasis = in_array(strtolower($options['time_basis'] ?? 'actual'), ['scheduled', 'actual'], true)
-            ? strtolower($options['time_basis'])
+            ? strtolower($options['time_basis'] ?? 'actual')
             : 'actual';
 
         // 1. Gather all distinct dates and date span across records

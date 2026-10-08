@@ -254,21 +254,48 @@ class HourlyChartService
      */
     public function resolveRunwayCapacityProfile(string $airportCode): array
     {
-        $baseCap = 54; // Default standard base
-        try {
-            $ap = Airport::where('iata_code', $airportCode)->first();
-            if ($ap && !empty($ap->aircraft_capacity) && $ap->aircraft_capacity > 0) {
-                $baseCap = (int)$ap->aircraft_capacity;
-            } elseif ($airportCode === 'CGK') {
-                $baseCap = 72;
-            } elseif ($airportCode === 'BDO') {
-                $baseCap = 24;
-            } elseif ($airportCode === 'BTJ') {
-                $baseCap = 16;
-            } elseif ($airportCode === 'SUB' || $airportCode === 'DPS') {
-                $baseCap = 42;
-            }
-        } catch (\Throwable $e) {}
+        static $staticCaps = [
+            'CGK' => 72,
+            'HLP' => 32,
+            'BDO' => 24,
+            'BTJ' => 16,
+            'SUB' => 42,
+            'DPS' => 42,
+            'UPG' => 36,
+            'KNO' => 36,
+            'JOG' => 24,
+            'YIA' => 32,
+            'SRG' => 24,
+            'BPN' => 30,
+            'BDJ' => 24,
+            'MDC' => 24,
+            'LOP' => 24,
+            'PLM' => 24,
+            'PKU' => 24,
+            'PDG' => 24,
+            'DJB' => 18,
+            'TKG' => 18,
+            'PNK' => 20,
+            'TRK' => 16,
+            'KOE' => 18,
+            'AMQ' => 16,
+            'DJJ' => 16,
+            'TIM' => 16,
+            'SOQ' => 16,
+        ];
+
+        $code = strtoupper(trim($airportCode));
+        if (isset($staticCaps[$code])) {
+            $baseCap = $staticCaps[$code];
+        } else {
+            $baseCap = 54;
+            try {
+                $ap = Airport::where('iata_code', $code)->first();
+                if ($ap && !empty($ap->aircraft_capacity) && $ap->aircraft_capacity > 0) {
+                    $baseCap = (int)$ap->aircraft_capacity;
+                }
+            } catch (\Throwable $e) {}
+        }
 
         // Hourly capacity variation coefficients based on aviation operational profiles
         // (Curfew / night maintenance / peak flow / midday wave)
