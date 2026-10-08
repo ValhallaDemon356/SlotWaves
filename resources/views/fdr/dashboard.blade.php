@@ -120,7 +120,7 @@
                     </div>
                     @if(count($airports) <= 1)
                         @php
-                            $lockedAp = $airports[0] ?? ($meta['report_airport'] ?? ($meta['airport'] ?? 'HLP'));
+                            $lockedAp = $airports[0] ?? ($meta['report_airport'] ?? ($meta['airport'] ?? 'CGK'));
                             $lockedName = \App\Services\FlightDailyReport\FlightDailyReportParser::resolveAirportName($lockedAp);
                         @endphp
                         <div class="relative group" title="Airport scope is determined by OASYS BRANCH_CODE.">
@@ -1003,7 +1003,7 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-extrabold uppercase bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs">
-                        SOURCE AIRPORT: <span class="text-blue-700 font-black">{{ $meta['report_airport'] ?? ($meta['airport'] ?? 'HLP') }}</span>
+                        SOURCE AIRPORT: <span class="text-blue-700 font-black">{{ $meta['report_airport'] ?? ($meta['airport'] ?? 'CGK') }}</span>
                     </span>
                 </div>
             </div>
@@ -1248,7 +1248,7 @@
                             class="text-xs font-bold rounded-xl border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
                         <option value="10">10 / page</option>
                         <option value="25">25 / page</option>
-                        <option value="50">50 / page</option>
+                        <option value="50" selected>50 / page</option>
                         <option value="100">100 / page</option>
                     </select>
                 </div>
@@ -1279,38 +1279,83 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 font-mono text-[11px]">
-                        <template x-for="(r, idx) in flightRecords" :key="r.index || idx">
-                            <tr @click="openFlightDetails(r)" class="hover:bg-blue-50/40 transition cursor-pointer">
-                                <td class="py-2.5 px-3 text-slate-400 font-sans" x-text="((pagination.current_page - 1) * pagination.per_page) + idx + 1"></td>
-                                <td class="py-2.5 px-3 font-sans font-bold text-slate-800" x-text="r.air_line"></td>
-                                <td class="py-2.5 px-3 font-bold text-blue-600 hover:underline" x-text="r.flight_no"></td>
-                                <td class="py-2.5 px-3 font-sans">
-                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold"
-                                          :class="r.direction === 'ARRIVAL' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'"
-                                          x-text="r.direction === 'ARRIVAL' ? 'A SCHED' : 'D SCHED'"></span>
-                                </td>
-                                <td class="py-2.5 px-3 font-sans text-slate-700" x-text="r.route"></td>
-                                <td class="py-2.5 px-3 text-slate-500 font-mono" x-text="r.sched_display || (r.direction === 'ARRIVAL' ? r.sibt : r.sobt)"></td>
-                                <td class="py-2.5 px-3 font-bold font-mono"
-                                    :class="r.actual_display && r.actual_display !== 'N/A' ? 'text-slate-900' : 'text-slate-400'"
-                                    x-text="r.actual_display || (r.direction === 'ARRIVAL' ? r.aibt : r.aobt)"></td>
-                                <td class="py-2.5 px-3 font-bold text-slate-700" x-text="r.reg_no"></td>
-                                <td class="py-2.5 px-3 text-right text-slate-600" x-text="r.cap"></td>
-                                <td class="py-2.5 px-3 text-right text-slate-600" x-text="r.load"></td>
-                                <td class="py-2.5 px-3 text-right font-bold"
-                                    :class="r.load_factor >= 85 ? 'text-emerald-600' : (r.load_factor >= 70 ? 'text-blue-600' : 'text-amber-600')"
-                                    x-text="r.load_factor !== 'N/A' ? r.load_factor + '%' : 'N/A'"></td>
-                                <td class="py-2.5 px-3 text-right font-sans text-slate-800 font-semibold" x-text="(r.adult + r.child + r.infant).toLocaleString()"></td>
-                                <td class="py-2.5 px-3 text-right text-slate-600" x-text="r.cargo_kg ? r.cargo_kg.toLocaleString() : '0'"></td>
-                                <td class="py-2.5 px-3 text-right text-slate-600" x-text="r.baggage_kg ? r.baggage_kg.toLocaleString() : '0'"></td>
-                                <td class="py-2.5 px-3 font-sans text-slate-700 font-semibold" x-text="r.stand"></td>
-                                <td class="py-2.5 px-3 font-mono text-slate-600" x-text="r.runway"></td>
-                                <td class="py-2.5 px-3 text-center font-sans">
-                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold"
-                                          :class="r.delay_minutes > 15 ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'"
-                                          x-text="r.delay_minutes > 15 ? 'DELAY' : 'NORM'"></span>
+                        {{-- 1. Loading State --}}
+                        <template x-if="isFiltering">
+                            <tr>
+                                <td colspan="17" class="py-12 text-center text-slate-500 font-sans">
+                                    <div class="inline-flex items-center gap-2">
+                                        <svg class="animate-spin h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                                        </svg>
+                                        <span class="font-bold text-xs text-slate-700">Memuat data FDR...</span>
+                                    </div>
                                 </td>
                             </tr>
+                        </template>
+
+                        {{-- 2. Error State --}}
+                        <template x-if="!isFiltering && filterError">
+                            <tr>
+                                <td colspan="17" class="py-10 text-center text-rose-600 font-sans">
+                                    <div class="flex flex-col items-center justify-center">
+                                        <svg class="w-8 h-8 text-rose-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                        <span class="font-bold text-xs" x-text="filterError"></span>
+                                        <button type="button" @click="triggerFilter(pagination.current_page)" class="mt-2 px-3 py-1 bg-rose-50 text-rose-700 text-[11px] font-bold rounded-lg border border-rose-200 hover:bg-rose-100">Coba Lagi</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+
+                        {{-- 3. Empty State (Zero Filter Match) --}}
+                        <template x-if="!isFiltering && !filterError && (!flightRecords || flightRecords.length === 0)">
+                            <tr>
+                                <td colspan="17" class="py-12 text-center text-slate-500 font-sans">
+                                    <div class="flex flex-col items-center justify-center">
+                                        <svg class="w-10 h-10 text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        <span class="font-bold text-xs text-slate-700">Tidak ada data FDR yang sesuai dengan filter.</span>
+                                        <span class="text-[11px] text-slate-400 mt-0.5">Silakan reset filter atau gunakan parameter pencarian lain.</span>
+                                        <button type="button" @click="clearAllFilters()" class="mt-3 px-3 py-1 bg-blue-50 text-blue-700 text-[11px] font-bold rounded-lg border border-blue-200 hover:bg-blue-100 transition">Reset Filter</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+
+                        {{-- 4. Normal Flight Rows --}}
+                        <template x-if="!isFiltering && !filterError">
+                            <template x-for="(r, idx) in flightRecords" :key="r.index || idx">
+                                <tr @click="openFlightDetails(r)" class="hover:bg-blue-50/40 transition cursor-pointer">
+                                    <td class="py-2.5 px-3 text-slate-400 font-sans" x-text="((pagination.current_page - 1) * pagination.per_page) + idx + 1"></td>
+                                    <td class="py-2.5 px-3 font-sans font-bold text-slate-800" x-text="r.air_line"></td>
+                                    <td class="py-2.5 px-3 font-bold text-blue-600 hover:underline" x-text="r.flight_no"></td>
+                                    <td class="py-2.5 px-3 font-sans">
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold"
+                                              :class="r.direction === 'ARRIVAL' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'"
+                                              x-text="r.direction === 'ARRIVAL' ? 'A SCHED' : 'D SCHED'"></span>
+                                    </td>
+                                    <td class="py-2.5 px-3 font-sans text-slate-700" x-text="r.route"></td>
+                                    <td class="py-2.5 px-3 text-slate-500 font-mono" x-text="r.sched_display || (r.direction === 'ARRIVAL' ? r.sibt : r.sobt)"></td>
+                                    <td class="py-2.5 px-3 font-bold font-mono"
+                                        :class="r.actual_display && r.actual_display !== 'N/A' ? 'text-slate-900' : 'text-slate-400'"
+                                        x-text="r.actual_display || (r.direction === 'ARRIVAL' ? r.aibt : r.aobt)"></td>
+                                    <td class="py-2.5 px-3 font-bold text-slate-700" x-text="r.reg_no"></td>
+                                    <td class="py-2.5 px-3 text-right text-slate-600" x-text="r.cap"></td>
+                                    <td class="py-2.5 px-3 text-right text-slate-600" x-text="r.load"></td>
+                                    <td class="py-2.5 px-3 text-right font-bold"
+                                        :class="r.load_factor >= 85 ? 'text-emerald-600' : (r.load_factor >= 70 ? 'text-blue-600' : 'text-amber-600')"
+                                        x-text="r.load_factor !== 'N/A' ? r.load_factor + '%' : 'N/A'"></td>
+                                    <td class="py-2.5 px-3 text-right font-sans text-slate-800 font-semibold" x-text="(r.adult + r.child + r.infant).toLocaleString()"></td>
+                                    <td class="py-2.5 px-3 text-right text-slate-600" x-text="r.cargo_kg ? r.cargo_kg.toLocaleString() : '0'"></td>
+                                    <td class="py-2.5 px-3 text-right text-slate-600" x-text="r.baggage_kg ? r.baggage_kg.toLocaleString() : '0'"></td>
+                                    <td class="py-2.5 px-3 font-sans text-slate-700 font-semibold" x-text="r.stand"></td>
+                                    <td class="py-2.5 px-3 font-mono text-slate-600" x-text="r.runway"></td>
+                                    <td class="py-2.5 px-3 text-center font-sans">
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold"
+                                              :class="r.delay_minutes > 15 ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'"
+                                              x-text="r.delay_minutes > 15 ? 'DELAY' : 'NORM'"></span>
+                                    </td>
+                                </tr>
+                            </template>
                         </template>
                     </tbody>
                 </table>
@@ -1491,12 +1536,13 @@ function fdrDashboardController() {
         panel4Tab: 'stands',
         pagination: {
             current_page: 1,
-            per_page: 10,
-            total_pages: Math.ceil({{ $filterResult['filtered_count'] }} / 10),
+            per_page: 50,
+            total_pages: Math.max(1, Math.ceil({{ $filterResult['filtered_count'] }} / 50)),
             total: {{ $filterResult['filtered_count'] }}
         },
         selectedFlight: null,
         isFiltering: false,
+        filterError: null,
         activeRequestId: 0,
         lastUpdatedTime: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
 
@@ -2326,6 +2372,7 @@ function fdrDashboardController() {
 
         triggerFilter(page = 1) {
             this.isFiltering = true;
+            this.filterError = null;
             const reqId = ++this.activeRequestId;
             this.filters.v = Date.now();
 
@@ -2347,10 +2394,16 @@ function fdrDashboardController() {
             fetch(`/fdr/${this.uploadId}/filter?` + params.toString(), {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error('HTTP ' + res.status + ': Gagal memuat data');
+                }
+                return res.json();
+            })
             .then(data => {
                 if (reqId !== this.activeRequestId) return; // Discard stale response
                 this.isFiltering = false;
+                this.filterError = null;
                 this.dateScope = data.date_scope || this.dateScope;
                 if (this.dateScope === 'ALL_PERIOD') {
                     this.selectedDayOption = 'ALL_PERIOD';
@@ -2379,7 +2432,9 @@ function fdrDashboardController() {
                 });
             })
             .catch(err => {
+                if (reqId !== this.activeRequestId) return;
                 this.isFiltering = false;
+                this.filterError = 'FDR data gagal dimuat: ' + (err.message || 'Terjadi kesalahan sistem');
                 console.error("FDR filter error:", err);
             });
         },
@@ -2395,7 +2450,7 @@ function fdrDashboardController() {
         },
 
         removeChip(key) {
-            if (key === 'airport') this.filters.airport = '{{ $meta['report_airport'] ?? ($meta['airport'] ?? 'ALL') }}';
+            if (key === 'airport') this.filters.airport = {{ count($airports) <= 1 ? "'" . ($airports[0] ?? ($meta['report_airport'] ?? ($meta['airport'] ?? 'CGK'))) . "'" : "'ALL'" }};
             if (key === 'leg') this.filters.leg = 'ALL';
             if (key === 'operator') this.filters.operator = 'ALL';
             if (key === 'traffic') this.filters.traffic = 'ALL';
@@ -2410,7 +2465,7 @@ function fdrDashboardController() {
         },
 
         clearAllFilters() {
-            this.filters.airport = '{{ $meta['report_airport'] ?? ($meta['airport'] ?? 'ALL') }}';
+            this.filters.airport = {{ count($airports) <= 1 ? "'" . ($airports[0] ?? ($meta['report_airport'] ?? ($meta['airport'] ?? 'CGK'))) . "'" : "'ALL'" }};
             this.filters.leg = 'ALL';
             this.filters.operator = 'ALL';
             this.filters.traffic = 'ALL';

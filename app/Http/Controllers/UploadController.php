@@ -677,18 +677,16 @@ class UploadController extends Controller
             $chunkData  = file_get_contents($chunkFile->getRealPath());
             $chunkBytes = strlen($chunkData);
 
-            // ── 3. Store chunk persistently (Database BLOB for DAU + Storage Disk Part for FDR) ───
-            if (!$isFdr) {
-                DB::table('upload_chunks')->updateOrInsert(
-                    ['upload_token' => $uploadToken, 'chunk_index' => $chunkIndex],
-                    [
-                        'total_chunks' => $totalChunks,
-                        'chunk_size'   => $chunkBytes,
-                        'chunk_data'   => $chunkData,
-                        'created_at'   => now(),
-                    ]
-                );
-            }
+            // ── 3. Store chunk persistently (Database BLOB for DAU + FDR resilience) ───
+            DB::table('upload_chunks')->updateOrInsert(
+                ['upload_token' => $uploadToken, 'chunk_index' => $chunkIndex],
+                [
+                    'total_chunks' => $totalChunks,
+                    'chunk_size'   => $chunkBytes,
+                    'chunk_data'   => $chunkData,
+                    'created_at'   => now(),
+                ]
+            );
 
             // Write to storage disk as chunk part
             try {

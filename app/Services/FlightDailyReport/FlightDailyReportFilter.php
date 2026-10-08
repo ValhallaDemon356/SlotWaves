@@ -209,9 +209,24 @@ class FlightDailyReportFilter
             }
 
             // 3. Operator Filter
-            if ($operator !== 'ALL' && !empty($operator)) {
-                $al = trim($r['air_line'] ?? ($r['operator'] ?? ''));
-                if (strcasecmp($al, $operator) !== 0 && stripos($al, $operator) === false) {
+            if ($operator !== 'ALL' && !empty($operator) && strcasecmp($operator, 'ALL AIRLINE') !== 0) {
+                $resolved = self::resolveAirlineCode($operator);
+                $al = strtoupper(trim($r['air_line'] ?? ($r['operator'] ?? '')));
+                $flNo = strtoupper(trim($r['flight_no'] ?? ''));
+                $matchesAl = false;
+
+                if (!empty($resolved)) {
+                    foreach ($resolved as $code) {
+                        if ($al === $code || stripos($al, $code) !== false || str_starts_with($flNo, $code)) {
+                            $matchesAl = true;
+                            break;
+                        }
+                    }
+                } else {
+                    $matchesAl = (strcasecmp($al, $operator) === 0 || stripos($al, $operator) !== false || str_starts_with($flNo, strtoupper($operator)));
+                }
+
+                if (!$matchesAl) {
                     $excludedReasons["Operator mismatch ({$al})"] = ($excludedReasons["Operator mismatch ({$al})"] ?? 0) + 1;
                     continue;
                 }
@@ -365,6 +380,65 @@ class FlightDailyReportFilter
         } catch (\Throwable $e) {
             return $rawDate ?? 'N/A';
         }
+    }
+
+    /**
+     * Resolve airline operator string (code or full name) to potential codes and aliases.
+     */
+    public static function resolveAirlineCode(string $operator): array
+    {
+        $op = trim($operator);
+        if ($op === '' || strcasecmp($op, 'ALL') === 0 || strcasecmp($op, 'ALL AIRLINE') === 0) {
+            return [];
+        }
+
+        static $map = [
+            'GARUDA INDONESIA'   => ['GA', 'GARUDA INDONESIA'],
+            'GARUDA'             => ['GA', 'GARUDA INDONESIA'],
+            'GA'                 => ['GA', 'GARUDA INDONESIA'],
+            'SRIWIJAYA AIR'      => ['SJ', 'SRIWIJAYA AIR'],
+            'SRIWIJAYA'          => ['SJ', 'SRIWIJAYA AIR'],
+            'SJ'                 => ['SJ', 'SRIWIJAYA AIR'],
+            'CITILINK'           => ['QG', 'CITILINK'],
+            'CITILINK INDONESIA' => ['QG', 'CITILINK'],
+            'QG'                 => ['QG', 'CITILINK'],
+            'BATIK AIR'          => ['ID', 'BATIK AIR'],
+            'BATIK'              => ['ID', 'BATIK AIR'],
+            'ID'                 => ['ID', 'BATIK AIR'],
+            'LION AIR'           => ['JT', 'LION AIR'],
+            'LION'               => ['JT', 'LION AIR'],
+            'JT'                 => ['JT', 'LION AIR'],
+            'SUPER AIR JET'      => ['IU', 'SUPER AIR JET'],
+            'IU'                 => ['IU', 'SUPER AIR JET'],
+            'PELITA AIR'         => ['IP', 'PELITA AIR'],
+            'PELITA'             => ['IP', 'PELITA AIR'],
+            'IP'                 => ['IP', 'PELITA AIR'],
+            'TRANSNUSA'          => ['8B', 'TRANSNUSA'],
+            '8B'                 => ['8B', 'TRANSNUSA'],
+            'INDONESIA AIRASIA'  => ['QZ', 'AIRASIA'],
+            'AIRASIA'            => ['QZ', 'AIRASIA'],
+            'QZ'                 => ['QZ', 'AIRASIA'],
+            'WINGS AIR'          => ['IW', 'WINGS AIR'],
+            'IW'                 => ['IW', 'WINGS AIR'],
+            'NAM AIR'            => ['IN', 'NAM AIR'],
+            'IN'                 => ['IN', 'NAM AIR'],
+        ];
+
+        $upper = strtoupper($op);
+        if (isset($map[$upper])) {
+            return $map[$upper];
+        }
+
+        try {
+            $air = \App\Models\Airline::where('airline_code', $upper)
+                ->orWhereRaw('UPPER(airline_name) = ?', [$upper])
+                ->first();
+            if ($air) {
+                return array_unique([strtoupper($air->airline_code), strtoupper($air->airline_name)]);
+            }
+        } catch (\Throwable $e) {}
+
+        return [$upper];
     }
 
     /**

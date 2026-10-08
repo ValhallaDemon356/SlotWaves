@@ -33,7 +33,23 @@ class Upload extends Model
     public function getReportDataAttribute($value)
     {
         $data = is_array($value) ? $value : (json_decode($value, true) ?: []);
-        if (!isset($data['records']) && !empty($data['_storage_path'])) {
+        return $data;
+    }
+
+    /**
+     * Explicitly load records from offloaded compressed storage if needed.
+     */
+    public function getOffloadedRecords(): array
+    {
+        $data = is_array($this->attributes['report_data'] ?? null)
+            ? $this->attributes['report_data']
+            : (json_decode($this->attributes['report_data'] ?? '[]', true) ?: []);
+
+        if (!empty($data['records'])) {
+            return $data['records'];
+        }
+
+        if (!empty($data['_storage_path'])) {
             try {
                 $disk = config('filesystems.default', 'local');
                 if (\Illuminate\Support\Facades\Storage::disk($disk)->exists($data['_storage_path'])) {
@@ -42,13 +58,14 @@ class Upload extends Model
                     unset($raw);
                     $records = json_decode($decompressed, true);
                     unset($decompressed);
-                    $data['records'] = $records ?: [];
+                    return $records ?: [];
                 }
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning("Failed to load records from storage: " . $e->getMessage());
+                \Illuminate\Support\Facades\Log::warning("Failed to load offloaded records: " . $e->getMessage());
             }
         }
-        return $data;
+
+        return [];
     }
 
     public function setReportDataAttribute($value)
@@ -101,5 +118,10 @@ class Upload extends Model
     public function timelinePositions(): HasMany
     {
         return $this->hasMany(TimelinePosition::class);
+    }
+
+    public function fdrFlights(): HasMany
+    {
+        return $this->hasMany(FdrFlight::class);
     }
 }
