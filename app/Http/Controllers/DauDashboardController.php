@@ -7,6 +7,10 @@ use App\Services\Dau\ReportTemplateRegistry;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Services\Storage\SupabaseStorageService;
+use App\Services\FlightDailyReport\FdrStreamingParser;
+use App\Services\Dau\TemplateValidator;
+use Illuminate\Support\Facades\Log;
 
 class DauDashboardController extends Controller
 {
@@ -24,6 +28,11 @@ class DauDashboardController extends Controller
         // If this is actually an Airport Slot Schedule upload, redirect to slot schedule dashboard
         if ($upload->report_type === 'slot_schedule' || empty($upload->report_type)) {
             return redirect()->route('schedule.dashboard', $upload->id);
+        }
+
+        // If this is a Flight Daily Report upload, redirect to FDR dashboard
+        if ($upload->report_type === 'fdr') {
+            return redirect()->route('fdr.dashboard', $upload->id);
         }
 
         session(['active_upload_id' => $upload->id]);
@@ -1837,5 +1846,113 @@ class DauDashboardController extends Controller
             'dau12_matrix'        => $dau12Matrix,
             'filters'             => $filters,
         ];
+    }
+
+    /**
+     * Handle post-upload metadata for Flight Daily Report uploaded directly to Supabase Storage.
+     * Bypasses Vercel 4.5MB serverless payload limit completely by having the client upload directly to Supabase.
+     *
+     * @param Request $request
+     * @param SupabaseStorageService $storageService
+     * @param FdrStreamingParser $fdrParser
+     * @param TemplateValidator $validator
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function handleUploadedFdr(
+        Request $request,
+        SupabaseStorageService $storageService,
+        FdrStreamingParser $fdrParser,
+        TemplateValidator $validator
+    ) {
+        $validated = $request->validate([
+            'file_path'         => 'required|string',
+            'bucket_name'       => 'nullable|string',
+            'original_filename' => 'required|string',
+            'airline_type'      => 'nullable|string',
+        ]);
+
+        $bucket = $validated['bucket_name'] ?: config('services.supabase.bucket', 'fdr-datasets');
+        $storagePath = $validated['file_path'];
+        $originalFilename = $validated['original_filename'];
+        $airlineHint = $validated['airline_type'] ?? null;
+
+        $tempPath = null;
+        try {
+            // 1. Safely stream download file from Supabase Storage directly to Vercel /tmp
+            $tempPath = $storageService->downloadToTemp($storagePath, $bucket);
+
+            // 2. Validate template content and format against TemplateValidator
+            $validation = $validator->validate('fdr', $tempPath, false, $originalFilename);
+            if (!$validation['valid']) {
+                return response()->json([
+                    'success'        => false,
+                    'category'       => $validation['category'] ?? 'INVALID_TEMPLATE',
+                    'category_title' => $validation['category_title'] ?? 'INVALID FDR TEMPLATE',
+                    'error'          => $validation['error'] ?? 'The uploaded file failed FDR template validation.',
+                    'errors'         => $validation['errors'] ?? [],
+                ], 422);
+            }
+
+            // 3. Low-memory streaming parsing using FdrStreamingParser (OpenSpout / stream reader)
+            $parsed = $fdrParser->parseStreaming($tempPath, $originalFilename, $airlineHint);
+
+            $airportCode = $parsed['meta']['airport'] ?? 'CGK';
+            $airport = \App\Models\Airport::findByIata($airportCode) ?? \App\Models\Airport::findByIata('CGK');
+
+            // 4. Create and persist Upload record (with automatic gzip offloading for >500 records)
+            $upload = Upload::create([
+                'original_filename'  => $originalFilename,
+                'stored_path'        => "supabase://{$bucket}/{$storagePath}",
+                'status'             => 'completed',
+                'report_type'        => 'fdr',
+                'total_rows'         => $parsed['total_rows'],
+                'valid_rows'         => $parsed['valid_rows'],
+                'invalid_rows'       => $parsed['invalid_rows'] ?? 0,
+                'duplicate_rows'     => 0,
+                'parsing_confidence' => 1.0,
+                'season'             => 'summer',
+                'airport_id'         => $airport?->id,
+                'validation_summary' => ['valid' => true],
+                'report_data'        => [
+                    'meta'    => $parsed['meta'],
+                    'records' => $parsed['records'],
+                    'summary' => $parsed['summary'],
+                ],
+            ]);
+
+            session(['active_upload_id' => $upload->id]);
+            session(['fdr_active_upload_id' => $upload->id]);
+
+            return response()->json([
+                'success'      => true,
+                'completed'    => true,
+                'upload_id'    => $upload->id,
+                'report_type'  => 'fdr',
+                'status'       => 'completed',
+                'total_rows'   => $upload->total_rows,
+                'valid_rows'   => $upload->valid_rows,
+                'redirect_url' => route('fdr.dashboard', $upload->id),
+                'message'      => "Flight Daily Report uploaded and parsed successfully ({$upload->valid_rows} movements).",
+                'summary'      => $parsed['summary'],
+                'meta'         => $parsed['meta'],
+            ], 200);
+
+        } catch (\Throwable $e) {
+            Log::error('handleUploadedFdr failed: ' . $e->getMessage(), [
+                'exception'   => $e,
+                'file_path'   => $storagePath,
+                'bucket'      => $bucket,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error'   => 'Failed to process FDR dataset: ' . $e->getMessage(),
+            ], 500);
+        } finally {
+            // Guarantee /tmp file cleanup to prevent Vercel serverless disk exhaustion
+            if ($tempPath && file_exists($tempPath)) {
+                @unlink($tempPath);
+            }
+        }
     }
 }

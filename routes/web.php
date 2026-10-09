@@ -50,12 +50,14 @@ Route::prefix('dau/{upload}')->group(function () {
     Route::get('/export/pdf',   [\App\Http\Controllers\DauDashboardController::class, 'exportPdf'])->name('dau.export.pdf');
     Route::get('/export/excel', [\App\Http\Controllers\DauDashboardController::class, 'exportExcel'])->name('dau.export.excel');
 });
+Route::post('/dau/handle-uploaded-fdr', [\App\Http\Controllers\DauDashboardController::class, 'handleUploadedFdr'])->name('dau.handle-uploaded-fdr');
 
 // ── Flight Daily Report (FDR) Analytical Intelligence ───────────────────────
 Route::prefix('fdr')->name('fdr.')->group(function () {
     Route::get('/',                           [FlightDailyReportController::class, 'configRedirect'])->name('index');
     Route::get('/config/{upload?}',           [FlightDailyReportController::class, 'config'])->name('config');
     Route::post('/upload',                    [FlightDailyReportController::class, 'store'])->name('upload');
+    Route::post('/handle-uploaded',           [\App\Http\Controllers\DauDashboardController::class, 'handleUploadedFdr'])->name('handle-uploaded');
     Route::post('/use-reference',             [FlightDailyReportController::class, 'useReference'])->name('use-reference');
     Route::get('/jobs/{job}/status',          [FlightDailyReportController::class, 'jobStatus'])->name('jobs.status');
     Route::post('/jobs/{job}/process',        [FlightDailyReportController::class, 'processJob'])->name('jobs.process');

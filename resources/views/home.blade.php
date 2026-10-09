@@ -189,7 +189,23 @@
                     </template>
                 </div>
 
-                {{-- Drag & Drop Upload Zone --}}
+                {{-- ══ CONDITIONAL FDR DIRECT SUPABASE STORAGE UPLOADER ══ --}}
+                <template x-if="selectedReport === 'fdr'">
+                    <div class="space-y-4">
+                        <div class="p-3 bg-aviation-50/70 dark:bg-aviation-950/50 border border-aviation-200 dark:border-aviation-800 rounded-xl text-xs text-aviation-800 dark:text-aviation-300 flex items-center justify-between shadow-2xs">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-aviation-500 animate-pulse"></span>
+                                <span class="font-bold">Serverless Direct Upload Active:</span>
+                                <span>Bypasses Vercel 4.5MB payload limit directly to Supabase Storage (Max 100MB).</span>
+                            </div>
+                            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-aviation-100 dark:bg-aviation-900 text-aviation-700 dark:text-aviation-300 font-bold">100MB Direct</span>
+                        </div>
+                        <x-fdr-supabase-dropzone />
+                    </div>
+                </template>
+
+                {{-- ══ STANDARD REPORT UPLOAD FORM (DAU / SLOT SCHEDULE) ══ --}}
+                <div x-show="selectedReport !== 'fdr'">
                 <form method="POST" action="{{ route('upload.store') }}" enctype="multipart/form-data" id="report-upload-form" @submit.prevent="generateReport()">
                     @csrf
                     <input type="hidden" name="report_type" :value="selectedReport"/>
@@ -479,6 +495,7 @@
                         </template>
                     </button>
                 </form>
+                </div>
 
             </div>
 

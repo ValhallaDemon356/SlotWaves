@@ -19,6 +19,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
             'dau/compare/*',
             'fdr/upload',
             'fdr/jobs/*',
+            'fdr/handle-uploaded',
+            'dau/handle-uploaded-fdr',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -72,7 +74,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
                 $category = 'PDF Parsing / Schedule Extraction Error';
             }
 
-            if ($request->wantsJson() || $request->is('api/*') || $request->is('upload') || $request->is('upload/*') || $request->is('fdr/jobs/*') || $request->is('fdr/*/filter') || $request->ajax()) {
+            if ($request->wantsJson() || $request->is('api/*') || $request->is('upload') || $request->is('upload/*') || $request->is('fdr/*') || $request->is('dau/*') || $request->ajax()) {
                 return new \Illuminate\Http\JsonResponse([
                     'success'  => false,
                     'category' => $category,
@@ -81,6 +83,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
                         'message'   => $sanitizedMsg,
                         'retryable' => ($statusCode >= 500),
                     ],
+                    'errors'   => $e instanceof \Illuminate\Validation\ValidationException ? $e->errors() : [],
                     'message'  => $sanitizedMsg,
                     'class'    => $errClass,
                 ], $statusCode);

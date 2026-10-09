@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'supabase' => [
+        'url' => env('SUPABASE_URL', env('VITE_SUPABASE_URL', 'https://your-project-id.supabase.co')),
+        'anon_key' => env('SUPABASE_ANON_KEY', env('VITE_SUPABASE_ANON_KEY', '')),
+        'service_role_key' => env('SUPABASE_SERVICE_ROLE_KEY', ''),
+        'bucket' => env('SUPABASE_STORAGE_BUCKET', 'fdr-datasets'),
+    ],
+
 ];

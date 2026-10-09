@@ -752,6 +752,39 @@ class FlightDailyReportParser
      */
     protected function parseSpreadsheet(string $filePath): array
     {
+        // Check for XLSX magic bytes (PK\x03\x04) and use OpenSpout streaming reader for low memory footprint
+        $handle = @fopen($filePath, 'rb');
+        $magic = $handle ? fread($handle, 4) : '';
+        if ($handle) fclose($handle);
+
+        if ($magic === "PK\x03\x04" && class_exists(\OpenSpout\Reader\XLSX\Reader::class)) {
+            try {
+                $reader = new \OpenSpout\Reader\XLSX\Reader();
+                $reader->open($filePath);
+                $rows = [];
+                $metaHeaders = [];
+                foreach ($reader->getSheetIterator() as $sheet) {
+                    foreach ($sheet->getRowIterator() as $row) {
+                        $cleanRow = array_map(function ($val) {
+                            if ($val instanceof \DateTimeInterface) {
+                                return $val->format('Y-m-d H:i:s');
+                            }
+                            return $val !== null ? trim((string)$val) : '';
+                        }, $row->toArray());
+
+                        if (!empty(array_filter($cleanRow))) {
+                            $rows[] = array_values($cleanRow);
+                        }
+                    }
+                    break;
+                }
+                $reader->close();
+                return [$metaHeaders, $rows];
+            } catch (\Throwable $e) {
+                // fallback to PhpSpreadsheet if OpenSpout hits an unexpected structure
+            }
+        }
+
         try {
             $reader = IOFactory::createReaderForFile($filePath);
             $reader->setReadDataOnly(true);
