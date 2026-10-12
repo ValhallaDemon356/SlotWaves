@@ -58,6 +58,7 @@ Route::prefix('fdr')->name('fdr.')->group(function () {
     Route::get('/config/{upload?}',           [FlightDailyReportController::class, 'config'])->name('config');
     Route::post('/upload',                    [FlightDailyReportController::class, 'store'])->name('upload');
     Route::post('/handle-uploaded',           [\App\Http\Controllers\DauDashboardController::class, 'handleUploadedFdr'])->name('handle-uploaded');
+    Route::post('/storage/signed-upload', [\App\Http\Controllers\DauDashboardController::class, 'createFdrSignedUploadUrl'])->name('storage.signed-upload');
     Route::post('/use-reference',             [FlightDailyReportController::class, 'useReference'])->name('use-reference');
     Route::get('/jobs/{job}/status',          [FlightDailyReportController::class, 'jobStatus'])->name('jobs.status');
     Route::post('/jobs/{job}/process',        [FlightDailyReportController::class, 'processJob'])->name('jobs.process');
