@@ -156,6 +156,92 @@ class SupabaseStorageService
     }
 
     /**
+     * Create a short-lived signed upload URL for a browser client.
+     *
+     * The service-role key is used server-side only. The returned URL/token
+     * can be used by an unauthenticated browser to upload one object without
+     * exposing privileged credentials.
+     */
+    public function createSignedUploadUrl(string $filePath, ?string $bucket = null, bool $upsert = false): array
+    {
+        $bucket = $bucket ?: $this->defaultBucket;
+        $cleanPath = $this->sanitizeStoragePath($filePath);
+
+        if ($this->supabaseUrl === '') {
+            throw new RuntimeException('Supabase URL is not configured.');
+        }
+
+        if ($this->serviceRoleKey === '') {
+            throw new RuntimeException('SUPABASE_SERVICE_ROLE_KEY is not configured on the server.');
+        }
+
+        $segments = array_map('rawurlencode', explode('/', $cleanPath));
+        $encodedPath = implode('/', $segments);
+        $endpoint = "{$this->supabaseUrl}/storage/v1/object/upload/sign/" . rawurlencode($bucket) . "/{$encodedPath}";
+
+        try {
+            $headers = [
+                'apikey'        => $this->serviceRoleKey,
+                'Authorization' => "Bearer {$this->serviceRoleKey}",
+                'Content-Type'  => 'application/json',
+                'Accept'         => 'application/json',
+            ];
+
+            if ($upsert) {
+                $headers['x-upsert'] = 'true';
+            }
+
+            $response = $this->httpClient->request('POST', $endpoint, [
+                'headers' => $headers,
+                'body'    => '{}',
+            ]);
+
+            $status = $response->getStatusCode();
+            $body = (string) $response->getBody();
+            $data = json_decode($body, true);
+
+            if ($status < 200 || $status >= 300) {
+                $message = $data['message'] ?? $data['error'] ?? $body ?: "HTTP {$status}";
+                if ($status === 404) {
+                    throw new RuntimeException("Bucket '{$bucket}' atau target storage path tidak ditemukan.");
+                }
+                if ($status === 403) {
+                    throw new RuntimeException("Supabase menolak pembuatan signed upload URL. Periksa SUPABASE_SERVICE_ROLE_KEY dan bucket '{$bucket}'.");
+                }
+                throw new RuntimeException("Supabase signed upload URL request failed (HTTP {$status}): {$message}");
+            }
+
+            $relative = $data['signedURL'] ?? $data['url'] ?? null;
+            if (!$relative) {
+                throw new RuntimeException('Supabase tidak mengembalikan signed upload URL.');
+            }
+
+            $signedUrl = str_starts_with($relative, 'http://') || str_starts_with($relative, 'https://')
+                ? $relative
+                : $this->supabaseUrl . '/storage/v1' . '/' . ltrim($relative, '/');
+
+            $token = null;
+            try {
+                $query = parse_url($signedUrl, PHP_URL_QUERY);
+                parse_str((string) $query, $params);
+                $token = $params['token'] ?? null;
+            } catch (\Throwable $e) {
+                // URL itself is sufficient for the browser upload.
+            }
+
+            return [
+                'bucket'     => $bucket,
+                'path'       => $cleanPath,
+                'signed_url' => $signedUrl,
+                'token'      => $token,
+                'expires_in' => 7200,
+            ];
+        } catch (GuzzleException $e) {
+            throw new RuntimeException('Connection error creating Supabase signed upload URL: ' . $e->getMessage(), 0, $e);
+        }
+    }
+
+    /**
      * Delete an object from Supabase Storage.
      */
     public function deleteObject(string $filePath, ?string $bucket = null): bool
