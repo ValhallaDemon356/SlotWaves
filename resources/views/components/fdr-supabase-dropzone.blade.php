@@ -6,7 +6,7 @@
 @props([
     'bucket' => config('services.supabase.bucket', env('NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET', 'flight-reports')),
     'endpoint' => route('fdr.handle-uploaded'),
-    'maxSizeMb' => 100,
+    'maxSizeMb' => (int) env('FDR_MAX_UPLOAD_MB', 50),
 ])
 
 <div x-data="fdrSupabaseUploader({
@@ -50,7 +50,7 @@
                 Drag &amp; Drop Flight Daily Report (FDR)
             </h3>
             <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-md">
-                Direct client-to-storage upload bypassing serverless payload limits.
+                Direct client-to-storage upload using a server-issued signed URL, bypassing serverless payload limits.
                 <button type="button" @click="$refs.fileInput.click()" class="text-aviation-600 dark:text-aviation-400 font-semibold underline underline-offset-2 hover:text-aviation-700">
                     Browse files
                 </button>
@@ -62,7 +62,7 @@
                     .XLSX / .XLS
                 </span>
                 <span class="px-2.5 py-1 rounded-lg bg-aviation-50 dark:bg-aviation-950 text-aviation-700 dark:text-aviation-300 border border-aviation-200 dark:border-aviation-800">
-                    Max 100 MB Limit
+                    Max <span x-text="`${maxSizeMb} MB Limit`"></span>
                 </span>
                 <span class="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -116,7 +116,7 @@
                 </button>
                 <button type="button" @click="startDirectUpload()" class="px-5 py-2 text-xs font-bold text-white bg-aviation-600 hover:bg-aviation-700 active:scale-98 rounded-xl shadow-md transition flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                    <span>Start Direct Upload (100MB)</span>
+                    <span>Start Direct Upload</span>
                 </button>
             </div>
         </div>
@@ -289,25 +289,55 @@ function fdrSupabaseUploader(config) {
             if (!this.selectedFile) return;
 
             const file = this.selectedFile;
-            this.uploadState.status = 'uploading';
-            this.uploadState.progress = 0;
-            this.uploadState.statusTitle = 'Uploading directly to Supabase Storage...';
-            this.uploadState.detailText = `0 MB of ${(file.size / 1048576).toFixed(1)} MB`;
-            this.uploadState.speedText = 'Initiating stream...';
-
-            // Generate clean unique storage path: raw_fdr/YYYY/MM/timestamp_filename
-            const date = new Date();
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const timestamp = Date.now();
-            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-            const storagePath = `raw_fdr/${year}/${month}/${timestamp}_${safeName}`;
-
             const startTime = Date.now();
 
+            this.uploadState.error = false;
+            this.uploadState.status = 'uploading';
+            this.uploadState.progress = 0;
+            this.uploadState.statusTitle = 'Preparing secure direct upload...';
+            this.uploadState.detailText = `Requesting a signed upload URL for ${(file.size / 1048576).toFixed(1)} MB`;
+            this.uploadState.speedText = 'Secure storage authorization';
+
             try {
-                // Execute direct upload using standard XMLHttpRequest for true byte-level progress reporting
-                await this.uploadViaXhr(file, storagePath, (loaded, total) => {
+                // Step 1: Get a short-lived signed upload URL from Laravel.
+                // The server uses SUPABASE_SERVICE_ROLE_KEY; the browser never
+                // receives or sends the service-role key.
+                const signResponse = await fetch(this.signedUploadEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': this.csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        original_filename: file.name,
+                        file_size: file.size,
+                        mime_type: file.type || 'application/octet-stream'
+                    })
+                });
+
+                const signData = await this.readJsonResponse(signResponse);
+
+                if (!signResponse.ok || !signData.success) {
+                    throw new Error(this.extractError(signData, `Signed upload URL request failed (HTTP ${signResponse.status}).`));
+                }
+
+                const signedUrl = signData.signed_url;
+                const storagePath = signData.path;
+                this.bucket = signData.bucket || this.bucket;
+
+                if (!signedUrl || !storagePath) {
+                    throw new Error('Backend did not return a valid signed upload URL.');
+                }
+
+                this.uploadState.statusTitle = 'Uploading directly to Supabase Storage...';
+                this.uploadState.detailText = `0 MB of ${(file.size / 1048576).toFixed(1)} MB`;
+                this.uploadState.speedText = 'Private bucket · signed upload';
+
+                // Step 2: PUT the file directly to the signed storage URL.
+                // No Authorization/apikey header is required here.
+                await this.uploadViaSignedUrl(file, signedUrl, (loaded, total) => {
                     const pct = Math.round((loaded / total) * 100);
                     this.uploadState.progress = Math.min(99, pct);
                     const loadedMb = (loaded / 1048576).toFixed(1);
@@ -321,12 +351,12 @@ function fdrSupabaseUploader(config) {
                     }
                 });
 
-                // Direct upload completed: now notify backend with metadata
+                // Step 3: Notify Laravel that the persistent storage object is ready.
                 this.uploadState.status = 'processing';
                 this.uploadState.progress = 100;
-                this.uploadState.statusTitle = 'Validating and Streaming Extraction in Laravel...';
-                this.uploadState.detailText = 'Memory-safe streaming parser active on Vercel runtime';
-                this.uploadState.speedText = 'Parsing rows sequentially';
+                this.uploadState.statusTitle = 'Validating and preparing FDR analytics...';
+                this.uploadState.detailText = 'Source file is safely stored in Supabase Storage';
+                this.uploadState.speedText = 'Starting parser';
 
                 const response = await fetch(this.backendEndpoint, {
                     method: 'POST',
@@ -344,38 +374,95 @@ function fdrSupabaseUploader(config) {
                     })
                 });
 
-                const data = await response.json();
+                const data = await this.readJsonResponse(response);
 
                 if (!response.ok || !data.success) {
-                    throw new Error(data.error || (data.errors ? data.errors.join('; ') : 'Backend processing failed'));
+                    throw new Error(this.extractError(data, `Backend processing failed (HTTP ${response.status}).`));
                 }
 
                 this.uploadState.status = 'completed';
                 this.uploadState.successMessage = data.message || `Successfully ingested ${data.valid_rows || 'all'} flight movements.`;
                 this.uploadState.redirectUrl = data.redirect_url || '#';
 
-                // Automatically redirect after a brief moment
                 setTimeout(() => {
-                    if (data.redirect_url) {
-                        window.location.href = data.redirect_url;
-                    }
-                }, 1200);
+                    if (data.redirect_url) window.location.href = data.redirect_url;
+                }, 800);
 
             } catch (err) {
-                console.error('Direct Supabase Upload Error:', err);
+                console.error('Direct Supabase FDR upload error:', err);
                 this.uploadState.error = true;
-                if (/NoSuchBucket|bucket tidak ditemukan|Bucket not found/i.test(err.message)) {
+                const msg = err?.message || String(err);
+
+                if (/NoSuchBucket|bucket .*ditemukan|Bucket not found/i.test(msg)) {
                     this.uploadState.errorTitle = 'STORAGE BUCKET TIDAK DITEMUKAN (404)';
-                } else if (/RLS Policy|row-level security|Akses upload ditolak|unauthorized/i.test(err.message)) {
-                    this.uploadState.errorTitle = 'RLS POLICY PERMISSION ERROR (403)';
-                } else if (/terlalu besar|payload too large|exceeded/i.test(err.message)) {
-                    this.uploadState.errorTitle = 'FILE TERLALU BESAR (413)';
+                } else if (/RLS Policy|row-level security|403|permission denied/i.test(msg)) {
+                    this.uploadState.errorTitle = 'STORAGE AUTHORIZATION ERROR (403)';
+                } else if (/FDR_FILE_TOO_LARGE|too large|payload too large|413/i.test(msg)) {
+                    this.uploadState.errorTitle = 'FILE TERLALU BESAR';
+                } else if (/signed upload/i.test(msg)) {
+                    this.uploadState.errorTitle = 'SIGNED UPLOAD ERROR';
                 } else {
                     this.uploadState.errorTitle = 'UPLOAD ATAU EKSTRAKSI GAGAL';
                 }
-                this.uploadState.errorMessage = err.message || 'An unexpected error occurred during direct upload.';
+
+                this.uploadState.errorMessage = msg;
                 this.uploadState.status = 'selected';
             }
+        },
+
+        async readJsonResponse(response) {
+            const text = await response.text();
+            if (!text) return {};
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                throw new Error(`Unexpected non-JSON response (HTTP ${response.status}): ${text.slice(0, 300)}`);
+            }
+        },
+
+        extractError(data, fallback) {
+            if (!data) return fallback;
+            if (Array.isArray(data.errors)) return data.errors.join('; ');
+            if (typeof data.error === 'string') return data.error;
+            if (data.error?.message) {
+                return Array.isArray(data.error.message)
+                    ? data.error.message.join('; ')
+                    : data.error.message;
+            }
+            return data.message || fallback;
+        },
+
+        uploadViaSignedUrl(file, signedUrl, onProgress) {
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('PUT', signedUrl, true);
+
+                if (xhr.upload && onProgress) {
+                    xhr.upload.onprogress = (e) => {
+                        if (e.lengthComputable) onProgress(e.loaded, e.total);
+                    };
+                }
+
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve(xhr.response);
+                        return;
+                    }
+
+                    let payload = {};
+                    try { payload = JSON.parse(xhr.responseText || '{}'); } catch (e) {}
+
+                    reject(new Error(
+                        payload.message ||
+                        payload.error ||
+                        `Supabase signed upload failed with HTTP ${xhr.status}.`
+                    ));
+                };
+
+                xhr.onerror = () => reject(new Error('Network error while uploading directly to Supabase Storage.'));
+                xhr.ontimeout = () => reject(new Error('Timed out while uploading to Supabase Storage.'));
+                xhr.send(file);
+            });
         },
 
         handleStartDirectUpload() {
