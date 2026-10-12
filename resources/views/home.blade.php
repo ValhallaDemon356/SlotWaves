@@ -196,9 +196,9 @@
                             <div class="flex items-center gap-2">
                                 <span class="w-2 h-2 rounded-full bg-aviation-500 animate-pulse"></span>
                                 <span class="font-bold">Serverless Direct Upload Active:</span>
-                                <span>Bypasses Vercel 4.5MB payload limit directly to Supabase Storage (Max 100MB).</span>
+                                <span>Uses a server-issued signed upload URL and uploads directly to private Supabase Storage.</span>
                             </div>
-                            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-aviation-100 dark:bg-aviation-900 text-aviation-700 dark:text-aviation-300 font-bold">100MB Direct</span>
+                            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-aviation-100 dark:bg-aviation-900 text-aviation-700 dark:text-aviation-300 font-bold">Signed Direct</span>
                         </div>
                         <x-fdr-supabase-dropzone />
                     </div>
