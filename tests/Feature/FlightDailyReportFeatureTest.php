@@ -297,7 +297,7 @@ class FlightDailyReportFeatureTest extends TestCase
             'success'      => true,
             'completed'    => true,
             'report_type'  => 'fdr',
-            'status'       => 'QUEUED',
+            'status'       => 'UPLOADED',
             'is_async_job' => true,
         ]);
         $this->assertNotEmpty($res1->json('upload_id'));

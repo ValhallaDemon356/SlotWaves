@@ -4,7 +4,7 @@
 --}}
 
 @props([
-    'bucket' => config('services.supabase.bucket', 'fdr-datasets'),
+    'bucket' => config('services.supabase.bucket', env('NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET', 'flight-reports')),
     'endpoint' => route('fdr.handle-uploaded'),
     'maxSizeMb' => 100,
 ])
@@ -182,7 +182,7 @@ function fdrSupabaseUploader(config) {
     return {
         supabaseUrl: config.supabaseUrl,
         supabaseKey: config.supabaseKey,
-        bucket: config.bucket || 'fdr-datasets',
+        bucket: config.bucket || (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET) || window.ENV?.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'flight-reports',
         backendEndpoint: config.backendEndpoint,
         csrfToken: config.csrfToken,
         maxSizeBytes: (config.maxSizeMb || 100) * 1024 * 1024,
@@ -364,10 +364,22 @@ function fdrSupabaseUploader(config) {
             } catch (err) {
                 console.error('Direct Supabase Upload Error:', err);
                 this.uploadState.error = true;
-                this.uploadState.errorTitle = 'UPLOAD OR PROCESSING FAILED';
+                if (/NoSuchBucket|bucket tidak ditemukan|Bucket not found/i.test(err.message)) {
+                    this.uploadState.errorTitle = 'STORAGE BUCKET TIDAK DITEMUKAN (404)';
+                } else if (/RLS Policy|row-level security|Akses upload ditolak|unauthorized/i.test(err.message)) {
+                    this.uploadState.errorTitle = 'RLS POLICY PERMISSION ERROR (403)';
+                } else if (/terlalu besar|payload too large|exceeded/i.test(err.message)) {
+                    this.uploadState.errorTitle = 'FILE TERLALU BESAR (413)';
+                } else {
+                    this.uploadState.errorTitle = 'UPLOAD ATAU EKSTRAKSI GAGAL';
+                }
                 this.uploadState.errorMessage = err.message || 'An unexpected error occurred during direct upload.';
                 this.uploadState.status = 'selected';
             }
+        },
+
+        handleStartDirectUpload() {
+            return this.startDirectUpload();
         },
 
         uploadViaXhr(file, storagePath, onProgress) {
@@ -392,6 +404,38 @@ function fdrSupabaseUploader(config) {
                     if (xhr.status >= 200 && xhr.status < 300) {
                         resolve(xhr.response);
                     } else {
+                        let errObj = null;
+                        try {
+                            errObj = JSON.parse(xhr.responseText);
+                        } catch (e) {}
+
+                        const code = errObj?.code || errObj?.error || '';
+                        const msg = errObj?.message || xhr.responseText;
+
+                        if (xhr.status === 404 || code === 'NoSuchBucket' || /bucket not found/i.test(msg)) {
+                            reject(new Error(
+                                `Bucket '${this.bucket}' tidak ditemukan di Supabase Storage (${code || 'NoSuchBucket'}). ` +
+                                `Silakan buat bucket bernama '${this.bucket}' di Supabase Dashboard (Storage -> New Bucket) ` +
+                                `atau atur NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET=${this.bucket} di file .env Anda.`
+                            ));
+                            return;
+                        }
+
+                        if (xhr.status === 403 || /row-level security/i.test(msg) || /violates row-level security policy/i.test(msg) || /unauthorized/i.test(msg)) {
+                            reject(new Error(
+                                `Akses upload ditolak oleh RLS Policy Supabase Storage untuk bucket '${this.bucket}'. ` +
+                                `Pastikan bucket '${this.bucket}' telah memiliki RLS Policy yang mengizinkan operasi INSERT/UPLOAD untuk role anon/authenticated.`
+                            ));
+                            return;
+                        }
+
+                        if (xhr.status === 413 || /payload too large/i.test(msg) || /exceeded/i.test(msg)) {
+                            reject(new Error(
+                                `Ukuran file melebihi batas upload Supabase Storage saat ini.`
+                            ));
+                            return;
+                        }
+
                         reject(new Error(`Supabase Storage returned HTTP ${xhr.status}: ${xhr.responseText}`));
                     }
                 };

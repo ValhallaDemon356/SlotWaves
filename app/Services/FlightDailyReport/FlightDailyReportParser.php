@@ -1669,6 +1669,26 @@ class FlightDailyReportParser
             $date = $fallbackDate;
         }
 
+        // Check for Excel serial decimal time (e.g. 0.354166667 or 45200.354166667)
+        if (is_numeric($str) && !str_contains($str, ':') && !str_contains($str, '-')) {
+            $num = (float)$str;
+            if ($num >= 0) {
+                $fraction = fmod($num, 1.0);
+                if ($fraction < 0) $fraction += 1.0;
+                $totalSecs = (int)round($fraction * 86400);
+                $h = (int)floor($totalSecs / 3600) % 24;
+                $min = (int)floor(($totalSecs % 3600) / 60);
+                $sec = (int)($totalSecs % 60);
+                $hour = $h;
+                if ($date) {
+                    $datetime = sprintf('%s %02d:%02d:%02d', $date, $h, $min, $sec);
+                } else {
+                    $datetime = sprintf('%02d:%02d:%02d', $h, $min, $sec);
+                }
+                return ['date' => $date, 'hour' => $hour, 'datetime' => $datetime];
+            }
+        }
+
         // Check for hour:minute(:second)
         if (preg_match('/(\d{1,2}):(\d{2})(?::(\d{2}))?/', $str, $tm)) {
             $h = (int)$tm[1];
@@ -1680,6 +1700,15 @@ class FlightDailyReportParser
                 $datetime = sprintf('%s %02d:%02d:%02d', $date, $h, $min, $sec);
             } else {
                 $datetime = sprintf('%02d:%02d:%02d', $h, $min, $sec);
+            }
+        } elseif (preg_match('/^(\d{2})(\d{2})$/', $str, $tm) && (int)$tm[1] < 24 && (int)$tm[2] < 60) {
+            $h = (int)$tm[1];
+            $min = (int)$tm[2];
+            $hour = $h;
+            if ($date) {
+                $datetime = sprintf('%s %02d:%02d:00', $date, $h, $min);
+            } else {
+                $datetime = sprintf('%02d:%02d:00', $h, $min);
             }
         } elseif ($date) {
             $datetime = "{$date} 00:00:00";

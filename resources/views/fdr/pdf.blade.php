@@ -1,6 +1,10 @@
 @php
     $analysisLevel = $analysisLevel ?? ($filters['analysis_level'] ?? 'DAILY');
     $analysisDateFormatted = $analysisDateFormatted ?? (isset($filters['analysis_date']) ? date('d F Y', strtotime($filters['analysis_date'])) : (isset($meta['source_start']) ? date('d F Y', strtotime($meta['source_start'])) : date('d F Y')));
+    $fmtNum = function($val, $decimals = 0) {
+        if (!isset($val) || $val === '' || $val === 'N/A') return 'N/A';
+        return is_numeric($val) ? number_format((float)$val, $decimals) : (string)$val;
+    };
 @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -210,23 +214,23 @@
         <tr>
             <td class="kpi-card">
                 <div class="kpi-label">{{ $analysisLevel === 'DAILY' ? 'Analysis Day Flights' : 'Total Flights' }}</div>
-                <div class="kpi-value">{{ number_format($kpis['total_flights']) }}</div>
-                <div class="kpi-sub">Total Flights &bull; Arr: {{ number_format($kpis['arrivals']) }} | Dep: {{ number_format($kpis['departures']) }}</div>
+                <div class="kpi-value">{{ $fmtNum($kpis['total_flights'] ?? 0) }}</div>
+                <div class="kpi-sub">Total Flights &bull; Arr: {{ $fmtNum($kpis['arrivals'] ?? 0) }} | Dep: {{ $fmtNum($kpis['departures'] ?? 0) }}</div>
             </td>
             <td class="kpi-card">
                 <div class="kpi-label">{{ $analysisLevel === 'DAILY' ? 'Analysis Day Passengers' : 'Total Passengers' }}</div>
-                <div class="kpi-value">{{ number_format($kpis['total_passengers']) }}</div>
-                <div class="kpi-sub">Total Passengers &bull; Adult: {{ number_format($kpis['adult_passengers']) }} | Chd: {{ number_format($kpis['child_passengers']) }}</div>
+                <div class="kpi-value">{{ $fmtNum($kpis['total_passengers'] ?? 0) }}</div>
+                <div class="kpi-sub">Total Passengers &bull; Adult: {{ $fmtNum($kpis['adult_passengers'] ?? 0) }} | Chd: {{ $fmtNum($kpis['child_passengers'] ?? 0) }}</div>
             </td>
             <td class="kpi-card">
                 <div class="kpi-label">Average Load Factor</div>
-                <div class="kpi-value" style="color: #0284C7;">{{ $kpis['avg_load_factor'] }}</div>
-                <div class="kpi-sub">Load: {{ number_format($kpis['total_load']) }} / Cap: {{ number_format($kpis['total_capacity']) }}</div>
+                <div class="kpi-value" style="color: #0284C7;">{{ $kpis['avg_load_factor'] ?? 'N/A' }}</div>
+                <div class="kpi-sub">Load: {{ $fmtNum($kpis['total_load'] ?? 0) }} / Cap: {{ $fmtNum($kpis['total_capacity'] ?? 0) }}</div>
             </td>
             <td class="kpi-card">
                 <div class="kpi-label">Peak Hour &amp; Cargo &amp; Baggage</div>
                 <div class="kpi-value" style="font-size: 11px; margin-top: 3px; color: #D97706;">{{ $peakHour['time_range'] ?? 'N/A' }}</div>
-                <div class="kpi-sub">{{ number_format($kpis['cargo_ton'], 1) }} Ton Cargo &bull; {{ number_format($kpis['baggage_ton'] ?? 0, 1) }} Ton Baggage</div>
+                <div class="kpi-sub">{{ $fmtNum($kpis['cargo_ton'] ?? 0, 1) }} Ton Cargo &bull; {{ $fmtNum($kpis['baggage_ton'] ?? 0, 1) }} Ton Baggage</div>
             </td>
         </tr>
     </table>
@@ -289,14 +293,14 @@
                         {!! $svgPaxDonut !!}
                     </div>
                     <div style="font-size: 8px; color: #475569; margin-top: 4px; border-top: 1px solid #F1F5F9; padding-top: 4px;">
-                        <strong>Adult:</strong> {{ number_format($paxAnalytics['composition']['adult'] ?? 0) }} &bull;
-                        <strong>Child:</strong> {{ number_format($paxAnalytics['composition']['child'] ?? 0) }} &bull;
-                        <strong>Infant:</strong> {{ number_format($paxAnalytics['composition']['infant'] ?? 0) }}
+                        <strong>Adult:</strong> {{ $fmtNum($paxAnalytics['composition']['adult'] ?? 0) }} &bull;
+                        <strong>Child:</strong> {{ $fmtNum($paxAnalytics['composition']['child'] ?? 0) }} &bull;
+                        <strong>Infant:</strong> {{ $fmtNum($paxAnalytics['composition']['infant'] ?? 0) }}
                     </div>
                     <div style="font-size: 7.5px; color: #64748B; margin-top: 2px;">
-                        Transit: <strong>{{ number_format($paxAnalytics['composition']['transit'] ?? 0) }}</strong> |
-                        Transfer: <strong>{{ number_format($paxAnalytics['composition']['transfer'] ?? 0) }}</strong> |
-                        Crew: <strong>{{ number_format($paxAnalytics['composition']['crew'] ?? 0) }}</strong>
+                        Transit: <strong>{{ $fmtNum($paxAnalytics['composition']['transit'] ?? 0) }}</strong> |
+                        Transfer: <strong>{{ $fmtNum($paxAnalytics['composition']['transfer'] ?? 0) }}</strong> |
+                        Crew: <strong>{{ $fmtNum($paxAnalytics['composition']['crew'] ?? 0) }}</strong>
                     </div>
                 </div>
             </td>
@@ -307,13 +311,13 @@
                         {!! $svgPayloadDonut !!}
                     </div>
                     <div style="font-size: 8px; color: #475569; margin-top: 4px; border-top: 1px solid #F1F5F9; padding-top: 4px;">
-                        <strong>Cargo:</strong> {{ number_format($kpis['cargo_kg']) }} kg ({{ number_format($kpis['cargo_ton'], 1) }} t) &bull;
-                        <strong>Baggage:</strong> {{ number_format($kpis['baggage_kg']) }} kg
+                        <strong>Cargo:</strong> {{ $fmtNum($kpis['cargo_kg'] ?? 0) }} kg ({{ $fmtNum($kpis['cargo_ton'] ?? 0, 1) }} t) &bull;
+                        <strong>Baggage:</strong> {{ $fmtNum($kpis['baggage_kg'] ?? 0) }} kg
                     </div>
                     <div style="font-size: 7.5px; color: #64748B; margin-top: 2px;">
-                        Pax / Flight: <strong>{{ $kpis['pax_per_flight'] }}</strong> Pax |
-                        Cargo / Flight: <strong>{{ $kpis['cargo_per_flight_t'] }}</strong> t |
-                        Baggage / Flight: <strong>{{ $kpis['baggage_per_flight_kg'] }}</strong> kg
+                        Pax / Flight: <strong>{{ $kpis['pax_per_flight'] ?? '0' }}</strong> Pax |
+                        Cargo / Flight: <strong>{{ $kpis['cargo_per_flight_t'] ?? '0' }}</strong> t |
+                        Baggage / Flight: <strong>{{ $kpis['baggage_per_flight_kg'] ?? '0' }}</strong> kg
                     </div>
                 </div>
             </td>
@@ -355,7 +359,7 @@
                     </tr>
                     <tr>
                         <td>Evaluated Realized Flights</td>
-                        <td><strong>{{ number_format($schedVsReal['evaluated_flights'] ?? 0) }}</strong></td>
+                        <td><strong>{{ $fmtNum($schedVsReal['evaluated_flights'] ?? 0) }}</strong></td>
                     </tr>
                     <tr>
                         <td>On-Time Adherence (≤ 15 min)</td>

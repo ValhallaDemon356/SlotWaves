@@ -20,8 +20,7 @@ class SupabaseStorageService
     {
         $this->supabaseUrl    = rtrim(config('services.supabase.url', env('SUPABASE_URL', '')), '/');
         $this->serviceRoleKey = config('services.supabase.service_role_key', env('SUPABASE_SERVICE_ROLE_KEY', ''));
-        $this->anonKey        = config('services.supabase.anon_key', env('SUPABASE_ANON_KEY', ''));
-        $this->defaultBucket  = config('services.supabase.bucket', 'fdr-datasets');
+        $this->defaultBucket  = config('services.supabase.bucket', env('NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET', 'flight-reports'));
 
         $this->httpClient = $httpClient ?: new Client([
             'timeout'         => 120, // generous timeout for large files on Vercel
@@ -101,6 +100,12 @@ class SupabaseStorageService
                 if (file_exists($tempFile)) {
                     $bodyPreview = file_get_contents($tempFile, false, null, 0, 512);
                     @unlink($tempFile);
+                }
+                if ($statusCode === 404 || str_contains($bodyPreview, 'NoSuchBucket') || str_contains(strtolower($bodyPreview), 'bucket not found')) {
+                    throw new RuntimeException("Bucket '{$bucket}' tidak ditemukan di Supabase Storage (NoSuchBucket/404). Silakan pastikan bucket '{$bucket}' telah dibuat di Supabase Dashboard (Storage -> New Bucket) dan NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET={$bucket} terkonfigurasi di file .env.");
+                }
+                if ($statusCode === 403 || str_contains(strtolower($bodyPreview), 'row-level security') || str_contains(strtolower($bodyPreview), 'unauthorized')) {
+                    throw new RuntimeException("Akses ditolak oleh RLS Policy Supabase Storage untuk bucket '{$bucket}'. Pastikan bucket memiliki izin SELECT/READ untuk role anon/authenticated.");
                 }
                 throw new RuntimeException("Failed to download file from Supabase Storage (HTTP {$statusCode}): {$bodyPreview}");
             }

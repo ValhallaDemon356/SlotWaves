@@ -16,20 +16,21 @@ class FdrStreamingParser
      */
     protected const HEADER_MAPPINGS = [
         'air_line'    => '/^(air\s*line|airline|maskapai|operator)$/i',
-        'flight_no'   => '/^(flight\s*no\.?|flt\s*no\.?|flight\s*number|no\s*penerbangan)$/i',
+        'flight_no'   => '/^(flight\s*no\.?|flt\s*no\.?|flt\b|flight\s*number|no\s*penerbangan)$/i',
+        'flight_date' => '/^(date|flight\s*date|tgl|tanggal|operational\s*date)$/i',
         'paired_no'   => '/^(paired\s*no\.?|pair\s*no\.?|paired\s*flight|no\s*pasangan)$/i',
-        'desc'        => '/^(desc|description|keterangan)$/i',
-        'sibt'        => '/^(sibt|sched(uled)?\s*in(\s*block)?(\s*time)?|sta\b)$/i',
-        'sobt'        => '/^(sobt|sched(uled)?\s*off(\s*block)?(\s*time)?|std\b)$/i',
+        'desc'        => '/^(desc|description|keterangan|ac\s*type|aircraft\s*type)$/i',
+        'sibt'        => '/^(sibt|sched(uled)?\s*in(\s*block)?(\s*time)?|sta\b|sched\s*arr)$/i',
+        'sobt'        => '/^(sobt|sched(uled)?\s*off(\s*block)?(\s*time)?|std\b|sched\s*dep)$/i',
         'sibt_sobt'   => '/^(sibt[\s\/\-_]+sobt|sibt\s*sobt|sched(uled)?\s*block(\s*time)?)$/i',
-        'aibt'        => '/^(aibt|actual\s*in(\s*block)?(\s*time)?|ata\b)$/i',
-        'aobt'        => '/^(aobt|actual\s*off(\s*block)?(\s*time)?|atd\b)$/i',
+        'aibt'        => '/^(aibt|actual\s*in(\s*block)?(\s*time)?|ata\b|act\s*arr)$/i',
+        'aobt'        => '/^(aobt|actual\s*off(\s*block)?(\s*time)?|atd\b|act\s*dep)$/i',
         'aibt_aobt'   => '/^(aibt[\s\/\-_]+aobt|aibt\s*aobt|actual\s*block(\s*time)?)$/i',
-        'leg'         => '/^(leg|leg\s*type|status\s*leg|a\/d\s*sched)$/i',
-        'city_1'      => '/^(city\s*1|origin|asal|dari|bandara\s*asal|dep\s*apt)$/i',
-        'city_2'      => '/^(city\s*2|destination|dest|tujuan|ke|bandara\s*tujuan|arr\s*apt)$/i',
+        'leg'         => '/^(leg|leg\s*type|status\s*leg|a\/d\s*sched|dep\/arr|a\/d)$/i',
+        'city_1'      => '/^(city\s*1|origin|asal|dari|bandara\s*asal|dep\s*apt|from)$/i',
+        'city_2'      => '/^(city\s*2|destination|dest|tujuan|ke|bandara\s*tujuan|arr\s*apt|to)$/i',
         'mtow'        => '/^(mt\s*ow|mtow|max\s*take\s*off\s*weight)$/i',
-        'reg_no'      => '/^(reg\.?\s*no\.?|registration|tail\s*no\.?|no\s*registrasi)$/i',
+        'reg_no'      => '/^(reg\.?\s*no\.?|registration|tail\s*no\.?|tail|no\s*registrasi|reg\b)$/i',
         'cap'         => '/^(cap\.?|capacity|seat\s*capacity|kapasitas(\s*kursi)?)$/i',
         'load'        => '/^(load|total\s*load|pax\s*load|muatan|penumpang\s*total)$/i',
         'adult'       => '/^(adult|dewasa)$/i',
@@ -409,36 +410,216 @@ class FdrStreamingParser
         // Calculate load factor
         $loadFactor = ($cap > 0) ? round(($load / $cap) * 100, 2) : 0.0;
 
+        $city1 = strtoupper($getVal('city_1') ?: '');
+        $city2 = strtoupper($getVal('city_2') ?: '');
+
+        // Direction Resolution: relative to CGK
+        $direction = 'ARRIVAL';
+        if ($city2 === 'CGK' && $city1 !== 'CGK') {
+            $direction = 'ARRIVAL';
+        } elseif ($city1 === 'CGK' && $city2 !== 'CGK') {
+            $direction = 'DEPARTURE';
+        } elseif ($leg === 'ARRIVAL' || $leg === 'DEPARTURE') {
+            $direction = $leg;
+        } elseif (!empty($sibt) && empty($sobt)) {
+            $direction = 'ARRIVAL';
+        } elseif (!empty($sobt) && empty($sibt)) {
+            $direction = 'DEPARTURE';
+        }
+
+        // Times relative to direction
+        $rawSched = ($direction === 'ARRIVAL') ? ($sibt ?: $sobt) : ($sobt ?: $sibt);
+        $rawAct   = ($direction === 'ARRIVAL') ? ($aibt ?: $aobt) : ($aobt ?: $aibt);
+
+        $schedParsed = self::parseTimeValue($rawSched);
+        $actParsed   = self::parseTimeValue($rawAct);
+
+        $schedTimeStr = $schedParsed ? $schedParsed['time'] : null;
+        $actTimeStr   = $actParsed ? $actParsed['time'] : null;
+
+        $schedHour = $schedParsed ? $schedParsed['hour'] : null;
+        $actHour   = $actParsed ? $actParsed['hour'] : null;
+        $opHour    = $actHour !== null ? $actHour : ($schedHour !== null ? $schedHour : 0);
+
+        // Date Resolution
+        $rawDate = $getVal('flight_date') ?: ($rawSched ?: null);
+        $flightDate = self::parseDateValue($rawDate);
+
+        // Delay & Status
+        $delayMinutes = 0;
+        $isRealized = false;
+        $status = 'ON_TIME';
+
+        if ($schedTimeStr && $actTimeStr) {
+            $isRealized = true;
+            $delayMinutes = self::calculateDelayMinutes($schedTimeStr, $actTimeStr);
+            if ($delayMinutes > 15) {
+                $status = 'DELAYED';
+            } elseif ($delayMinutes < -15) {
+                $status = 'EARLY';
+            } else {
+                $status = 'ON_TIME';
+            }
+        } elseif (!$actTimeStr || $actTimeStr === '-') {
+            $status = 'UNREALIZED';
+            $isRealized = false;
+        }
+
+        $schedDt = $schedTimeStr ? "{$flightDate} {$schedTimeStr}:00" : null;
+        $actDt   = $actTimeStr ? "{$flightDate} {$actTimeStr}:00" : null;
+
+        // Traffic Type
+        $traffic = 'DOMESTIC';
+        $intlCodes = ['SIN', 'KUL', 'BKK', 'HKG', 'HND', 'NRT', 'ICN', 'SYD', 'MEL', 'PER', 'DXB', 'DOH', 'JED', 'MED', 'IST', 'AMS', 'LHR'];
+        if (in_array($city1, $intlCodes) || in_array($city2, $intlCodes)) {
+            $traffic = 'INTERNATIONAL';
+        }
+
         return [
-            'row_index'    => $rowIndex,
-            'row_type'     => $rowType,
-            'air_line'     => $airLine ?: 'N/A',
-            'flight_no'    => $flightNo ?: 'N/A',
-            'paired_no'    => $getVal('paired_no') ?: '',
-            'desc'         => $getVal('desc') ?: '',
-            'sibt'         => $sibt,
-            'sobt'         => $sobt,
-            'aibt'         => $aibt,
-            'aobt'         => $aobt,
-            'leg'          => $leg ?: 'ALL',
-            'city_1'       => strtoupper($getVal('city_1') ?: ''),
-            'city_2'       => strtoupper($getVal('city_2') ?: ''),
-            'reg_no'       => strtoupper($getVal('reg_no') ?: ''),
-            'cap'          => $cap,
-            'load'         => $load,
-            'adult'        => $adult,
-            'child'        => $child,
-            'infant'       => $inf,
-            'transit'      => (int) filter_var($getVal('transit'), FILTER_SANITIZE_NUMBER_INT),
-            'transfer'     => (int) filter_var($getVal('transfer'), FILTER_SANITIZE_NUMBER_INT),
-            'cargo_kg'     => (float) filter_var($getVal('cargo_kg'), FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION),
-            'baggage_kg'   => (float) filter_var($getVal('baggage_kg'), FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION),
-            'pos_kg'       => (float) filter_var($getVal('pos_kg'), FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION),
-            'stand'        => $getVal('stand') ?: '',
-            'runway'       => $getVal('runway') ?: '',
-            'branch'       => $getVal('branch') ?: '',
-            'load_factor'  => $loadFactor,
+            'row_index'          => $rowIndex,
+            'row_type'           => $rowType,
+            'air_line'           => $airLine ?: 'N/A',
+            'flight_no'          => $flightNo ?: 'N/A',
+            'paired_no'          => $getVal('paired_no') ?: '',
+            'desc'               => $getVal('desc') ?: '',
+            'sibt'               => $sibt,
+            'sobt'               => $sobt,
+            'aibt'               => $aibt,
+            'aobt'               => $aobt,
+            'leg'                => $leg ?: 'ALL',
+            'direction'          => $direction,
+            'movement_type'      => $direction === 'ARRIVAL' ? 'Arrival' : 'Departure',
+            'city_1'             => $city1,
+            'city_2'             => $city2,
+            'origin'             => $city1 ?: ($direction === 'DEPARTURE' ? 'CGK' : 'N/A'),
+            'destination'        => $city2 ?: ($direction === 'ARRIVAL' ? 'CGK' : 'N/A'),
+            'reg_no'             => strtoupper($getVal('reg_no') ?: ''),
+            'flight_date'        => $flightDate,
+            'operational_date'   => $flightDate,
+            'scheduled_time'     => $schedTimeStr,
+            'actual_time'        => $actTimeStr,
+            'scheduled_time_str' => $schedTimeStr,
+            'actual_time_str'    => $actTimeStr,
+            'sched_display'      => $schedTimeStr,
+            'actual_display'     => $actTimeStr,
+            'scheduled_datetime' => $schedDt,
+            'actual_datetime'    => $actDt,
+            'scheduled_hour'     => $schedHour,
+            'actual_hour'        => $actHour,
+            'operational_hour'   => $opHour,
+            'hour'               => $opHour,
+            'delay_minutes'      => $delayMinutes,
+            'status'             => $status,
+            'is_realized'        => $isRealized,
+            'is_scheduled'       => true,
+            'traffic'            => $traffic,
+            'report_airport'     => 'CGK',
+            'cap'                => $cap,
+            'load'               => $load,
+            'adult'              => $adult,
+            'child'              => $child,
+            'infant'             => $inf,
+            'transit'            => (int) filter_var($getVal('transit'), FILTER_SANITIZE_NUMBER_INT),
+            'transfer'           => (int) filter_var($getVal('transfer'), FILTER_SANITIZE_NUMBER_INT),
+            'cargo_kg'           => (float) filter_var($getVal('cargo_kg'), FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION),
+            'baggage_kg'         => (float) filter_var($getVal('baggage_kg'), FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION),
+            'pos_kg'             => (float) filter_var($getVal('pos_kg'), FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION),
+            'stand'              => $getVal('stand') ?: '',
+            'runway'             => $getVal('runway') ?: '',
+            'branch'             => $getVal('branch') ?: '',
+            'load_factor'        => $loadFactor,
         ];
+    }
+
+    /**
+     * Parse Excel decimal serial time (0.354166667) or string time (HH:mm) into [time => 'HH:mm', hour => 0..23].
+     */
+    public static function parseTimeValue(?string $val): ?array
+    {
+        if ($val === null || $val === '' || $val === '-' || $val === 'N/A' || $val === 'NULL') {
+            return null;
+        }
+        $val = trim($val);
+
+        // 1. Check if numeric (Excel serial decimal time, e.g. 0.354166667 or 45200.354166667)
+        if (is_numeric($val) && !str_contains($val, ':') && !str_contains($val, '-')) {
+            $num = (float)$val;
+            if ($num >= 0) {
+                $fraction = fmod($num, 1.0);
+                if ($fraction < 0) $fraction += 1.0;
+                $totalSecs = (int)round($fraction * 86400);
+                $h = (int)floor($totalSecs / 3600) % 24;
+                $m = (int)floor(($totalSecs % 3600) / 60);
+                $timeStr = sprintf('%02d:%02d', $h, $m);
+                return ['time' => $timeStr, 'hour' => $h];
+            }
+        }
+
+        // 2. Check for HH:mm(:ss)
+        if (preg_match('/(\d{1,2}):(\d{2})(?::(\d{2}))?/', $val, $tm)) {
+            $h = (int)$tm[1];
+            $m = (int)$tm[2];
+            if ($h >= 24) $h = 23;
+            $timeStr = sprintf('%02d:%02d', $h, $m);
+            return ['time' => $timeStr, 'hour' => $h];
+        }
+
+        // 3. 4-digit military time (e.g. 0830)
+        if (preg_match('/^(\d{2})(\d{2})$/', $val, $tm)) {
+            $h = (int)$tm[1];
+            $m = (int)$tm[2];
+            if ($h < 24 && $m < 60) {
+                return ['time' => sprintf('%02d:%02d', $h, $m), 'hour' => $h];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Standardize date into YYYY-MM-DD.
+     */
+    public static function parseDateValue(?string $val, ?string $fallback = null): string
+    {
+        if (empty($val) || $val === '-' || $val === 'N/A') {
+            return $fallback ?: date('Y-m-d');
+        }
+        $val = trim($val);
+
+        if (preg_match('/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/', $val, $m)) {
+            return sprintf('%04d-%02d-%02d', (int)$m[1], (int)$m[2], (int)$m[3]);
+        }
+        if (preg_match('/(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/', $val, $m)) {
+            return sprintf('%04d-%02d-%02d', (int)$m[3], (int)$m[2], (int)$m[1]);
+        }
+        if (is_numeric($val) && (float)$val > 30000 && (float)$val < 60000) {
+            $days = (int)floor((float)$val);
+            $ts = strtotime("1899-12-30 +{$days} days");
+            if ($ts !== false) {
+                return date('Y-m-d', $ts);
+            }
+        }
+
+        return $fallback ?: date('Y-m-d');
+    }
+
+    /**
+     * Calculate delay minutes between scheduled and actual time with cross-midnight adjustment.
+     */
+    public static function calculateDelayMinutes(string $schedTime, string $actTime): int
+    {
+        $sParts = explode(':', $schedTime);
+        $aParts = explode(':', $actTime);
+        if (count($sParts) < 2 || count($aParts) < 2) return 0;
+
+        $sMin = (int)$sParts[0] * 60 + (int)$sParts[1];
+        $aMin = (int)$aParts[0] * 60 + (int)$aParts[1];
+
+        $diff = $aMin - $sMin;
+        if ($diff < -720) $diff += 1440;
+        elseif ($diff > 720) $diff -= 1440;
+
+        return $diff;
     }
 
     /**

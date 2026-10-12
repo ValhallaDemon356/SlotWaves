@@ -711,11 +711,27 @@ class FlightDailyReportController extends Controller
                 $this->fdrDbService->syncUploadToDatabase($upload, $classified['movement_records'], $meta);
                 $hasDb = true;
             } elseif (!empty($upload->stored_path)) {
-                $disk = config('filesystems.default', 'local');
-                $localPath = Storage::disk($disk)->path($upload->stored_path);
-                if (file_exists($localPath)) {
-                    $this->fdrDbService->syncUploadFromFile($upload, $localPath, $this->parser);
-                    $hasDb = true;
+                if (str_starts_with($upload->stored_path, 'supabase://')) {
+                    try {
+                        $clean = substr($upload->stored_path, 11);
+                        $parts = explode('/', $clean, 2);
+                        $bucket = $parts[0] ?: config('services.supabase.bucket', env('NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET', 'flight-reports'));
+                        $storagePath = $parts[1] ?? '';
+                        $storageService = app(\App\Services\Storage\SupabaseStorageService::class);
+                        $tempPath = $storageService->downloadToTemp($storagePath, $bucket);
+                        $this->fdrDbService->syncUploadFromFile($upload, $tempPath, $this->parser);
+                        $hasDb = true;
+                        @unlink($tempPath);
+                    } catch (\Throwable $e) {
+                        Log::warning("Auto-heal from Supabase Storage failed for upload #{$upload->id}: " . $e->getMessage());
+                    }
+                } else {
+                    $disk = config('filesystems.default', 'local');
+                    $localPath = Storage::disk($disk)->path($upload->stored_path);
+                    if (file_exists($localPath)) {
+                        $this->fdrDbService->syncUploadFromFile($upload, $localPath, $this->parser);
+                        $hasDb = true;
+                    }
                 }
             }
         }

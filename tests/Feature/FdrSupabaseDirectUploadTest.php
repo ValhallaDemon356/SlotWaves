@@ -82,6 +82,50 @@ class FdrSupabaseDirectUploadTest extends TestCase
         $upload->delete();
     }
 
+    public function test_handle_uploaded_fdr_uses_flight_reports_bucket_fallback_and_populates_fdr_flights_for_dashboard(): void
+    {
+        $sourcePath = storage_path('app/templates/CGK FDR.xls');
+        $tempFile = tempnam(sys_get_temp_dir(), 'fdr_test_') . '.xls';
+        copy($sourcePath, $tempFile);
+
+        $storageMock = Mockery::mock(SupabaseStorageService::class);
+        $storageMock->shouldReceive('downloadToTemp')
+            ->once()
+            ->with('raw_fdr/2026/08/CGK_FDR_direct.xls', 'flight-reports')
+            ->andReturn($tempFile);
+
+        $this->app->instance(SupabaseStorageService::class, $storageMock);
+
+        // Omit bucket_name so it defaults to flight-reports
+        $response = $this->postJson(route('fdr.handle-uploaded'), [
+            'file_path'         => 'raw_fdr/2026/08/CGK_FDR_direct.xls',
+            'original_filename' => 'CGK GA FDR .xls',
+            'airline_type'      => 'Garuda Indonesia',
+        ]);
+
+        $response->assertStatus(200);
+        $json = $response->json();
+        $this->assertTrue($json['success']);
+
+        $upload = Upload::find($json['upload_id']);
+        $this->assertNotNull($upload);
+        $this->assertStringContainsString('supabase://flight-reports/', $upload->stored_path);
+
+        // Verify fdr_flights database records were synced immediately
+        $dbFlightCount = \App\Models\FdrFlight::where('upload_id', $upload->id)->count();
+        $this->assertGreaterThan(0, $dbFlightCount);
+
+        // Verify dashboard loads successfully with populated metrics
+        $dashResponse = $this->get(route('fdr.dashboard', $upload->id));
+        $dashResponse->assertStatus(200);
+        $dashResponse->assertSee('FLIGHT MOVEMENT — HOURLY DISTRIBUTION');
+        $dashResponse->assertSee('Garuda Indonesia');
+
+        // Cleanup
+        \App\Models\FdrFlight::where('upload_id', $upload->id)->delete();
+        $upload->delete();
+    }
+
     public function test_dau_alias_endpoint_works(): void
     {
         $response = $this->postJson(route('dau.handle-uploaded-fdr'), []);

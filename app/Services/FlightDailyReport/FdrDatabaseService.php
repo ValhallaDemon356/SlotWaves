@@ -325,6 +325,7 @@ class FdrDatabaseService
         $peakHourIdx = 0;
         $peakHourCount = 0;
 
+        $hourlyData = [];
         for ($h = 0; $h < 24; $h++) {
             $hStr = sprintf('%02d:00', $h);
             $nextH = sprintf('%02d:59', $h);
@@ -344,6 +345,30 @@ class FdrDatabaseService
                     $peakHourIdx = $h;
                 }
             }
+
+            $hourlyData[$h] = [
+                'hour'             => $h,
+                'hour_label'       => $hStr,
+                'time_range'       => sprintf('%02d:00–%02d:59', $h, $h),
+                'runway_capacity'  => 40,
+                'total_plan'       => $totHourArr[$h],
+                'dep_plan'         => $depDomArr[$h] + $depIntArr[$h],
+                'dep_dom_plan'     => $depDomArr[$h],
+                'dep_int_plan'     => $depIntArr[$h],
+                'arr_plan'         => $arrDomArr[$h] + $arrIntArr[$h],
+                'arr_dom_plan'     => $arrDomArr[$h],
+                'arr_int_plan'     => $arrIntArr[$h],
+                'total_realized'   => $totHourArr[$h],
+                'dep_realized'     => $depDomArr[$h] + $depIntArr[$h],
+                'dep_dom_realized' => $depDomArr[$h],
+                'dep_int_realized' => $depIntArr[$h],
+                'arr_realized'     => $arrDomArr[$h] + $arrIntArr[$h],
+                'arr_dom_realized' => $arrDomArr[$h],
+                'arr_int_realized' => $arrIntArr[$h],
+                'total_irregular'  => 0,
+                'dep_irregular'    => 0,
+                'arr_irregular'    => 0,
+            ];
         }
 
         // Distinct available dates for context
@@ -555,8 +580,10 @@ class FdrDatabaseService
             'kpis'                    => $kpis,
             'kpi'                     => $kpis,
             'hourly_charts'           => [
-                'peak_hour'     => $peakHourRange,
-                'peak_movements'=> $peakHourCount,
+                'hours'          => $hourlyLabels,
+                'hourly_data'    => array_values($hourlyData),
+                'peak_hour'      => $peakHourRange,
+                'peak_movements' => $peakHourCount,
             ],
             'hourly_distribution'     => $hourlyDistribution,
             'combined_trend'          => $combinedTrend,
