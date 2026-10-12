@@ -32,15 +32,18 @@ class DAU10AParser extends BaseDauParser
         $records = [];
         $normalizedPairs = [];
         $summary = [
-            'total_movements'    => 0,
-            'aircraft_arrival'   => 0,
-            'aircraft_departure' => 0,
-            'passenger_arrival'  => 0,
-            'passenger_departure'=> 0,
-            'passenger_transit'  => 0,
-            'passenger_transfer' => 0,
-            'passenger_total'    => 0,
-            'crew_total'         => 0,
+            'total_movements'          => 0,
+            'aircraft_arrival'         => 0,
+            'aircraft_departure'       => 0,
+            'passenger_arrival'        => 0,
+            'passenger_departure'      => 0,
+            'passenger_transit'        => 0,
+            'passenger_transfer'       => 0,
+            'passenger_movement_total' => 0,
+            'passenger_total'          => 0,
+            'source_total_pass'        => 0,
+            'reported_total_pass'      => 0,
+            'crew_total'               => 0,
         ];
 
         $globalTerminals = [];
@@ -125,9 +128,10 @@ class DAU10AParser extends BaseDauParser
                     $uniqueDates[] = $rowDate;
                 }
 
-                $rowTotFlights = 0;
-                $rowTotPax = 0;
-                $termBreakdown = [];
+                $rowTotFlights   = 0;
+                $rowTotPax       = 0;
+                $rowTotSourcePax = 0;
+                $termBreakdown   = [];
 
                 foreach ($terminals as $t) {
                     $c = $t['start_col'];
@@ -140,52 +144,63 @@ class DAU10AParser extends BaseDauParser
                     $crew  = $this->toInt($row[$c+6] ?? 0);
                     $exCrw = $this->toInt($row[$c+7] ?? 0);
                     $totFl = $this->toInt($row[$c+8] ?? ($flArr + $flDep));
-                    $totPx = $this->toInt($row[$c+9] ?? ($pArr + $pDep + $pTrn + $pTrf));
+                    $sourceTotPx = $this->toInt($row[$c+9] ?? 0);
+                    $paxMovementTot = $pArr + $pDep + $pTrn + $pTrf;
 
                     $tData = [
-                        'date'                => $rowDate,
-                        'hour'                => $period,
-                        'period'              => $period,
-                        'terminal'            => $t['name'],
-                        'aircraft_arrival'    => $flArr,
-                        'aircraft_departure'  => $flDep,
-                        'aircraft_total'      => $totFl,
-                        'passenger_arrival'   => $pArr,
-                        'passenger_departure' => $pDep,
-                        'passenger_transit'   => $pTrn,
-                        'passenger_transfer'  => $pTrf,
-                        'passenger_total'     => $totPx,
-                        'crew'                => $crew,
-                        'extra_crew'          => $exCrw,
-                        'crew_total'          => ($crew + $exCrw),
-                        'baggage'             => 0,
-                        'cargo'               => 0,
-                        'pos'                 => 0,
+                        'date'                     => $rowDate,
+                        'hour'                     => $period,
+                        'period'                   => $period,
+                        'terminal'                 => $t['name'],
+                        'aircraft_arrival'         => $flArr,
+                        'aircraft_departure'       => $flDep,
+                        'aircraft_total'           => $totFl,
+                        'passenger_arrival'        => $pArr,
+                        'passenger_departure'      => $pDep,
+                        'passenger_transit'        => $pTrn,
+                        'passenger_transfer'       => $pTrf,
+                        'passenger_movement_total' => $paxMovementTot,
+                        'passenger_total'          => $paxMovementTot,
+                        'source_total_pass'        => $sourceTotPx,
+                        'reported_total_pass'      => $sourceTotPx,
+                        'crew'                     => $crew,
+                        'extra_crew'               => $exCrw,
+                        'crew_total'               => ($crew + $exCrw),
+                        'baggage'                  => 0,
+                        'cargo'                    => 0,
+                        'pos'                      => 0,
                     ];
                     $termBreakdown[$t['name']] = $tData;
 
                     $normalizedPairs[] = $tData;
 
-                    $rowTotFlights += $totFl;
-                    $rowTotPax     += $totPx;
-                    $summary['total_movements']    += $totFl;
-                    $summary['aircraft_arrival']   += $flArr;
-                    $summary['aircraft_departure'] += $flDep;
-                    $summary['passenger_arrival']  += $pArr;
-                    $summary['passenger_departure']+= $pDep;
-                    $summary['passenger_transit']  += $pTrn;
-                    $summary['passenger_transfer'] += $pTrf;
-                    $summary['passenger_total']    += $totPx;
-                    $summary['crew_total']         += ($crew + $exCrw);
+                    $rowTotFlights   += $totFl;
+                    $rowTotPax       += $paxMovementTot;
+                    $rowTotSourcePax += $sourceTotPx;
+
+                    $summary['total_movements']          += $totFl;
+                    $summary['aircraft_arrival']         += $flArr;
+                    $summary['aircraft_departure']       += $flDep;
+                    $summary['passenger_arrival']        += $pArr;
+                    $summary['passenger_departure']      += $pDep;
+                    $summary['passenger_transit']        += $pTrn;
+                    $summary['passenger_transfer']       += $pTrf;
+                    $summary['passenger_movement_total'] += $paxMovementTot;
+                    $summary['passenger_total']          += $paxMovementTot;
+                    $summary['source_total_pass']        += $sourceTotPx;
+                    $summary['reported_total_pass']      += $sourceTotPx;
+                    $summary['crew_total']               += ($crew + $exCrw);
                 }
 
                 $records[] = [
-                    'no'               => $this->toInt($first),
-                    'date'             => $rowDate,
-                    'period'           => $period,
-                    'total_flights'    => $rowTotFlights,
-                    'total_passengers' => $rowTotPax,
-                    'terminals'        => $termBreakdown,
+                    'no'                       => $this->toInt($first),
+                    'date'                     => $rowDate,
+                    'period'                   => $period,
+                    'total_flights'            => $rowTotFlights,
+                    'total_passengers'         => $rowTotPax,
+                    'passenger_movement_total' => $rowTotPax,
+                    'source_total_pass'        => $rowTotSourcePax,
+                    'terminals'                => $termBreakdown,
                 ];
             }
         }

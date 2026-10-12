@@ -718,19 +718,22 @@
                 <div class="text-[10px] text-slate-500 mt-1 font-mono">
                     Arr: <span x-text="formatNumber(activeSummary.passenger_arrival)">{{ number_format($summary['passenger_arrival'] ?? 0) }}</span> | 
                     Dep: <span x-text="formatNumber(activeSummary.passenger_departure)">{{ number_format($summary['passenger_departure'] ?? 0) }}</span>
+                    <template x-if="reportType === 'DAU10A' && ((activeSummary.passenger_transit || 0) > 0 || (activeSummary.passenger_transfer || 0) > 0)">
+                        <span> | Trn: <span x-text="formatNumber(activeSummary.passenger_transit)"></span> | Trf: <span x-text="formatNumber(activeSummary.passenger_transfer)"></span></span>
+                    </template>
                 </div>
             </div>
 
             @if (in_array($reportType, ['DAU10', 'DAU10A', 'DAU10B']))
                 <div class="glass-card p-4 shadow-sm border-t-2 border-t-amber-500">
                     <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400"
-                         x-text="reportType === 'DAU10B' ? (selectedMetric === 'passenger' ? 'Peak Passenger Hour' : 'Peak Aircraft Hour') : 'Peak Hour'">Peak Hour</div>
+                         x-text="['DAU10A', 'DAU10B'].includes(reportType) ? (selectedMetric === 'passenger' ? 'Peak Passenger Hour' : (selectedMetric === 'crew' ? 'Peak Crew Hour' : 'Peak Aircraft Hour')) : 'Peak Hour'">Peak Hour</div>
                     <div class="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 mt-1"
-                         x-text="reportType === 'DAU10B' ? (selectedMetric === 'passenger' ? (peaks.peak_passenger_hour || '—') : (peaks.peak_aircraft_hour || '—')) : peaks.peak_hour">
+                         x-text="peaks.peak_hour || '—'">
                         {{ $peaks['peak_hour'] ?? '—' }}
                     </div>
                     <div class="text-[10px] text-slate-500 mt-1 font-mono"
-                         x-text="reportType === 'DAU10B' ? (selectedMetric === 'passenger' ? formatNumber(peaks.peak_passenger) + ' PAX' : formatNumber(peaks.peak_aircraft) + ' A/C') : 'Highest Traffic Period'">
+                         x-text="['DAU10A', 'DAU10B'].includes(reportType) ? (selectedMetric === 'passenger' ? formatNumber(peaks.peak_passenger) + ' PAX' : (selectedMetric === 'crew' ? formatNumber(peaks.peak_crew) + ' Crew' : formatNumber(peaks.peak_aircraft) + ' A/C')) : 'Highest Traffic Period'">
                         Highest Traffic Period
                     </div>
                 </div>
@@ -742,10 +745,20 @@
                         {{ empty($peaks['peak_terminal']) || in_array(trim($peaks['peak_terminal'] ?? ''), ['—', '-', 'T-', 'T—']) ? '—' : ((str_starts_with(strtoupper($peaks['peak_terminal']), 'T') ? '' : 'T') . $peaks['peak_terminal']) }}
                     </div>
                     <div class="text-[10px] text-slate-500 mt-1 font-mono"
-                         x-text="reportType === 'DAU10B' ? (formatNumber(peaks.peak_terminal_val) + (selectedMetric === 'passenger' ? ' PAX' : ' A/C')) : (formatNumber(peaks.peak_terminal_val) + ' mov')">
+                         x-text="['DAU10A', 'DAU10B'].includes(reportType) ? (formatNumber(peaks.peak_terminal_val) + (selectedMetric === 'passenger' ? ' PAX' : (selectedMetric === 'crew' ? ' Crew' : ' mov'))) : (formatNumber(peaks.peak_terminal_val) + ' mov')">
                         {{ number_format($peaks['peak_terminal_val'] ?? 0) }} mov
                     </div>
                 </div>
+
+                @if ($reportType === 'DAU10A')
+                    <div class="glass-card p-4 shadow-sm border-t-2 border-t-slate-600">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Crew</div>
+                        <div class="text-xl sm:text-2xl font-black text-slate-700 dark:text-slate-300 mt-1" x-text="formatNumber(activeSummary.crew_total)">
+                            {{ number_format($summary['crew_total'] ?? 0) }}
+                        </div>
+                        <div class="text-[10px] text-slate-500 mt-1 font-mono">Flight Crew</div>
+                    </div>
+                @endif
             @elseif ($reportType === 'DAU2')
                 <div class="glass-card p-4 shadow-sm border-t-2 border-t-blue-600">
                     <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400" x-text="'Domestic ' + (dau2ActiveMetricLabel || 'Traffic')">Domestic Traffic</div>
@@ -790,7 +803,7 @@
                 </div>
             @endif
 
-            <div class="glass-card p-4 shadow-sm border-t-2 border-t-rose-600">
+            <div class="glass-card p-4 shadow-sm border-t-2 border-t-rose-600" x-show="reportType !== 'DAU10A'">
                 <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Baggage (Kg)</div>
                 <div class="text-xl sm:text-2xl font-black text-rose-600 dark:text-rose-400 mt-1" x-text="formatNumber(activeSummary.baggage_total)">
                     {{ number_format($summary['baggage_total'] ?? 0) }}
@@ -798,7 +811,7 @@
                 <div class="text-[10px] text-slate-500 mt-1 font-mono">Gross Luggage</div>
             </div>
 
-            <div class="glass-card p-4 shadow-sm border-t-2 border-t-teal-600">
+            <div class="glass-card p-4 shadow-sm border-t-2 border-t-teal-600" x-show="reportType !== 'DAU10A'">
                 <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Cargo (Kg)</div>
                 <div class="text-xl sm:text-2xl font-black text-teal-600 dark:text-teal-400 mt-1" x-text="formatNumber(activeSummary.cargo_total)">
                     {{ number_format($summary['cargo_total'] ?? 0) }}
@@ -3284,7 +3297,7 @@
                                             <td class="px-2.5 py-2 text-right text-slate-500" x-text="formatNumber(row.passenger_transfer)"></td>
                                         </template>
                                         <template x-if="selectedMetric === 'passenger'">
-                                            <td class="px-2.5 py-2 text-right font-bold text-amber-600" x-text="formatNumber(row.passenger_total)"></td>
+                                            <td class="px-2.5 py-2 text-right font-bold text-amber-600" x-text="formatNumber(row.passenger_movement_total !== undefined ? row.passenger_movement_total : (Number(row.passenger_arrival || 0) + Number(row.passenger_departure || 0) + Number(row.passenger_transit || 0) + Number(row.passenger_transfer || 0)))"></td>
                                         </template>
                                         {{-- CREW CELLS --}}
                                         <template x-if="selectedMetric === 'crew'">
@@ -3616,6 +3629,11 @@ function dauEnhancedDashboard() {
                 pos: 'POS / MAIL (KG)'
             };
             return map[this.selectedMetric] || String(this.selectedMetric).toUpperCase();
+        },
+
+        normalizeTerminal(t) {
+            if (!t) return '';
+            return String(t).trim().toUpperCase().replace(/^TERMINAL\s*/i, '').replace(/^T(?=\d)/i, '');
         },
 
         // Chart.js registry
@@ -4701,8 +4719,9 @@ function dauEnhancedDashboard() {
 
                 // Terminal
                 if (term !== 'ALL') {
-                    const rTerm = String(r.terminal || '');
-                    if (rTerm && rTerm.toLowerCase() !== term.toLowerCase()) return false;
+                    const normFilterTerm = this.normalizeTerminal(term);
+                    const normRecTerm = this.normalizeTerminal(r.terminal);
+                    if (!normRecTerm || normRecTerm !== normFilterTerm) return false;
                 }
 
                 // Airline
@@ -4891,7 +4910,9 @@ function dauEnhancedDashboard() {
                 const pxDep = Number(r.passenger_departure || (Number(r.passenger_dep_domestic || 0) + Number(r.passenger_dep_int || 0)) || (Number(r.passenger_dom_departure || 0) + Number(r.passenger_int_departure || 0)));
                 const pxTrn = Number(r.passenger_transit || 0);
                 const pxTrf = Number(r.passenger_transfer || 0);
-                const pxTot = Number(r.passenger_total || r.total_passengers || (pxArr + pxDep + pxTrn + pxTrf));
+                const pxTot = (this.reportType === 'DAU10A')
+                    ? (pxArr + pxDep + pxTrn + pxTrf)
+                    : Number(r.passenger_movement_total !== undefined ? r.passenger_movement_total : (r.passenger_total || r.total_passengers || (pxArr + pxDep + pxTrn + pxTrf)));
 
                 const adArr = Number(r.arr_adult || (r.details?.arr_adult || 0));
                 const chArr = Number(r.arr_child || (r.details?.arr_child || 0));
@@ -5546,7 +5567,7 @@ function dauEnhancedDashboard() {
                     const dep = Number(item.passenger_departure || 0);
                     const transit = Number(item.passenger_transit || 0);
                     const transfer = Number(item.passenger_transfer || 0);
-                    const demand = Number(item.passenger_total || (arr + dep + transit + transfer));
+                    const demand = arr + dep + transit + transfer;
                     return {
                         hour: item.hour,
                         shortLabel: String(item.hour).split(/[.:\s-–]/)[0].padStart(2, '0'),
@@ -5658,9 +5679,20 @@ function dauEnhancedDashboard() {
                 }
             });
 
+            let totalDemand = 0;
+            let peakDemand = 0;
+            let peakDemandHour = '—';
+            list.forEach(item => {
+                totalDemand += Number(item.demand || 0);
+                if (Number(item.demand || 0) > peakDemand) {
+                    peakDemand = Number(item.demand || 0);
+                    peakDemandHour = item.hour;
+                }
+            });
+
             return {
                 list: list,
-                summary: { available: avail, full: full, over: over, off: off }
+                summary: { available: avail, full: full, over: over, off: off, totalDemand: totalDemand, peakHour: peakDemandHour }
             };
         },
 

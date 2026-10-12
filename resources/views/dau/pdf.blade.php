@@ -2278,7 +2278,7 @@
                                 <td>{{ $r['terminal'] ?? '—' }}</td>
                                 <td class="text-right" style="color: #059669; font-weight: bold;">{{ number_format($r['passenger_arrival'] ?? 0) }}</td>
                                 <td class="text-right" style="color: #0284c7; font-weight: bold;">{{ number_format($r['passenger_departure'] ?? 0) }}</td>
-                                <td class="text-right font-bold" style="color: #059669;">{{ number_format($r['passenger_total'] ?? 0) }}</td>
+                                <td class="text-right font-bold" style="color: #059669;">{{ number_format($r['passenger_movement_total'] ?? ($r['passenger_total'] ?? (($r['passenger_arrival'] ?? 0) + ($r['passenger_departure'] ?? 0) + ($r['passenger_transit'] ?? 0) + ($r['passenger_transfer'] ?? 0)))) }}</td>
                                 <td class="text-right">{{ number_format($r['passenger_transit'] ?? 0) }}</td>
                                 <td class="text-right">{{ number_format($r['passenger_transfer'] ?? 0) }}</td>
                             @elseif ($metricMode === 'crew')

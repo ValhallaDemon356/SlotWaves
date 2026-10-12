@@ -300,7 +300,9 @@
                  if (metric === 'passenger') {
                      const arrVal = Number(item.arr ?? 0);
                      const depVal = Number(item.dep ?? 0);
-                     const totVal = Number(item.demand ?? (arrVal + depVal));
+                     const trnVal = Number(item.transit ?? 0);
+                     const trfVal = Number(item.transfer ?? 0);
+                     const totVal = arrVal + depVal + trnVal + trfVal;
                      const val = isArr ? arrVal : depVal;
 
                      this.tooltip = {
@@ -310,16 +312,21 @@
                          hourLabel: hourLabel,
                          type: isArr ? 'arrival' : 'departure',
                          typeLabel: isArr ? 'PASSENGER ARRIVAL' : 'PASSENGER DEPARTURE',
-                         typeColor: isArr ? 'text-amber-400' : 'text-blue-400',
-                         icon: isArr ? '🟠' : '🔵',
+                         typeColor: isArr ? 'text-emerald-400' : 'text-sky-400',
+                         icon: isArr ? '🟢' : '🔵',
                          actual: Number(val).toLocaleString('id-ID'),
                          capacity: null,
                          scope: scope,
                          status: '',
                          statusBadgeClass: '',
+                         metric: 'passenger',
                          metricLabel: 'PENUMPANG',
                          unitLabel: 'Pax',
-                         totalText: 'Total: ' + Number(totVal).toLocaleString('id-ID') + ' Pax (ARR: ' + Number(arrVal).toLocaleString('id-ID') + ' | DEP: ' + Number(depVal).toLocaleString('id-ID') + ')',
+                         paxArr: arrVal,
+                         paxDep: depVal,
+                         paxTransit: trnVal,
+                         paxTransfer: trfVal,
+                         paxTotal: totVal,
                          extra: null
                      };
                  } else if (metric === 'crew') {
@@ -335,16 +342,19 @@
                          hourLabel: hourLabel,
                          type: isArr ? 'arrival' : 'departure',
                          typeLabel: isArr ? 'OPERATING CREW' : 'EXTRA CREW',
-                         typeColor: isArr ? 'text-amber-400' : 'text-blue-400',
-                         icon: isArr ? '🟠' : '🔵',
+                         typeColor: isArr ? 'text-blue-400' : 'text-purple-400',
+                         icon: isArr ? '🔵' : '🟣',
                          actual: Number(val).toLocaleString('id-ID'),
                          capacity: null,
                          scope: scope,
                          status: '',
                          statusBadgeClass: '',
+                         metric: 'crew',
                          metricLabel: 'AWAK',
                          unitLabel: 'Crew',
-                         totalText: 'Total Awak: ' + Number(totVal).toLocaleString('id-ID') + ' (Operating: ' + Number(opVal).toLocaleString('id-ID') + ' | Extra: ' + Number(exVal).toLocaleString('id-ID') + ')',
+                         crewArr: opVal,
+                         crewDep: exVal,
+                         crewTotal: totVal,
                          extra: null
                      };
                  } else {
@@ -851,19 +861,67 @@
                 <span x-text="tooltip.typeLabel"></span>
             </div>
 
-            {{-- Main Data Stat: Aircraft Count / Capacity --}}
-            <div class="bg-slate-800/90 dark:bg-navy-900/90 rounded-lg p-2.5 border border-slate-700/60 mb-2">
-                <div class="text-[9px] font-mono font-bold uppercase tracking-wider text-slate-400">Aircraft</div>
-                <div class="flex items-baseline gap-1.5 font-mono mt-0.5">
-                    <span class="text-xl font-black text-white" x-text="tooltip.actual"></span>
-                    <template x-if="tooltip.capacity !== null">
-                        <span class="text-xs font-bold text-slate-300">/ <span x-text="tooltip.capacity"></span> A/C</span>
-                    </template>
-                    <template x-if="tooltip.capacity === null">
-                        <span class="text-xs font-bold text-slate-300">A/C</span>
-                    </template>
+            {{-- Passenger Breakdown Overlay (Requirement 18) --}}
+            <template x-if="tooltip.metric === 'passenger'">
+                <div class="bg-slate-800/90 dark:bg-navy-900/90 rounded-lg p-2.5 border border-slate-700/60 mb-2 space-y-1.5 font-mono">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 pb-1 border-b border-slate-700/60">PENUMPANG</div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400">Arrival:</span>
+                        <span class="font-bold text-emerald-400" x-text="Number(tooltip.paxArr || 0).toLocaleString('id-ID') + ' Pax'"></span>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400">Departure:</span>
+                        <span class="font-bold text-sky-400" x-text="Number(tooltip.paxDep || 0).toLocaleString('id-ID') + ' Pax'"></span>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400">Transit:</span>
+                        <span class="font-bold text-slate-300" x-text="Number(tooltip.paxTransit || 0).toLocaleString('id-ID') + ' Pax'"></span>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400">Transfer:</span>
+                        <span class="font-bold text-slate-300" x-text="Number(tooltip.paxTransfer || 0).toLocaleString('id-ID') + ' Pax'"></span>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] pt-1 border-t border-slate-700/60">
+                        <span class="font-bold text-slate-200">Total Passenger:</span>
+                        <span class="font-black text-amber-400" x-text="Number(tooltip.paxTotal || 0).toLocaleString('id-ID') + ' Pax'"></span>
+                    </div>
                 </div>
-            </div>
+            </template>
+
+            {{-- Crew Breakdown Overlay --}}
+            <template x-if="tooltip.metric === 'crew'">
+                <div class="bg-slate-800/90 dark:bg-navy-900/90 rounded-lg p-2.5 border border-slate-700/60 mb-2 space-y-1.5 font-mono">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-blue-400 pb-1 border-b border-slate-700/60">AWAK PESAWAT</div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400">Operating Crew:</span>
+                        <span class="font-bold text-blue-400" x-text="Number(tooltip.crewArr || 0).toLocaleString('id-ID') + ' Crew'"></span>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400">Extra Crew:</span>
+                        <span class="font-bold text-purple-400" x-text="Number(tooltip.crewDep || 0).toLocaleString('id-ID') + ' Crew'"></span>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] pt-1 border-t border-slate-700/60">
+                        <span class="font-bold text-slate-200">Total Awak:</span>
+                        <span class="font-black text-amber-400" x-text="Number(tooltip.crewTotal || 0).toLocaleString('id-ID') + ' Crew'"></span>
+                    </div>
+                </div>
+            </template>
+
+            {{-- Main Data Stat: Aircraft Count / Capacity --}}
+            <template x-if="tooltip.metric !== 'passenger' && tooltip.metric !== 'crew'">
+                <div class="bg-slate-800/90 dark:bg-navy-900/90 rounded-lg p-2.5 border border-slate-700/60 mb-2">
+                    <div class="text-[9px] font-mono font-bold uppercase tracking-wider text-slate-400">Aircraft</div>
+                    <div class="flex items-baseline gap-1.5 font-mono mt-0.5">
+                        <span class="text-xl font-black text-white" x-text="tooltip.actual"></span>
+                        <template x-if="tooltip.capacity !== null">
+                            <span class="text-xs font-bold text-slate-300">/ <span x-text="tooltip.capacity"></span> A/C</span>
+                        </template>
+                        <template x-if="tooltip.capacity === null">
+                            <span class="text-xs font-bold text-slate-300">A/C</span>
+                        </template>
+                    </div>
+                </div>
+            </template>
 
             {{-- Average By Days Indicator (when averaging active) --}}
             <template x-if="tooltip.averagePeriodLabel">
@@ -889,11 +947,13 @@
             </div>
 
             {{-- High-Contrast Status Badge --}}
-            <div class="mt-2.5 flex items-center justify-center">
-                <span class="w-full text-center px-2 py-1 rounded-md text-[10px] font-mono font-black uppercase tracking-wider shadow-xs border"
-                      :class="tooltip.statusBadgeClass"
-                      x-text="tooltip.status"></span>
-            </div>
+            <template x-if="tooltip.status">
+                <div class="mt-2.5 flex items-center justify-center">
+                    <span class="w-full text-center px-2 py-1 rounded-md text-[10px] font-mono font-black uppercase tracking-wider shadow-xs border"
+                          :class="tooltip.statusBadgeClass"
+                          x-text="tooltip.status"></span>
+                </div>
+            </template>
 
             {{-- Extra context (e.g. RON Stand Occupied for OPC) --}}
             <template x-if="tooltip.extra">

@@ -500,7 +500,7 @@ class DauDashboardController extends Controller
                     $dep = (int)($hd['passenger_departure'] ?? 0);
                     $transit = (int)($hd['passenger_transit'] ?? 0);
                     $transfer = (int)($hd['passenger_transfer'] ?? 0);
-                    $demand = (int)($hd['passenger_total'] ?? ($arr + $dep + $transit + $transfer));
+                    $demand = $arr + $dep + $transit + $transfer;
 
                     $hourlyCapacityStatus[] = [
                         'hour'        => $hd['hour'],
@@ -833,7 +833,8 @@ class DauDashboardController extends Controller
                 foreach ($records as $r) {
                     fputcsv($handle, [
                         $r['hour'] ?? $r['period'] ?? '', $r['terminal'] ?? '', $r['aircraft_arrival'] ?? 0, $r['aircraft_departure'] ?? 0, $r['aircraft_total'] ?? 0,
-                        $r['passenger_arrival'] ?? 0, $r['passenger_departure'] ?? 0, $r['passenger_transit'] ?? 0, $r['passenger_transfer'] ?? 0, $r['passenger_total'] ?? 0,
+                        $r['passenger_arrival'] ?? 0, $r['passenger_departure'] ?? 0, $r['passenger_transit'] ?? 0, $r['passenger_transfer'] ?? 0,
+                        $r['passenger_movement_total'] ?? ($reportType === 'DAU10A' ? (($r['passenger_arrival'] ?? 0) + ($r['passenger_departure'] ?? 0) + ($r['passenger_transit'] ?? 0) + ($r['passenger_transfer'] ?? 0)) : ($r['passenger_total'] ?? 0)),
                         $r['crew'] ?? 0, $r['extra_crew'] ?? 0, $r['crew_total'] ?? 0, $r['baggage'] ?? 0, $r['cargo'] ?? 0, $r['pos'] ?? 0,
                     ]);
                 }
@@ -931,8 +932,10 @@ class DauDashboardController extends Controller
         foreach ($records as $r) {
             // 1. Terminal filter
             if ($terminalFilter !== 'ALL') {
+                $normFilterTerm = trim(preg_replace('/^(terminal|t)\s*/i', '', (string)$terminalFilter));
                 $recTerminal = (string)($r['terminal'] ?? '');
-                if ($recTerminal !== '' && strcasecmp($recTerminal, $terminalFilter) !== 0) {
+                $normRecTerm = trim(preg_replace('/^(terminal|t)\s*/i', '', $recTerminal));
+                if ($normRecTerm === '' || strcasecmp($normRecTerm, $normFilterTerm) !== 0) {
                     continue;
                 }
             }
@@ -1152,7 +1155,11 @@ class DauDashboardController extends Controller
             $pxDep = (int)($r['passenger_departure'] ?? ($r['passenger_dep_domestic'] ?? 0) + ($r['passenger_dep_int'] ?? 0));
             $pxTrn = (int)($r['passenger_transit'] ?? 0);
             $pxTrf = (int)($r['passenger_transfer'] ?? 0);
-            $pxTot = (int)($r['passenger_total'] ?? ($r['total_passengers'] ?? ($pxArr + $pxDep + $pxTrn + $pxTrf)));
+            if ($reportType === 'DAU10A' || isset($r['passenger_movement_total'])) {
+                $pxTot = (int)($r['passenger_movement_total'] ?? ($pxArr + $pxDep + $pxTrn + $pxTrf));
+            } else {
+                $pxTot = (int)($r['passenger_total'] ?? ($r['total_passengers'] ?? ($pxArr + $pxDep + $pxTrn + $pxTrf)));
+            }
 
             $crew  = (int)($r['crew_total'] ?? (($r['crew'] ?? 0) + ($r['extra_crew'] ?? 0)));
             $bag   = (int)($r['baggage'] ?? 0);
@@ -1394,6 +1401,8 @@ class DauDashboardController extends Controller
         $peakAcVal = 0;
         $peakPaxHour = '—';
         $peakPaxVal = 0;
+        $peakCrewHour = '—';
+        $peakCrewVal = 0;
         $peakBlockOnHour = '—';
         $peakBlockOnVal = 0;
         $peakBlockOffHour = '—';
@@ -1407,6 +1416,10 @@ class DauDashboardController extends Controller
             if ($hb['passenger_total'] > $peakPaxVal) {
                 $peakPaxVal = $hb['passenger_total'];
                 $peakPaxHour = $h;
+            }
+            if (($hb['crew_total'] ?? 0) > $peakCrewVal) {
+                $peakCrewVal = $hb['crew_total'] ?? 0;
+                $peakCrewHour = $h;
             }
             $onVal = ($metric === 'passenger') ? $hb['passenger_arrival'] : $hb['aircraft_arrival'];
             $offVal = ($metric === 'passenger') ? $hb['passenger_departure'] : $hb['aircraft_departure'];
@@ -1423,10 +1436,16 @@ class DauDashboardController extends Controller
         $peakTerm = '—';
         $peakTermVal = 0;
         foreach ($terminalBuckets as $t => $tb) {
-            $val = $metric === 'passenger' ? $tb['passenger_total'] : $tb['aircraft_total'];
+            if ($metric === 'passenger') {
+                $val = $tb['passenger_total'];
+            } elseif ($metric === 'crew') {
+                $val = $tb['crew_total'] ?? 0;
+            } else {
+                $val = $tb['aircraft_total'];
+            }
             if ($val > $peakTermVal) {
                 $peakTermVal = $val;
-                $peakTerm = $t;
+                $peakTerm = (string)$t;
             }
         }
 
@@ -1435,7 +1454,9 @@ class DauDashboardController extends Controller
             'peak_aircraft'      => $peakAcVal,
             'peak_passenger_hour'=> $peakPaxHour,
             'peak_passenger'     => $peakPaxVal,
-            'peak_hour'          => ($metric === 'passenger' ? $peakPaxHour : $peakAcHour),
+            'peak_crew_hour'     => $peakCrewHour,
+            'peak_crew'          => $peakCrewVal,
+            'peak_hour'          => ($metric === 'passenger' ? $peakPaxHour : ($metric === 'crew' ? $peakCrewHour : $peakAcHour)),
             'peak_terminal'      => $peakTerm,
             'peak_terminal_val'  => $peakTermVal,
             'peak_block_on_hour' => $peakBlockOnHour,
@@ -1862,7 +1883,8 @@ class DauDashboardController extends Controller
         Request $request,
         SupabaseStorageService $storageService,
         FdrStreamingParser $fdrParser,
-        TemplateValidator $validator
+        TemplateValidator $validator,
+        \App\Services\FlightDailyReport\FdrDatabaseService $fdrDbService
     ) {
         $validated = $request->validate([
             'file_path'         => 'required|string',
@@ -1871,7 +1893,7 @@ class DauDashboardController extends Controller
             'airline_type'      => 'nullable|string',
         ]);
 
-        $bucket = $validated['bucket_name'] ?: config('services.supabase.bucket', 'fdr-datasets');
+        $bucket = (!empty($validated['bucket_name'])) ? $validated['bucket_name'] : config('services.supabase.bucket', env('NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET', 'flight-reports'));
         $storagePath = $validated['file_path'];
         $originalFilename = $validated['original_filename'];
         $airlineHint = $validated['airline_type'] ?? null;
@@ -1919,6 +1941,10 @@ class DauDashboardController extends Controller
                     'summary' => $parsed['summary'],
                 ],
             ]);
+
+            // 5. Ingest normalized movements directly into PostgreSQL fdr_flights database
+            $movementRecords = $parsed['movements'] ?? ($parsed['records'] ?? []);
+            $fdrDbService->syncUploadToDatabase($upload, $movementRecords, $parsed['meta'] ?? []);
 
             session(['active_upload_id' => $upload->id]);
             session(['fdr_active_upload_id' => $upload->id]);
