@@ -1870,6 +1870,94 @@ class DauDashboardController extends Controller
     }
 
     /**
+     * Create a short-lived signed upload URL for the FDR browser uploader.
+     *
+     * The actual file bytes never pass through Vercel/Laravel.
+     */
+    public function createFdrSignedUploadUrl(
+        Request $request,
+        SupabaseStorageService $storageService
+    ) {
+        try {
+            $data = $request->validate([
+                'original_filename' => ['required', 'string', 'max:255'],
+                'file_size' => ['required', 'integer', 'min:1'],
+                'mime_type' => ['nullable', 'string', 'max:150'],
+            ]);
+
+            $bucket = config(
+                'services.supabase.bucket',
+                env('NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET', 'flight-reports')
+            );
+
+            // Keep the application limit configurable. Supabase Free currently
+            // caps individual files at 50 MB, so default to 50 MB rather than
+            // advertising a larger limit that the storage plan cannot accept.
+            $maxMb = (int) env('FDR_MAX_UPLOAD_MB', 50);
+            $maxBytes = $maxMb * 1024 * 1024;
+
+            if ((int) $data['file_size'] > $maxBytes) {
+                return response()->json([
+                    'success' => false,
+                    'error' => [
+                        'code' => 'FDR_FILE_TOO_LARGE',
+                        'message' => "File exceeds the configured FDR upload limit of {$maxMb} MB.",
+                        'retryable' => false,
+                    ],
+                ], 413);
+            }
+
+            $original = trim($data['original_filename']);
+            $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $original) ?: 'fdr_upload.xls';
+            $safeName = ltrim($safeName, '.');
+            $stamp = now()->format('Y/m');
+            $token = (string) IlluminateSupportStr::uuid();
+
+            // Do not put literal "user_id" in the object path. This application
+            // does not require a Supabase-authenticated browser session for FDR.
+            $storagePath = "raw_fdr/{$stamp}/{$token}_{$safeName}";
+
+            $signed = $storageService->createSignedUploadUrl(
+                $storagePath,
+                $bucket,
+                false
+            );
+
+            return response()->json([
+                'success' => true,
+                'bucket' => $bucket,
+                'path' => $storagePath,
+                'signed_url' => $signed['signed_url'],
+                'token' => $signed['token'],
+                'expires_in' => $signed['expires_in'],
+                'max_mb' => $maxMb,
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'FDR_UPLOAD_URL_VALIDATION',
+                    'message' => $e->validator->errors()->all(),
+                    'retryable' => false,
+                ],
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('FDR signed upload URL creation failed', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'FDR_SIGNED_UPLOAD_ERROR',
+                    'message' => $e->getMessage(),
+                    'retryable' => false,
+                ],
+            ], 500);
+        }
+    }
+
+    /**
      * Handle post-upload metadata for Flight Daily Report uploaded directly to Supabase Storage.
      * Bypasses Vercel 4.5MB serverless payload limit completely by having the client upload directly to Supabase.
      *
