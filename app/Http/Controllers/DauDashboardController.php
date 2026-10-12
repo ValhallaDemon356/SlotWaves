@@ -1911,7 +1911,7 @@ class DauDashboardController extends Controller
             $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $original) ?: 'fdr_upload.xls';
             $safeName = ltrim($safeName, '.');
             $stamp = now()->format('Y/m');
-            $token = (string) IlluminateSupportStr::uuid();
+            $token = (string) \Illuminate\Support\Str::uuid();
 
             // Do not put literal "user_id" in the object path. This application
             // does not require a Supabase-authenticated browser session for FDR.
