@@ -278,4 +278,72 @@ class SupabaseStorageService
             return false;
         }
     }
+
+    /**
+     * Check if an object exists in Supabase Storage and retrieve its metadata.
+     *
+     * @param string $filePath
+     * @param string|null $bucket
+     * @return array|null Returns ['size' => int, 'content_type' => string, 'updated_at' => string] or null if not found
+     */
+    public function getFileInfo(string $filePath, ?string $bucket = null): ?array
+    {
+        $bucket = $bucket ?: $this->defaultBucket;
+        $cleanPath = $this->sanitizeStoragePath($filePath);
+        $apiKey = !empty($this->serviceRoleKey) ? $this->serviceRoleKey : $this->anonKey;
+
+        $endpoint = "{$this->supabaseUrl}/storage/v1/object/authenticated/{$bucket}/{$cleanPath}";
+
+        try {
+            $headers = ['apikey' => $apiKey];
+            if (!empty($apiKey)) {
+                $headers['Authorization'] = "Bearer {$apiKey}";
+            }
+
+            $res = $this->httpClient->request('HEAD', $endpoint, [
+                'headers' => $headers,
+            ]);
+
+            $code = $res->getStatusCode();
+            if ($code >= 200 && $code < 300) {
+                return [
+                    'size'         => (int) ($res->getHeaderLine('Content-Length') ?: 0),
+                    'content_type' => $res->getHeaderLine('Content-Type') ?: 'application/octet-stream',
+                    'updated_at'   => $res->getHeaderLine('Last-Modified') ?: null,
+                    'path'         => $cleanPath,
+                    'bucket'       => $bucket,
+                ];
+            }
+
+            // Fallback: public endpoint
+            $publicEndpoint = "{$this->supabaseUrl}/storage/v1/object/public/{$bucket}/{$cleanPath}";
+            $res = $this->httpClient->request('HEAD', $publicEndpoint, [
+                'headers' => ['apikey' => $apiKey],
+            ]);
+            $code = $res->getStatusCode();
+            if ($code >= 200 && $code < 300) {
+                return [
+                    'size'         => (int) ($res->getHeaderLine('Content-Length') ?: 0),
+                    'content_type' => $res->getHeaderLine('Content-Type') ?: 'application/octet-stream',
+                    'updated_at'   => $res->getHeaderLine('Last-Modified') ?: null,
+                    'path'         => $cleanPath,
+                    'bucket'       => $bucket,
+                ];
+            }
+
+            return null;
+        } catch (\Throwable $e) {
+            Log::debug("SupabaseStorageService getFileInfo notice: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Check if an object exists in Supabase Storage.
+     */
+    public function fileExists(string $filePath, ?string $bucket = null): bool
+    {
+        return $this->getFileInfo($filePath, $bucket) !== null;
+    }
 }
+

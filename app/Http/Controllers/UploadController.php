@@ -259,7 +259,7 @@ class UploadController extends Controller
                     ->where('status', 'READY')
                     ->latest()
                     ->first();
-                if ($existingJob) {
+                if ($existingJob && \App\Models\FdrFlight::where('upload_id', $existingJob->upload_id)->exists()) {
                     return response()->json([
                         'success'      => true,
                         'is_duplicate' => true,

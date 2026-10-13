@@ -664,14 +664,14 @@
                             </div>
                             <span class="px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-900" x-text="'LF ' + (paxAnalytics.lf_avg_arr ? paxAnalytics.lf_avg_arr + '%' : '66.8%')">LF 66.8%</span>
                         </div>
-                        <div class="text-lg font-black text-slate-900" x-text="(paxAnalytics.composition_arr.adult + paxAnalytics.composition_arr.child + paxAnalytics.composition_arr.infant).toLocaleString() + ' Pax'">
+                        <div class="text-lg font-black text-slate-900" x-text="(((paxAnalytics.composition_arr || {}).adult || 0) + ((paxAnalytics.composition_arr || {}).child || 0) + ((paxAnalytics.composition_arr || {}).infant || 0)).toLocaleString() + ' Pax'">
                             12,843 Pax
                         </div>
                         <div class="text-[10px] text-slate-500 font-medium">
-                            Adl: <span x-text="paxAnalytics.composition_arr.adult.toLocaleString()">12,418</span> | Chd: <span x-text="paxAnalytics.composition_arr.child">361</span> | Inf: <span x-text="paxAnalytics.composition_arr.infant">64</span>
+                            Adl: <span x-text="((paxAnalytics.composition_arr || {}).adult || 0).toLocaleString()">12,418</span> | Chd: <span x-text="(paxAnalytics.composition_arr || {}).child || 0">361</span> | Inf: <span x-text="(paxAnalytics.composition_arr || {}).infant || 0">64</span>
                         </div>
                         <div class="text-[10px] text-slate-500 font-medium pt-1 border-t border-amber-200/40">
-                            Cargo: <span x-text="(paxAnalytics.payload_arr.cargo_kg / 1000).toFixed(2) + ' t'">106.42 t</span> | Bag: <span x-text="paxAnalytics.payload_arr.baggage_kg.toLocaleString() + ' kg'">73,541 kg</span>
+                            Cargo: <span x-text="(((paxAnalytics.payload_arr || {}).cargo_kg || 0) / 1000).toFixed(2) + ' t'">106.42 t</span> | Bag: <span x-text="((paxAnalytics.payload_arr || {}).baggage_kg || 0).toLocaleString() + ' kg'">73,541 kg</span>
                         </div>
                     </div>
 
@@ -689,14 +689,14 @@
                             </div>
                             <span class="px-2 py-0.5 rounded text-[10px] font-black bg-blue-100 text-blue-900" x-text="'LF ' + (paxAnalytics.lf_avg_dep ? paxAnalytics.lf_avg_dep + '%' : '70.1%')">LF 70.1%</span>
                         </div>
-                        <div class="text-lg font-black text-slate-900" x-text="(paxAnalytics.composition_dep.adult + paxAnalytics.composition_dep.child + paxAnalytics.composition_dep.infant).toLocaleString() + ' Pax'">
+                        <div class="text-lg font-black text-slate-900" x-text="(((paxAnalytics.composition_dep || {}).adult || 0) + ((paxAnalytics.composition_dep || {}).child || 0) + ((paxAnalytics.composition_dep || {}).infant || 0)).toLocaleString() + ' Pax'">
                             12,784 Pax
                         </div>
                         <div class="text-[10px] text-slate-500 font-medium">
-                            Adl: <span x-text="paxAnalytics.composition_dep.adult.toLocaleString()">12,356</span> | Chd: <span x-text="paxAnalytics.composition_dep.child">396</span> | Inf: <span x-text="paxAnalytics.composition_dep.infant">32</span>
+                            Adl: <span x-text="((paxAnalytics.composition_dep || {}).adult || 0).toLocaleString()">12,356</span> | Chd: <span x-text="(paxAnalytics.composition_dep || {}).child || 0">396</span> | Inf: <span x-text="(paxAnalytics.composition_dep || {}).infant || 0">32</span>
                         </div>
                         <div class="text-[10px] text-slate-500 font-medium pt-1 border-t border-blue-200/40">
-                            Cargo: <span x-text="(paxAnalytics.payload_dep.cargo_kg / 1000).toFixed(2) + ' t'">102.55 t</span> | Bag: <span x-text="paxAnalytics.payload_dep.baggage_kg.toLocaleString() + ' kg'">73,914 kg</span>
+                            Cargo: <span x-text="(((paxAnalytics.payload_dep || {}).cargo_kg || 0) / 1000).toFixed(2) + ' t'">102.55 t</span> | Bag: <span x-text="((paxAnalytics.payload_dep || {}).baggage_kg || 0).toLocaleString() + ' kg'">73,914 kg</span>
                         </div>
                     </div>
 
@@ -762,13 +762,13 @@
 
                 {{-- Tab 1: Top Operators Horizontal Bar Chart / List --}}
                 <div x-show="panel3Tab === 'operators'" class="space-y-2.5">
-                    <template x-for="item in airlineRoute.ranked_airlines.slice(0, 7)" :key="item.airline">
+                    <template x-for="item in (airlineRoute.ranked_airlines || []).slice(0, 7)" :key="item.airline">
                         <div class="space-y-1">
                             <div class="flex items-center justify-between text-xs">
                                 <span class="font-bold text-slate-800" x-text="item.airline"></span>
                                 <span class="font-mono text-slate-500 font-semibold">
-                                    <strong class="text-slate-900" x-text="item.flights"></strong> 
-                                    (<span x-text="kpis.total_flights > 0 ? ((item.flights / kpis.total_flights) * 100).toFixed(1) + '%' : '0%'"></span>)
+                                     <strong class="text-slate-900" x-text="item.flights"></strong> 
+                                     (<span x-text="kpis.total_flights > 0 ? ((item.flights / kpis.total_flights) * 100).toFixed(1) + '%' : '0%'"></span>)
                                 </span>
                             </div>
                             <div class="w-full h-3 rounded-full bg-slate-100 overflow-hidden">
@@ -791,7 +791,7 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-50 font-mono">
-                            <template x-for="item in fleetPerformance.fleet_mix ? fleetPerformance.fleet_mix.slice(0, 6) : []" :key="item.desc">
+                            <template x-for="item in (fleetPerformance.fleet_mix || []).slice(0, 6)" :key="item.desc">
                                 <tr>
                                     <td class="py-1.5 px-2 font-sans font-bold text-slate-800 truncate max-w-[150px]" x-text="item.desc"></td>
                                     <td class="py-1.5 px-2 text-right text-slate-700" x-text="item.movements"></td>
@@ -805,7 +805,7 @@
 
                 {{-- Tab 3: Load Factor by Operator --}}
                 <div x-show="panel3Tab === 'lf'" class="space-y-2.5">
-                    <template x-for="item in airlineRoute.ranked_airlines.slice(0, 7)" :key="item.airline">
+                    <template x-for="item in (airlineRoute.ranked_airlines || []).slice(0, 7)" :key="item.airline">
                         <div class="space-y-1">
                             <div class="flex items-center justify-between text-xs">
                                 <span class="font-bold text-slate-800" x-text="item.airline"></span>

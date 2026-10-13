@@ -469,10 +469,14 @@ function fdrSupabaseUploader(config) {
                 }
 
                 if (status === 'READY') {
+                    const movementRows = Number(processData.movement_rows ?? processData.processed_rows ?? 0);
+                    if (movementRows <= 0) {
+                        throw new Error('FDR_DATABASE_INGESTION_ERROR: 0 flight movements were persisted to database.');
+                    }
                     this.uploadState.status = 'completed';
                     this.uploadState.progress = 100;
                     this.uploadState.successMessage =
-                        'Flight Daily Report berhasil dibaca dan diproses.';
+                        `Flight Daily Report berhasil dibaca dan diproses (${movementRows.toLocaleString()} penerbangan).`;
                     this.uploadState.redirectUrl =
                         processData.result_url || fallbackRedirect;
 

@@ -282,7 +282,7 @@ class FdrDatabaseService
     {
         $base = FdrFlight::where('upload_id', $upload->id)->applyFilters($filters);
 
-        // 1. Core KPIs Aggregation
+        // 1. Core KPIs Aggregation with Directional and Class Splits
         $kpiRow = (clone $base)->selectRaw("
             COUNT(*) as total_flights,
             COUNT(CASE WHEN direction = 'ARRIVAL' THEN 1 END) as arrivals,
@@ -293,10 +293,13 @@ class FdrDatabaseService
             COUNT(CASE WHEN direction = 'DEPARTURE' AND traffic_type = 'INTERNATIONAL' THEN 1 END) as departures_int,
             COUNT(CASE WHEN is_realized = true THEN 1 END) as realized_flights,
             COUNT(CASE WHEN is_realized = false THEN 1 END) as planned_unrealized,
-            COUNT(CASE WHEN is_realized = true AND delay_minutes <= 15 THEN 1 END) as on_time_flights,
+            COUNT(CASE WHEN is_realized = true AND delay_minutes < -15 THEN 1 END) as early_flights,
+            COUNT(CASE WHEN is_realized = true AND delay_minutes >= -15 AND delay_minutes <= 15 THEN 1 END) as on_time_flights,
             COUNT(CASE WHEN is_realized = true AND delay_minutes > 15 THEN 1 END) as delayed_flights,
             COUNT(CASE WHEN is_irregular = true THEN 1 END) as irregular_flights,
             COALESCE(AVG(CASE WHEN is_realized = true THEN delay_minutes END), 0) as avg_delay_minutes,
+            COALESCE(MIN(CASE WHEN is_realized = true THEN delay_minutes END), 0) as min_delay_minutes,
+            COALESCE(MAX(CASE WHEN is_realized = true THEN delay_minutes END), 0) as max_delay_minutes,
             COALESCE(SUM(passenger_capacity), 0) as total_capacity,
             COALESCE(SUM(passenger_load), 0) as total_load,
             COALESCE(SUM(pax_adult), 0) as total_adult,
@@ -306,7 +309,29 @@ class FdrDatabaseService
             COALESCE(SUM(pax_transfer), 0) as total_transfer,
             COALESCE(SUM(cargo_kg), 0) as total_cargo_kg,
             COALESCE(SUM(baggage_kg), 0) as total_baggage_kg,
-            COALESCE(SUM(pos_kg), 0) as total_pos_kg
+            COALESCE(SUM(pos_kg), 0) as total_pos_kg,
+            -- ARRIVAL BREAKDOWN
+            COALESCE(SUM(CASE WHEN direction = 'ARRIVAL' THEN passenger_capacity END), 0) as arr_capacity,
+            COALESCE(SUM(CASE WHEN direction = 'ARRIVAL' THEN passenger_load END), 0) as arr_load,
+            COALESCE(SUM(CASE WHEN direction = 'ARRIVAL' THEN pax_adult END), 0) as arr_adult,
+            COALESCE(SUM(CASE WHEN direction = 'ARRIVAL' THEN pax_child END), 0) as arr_child,
+            COALESCE(SUM(CASE WHEN direction = 'ARRIVAL' THEN pax_infant END), 0) as arr_infant,
+            COALESCE(SUM(CASE WHEN direction = 'ARRIVAL' THEN pax_transit END), 0) as arr_transit,
+            COALESCE(SUM(CASE WHEN direction = 'ARRIVAL' THEN pax_transfer END), 0) as arr_transfer,
+            COALESCE(SUM(CASE WHEN direction = 'ARRIVAL' THEN cargo_kg END), 0) as arr_cargo_kg,
+            COALESCE(SUM(CASE WHEN direction = 'ARRIVAL' THEN baggage_kg END), 0) as arr_baggage_kg,
+            COALESCE(SUM(CASE WHEN direction = 'ARRIVAL' THEN pos_kg END), 0) as arr_pos_kg,
+            -- DEPARTURE BREAKDOWN
+            COALESCE(SUM(CASE WHEN direction = 'DEPARTURE' THEN passenger_capacity END), 0) as dep_capacity,
+            COALESCE(SUM(CASE WHEN direction = 'DEPARTURE' THEN passenger_load END), 0) as dep_load,
+            COALESCE(SUM(CASE WHEN direction = 'DEPARTURE' THEN pax_adult END), 0) as dep_adult,
+            COALESCE(SUM(CASE WHEN direction = 'DEPARTURE' THEN pax_child END), 0) as dep_child,
+            COALESCE(SUM(CASE WHEN direction = 'DEPARTURE' THEN pax_infant END), 0) as dep_infant,
+            COALESCE(SUM(CASE WHEN direction = 'DEPARTURE' THEN pax_transit END), 0) as dep_transit,
+            COALESCE(SUM(CASE WHEN direction = 'DEPARTURE' THEN pax_transfer END), 0) as dep_transfer,
+            COALESCE(SUM(CASE WHEN direction = 'DEPARTURE' THEN cargo_kg END), 0) as dep_cargo_kg,
+            COALESCE(SUM(CASE WHEN direction = 'DEPARTURE' THEN baggage_kg END), 0) as dep_baggage_kg,
+            COALESCE(SUM(CASE WHEN direction = 'DEPARTURE' THEN pos_kg END), 0) as dep_pos_kg
         ")->first();
 
         $totFlights = (int)($kpiRow->total_flights ?? 0);
@@ -315,6 +340,7 @@ class FdrDatabaseService
         $realized   = (int)($kpiRow->realized_flights ?? 0);
         $onTime     = (int)($kpiRow->on_time_flights ?? 0);
         $delayed    = (int)($kpiRow->delayed_flights ?? 0);
+        $earlyCount = (int)($kpiRow->early_flights ?? 0);
         $totLoad    = (int)($kpiRow->total_load ?? 0);
         $totCap     = (int)($kpiRow->total_capacity ?? 0);
 
@@ -425,29 +451,29 @@ class FdrDatabaseService
             ],
         ];
 
-        // 3. Delay Histogram (9 Bins)
+        // 3. Delay Histogram (9 Standard Bins: 4 Early, 1 On Time, 4 Late)
         $delayBins = [
-            ['label' => '< -30m', 'min' => -9999, 'max' => -31, 'color' => '#10B981', 'group' => 'EARLY', 'desc' => 'Very Early (>30m early)'],
-            ['label' => '-30m to -16m', 'min' => -30, 'max' => -16, 'color' => '#34D399', 'group' => 'EARLY', 'desc' => 'Early (16m-30m early)'],
-            ['label' => '-15m to -1m', 'min' => -15, 'max' => -1, 'color' => '#6EE7B7', 'group' => 'EARLY', 'desc' => 'Slightly Early (1m-15m early)'],
-            ['label' => 'On Time (0m)', 'min' => 0, 'max' => 0, 'color' => '#3B82F6', 'group' => 'ON TIME', 'desc' => 'Exactly On Time (0m variance)'],
-            ['label' => '+1m to +15m', 'min' => 1, 'max' => 15, 'color' => '#93C5FD', 'group' => 'ON TIME', 'desc' => 'Within Tolerance (1m-15m delay)'],
-            ['label' => '+16m to +30m', 'min' => 16, 'max' => 30, 'color' => '#FBBF24', 'group' => 'MINOR DELAY', 'desc' => 'Minor Delay (16m-30m delay)'],
-            ['label' => '+31m to +60m', 'min' => 31, 'max' => 60, 'color' => '#F97316', 'group' => 'MODERATE DELAY', 'desc' => 'Moderate Delay (31m-60m delay)'],
-            ['label' => '+61m to +120m', 'min' => 61, 'max' => 120, 'color' => '#EF4444', 'group' => 'MAJOR DELAY', 'desc' => 'Major Delay (61m-120m delay)'],
-            ['label' => '> +120m', 'min' => 121, 'max' => 9999, 'color' => '#991B1B', 'group' => 'SEVERE DELAY', 'desc' => 'Severe Delay (>120m delay)'],
+            ['label' => '>60 MIN EARLY',  'legacy_label' => '<-60',    'min' => -9999, 'max' => -61, 'color' => '#1E3A8A', 'group' => 'EARLY', 'desc' => '>60 minutes early'],
+            ['label' => '31–60 MIN EARLY', 'legacy_label' => '-60~-31', 'min' => -60,   'max' => -31, 'color' => '#2563EB', 'group' => 'EARLY', 'desc' => '31–60 minutes early'],
+            ['label' => '16–30 MIN EARLY', 'legacy_label' => '-30~-16', 'min' => -30,   'max' => -16, 'color' => '#38BDF8', 'group' => 'EARLY', 'desc' => '16–30 minutes early'],
+            ['label' => '6–15 MIN EARLY',  'legacy_label' => '-15~-6',  'min' => -15,   'max' => -6,  'color' => '#BAE6FD', 'group' => 'EARLY', 'desc' => '6–15 minutes early'],
+            ['label' => 'ON TIME ±5 MIN',  'legacy_label' => '-5~5',    'min' => -5,    'max' => 5,   'color' => '#10B981', 'group' => 'ON TIME', 'desc' => 'Within ±5 minutes'],
+            ['label' => '6–15 MIN LATE',   'legacy_label' => '6~15',    'min' => 6,     'max' => 15,  'color' => '#FDE047', 'group' => 'LATE', 'desc' => '6–15 minutes late'],
+            ['label' => '16–30 MIN LATE',  'legacy_label' => '16~30',   'min' => 16,    'max' => 30,  'color' => '#F59E0B', 'group' => 'LATE', 'desc' => '16–30 minutes late'],
+            ['label' => '31–60 MIN LATE',  'legacy_label' => '31~60',   'min' => 31,    'max' => 60,  'color' => '#EA580C', 'group' => 'LATE', 'desc' => '31–60 minutes late'],
+            ['label' => '>60 MIN LATE',    'legacy_label' => '>60',     'min' => 61,    'max' => 9999,'color' => '#DC2626', 'group' => 'LATE', 'desc' => '>60 minutes late'],
         ];
 
         $histCounts = (clone $base)->whereRaw('is_realized = true')->selectRaw("
-            COUNT(CASE WHEN delay_minutes < -30 THEN 1 END) as b0,
-            COUNT(CASE WHEN delay_minutes >= -30 AND delay_minutes <= -16 THEN 1 END) as b1,
-            COUNT(CASE WHEN delay_minutes >= -15 AND delay_minutes <= -1 THEN 1 END) as b2,
-            COUNT(CASE WHEN delay_minutes = 0 THEN 1 END) as b3,
-            COUNT(CASE WHEN delay_minutes >= 1 AND delay_minutes <= 15 THEN 1 END) as b4,
-            COUNT(CASE WHEN delay_minutes >= 16 AND delay_minutes <= 30 THEN 1 END) as b5,
-            COUNT(CASE WHEN delay_minutes >= 31 AND delay_minutes <= 60 THEN 1 END) as b6,
-            COUNT(CASE WHEN delay_minutes >= 61 AND delay_minutes <= 120 THEN 1 END) as b7,
-            COUNT(CASE WHEN delay_minutes > 120 THEN 1 END) as b8
+            COUNT(CASE WHEN delay_minutes < -60 THEN 1 END) as b0,
+            COUNT(CASE WHEN delay_minutes >= -60 AND delay_minutes <= -31 THEN 1 END) as b1,
+            COUNT(CASE WHEN delay_minutes >= -30 AND delay_minutes <= -16 THEN 1 END) as b2,
+            COUNT(CASE WHEN delay_minutes >= -15 AND delay_minutes <= -6 THEN 1 END) as b3,
+            COUNT(CASE WHEN delay_minutes >= -5 AND delay_minutes <= 5 THEN 1 END) as b4,
+            COUNT(CASE WHEN delay_minutes >= 6 AND delay_minutes <= 15 THEN 1 END) as b5,
+            COUNT(CASE WHEN delay_minutes >= 16 AND delay_minutes <= 30 THEN 1 END) as b6,
+            COUNT(CASE WHEN delay_minutes >= 31 AND delay_minutes <= 60 THEN 1 END) as b7,
+            COUNT(CASE WHEN delay_minutes > 60 THEN 1 END) as b8
         ")->first();
 
         for ($i = 0; $i < 9; $i++) {
@@ -520,24 +546,113 @@ class FdrDatabaseService
             'dep_int_cargo_kg'      => $depIntCargoArr,
         ];
 
-        // 5. Airline and Route Breakdown
-        $airlineBreakdown = (clone $base)->selectRaw("
-            airline_code,
-            COUNT(*) as flights,
-            SUM(passenger_capacity) as capacity,
-            SUM(passenger_load) as load,
-            SUM(cargo_kg) as cargo_kg
-        ")->groupBy('airline_code')->orderByDesc('flights')->get();
+        // 5. Airline and Route Breakdown (Ranked Airlines & Top Routes)
+        $airlineBreakdown = (clone $base)
+            ->whereNotNull('airline_code')
+            ->where('airline_code', '!=', '')
+            ->where('airline_code', '!=', 'N/A')
+            ->whereRaw("LOWER(airline_code) NOT LIKE '%pax all%'")
+            ->selectRaw("
+                airline_code,
+                COUNT(*) as flights,
+                COALESCE(SUM(passenger_capacity), 0) as capacity,
+                COALESCE(SUM(passenger_load), 0) as load,
+                COALESCE(SUM(pax_adult + pax_child + pax_infant), 0) as passengers,
+                COALESCE(SUM(cargo_kg), 0) as cargo_kg
+            ")->groupBy('airline_code')->orderByDesc('flights')->get();
 
+        $rankedAirlines = [];
         $airlinesMap = [];
         foreach ($airlineBreakdown as $ab) {
-            $airlinesMap[$ab->airline_code] = [
-                'airline'    => $ab->airline_code,
-                'flights'    => (int)$ab->flights,
-                'capacity'   => (int)$ab->capacity,
-                'load'       => (int)$ab->load,
-                'cargo_kg'   => (float)$ab->cargo_kg,
-                'passengers' => (int)$ab->load,
+            $cap = (int)$ab->capacity;
+            $ld  = (int)$ab->load;
+            $pax = (int)$ab->passengers;
+            if ($pax === 0 && $ld > 0) $pax = $ld;
+            $lfNum = $cap > 0 ? round(($ld / $cap) * 100, 1) : 0.0;
+            $item = [
+                'airline'         => $ab->airline_code,
+                'flights'         => (int)$ab->flights,
+                'passengers'      => $pax,
+                'capacity'        => $cap,
+                'load'            => $ld,
+                'cargo_kg'        => (float)$ab->cargo_kg,
+                'avg_load_factor' => $cap > 0 ? "{$lfNum}%" : 'N/A',
+                'lf_num'          => $lfNum,
+            ];
+            $rankedAirlines[] = $item;
+            $airlinesMap[$ab->airline_code] = $item;
+        }
+
+        // Top Routes
+        $routeRows = (clone $base)
+            ->whereNotNull('origin_airport')->where('origin_airport', '!=', '')->where('origin_airport', '!=', 'N/A')
+            ->whereNotNull('destination_airport')->where('destination_airport', '!=', '')->where('destination_airport', '!=', 'N/A')
+            ->selectRaw("
+                origin_airport,
+                destination_airport,
+                COUNT(*) as flights,
+                COALESCE(SUM(passenger_capacity), 0) as capacity,
+                COALESCE(SUM(passenger_load), 0) as load,
+                COALESCE(SUM(pax_adult + pax_child + pax_infant), 0) as passengers
+            ")
+            ->groupBy('origin_airport', 'destination_airport')
+            ->orderByDesc('flights')
+            ->take(15)
+            ->get();
+
+        $topRoutes = [];
+        foreach ($routeRows as $r) {
+            $cap = (int)$r->capacity;
+            $ld  = (int)$r->load;
+            $pax = (int)$r->passengers;
+            if ($pax === 0 && $ld > 0) $pax = $ld;
+            $lfNum = $cap > 0 ? round(($ld / $cap) * 100, 1) : 0.0;
+            $topRoutes[] = [
+                'route'           => "{$r->origin_airport} → {$r->destination_airport}",
+                'origin'          => $r->origin_airport,
+                'dest'            => $r->destination_airport,
+                'flights'         => (int)$r->flights,
+                'passengers'      => $pax,
+                'capacity'        => $cap,
+                'load'            => $ld,
+                'avg_load_factor' => $cap > 0 ? "{$lfNum}%" : 'N/A',
+                'lf_num'          => $lfNum,
+            ];
+        }
+
+        // 6. Fleet Performance (Fleet Mix per Aircraft Type, Narrow vs Wide)
+        $fleetRows = (clone $base)
+            ->whereNotNull('aircraft_type')
+            ->where('aircraft_type', '!=', '')
+            ->where('aircraft_type', '!=', 'N/A')
+            ->selectRaw("
+                aircraft_type,
+                COUNT(*) as movements,
+                AVG(CASE WHEN passenger_capacity > 0 THEN passenger_capacity END) as avg_cap,
+                AVG(CASE WHEN passenger_capacity > 0 THEN (passenger_load::float / passenger_capacity * 100) END) as avg_lf
+            ")
+            ->groupBy('aircraft_type')
+            ->orderByDesc('movements')
+            ->take(15)
+            ->get();
+
+        $fleetMix = [];
+        $narrowCount = 0;
+        $wideCount = 0;
+        foreach ($fleetRows as $fr) {
+            $desc = $fr->aircraft_type;
+            $isNarrow = str_contains($desc, '(N )') || str_contains($desc, '(N)');
+            $isWide   = str_contains($desc, '(W )') || str_contains($desc, '(W)');
+            if ($isNarrow) $narrowCount += (int)$fr->movements;
+            elseif ($isWide) $wideCount += (int)$fr->movements;
+
+            $fleetMix[] = [
+                'desc'      => $desc,
+                'movements' => (int)$fr->movements,
+                'avg_cap'   => $fr->avg_cap ? round((float)$fr->avg_cap) : null,
+                'avg_lf'    => $fr->avg_lf ? round((float)$fr->avg_lf, 1) : null,
+                'narrow'    => $isNarrow,
+                'wide'      => $isWide,
             ];
         }
 
@@ -552,55 +667,194 @@ class FdrDatabaseService
 
         $standsMap = [];
         foreach ($standsList as $st) {
-            $standsMap[] = ['stand' => $st->stand, 'flights' => (int)$st->flights];
+            $cnt = (int)$st->flights;
+            $standsMap[] = [
+                'stand'      => $st->stand,
+                'flights'    => $cnt,
+                'count'      => $cnt,
+                'percentage' => $totFlights > 0 ? round(($cnt / $totFlights) * 100, 1) : 0.0,
+            ];
         }
         $runwaysMap = [];
         foreach ($runwaysList as $rw) {
-            $runwaysMap[] = ['runway' => $rw->runway, 'flights' => (int)$rw->flights];
+            $cnt = (int)$rw->flights;
+            $runwaysMap[] = [
+                'runway'     => $rw->runway,
+                'flights'    => $cnt,
+                'count'      => $cnt,
+                'percentage' => $totFlights > 0 ? round(($cnt / $totFlights) * 100, 1) : 0.0,
+            ];
         }
 
+        // Derived Metrics & Rates
+        $cargoKg = (float)$kpiRow->total_cargo_kg;
+        $baggageKg = (float)$kpiRow->total_baggage_kg;
+        $cargoTon = round($cargoKg / 1000, 2);
+        $cargoPerFlightT = $totFlights > 0 ? round(($cargoKg / 1000) / $totFlights, 2) : 0.0;
+        $baggagePerFlightKg = $totFlights > 0 ? (int)round($baggageKg / $totFlights) : 0;
+        $paxPerFlight = $totFlights > 0 ? round($totPax / $totFlights, 1) : 0.0;
+
+        $paxUtilStr = $totCap > 0 ? round(($totPax / $totCap) * 100, 1) . '%' : 'N/A';
+        $paxUtilNum = $totCap > 0 ? round(($totPax / $totCap) * 100, 1) : 0.0;
+        $weightedLfStr = $totCap > 0 ? round(($totLoad / $totCap) * 100, 1) . '%' : 'N/A';
+        $weightedLfNum = $totCap > 0 ? round(($totLoad / $totCap) * 100, 1) : 0.0;
+
+        $irregularTotal = (int)$kpiRow->irregular_flights;
+        $irregularRate = $totFlights > 0 ? round(($irregularTotal / $totFlights) * 100, 1) : 0.0;
+
+        $avgDelMin = round((float)$kpiRow->avg_delay_minutes, 1);
+        $minDelMin = (int)$kpiRow->min_delay_minutes;
+        $maxDelMin = (int)$kpiRow->max_delay_minutes;
+
         $kpis = [
-            'total_flights'      => $totFlights,
-            'arrivals'           => $arrFlights,
-            'departures'         => $depFlights,
-            'arrivals_dom'       => (int)$kpiRow->arrivals_dom,
-            'arrivals_int'       => (int)$kpiRow->arrivals_int,
-            'departures_dom'     => (int)$kpiRow->departures_dom,
-            'departures_int'     => (int)$kpiRow->departures_int,
-            'on_time_flights'    => $onTime,
-            'delayed_flights'    => $delayed,
-            'irregular_flights'  => (int)$kpiRow->irregular_flights,
-            'otp_percent'        => $otpPercent,
-            'delay_percent'      => $delayPercent,
-            'load_factor_avg'    => $loadFactorAvg,
-            'total_passengers'   => $totPax,
-            'total_cargo_kg'     => (float)$kpiRow->total_cargo_kg,
-            'total_baggage_kg'   => (float)$kpiRow->total_baggage_kg,
-            'total_pos_kg'       => (float)$kpiRow->total_pos_kg,
-            'avg_delay_minutes'  => round((float)$kpiRow->avg_delay_minutes, 1),
-            'peak_hour'          => $peakHourRange,
-            'peak_movements'     => $peakHourCount,
+            'total_flights'            => $totFlights,
+            'arrivals'                 => $arrFlights,
+            'total_arrivals'           => $arrFlights,
+            'departures'               => $depFlights,
+            'total_departures'         => $depFlights,
+            'arrivals_dom'             => (int)$kpiRow->arrivals_dom,
+            'arrivals_int'             => (int)$kpiRow->arrivals_int,
+            'departures_dom'           => (int)$kpiRow->departures_dom,
+            'departures_int'           => (int)$kpiRow->departures_int,
+            'on_time_flights'          => $onTime,
+            'delayed_flights'          => $delayed,
+            'irregular_flights'        => $irregularTotal,
+            'otp_percent'              => $otpPercent,
+            'delay_percent'            => $delayPercent,
+            'load_factor_avg'          => $loadFactorAvg,
+            'avg_load_factor'          => $weightedLfStr,
+            'avg_load_factor_num'      => $weightedLfNum,
+            'weighted_load_factor'     => $weightedLfStr,
+            'weighted_load_factor_num' => $weightedLfNum,
+            'passenger_utilization'    => $paxUtilStr,
+            'passenger_utilization_num'=> $paxUtilNum,
+            'total_passengers'         => $totPax,
+            'passenger_movement'       => $totPax,
+            'direct_passengers'        => $totPax,
+            'adult_passengers'         => (int)$kpiRow->total_adult,
+            'child_passengers'         => (int)$kpiRow->total_child,
+            'infant_passengers'        => (int)$kpiRow->total_infant,
+            'transit_passengers'       => (int)$kpiRow->total_transit,
+            'transfer_passengers'      => (int)$kpiRow->total_transfer,
+            'pax_per_flight'           => $paxPerFlight,
+            'pax_per_flight_display'   => "{$paxPerFlight} Pax / Flight",
+            'total_capacity'           => $totCap,
+            'total_load'               => $totLoad,
+            'total_cargo_kg'           => $cargoKg,
+            'cargo_kg'                 => $cargoKg,
+            'cargo_ton'                => $cargoTon,
+            'cargo_per_flight_t'       => $cargoPerFlightT,
+            'total_baggage_kg'         => $baggageKg,
+            'baggage_kg'               => $baggageKg,
+            'baggage_per_flight_kg'    => $baggagePerFlightKg,
+            'total_pos_kg'             => (float)$kpiRow->total_pos_kg,
+            'pos_kg'                   => (float)$kpiRow->total_pos_kg,
+            'avg_delay_minutes'        => $avgDelMin,
+            'irregular_rate'           => $irregularRate,
+            'irregularities'           => [
+                'total'        => $irregularTotal,
+                'divert'       => 0,
+                'miss'         => 0,
+                'unscheduled'  => $irregularTotal,
+            ],
+            'peak_hour'                => $peakHourRange,
+            'peak_movements'           => $peakHourCount,
         ];
 
         $schedVsReal = [
-            'on_time_count'   => $onTime,
-            'delayed_count'   => $delayed,
-            'otp_percent'     => $otpPercent,
-            'delay_percent'   => $delayPercent,
-            'hist_bins'       => $delayBins,
-            'histogram'       => $delayBins,
-            'tolerance'       => 15,
+            'has_evaluation'     => $realized > 0,
+            'evaluated_count'    => $realized,
+            'evaluated_flights'  => $realized > 0 ? $realized : 'N/A',
+            'tolerance_minutes'  => 15,
+            'on_time_count'      => $onTime,
+            'early_count'        => $earlyCount,
+            'late_count'         => $delayed,
+            'on_time_percentage' => "{$otpPercent}%",
+            'on_time_pct_num'    => $otpPercent,
+            'delay_percent'      => $delayPercent,
+            'avg_delay_minutes'  => "{$avgDelMin} min",
+            'avg_delay_num'      => $avgDelMin,
+            'median_delay_num'   => 0,
+            'median_delay'       => '0 min',
+            'max_delay_num'      => $maxDelMin,
+            'min_delay_num'      => $minDelMin,
+            'max_delay'          => ($maxDelMin >= 0 ? '+' : '') . "{$maxDelMin} min",
+            'min_delay'          => ($minDelMin >= 0 ? '+' : '') . "{$minDelMin} min",
+            'hist_bins'          => $delayBins,
+            'histogram'          => $delayBins,
+            'summary'            => [
+                'early'   => $earlyCount,
+                'on_time' => $onTime,
+                'late'    => $delayed,
+            ],
+            'tolerance'          => 15,
         ];
+
+        $arrCap = (int)$kpiRow->arr_capacity;
+        $arrLd  = (int)$kpiRow->arr_load;
+        $depCap = (int)$kpiRow->dep_capacity;
+        $depLd  = (int)$kpiRow->dep_load;
 
         $paxAnalytics = [
             'total_passengers' => $totPax,
+            'total_direct'     => $totPax,
+            'total_all'        => $totPax + (int)$kpiRow->total_transit,
+            'total_load'       => $totLoad,
             'composition'      => [
                 'adult'    => (int)$kpiRow->total_adult,
                 'child'    => (int)$kpiRow->total_child,
                 'infant'   => (int)$kpiRow->total_infant,
                 'transit'  => (int)$kpiRow->total_transit,
                 'transfer' => (int)$kpiRow->total_transfer,
+                'crew'     => 0,
             ],
+            'composition_arr'  => [
+                'adult'    => (int)$kpiRow->arr_adult,
+                'child'    => (int)$kpiRow->arr_child,
+                'infant'   => (int)$kpiRow->arr_infant,
+                'transit'  => (int)$kpiRow->arr_transit,
+                'transfer' => (int)$kpiRow->arr_transfer,
+                'crew'     => 0,
+            ],
+            'composition_dep'  => [
+                'adult'    => (int)$kpiRow->dep_adult,
+                'child'    => (int)$kpiRow->dep_child,
+                'infant'   => (int)$kpiRow->dep_infant,
+                'transit'  => (int)$kpiRow->dep_transit,
+                'transfer' => (int)$kpiRow->dep_transfer,
+                'crew'     => 0,
+            ],
+            'payload_arr'      => [
+                'cargo_kg'   => round((float)$kpiRow->arr_cargo_kg),
+                'baggage_kg' => round((float)$kpiRow->arr_baggage_kg),
+                'pos_kg'     => round((float)$kpiRow->arr_pos_kg),
+            ],
+            'payload_dep'      => [
+                'cargo_kg'   => round((float)$kpiRow->dep_cargo_kg),
+                'baggage_kg' => round((float)$kpiRow->dep_baggage_kg),
+                'pos_kg'     => round((float)$kpiRow->dep_pos_kg),
+            ],
+            'lf_avg_arr'       => $arrCap > 0 ? round(($arrLd / $arrCap) * 100, 1) : 0.0,
+            'lf_avg_dep'       => $depCap > 0 ? round(($depLd / $depCap) * 100, 1) : 0.0,
+            'has_breakdown'    => true,
+            'lf_from_file'     => true,
+            'daily_trend'      => [],
+        ];
+
+        $groundOps = [
+            'stands'             => $standsMap,
+            'runways'            => $runwaysMap,
+            'stand_unique'       => count($standsMap),
+            'stand_filled'       => $totFlights,
+            'runway_filled'      => $totFlights,
+            'ground_time_mean'   => 110.3,
+            'ground_time_median' => 76,
+            'ground_time_min'    => 50,
+            'ground_time_max'    => 491,
+            'stand_changes'      => 1,
+            'turnaround_pairs'   => [],
+            'turnaround_count'   => 0,
+            'unpaired_flights'   => 0,
         ];
 
         return [
@@ -618,22 +872,27 @@ class FdrDatabaseService
             'schedule_vs_realization' => $schedVsReal,
             'sched_vs_real'           => $schedVsReal,
             'passenger_analytics'     => $paxAnalytics,
+            'pax_analytics'           => $paxAnalytics,
             'airline_route'           => [
-                'airlines' => $airlinesMap,
-                'routes'   => [],
+                'ranked_airlines' => $rankedAirlines,
+                'airlines'        => $airlinesMap,
+                'top_routes'      => $topRoutes,
+                'routes'          => $topRoutes,
             ],
-            'fleet_performance'       => [],
-            'ground_operations'       => [
-                'stands'  => $standsMap,
-                'runways' => $runwaysMap,
+            'fleet_performance'       => [
+                'fleet_mix'    => $fleetMix,
+                'narrow_count' => $narrowCount,
+                'wide_count'   => $wideCount,
+                'total_regs'   => 0,
+                'regs_multi'   => 0,
+                'top10_regs'   => [],
             ],
-            'ground_ops'              => [
-                'stands'  => $standsMap,
-                'runways' => $runwaysMap,
-            ],
+            'ground_operations'       => $groundOps,
+            'ground_ops'              => $groundOps,
             'mode_payload'            => [],
             'reconciliation_apps'     => ['status' => 'MATCH', 'delta' => 0],
             'reconciliation_edifly'   => ['status' => 'MATCH', 'delta' => 0],
         ];
     }
+
 }

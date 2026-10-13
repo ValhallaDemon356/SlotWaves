@@ -510,18 +510,42 @@ class FlightDailyReportController extends Controller
                 ], 404);
             }
 
-            // Idempotency: If already completed, return immediately
+            // Idempotency: If already completed, verify database rows exist before returning READY
             if ($job->status === 'READY') {
+                $totalInDb = FdrFlight::where('upload_id', $job->upload_id)->count();
+                if ($totalInDb === 0) {
+                    $job->update([
+                        'status'        => 'FAILED',
+                        'stage'         => 'FAILED',
+                        'stage_label'   => 'FDR ingestion produced 0 database movement rows.',
+                        'error_code'    => 'FDR_DATABASE_INGESTION_ERROR',
+                        'error_message' => 'No normalized flight records found in database (database_rows = 0).',
+                    ]);
+
+                    return response()->json([
+                        'success'       => false,
+                        'status'        => 'FAILED',
+                        'stage'         => 'FAILED',
+                        'error_code'    => 'FDR_DATABASE_INGESTION_ERROR',
+                        'error_message' => 'FDR ingestion produced 0 database movement rows.',
+                        'error'         => [
+                            'code'    => 'FDR_DATABASE_INGESTION_ERROR',
+                            'message' => 'No normalized flight records found in database (database_rows = 0).',
+                        ],
+                    ], 422);
+                }
+
                 return response()->json([
-                    'success'       => true,
-                    'status'        => 'READY',
-                    'stage'         => 'READY',
-                    'progress'      => 100,
-                    'stage_label'   => 'Ready',
-                    'movement_rows' => $job->total_rows,
-                    'summary_rows'  => $job->diagnostics['summary_rows'] ?? 1,
-                    'diagnostics'   => $job->diagnostics ?? [],
-                    'result_url'    => $job->result_url,
+                    'success'        => true,
+                    'status'         => 'READY',
+                    'stage'          => 'READY',
+                    'progress'       => 100,
+                    'stage_label'    => 'Ready',
+                    'movement_rows'  => $totalInDb,
+                    'processed_rows' => $totalInDb,
+                    'summary_rows'   => $job->diagnostics['summary_rows'] ?? 1,
+                    'diagnostics'    => $job->diagnostics ?? [],
+                    'result_url'     => $job->result_url,
                 ]);
             }
 
@@ -752,6 +776,49 @@ class FlightDailyReportController extends Controller
 
             $totalInDb = FdrFlight::where('upload_id', $job->upload_id)->count();
 
+            // Absolute Rule §2, §31, §32: If normalized flight movements in DB are 0, job MUST NOT become READY
+            if ($totalInDb === 0) {
+                if (isset($localTmpPath) && file_exists($localTmpPath)) {
+                    @unlink($localTmpPath);
+                }
+
+                $summaryCount = count($meta['_summaries'] ?? []);
+                $diagnostics = [
+                    'source_exists'          => true,
+                    'parser_movement_rows'   => 0,
+                    'movement_rows'          => 0,
+                    'database_movement_rows' => 0,
+                    'database_rows'          => 0,
+                    'summary_rows'           => $summaryCount,
+                    'rejected_rows'          => 0,
+                    'metadata_exists'        => false,
+                    'storage_path'           => $storedPath,
+                    'detected_format'        => $meta['detected_format'] ?? 'OASYS HTML XLS',
+                ];
+
+                $job->update([
+                    'status'        => 'FAILED',
+                    'stage'         => 'FAILED',
+                    'stage_label'   => 'FDR ingestion produced 0 database movement rows.',
+                    'error_code'    => 'FDR_DATABASE_INGESTION_ERROR',
+                    'error_message' => 'No normalized flight records found in database (database_rows = 0).',
+                    'diagnostics'   => $diagnostics,
+                ]);
+
+                return response()->json([
+                    'success'       => false,
+                    'status'        => 'FAILED',
+                    'stage'         => 'FAILED',
+                    'error_code'    => 'FDR_DATABASE_INGESTION_ERROR',
+                    'error_message' => 'FDR ingestion produced 0 database movement rows.',
+                    'error'         => [
+                        'code'    => 'FDR_DATABASE_INGESTION_ERROR',
+                        'message' => 'No normalized flight records found in database (database_rows = 0).',
+                    ],
+                    'diagnostics'   => $diagnostics,
+                ], 422);
+            }
+
             // Refine metadata with dates and airports from database
             $distinctStats = FdrFlight::where('upload_id', $job->upload_id)->selectRaw("
                 MIN(flight_date) as min_date,
@@ -802,13 +869,16 @@ class FlightDailyReportController extends Controller
 
             $summaryCount = count($meta['_summaries'] ?? []);
             $diagnostics = [
-                'source_rows'     => $totalInDb + $summaryCount,
-                'movement_rows'   => $totalInDb,
-                'summary_rows'    => $summaryCount,
-                'database_rows'   => $totalInDb,
-                'rejected_rows'   => 0,
-                'storage_path'    => $storedPath,
-                'detected_format' => $meta['detected_format'] ?? 'OASYS HTML XLS',
+                'source_exists'          => true,
+                'parser_movement_rows'   => $totalInDb,
+                'movement_rows'          => $totalInDb,
+                'database_movement_rows' => $totalInDb,
+                'database_rows'          => $totalInDb,
+                'summary_rows'           => $summaryCount,
+                'rejected_rows'          => 0,
+                'metadata_exists'        => !empty($meta['period_start']),
+                'storage_path'           => $storedPath,
+                'detected_format'        => $meta['detected_format'] ?? 'OASYS HTML XLS',
             ];
 
             $resultUrl = route('fdr.dashboard', ['upload' => $job->upload_id, 'date_scope' => 'ALL_PERIOD']);
