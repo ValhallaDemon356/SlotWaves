@@ -531,25 +531,41 @@ class FlightDailyReportController extends Controller
 
             $disk = config('filesystems.default', 'local');
             $storedPath = $job->stored_path ?: "uploads/fdr/{$job->upload_token}.xls";
-            $fullPath = null;
             $localTmpPath = sys_get_temp_dir() . '/fdr_src_' . $job->id . '.bin';
 
-            // ── 1. Resolve source file from Supabase Storage, local disk, or chunks ──
+            // Direct-upload FDR sources are persisted in private Supabase Storage.
             if (str_starts_with($storedPath, 'supabase://')) {
-                $clean = substr($storedPath, 11);
-                $parts = explode('/', $clean, 2);
-                $bucket = $parts[0] ?: config('services.supabase.bucket', env('NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET', 'flight-reports'));
-                $storageObjectPath = $parts[1] ?? '';
-
                 if (file_exists($localTmpPath) && filesize($localTmpPath) > 10) {
                     $fullPath = $localTmpPath;
                 } else {
-                    $storageService = app(\App\Services\Storage\SupabaseStorageService::class);
-                    $downloaded = $storageService->downloadToTemp($storageObjectPath, $bucket);
-                    if ($downloaded && file_exists($downloaded) && filesize($downloaded) > 10) {
-                        @copy($downloaded, $localTmpPath);
-                        @unlink($downloaded);
-                        $fullPath = $localTmpPath;
+                    $withoutScheme = substr($storedPath, strlen('supabase://'));
+                    $slash = strpos($withoutScheme, '/');
+                    if ($slash === false) {
+                        throw new \RuntimeException('FDR_STORAGE_ERROR: Invalid Supabase storage source path.');
+                    }
+
+                    $bucket = substr($withoutScheme, 0, $slash);
+                    $storageObject = substr($withoutScheme, $slash + 1);
+
+                    try {
+                        /** @var \App\Services\Storage\SupabaseStorageService $supabaseStorage */
+                        $supabaseStorage = app(\App\Services\Storage\SupabaseStorageService::class);
+                        $downloaded = $supabaseStorage->downloadToTemp($storageObject, $bucket);
+                        if ($downloaded && file_exists($downloaded) && filesize($downloaded) > 10) {
+                            @copy($downloaded, $localTmpPath);
+                            @unlink($downloaded);
+                            $fullPath = $localTmpPath;
+                        } else {
+                            $fullPath = $downloaded;
+                        }
+
+                        $actualSize = @filesize($fullPath) ?: 0;
+                        $job->update([
+                            'file_size' => $actualSize,
+                            'stored_path' => $storedPath,
+                        ]);
+                    } catch (\Throwable $e) {
+                        throw new \RuntimeException('FDR_SOURCE_DOWNLOAD_ERROR: ' . $e->getMessage(), 0, $e);
                     }
                 }
             } elseif (file_exists($localTmpPath) && filesize($localTmpPath) > 10) {
@@ -598,7 +614,55 @@ class FlightDailyReportController extends Controller
 
             $actualSize = filesize($fullPath);
 
-            // ── 2. Incremental Streaming Batch Processing Loop ──
+            // Validate the actual OASYS source in bounded/probe mode. This reads
+            // only the header for large files, so the request remains lightweight.
+            if (($job->current_batch ?? 0) === 0 && ($job->processed_rows ?? 0) === 0) {
+                $validation = $this->validator->validate(
+                    $fullPath,
+                    $job->filename,
+                    true
+                );
+
+                if (!($validation['valid'] ?? false)) {
+                    $job->update([
+                        'status' => 'FAILED',
+                        'stage' => 'VALIDATING',
+                        'stage_label' => $validation['category_title'] ?? 'FDR validation failed',
+                        'error_code' => $validation['category'] ?? 'FDR_VALIDATION_FAILED',
+                        'error_message' => implode('; ', $validation['errors'] ?? [$validation['error'] ?? 'FDR source validation failed.']),
+                    ]);
+
+                    return response()->json([
+                        'success' => false,
+                        'status' => 'FAILED',
+                        'stage' => 'VALIDATING',
+                        'progress' => 0,
+                        'error' => [
+                            'code' => $job->error_code,
+                            'message' => $job->error_message,
+                            'retryable' => false,
+                        ],
+                    ], 422);
+                }
+
+                $job->update([
+                    'status' => 'PARSING',
+                    'stage' => 'PARSING',
+                    'stage_label' => 'Reading OASYS Flight Daily Report...',
+                    'meta' => array_merge(
+                        $job->meta ?? [],
+                        $validation['meta'] ?? [],
+                        [
+                            'detected_format' => $validation['detected_format'] ?? 'OASYS HTML XLS',
+                            'source_file_size' => $actualSize,
+                            'source_summary' => $validation['summary'] ?? [],
+                        ]
+                    ),
+                    'file_size' => $actualSize,
+                ]);
+            }
+
+            // ── 2. Incremental Batch Processing Loop (Prompt Section 13 & 14) ──
             $offset = (int) ($job->current_offset ?? 0);
             $processedRows = (int) ($job->processed_rows ?? 0);
             $currentBatch = (int) ($job->current_batch ?? 0);
