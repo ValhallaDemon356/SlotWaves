@@ -79,19 +79,61 @@ class FdrStreamingParser
 
         $metaHeaders = [];
         $records = [];
+        $canonicalMeta = null;
 
         if ($format === 'XLSX') {
             [$metaHeaders, $records] = $this->parseXlsxStreaming($filePath);
         } elseif ($format === 'CSV') {
             [$metaHeaders, $records] = $this->parseCsvStreaming($filePath);
+        } elseif ($format === 'HTML_XLS') {
+            /*
+             * OASYS FDR .xls files are HTML documents disguised as Excel.
+             *
+             * IMPORTANT:
+             * Do not use the legacy normalizeRow() path here. OASYS headers/cells
+             * contain values such as "SIBT SOBT", "AIBT AOBT", "ADU LT", and
+             * full datetimes such as "01-09-2026 00:10". The old streaming path
+             * incorrectly split combined timestamp cells on "-" and whitespace,
+             * turning "01-09-2026 00:10" into fragments like "01"/"09" and
+             * eventually defaulting the operational date to the current date.
+             *
+             * FlightDailyReportParser is the canonical FDR normalizer and already
+             * contains the production-safe HTML-XLS streaming implementation.
+             * Reuse it for HTML-XLS so upload, dashboard, filters, and database
+             * ingestion all receive exactly the same normalized schema.
+             */
+            $canonicalParser = new FlightDailyReportParser();
+            $canonicalParsed = $canonicalParser->parseHtmlStream($filePath);
+
+            $records = $canonicalParsed['records'] ?? [];
+            $canonicalMeta = $canonicalParsed['meta'] ?? [];
+            $metaHeaders = [];
         } else {
-            // OASYS HTML XLS or XML table
+            // Unknown/legacy source format: keep the existing fallback parser.
             [$metaHeaders, $records] = $this->parseHtmlXlsStreaming($filePath);
         }
 
         // Build metadata
-        $meta = $this->extractMetadata($metaHeaders, $records, $originalFilename, $airlineHint);
+        $meta = $canonicalMeta ?? $this->extractMetadata($metaHeaders, $records, $originalFilename, $airlineHint);
         $meta['detected_format'] = $format;
+
+        // Preserve a known airline hint only when the source metadata does not
+        // already provide a more authoritative operator value.
+        if (
+            !empty($airlineHint)
+            && (
+                empty($meta['operator'])
+                || strtoupper((string)$meta['operator']) === 'ALL AIRLINE'
+            )
+        ) {
+            $meta['operator'] = $airlineHint;
+        }
+
+        // Ensure report/period metadata survives even when the filename itself
+        // is only a generated name such as "DAU_1791863830.xls".
+        if (empty($meta['filename'])) {
+            $meta['filename'] = $originalFilename ?: basename($filePath);
+        }
 
         // Classify records into operational movements and summary rows
         $classified = $this->classifyRows($records);
@@ -756,6 +798,10 @@ class FdrStreamingParser
 
         if (strncmp($header, "PK\x03\x04", 4) === 0) {
             return 'XLSX';
+        }
+        $trimmedHeader = ltrim($header);
+        if (str_starts_with(strtolower($trimmedHeader), '<?xml')) {
+            return 'XML';
         }
         if (stripos($header, '<html') !== false || stripos($header, '<table') !== false || stripos($header, 'oasys') !== false) {
             return 'HTML_XLS';
