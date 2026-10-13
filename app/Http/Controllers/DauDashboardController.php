@@ -1974,99 +1974,139 @@ class DauDashboardController extends Controller
         TemplateValidator $validator,
         \App\Services\FlightDailyReport\FdrDatabaseService $fdrDbService
     ) {
-        $validated = $request->validate([
-            'file_path'         => 'required|string',
-            'bucket_name'       => 'nullable|string',
-            'original_filename' => 'required|string',
-            'airline_type'      => 'nullable|string',
-        ]);
-
-        $bucket = (!empty($validated['bucket_name'])) ? $validated['bucket_name'] : config('services.supabase.bucket', env('NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET', 'flight-reports'));
-        $storagePath = $validated['file_path'];
-        $originalFilename = $validated['original_filename'];
-        $airlineHint = $validated['airline_type'] ?? null;
-
-        $tempPath = null;
         try {
-            // 1. Safely stream download file from Supabase Storage directly to Vercel /tmp
-            $tempPath = $storageService->downloadToTemp($storagePath, $bucket);
+            $validated = $request->validate([
+                'file_path'         => 'required|string',
+                'bucket_name'       => 'nullable|string',
+                'original_filename' => 'required|string|max:255',
+                'airline_type'      => 'nullable|string|max:50',
+            ]);
 
-            // 2. Validate template content and format against TemplateValidator
-            $validation = $validator->validate('fdr', $tempPath, false, $originalFilename);
-            if (!$validation['valid']) {
-                return response()->json([
-                    'success'        => false,
-                    'category'       => $validation['category'] ?? 'INVALID_TEMPLATE',
-                    'category_title' => $validation['category_title'] ?? 'INVALID FDR TEMPLATE',
-                    'error'          => $validation['error'] ?? 'The uploaded file failed FDR template validation.',
-                    'errors'         => $validation['errors'] ?? [],
-                ], 422);
-            }
+            $bucket = !empty($validated['bucket_name'])
+                ? $validated['bucket_name']
+                : config('services.supabase.bucket', env('NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET', 'flight-reports'));
 
-            // 3. Low-memory streaming parsing using FdrStreamingParser (OpenSpout / stream reader)
-            $parsed = $fdrParser->parseStreaming($tempPath, $originalFilename, $airlineHint);
+            $storagePath = $storageService->sanitizeStoragePath($validated['file_path']);
+            $originalFilename = $validated['original_filename'];
+            $airlineHint = $validated['airline_type'] ?? null;
 
-            $airportCode = $parsed['meta']['airport'] ?? 'CGK';
-            $airport = \App\Models\Airport::findByIata($airportCode) ?? \App\Models\Airport::findByIata('CGK');
+            // The signed-upload endpoint has already transferred the bytes to
+            // persistent Supabase Storage. Do NOT download/parse the entire file
+            // inside this request. That was the source of the previous generic
+            // "Error" response and made large files dependent on one invocation.
+            $sourceUri = "supabase://{$bucket}/{$storagePath}";
+            $uploadToken = 'fdr_' . \Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(24));
 
-            // 4. Create and persist Upload record (with automatic gzip offloading for >500 records)
+            // Create a lightweight Upload record first. The real row count is
+            // filled in by the incremental processing job.
             $upload = Upload::create([
                 'original_filename'  => $originalFilename,
-                'stored_path'        => "supabase://{$bucket}/{$storagePath}",
-                'status'             => 'completed',
+                'stored_path'        => $sourceUri,
+                'status'             => 'processing',
                 'report_type'        => 'fdr',
-                'total_rows'         => $parsed['total_rows'],
-                'valid_rows'         => $parsed['valid_rows'],
-                'invalid_rows'       => $parsed['invalid_rows'] ?? 0,
+                'total_rows'         => 0,
+                'valid_rows'         => 0,
+                'invalid_rows'       => 0,
                 'duplicate_rows'     => 0,
-                'parsing_confidence' => 1.0,
-                'season'             => 'summer',
-                'airport_id'         => $airport?->id,
-                'validation_summary' => ['valid' => true],
+                'parsing_confidence' => 0.0,
+                'validation_summary' => [
+                    'valid'          => true,
+                    'stage'          => 'QUEUED',
+                    'detected_format'=> 'PENDING_SERVER_VALIDATION',
+                ],
                 'report_data'        => [
-                    'meta'    => $parsed['meta'],
-                    'records' => $parsed['records'],
-                    'summary' => $parsed['summary'],
+                    'meta' => [
+                        'source_system' => 'OASYS',
+                        'report_name'   => 'FLIGHT DAILY REPORT',
+                        'source_path'   => $sourceUri,
+                    ],
                 ],
             ]);
 
-            // 5. Ingest normalized movements directly into PostgreSQL fdr_flights database
-            $movementRecords = $parsed['movements'] ?? ($parsed['records'] ?? []);
-            $fdrDbService->syncUploadToDatabase($upload, $movementRecords, $parsed['meta'] ?? []);
+            $session = \App\Models\FdrUploadSession::create([
+                'upload_token'      => $uploadToken,
+                'original_filename' => $originalFilename,
+                'file_size'         => 0,
+                'mime_type'         => $request->input('mime_type'),
+                'chunk_size'        => 0,
+                'total_chunks'      => 0,
+                'uploaded_bytes'    => 0,
+                'uploaded_chunks'  => [],
+                'storage_bucket'   => $bucket,
+                'storage_path'     => $storagePath,
+                'status'           => \App\Models\FdrUploadSession::STATUS_UPLOADED,
+                'progress'         => 100,
+            ]);
 
-            session(['active_upload_id' => $upload->id]);
-            session(['fdr_active_upload_id' => $upload->id]);
+            $job = \App\Models\FdrProcessingJob::create([
+                'upload_id'      => $upload->id,
+                'upload_token'   => $uploadToken,
+                'filename'       => $originalFilename,
+                'stored_path'    => $sourceUri,
+                'file_size'      => 0,
+                'report_type'    => 'fdr',
+                'status'         => 'QUEUED',
+                'stage'          => 'QUEUED',
+                'stage_label'    => 'Preparing Flight Daily Report...',
+                'progress'       => 0,
+                'processed_rows' => 0,
+                'total_rows'     => 0,
+                'current_offset' => 0,
+                'current_batch'  => 0,
+                'failed_rows'    => 0,
+                'meta'           => [
+                    'bucket'     => $bucket,
+                    'storage_path'=> $storagePath,
+                    'airline_hint'=> $airlineHint,
+                ],
+                'diagnostics'    => [
+                    'source' => 'SUPABASE_STORAGE',
+                ],
+                'result_url'     => route('fdr.dashboard', $upload->id),
+            ]);
+
+            session([
+                'fdr_active_upload_id' => $upload->id,
+                'active_upload_id'      => $upload->id,
+            ]);
 
             return response()->json([
-                'success'      => true,
-                'completed'    => true,
-                'upload_id'    => $upload->id,
-                'report_type'  => 'fdr',
-                'status'       => 'completed',
-                'total_rows'   => $upload->total_rows,
-                'valid_rows'   => $upload->valid_rows,
-                'redirect_url' => route('fdr.dashboard', $upload->id),
-                'message'      => "Flight Daily Report uploaded and parsed successfully ({$upload->valid_rows} movements).",
-                'summary'      => $parsed['summary'],
-                'meta'         => $parsed['meta'],
-            ], 200);
+                'success'         => true,
+                'completed'       => false,
+                'is_async_job'    => true,
+                'upload_id'       => $upload->id,
+                'job_id'          => $job->id,
+                'status'          => 'QUEUED',
+                'report_type'     => 'fdr',
+                'process_url'     => route('fdr.jobs.process', $job->id),
+                'poll_url'       => route('fdr.jobs.status', $job->id),
+                'redirect_url'   => route('fdr.dashboard', $upload->id),
+                'message'        => 'FDR source uploaded successfully. Server-side parsing has been queued.',
+            ], 202);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'FDR_POST_UPLOAD_VALIDATION',
+                    'message' => implode('; ', $e->validator->errors()->all()),
+                    'retryable' => false,
+                ],
+            ], 422);
         } catch (\Throwable $e) {
-            Log::error('handleUploadedFdr failed: ' . $e->getMessage(), [
-                'exception'   => $e,
-                'file_path'   => $storagePath,
-                'bucket'      => $bucket,
+            Log::error('handleUploadedFdr failed', [
+                'message' => $e->getMessage(),
+                'exception' => $e,
             ]);
 
             return response()->json([
                 'success' => false,
-                'error'   => 'Failed to process FDR dataset: ' . $e->getMessage(),
+                'error' => [
+                    'code' => 'FDR_POST_UPLOAD_ERROR',
+                    'message' => $e->getMessage() ?: get_class($e),
+                    'retryable' => true,
+                ],
             ], 500);
-        } finally {
-            // Guarantee /tmp file cleanup to prevent Vercel serverless disk exhaustion
-            if ($tempPath && file_exists($tempPath)) {
-                @unlink($tempPath);
-            }
         }
     }
 }
