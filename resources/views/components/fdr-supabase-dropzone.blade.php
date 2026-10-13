@@ -429,7 +429,9 @@ function fdrSupabaseUploader(config) {
                     ? data.error.message.join('; ')
                     : data.error.message;
             }
-            return data.message || fallback;
+            if (data.error?.error) return String(data.error.error);
+            if (data.message) return String(data.message);
+            return fallback;
         },
 
         uploadViaSignedUrl(file, signedUrl, onProgress) {
@@ -452,16 +454,33 @@ function fdrSupabaseUploader(config) {
                     let payload = {};
                     try { payload = JSON.parse(xhr.responseText || '{}'); } catch (e) {}
 
-                    reject(new Error(
-                        payload.message ||
-                        payload.error ||
-                        `Supabase signed upload failed with HTTP ${xhr.status}.`
-                    ));
+                    const nestedError = payload?.error;
+                    const message =
+                        (typeof payload?.message === 'string' && payload.message) ||
+                        (typeof nestedError === 'string' && nestedError) ||
+                        (typeof nestedError?.message === 'string' && nestedError.message) ||
+                        (typeof nestedError?.error === 'string' && nestedError.error) ||
+                        (typeof payload?.error_description === 'string' && payload.error_description) ||
+                        xhr.responseText ||
+                        `Supabase signed upload failed with HTTP ${xhr.status}.`;
+
+                    reject(new Error(message));
                 };
 
                 xhr.onerror = () => reject(new Error('Network error while uploading directly to Supabase Storage.'));
                 xhr.ontimeout = () => reject(new Error('Timed out while uploading to Supabase Storage.'));
-                xhr.send(file);
+
+                /*
+                 * Match Supabase storage-js uploadToSignedUrl() semantics:
+                 * signed upload endpoints accept a PUT body and the SDK sends a
+                 * FormData payload for browser File/Blob objects. Sending the
+                 * multipart payload here avoids "Error" responses caused by the
+                 * storage API rejecting an unexpected raw File body.
+                 */
+                const formData = new FormData();
+                formData.append('cacheControl', '3600');
+                formData.append('', file, file.name);
+                xhr.send(formData);
             });
         },
 
