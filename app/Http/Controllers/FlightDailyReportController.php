@@ -991,6 +991,82 @@ class FlightDailyReportController extends Controller
     }
 
     /**
+     * Idempotent recovery / reprocessing path for FDR Upload (Section 7, 40).
+     * Re-ingests source from persistent Supabase Storage without requiring a new upload.
+     */
+    public function reprocess(Upload $upload, Request $request)
+    {
+        ini_set('memory_limit', '1024M');
+        set_time_limit(300);
+
+        if ($upload->report_type !== 'fdr') {
+            return redirect()->route('fdr.index')->with('error', 'Please select a valid Flight Daily Report.');
+        }
+
+        if (empty($upload->stored_path)) {
+            return redirect()->route('fdr.config', ['upload' => $upload->id])
+                ->with('error', 'FDR source file path is missing from storage.');
+        }
+
+        // 1. Clear any existing fdr_flights rows for this upload
+        FdrFlight::where('upload_id', $upload->id)->delete();
+
+        // 2. Locate or create FdrProcessingJob
+        $job = FdrProcessingJob::where('upload_id', $upload->id)->latest()->first();
+        $token = $job ? $job->upload_token : (string) Str::uuid();
+
+        if (!$job) {
+            $job = FdrProcessingJob::create([
+                'id'             => (string) Str::uuid(),
+                'upload_id'      => $upload->id,
+                'upload_token'   => $token,
+                'status'         => 'QUEUED',
+                'stage'          => 'QUEUED',
+                'stage_label'    => 'Queued for reprocessing...',
+                'progress'       => 0,
+                'current_offset' => 0,
+                'current_batch'  => 0,
+                'processed_rows' => 0,
+                'total_rows'     => $upload->total_rows ?: 0,
+                'filename'       => $upload->original_filename ?: 'CGK GA FDR.xls',
+                'stored_path'    => $upload->stored_path,
+                'file_size'      => 0,
+                'result_url'     => route('fdr.dashboard', ['upload' => $upload->id, 'date_scope' => 'ALL_PERIOD']),
+            ]);
+        } else {
+            $job->update([
+                'status'         => 'QUEUED',
+                'stage'          => 'QUEUED',
+                'stage_label'    => 'Queued for reprocessing...',
+                'progress'       => 0,
+                'current_offset' => 0,
+                'current_batch'  => 0,
+                'processed_rows' => 0,
+                'error_code'     => null,
+                'error_message'  => null,
+                'stored_path'    => $upload->stored_path,
+                'result_url'     => route('fdr.dashboard', ['upload' => $upload->id, 'date_scope' => 'ALL_PERIOD']),
+            ]);
+        }
+
+        $upload->update(['status' => 'processing']);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success'     => true,
+                'message'     => 'Reprocessing initialized.',
+                'job_id'      => $job->id,
+                'process_url' => route('fdr.jobs.process', $job->id),
+                'status_url'  => route('fdr.jobs.status', $job->id),
+                'result_url'  => route('fdr.dashboard', ['upload' => $upload->id, 'date_scope' => 'ALL_PERIOD']),
+            ]);
+        }
+
+        return redirect()->route('fdr.config', ['upload' => $upload->id, 'auto_start' => 1])
+            ->with('info', 'FDR reprocessing started. Normalized flight records will be streamed into database.');
+    }
+
+    /**
      * FDR Interactive Analytics Dashboard.
      * FDR Dashboard → Flight Details → Export
      */
@@ -1087,9 +1163,9 @@ class FlightDailyReportController extends Controller
             $filters = [
                 'date_scope'     => $scope['date_scope'],
                 'analysis_level' => $scope['analysis_level'],
-                'analysis_date'  => $scope['analysis_date'],
-                'analysis_month' => $scope['analysis_month'],
-                'analysis_year'  => $scope['analysis_year'],
+                'analysis_date'  => $scope['date_scope'] === 'ALL_PERIOD' ? null : $scope['analysis_date'],
+                'analysis_month' => $scope['date_scope'] === 'ALL_PERIOD' ? null : $scope['analysis_month'],
+                'analysis_year'  => $scope['date_scope'] === 'ALL_PERIOD' ? null : $scope['analysis_year'],
                 'airport'        => $activeAirport,
                 'leg'            => strtoupper(trim($request->query('leg', 'ALL'))),
                 'operator'       => trim($request->query('operator', 'ALL')),
@@ -1098,8 +1174,8 @@ class FlightDailyReportController extends Controller
                 'realization'    => strtoupper(trim($request->query('realization', 'ALL'))),
                 'flight_no'      => strtoupper(trim($request->query('flight_no', ''))),
                 'suffix'         => strtoupper(trim($request->query('suffix', ''))),
-                'start_date'     => trim($request->query('start_date', '')),
-                'end_date'       => trim($request->query('end_date', '')),
+                'start_date'     => $scope['date_scope'] === 'ALL_PERIOD' ? '' : trim($request->query('start_date', '')),
+                'end_date'       => $scope['date_scope'] === 'ALL_PERIOD' ? '' : trim($request->query('end_date', '')),
                 'report_mode'    => (int)$request->query('report_mode', 1),
                 'time_basis'     => in_array($request->query('time_basis'), ['scheduled', 'actual'], true) ? $request->query('time_basis') : 'actual',
                 'otp_tolerance'  => max(1, min(120, (int)$request->query('otp_tolerance', 15))),
@@ -1172,8 +1248,18 @@ class FlightDailyReportController extends Controller
             ]);
         }
 
-        // ── Fallback for Legacy In-Memory Datasets ──
+        // ── Legacy In-Memory Datasets or FDR DATA NOT READY (§6, §39, §41) ──
         $rawRecords = $upload->getOffloadedRecords();
+        if (empty($rawRecords)) {
+            $job = FdrProcessingJob::where('upload_id', $upload->id)->latest()->first();
+            return response()->view('fdr.not_ready', [
+                'upload'       => $upload,
+                'job'          => $job,
+                'sourceFile'   => $upload->original_filename ?: 'CGK GA FDR.xls',
+                'storedPath'   => $upload->stored_path,
+                'reprocessUrl' => route('fdr.reprocess', $upload->id),
+            ], 422);
+        }
         $availableDates = $this->extractAvailableDates($rawRecords, $meta);
         $sourceSummary = $this->buildSourceSummary($rawRecords, $availableDates, $meta);
         $scope = $this->resolveAnalysisScope($request, $sourceSummary, $availableDates);
@@ -1312,9 +1398,9 @@ class FlightDailyReportController extends Controller
             $filters = [
                 'date_scope'     => $scope['date_scope'],
                 'analysis_level' => $scope['analysis_level'],
-                'analysis_date'  => $scope['analysis_date'],
-                'analysis_month' => $scope['analysis_month'],
-                'analysis_year'  => $scope['analysis_year'],
+                'analysis_date'  => $scope['date_scope'] === 'ALL_PERIOD' ? null : $scope['analysis_date'],
+                'analysis_month' => $scope['date_scope'] === 'ALL_PERIOD' ? null : $scope['analysis_month'],
+                'analysis_year'  => $scope['date_scope'] === 'ALL_PERIOD' ? null : $scope['analysis_year'],
                 'airport'        => $activeAirport,
                 'leg'            => strtoupper(trim($request->query('leg', 'ALL'))),
                 'operator'       => trim($request->query('operator', 'ALL')),
@@ -1323,8 +1409,8 @@ class FlightDailyReportController extends Controller
                 'realization'    => strtoupper(trim($request->query('realization', 'ALL'))),
                 'flight_no'      => strtoupper(trim($request->query('flight_no', ''))),
                 'suffix'         => strtoupper(trim($request->query('suffix', ''))),
-                'start_date'     => trim($request->query('start_date', '')),
-                'end_date'       => trim($request->query('end_date', '')),
+                'start_date'     => $scope['date_scope'] === 'ALL_PERIOD' ? '' : trim($request->query('start_date', '')),
+                'end_date'       => $scope['date_scope'] === 'ALL_PERIOD' ? '' : trim($request->query('end_date', '')),
                 'report_mode'    => (int)$request->query('report_mode', 1),
                 'time_basis'     => in_array($request->query('time_basis'), ['scheduled', 'actual'], true) ? $request->query('time_basis') : 'actual',
                 'otp_tolerance'  => max(1, min(120, (int)$request->query('otp_tolerance', 15))),
@@ -1398,6 +1484,14 @@ class FlightDailyReportController extends Controller
 
         // ── Fallback for Legacy In-Memory Datasets ──
         $rawRecords = $upload->getOffloadedRecords();
+        if (empty($rawRecords)) {
+            return response()->json([
+                'error'         => 'FDR_NOT_READY',
+                'message'       => 'Normalized flight records have not been loaded into the database.',
+                'upload_id'     => $upload->id,
+                'reprocess_url' => route('fdr.reprocess', $upload->id),
+            ], 422);
+        }
         $availableDates = $this->extractAvailableDates($rawRecords, $meta);
         $sourceSummary = $this->buildSourceSummary($rawRecords, $availableDates, $meta);
         $scope = $this->resolveAnalysisScope($request, $sourceSummary, $availableDates);
@@ -1812,7 +1906,11 @@ class FlightDailyReportController extends Controller
         $reqDateScope = strtoupper(trim($request->query('date_scope', '')));
         $reqAnalysisDate = trim($request->query('analysis_date', ''));
 
-        if ($sourceType === 'DAILY') {
+        if ($reqDateScope === 'ALL_PERIOD' || $reqDateScope === 'ALL' || $reqDateScope === 'FULL_RANGE') {
+            $dateScope     = 'ALL_PERIOD';
+            $analysisLevel = 'FULL';
+            $analysisDate  = null;
+        } elseif ($sourceType === 'DAILY') {
             $dateScope     = 'DAY';
             $analysisLevel = 'DAILY';
             $analysisDate  = $startDate;

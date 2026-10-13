@@ -65,6 +65,7 @@ Route::prefix('fdr')->name('fdr.')->group(function () {
     Route::post('/jobs/{job}/process',        [FlightDailyReportController::class, 'processJob'])->name('jobs.process');
     Route::get('/jobs/{job}',                 [FlightDailyReportController::class, 'showJob'])->name('jobs.show');
     Route::get('/{upload}/dashboard',         [FlightDailyReportController::class, 'dashboard'])->name('dashboard');
+    Route::match(['GET', 'POST'], '/{upload}/reprocess', [FlightDailyReportController::class, 'reprocess'])->name('reprocess');
     Route::get('/{upload}/filter',            [FlightDailyReportController::class, 'filterApi'])->name('filter');
     Route::get('/{upload}/flight/{flightIndex}', [FlightDailyReportController::class, 'flightDetails'])->name('flight-details');
     Route::get('/{upload}/export/csv',        [FlightDailyReportController::class, 'exportCsv'])->name('export.csv');

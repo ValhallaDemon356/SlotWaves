@@ -291,7 +291,7 @@
                 <div class="flex items-center gap-3 text-slate-500 text-xs font-medium">
                     <div class="flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        <span>Showing <strong class="text-slate-900 font-bold" x-text="Number(totalRecords || 0).toLocaleString()">9,224</strong> of <strong class="text-slate-900 font-bold" x-text="Number(sourceSummary.total_flights || totalRecords || 9224).toLocaleString()">9,224</strong> records</span>
+                        <span>Showing <strong class="text-slate-900 font-bold" x-text="Number(totalRecords || 0).toLocaleString()">{{ number_format($totalRecords ?? 0) }}</strong> of <strong class="text-slate-900 font-bold" x-text="Number(sourceSummary.total_flights || totalRecords || 0).toLocaleString()">{{ number_format($sourceSummary['total_flights'] ?? ($totalRecords ?? 0)) }}</strong> records</span>
                     </div>
                     <span>•</span>
                     <span class="text-[11px] text-slate-400">Last updated: <span x-text="lastUpdatedTime"></span></span>
@@ -314,9 +314,9 @@
                 </div>
                 <div class="mt-2">
                     <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Flights</div>
-                    <div class="text-xl font-black text-slate-900 tracking-tight" x-text="kpis.total_flights">190</div>
+                    <div class="text-xl font-black text-slate-900 tracking-tight" x-text="Number(kpis.total_flights || 0).toLocaleString()">{{ number_format($analytics['kpis']['total_flights'] ?? 0) }}</div>
                     <div class="text-[10px] font-semibold text-slate-500 mt-0.5">
-                        <span x-text="kpis.arrivals">95</span> Arr • <span x-text="kpis.departures">95</span> Dep
+                        <span x-text="Number(kpis.arrivals || 0).toLocaleString()">{{ number_format($analytics['kpis']['arrivals'] ?? 0) }}</span> Arr • <span x-text="Number(kpis.departures || 0).toLocaleString()">{{ number_format($analytics['kpis']['departures'] ?? 0) }}</span> Dep
                     </div>
                 </div>
             </div>
@@ -331,9 +331,9 @@
                 </div>
                 <div class="mt-2">
                     <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Arrivals</div>
-                    <div class="text-xl font-black text-slate-900 tracking-tight" x-text="kpis.arrivals">95</div>
+                    <div class="text-xl font-black text-slate-900 tracking-tight" x-text="Number(kpis.arrivals || 0).toLocaleString()">{{ number_format($analytics['kpis']['arrivals'] ?? 0) }}</div>
                     <div class="text-[10px] font-semibold text-slate-500 mt-0.5">
-                        Dom: <span x-text="kpis.arrivals_dom ?? 95"></span> | Int: <span x-text="kpis.arrivals_int ?? 0"></span>
+                        Dom: <span x-text="Number(kpis.arrivals_dom || 0).toLocaleString()">{{ number_format($analytics['kpis']['arrivals_dom'] ?? 0) }}</span> | Int: <span x-text="Number(kpis.arrivals_int || 0).toLocaleString()">{{ number_format($analytics['kpis']['arrivals_int'] ?? 0) }}</span>
                     </div>
                 </div>
             </div>
@@ -348,9 +348,9 @@
                 </div>
                 <div class="mt-2">
                     <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Departures</div>
-                    <div class="text-xl font-black text-slate-900 tracking-tight" x-text="kpis.departures">95</div>
+                    <div class="text-xl font-black text-slate-900 tracking-tight" x-text="Number(kpis.departures || 0).toLocaleString()">{{ number_format($analytics['kpis']['departures'] ?? 0) }}</div>
                     <div class="text-[10px] font-semibold text-slate-500 mt-0.5">
-                        Dom: <span x-text="kpis.departures_dom ?? 95"></span> | Int: <span x-text="kpis.departures_int ?? 0"></span>
+                        Dom: <span x-text="Number(kpis.departures_dom || 0).toLocaleString()">{{ number_format($analytics['kpis']['departures_dom'] ?? 0) }}</span> | Int: <span x-text="Number(kpis.departures_int || 0).toLocaleString()">{{ number_format($analytics['kpis']['departures_int'] ?? 0) }}</span>
                     </div>
                 </div>
             </div>
@@ -361,13 +361,13 @@
                     <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
                         <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>
                     </div>
-                    <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800" x-text="kpis.pax_per_flight + ' Pax/Flight'">134.9 Pax/Flight</span>
+                    <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800" x-text="(kpis.pax_per_flight || 0) + ' Pax/Flight'">{{ $analytics['kpis']['pax_per_flight_display'] ?? (($analytics['kpis']['pax_per_flight'] ?? 0) . ' Pax/Flight') }}</span>
                 </div>
                 <div class="mt-2">
                     <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Passengers</div>
-                    <div class="text-xl font-black text-slate-900 tracking-tight" x-text="kpis.total_passengers.toLocaleString()">25,627</div>
+                    <div class="text-xl font-black text-slate-900 tracking-tight" x-text="Number(kpis.total_passengers || 0).toLocaleString()">{{ number_format($analytics['kpis']['total_passengers'] ?? 0) }}</div>
                     <div class="text-[10px] font-semibold text-slate-500 mt-0.5 truncate">
-                        Adl: <span x-text="kpis.adult_passengers ? kpis.adult_passengers.toLocaleString() : 0"></span> | Chd: <span x-text="kpis.child_passengers ?? 0"></span> | Inf: <span x-text="kpis.infant_passengers ?? 0"></span>
+                        Adl: <span x-text="Number(kpis.adult_passengers || 0).toLocaleString()">{{ number_format($analytics['kpis']['adult_passengers'] ?? 0) }}</span> | Chd: <span x-text="Number(kpis.child_passengers || 0).toLocaleString()">{{ number_format($analytics['kpis']['child_passengers'] ?? 0) }}</span> | Inf: <span x-text="Number(kpis.infant_passengers || 0).toLocaleString()">{{ number_format($analytics['kpis']['infant_passengers'] ?? 0) }}</span>
                     </div>
                 </div>
             </div>
@@ -381,9 +381,9 @@
                 </div>
                 <div class="mt-2">
                     <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Load Factor (Avg)</div>
-                    <div class="text-xl font-black text-slate-900 tracking-tight" x-text="kpis.passenger_utilization || kpis.avg_load_factor">68.4%</div>
+                    <div class="text-xl font-black text-slate-900 tracking-tight" x-text="kpis.passenger_utilization || kpis.avg_load_factor || '0.0%'">{{ $analytics['kpis']['passenger_utilization'] ?? ($analytics['kpis']['avg_load_factor'] ?? '0.0%') }}</div>
                     <div class="text-[10px] font-semibold text-slate-500 mt-0.5 truncate">
-                        Cap: <span x-text="kpis.total_capacity ? kpis.total_capacity.toLocaleString() : 0"></span> | Load: <span x-text="kpis.total_load ? kpis.total_load.toLocaleString() : 0"></span>
+                        Cap: <span x-text="Number(kpis.total_capacity || 0).toLocaleString()">{{ number_format($analytics['kpis']['total_capacity'] ?? 0) }}</span> | Load: <span x-text="Number(kpis.total_load || 0).toLocaleString()">{{ number_format($analytics['kpis']['total_load'] ?? 0) }}</span>
                     </div>
                 </div>
             </div>
@@ -397,9 +397,9 @@
                 </div>
                 <div class="mt-2">
                     <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cargo (Ton)</div>
-                    <div class="text-xl font-black text-slate-900 tracking-tight" x-text="kpis.cargo_ton ? Number(kpis.cargo_ton).toFixed(2) : '0.00'">208.97</div>
+                    <div class="text-xl font-black text-slate-900 tracking-tight" x-text="kpis.cargo_ton ? Number(kpis.cargo_ton).toFixed(2) : '0.00'">{{ number_format($analytics['kpis']['cargo_ton'] ?? 0, 2) }}</div>
                     <div class="text-[10px] font-semibold text-slate-500 mt-0.5">
-                        <span x-text="kpis.cargo_per_flight_t ?? '1.10'"></span> t/Flight
+                        <span x-text="kpis.cargo_per_flight_t ?? '0.00'">{{ $analytics['kpis']['cargo_per_flight_t'] ?? '0.00' }}</span> t/Flight
                     </div>
                 </div>
             </div>
@@ -413,9 +413,9 @@
                 </div>
                 <div class="mt-2">
                     <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Baggage (Kg)</div>
-                    <div class="text-xl font-black text-slate-900 tracking-tight" x-text="kpis.baggage_kg ? Math.round(kpis.baggage_kg).toLocaleString() : '0'">147,455</div>
+                    <div class="text-xl font-black text-slate-900 tracking-tight" x-text="Number(kpis.baggage_kg || 0).toLocaleString()">{{ number_format($analytics['kpis']['baggage_kg'] ?? 0) }}</div>
                     <div class="text-[10px] font-semibold text-slate-500 mt-0.5">
-                        <span x-text="kpis.baggage_per_flight_kg ?? '776'"></span> kg/Flight
+                        <span x-text="Number(kpis.baggage_per_flight_kg || 0).toLocaleString()">{{ number_format($analytics['kpis']['baggage_per_flight_kg'] ?? 0) }}</span> kg/Flight
                     </div>
                 </div>
             </div>
@@ -426,13 +426,13 @@
                     <div class="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
                         <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
                     </div>
-                    <span class="text-[10px] font-bold text-rose-600" x-text="(kpis.irregular_rate || 0) + '%'">6.3%</span>
+                    <span class="text-[10px] font-bold text-rose-600" x-text="(kpis.irregular_rate || 0) + '%'">{{ $analytics['kpis']['irregular_rate'] ?? 0 }}%</span>
                 </div>
                 <div class="mt-2">
                     <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Irregular Flights</div>
-                    <div class="text-xl font-black text-slate-900 tracking-tight" x-text="schedVsReal.late_count || (kpis.irregularities ? kpis.irregularities.total : 0)">12</div>
+                    <div class="text-xl font-black text-slate-900 tracking-tight" x-text="schedVsReal.late_count ?? (kpis.irregular_flights ?? 0)">{{ $analytics['schedule_vs_realization']['late_count'] ?? ($analytics['kpis']['irregular_flights'] ?? 0) }}</div>
                     <div class="text-[10px] font-semibold text-rose-500 mt-0.5">
-                        <span x-text="schedVsReal.late_count ?? 8"></span> Delay | <span x-text="(kpis.irregularities ? (kpis.irregularities.divert + kpis.irregularities.miss + kpis.irregularities.unscheduled) : 0)"></span> Other
+                        <span x-text="schedVsReal.late_count ?? (kpis.delayed_flights ?? 0)">{{ $analytics['schedule_vs_realization']['late_count'] ?? ($analytics['kpis']['delayed_flights'] ?? 0) }}</span> Delay | <span x-text="(kpis.irregularities ? (kpis.irregularities.divert + kpis.irregularities.miss + kpis.irregularities.unscheduled) : 0)">{{ ($analytics['kpis']['irregularities']['divert'] ?? 0) + ($analytics['kpis']['irregularities']['miss'] ?? 0) + ($analytics['kpis']['irregularities']['unscheduled'] ?? 0) }}</span> Other
                     </div>
                 </div>
             </div>
@@ -570,7 +570,7 @@
                                 <span class="text-sm font-black text-slate-900 font-mono tracking-tight mt-0.5"
                                       x-show="((paxAnalytics.composition.adult || 0) + (paxAnalytics.composition.child || 0) + (paxAnalytics.composition.infant || 0)) > 0"
                                       x-text="((paxAnalytics.composition.adult || 0) + (paxAnalytics.composition.child || 0) + (paxAnalytics.composition.infant || 0)).toLocaleString()">
-                                    25,627
+                                    {{ number_format(($analytics['passenger_analytics']['composition']['adult'] ?? 0) + ($analytics['passenger_analytics']['composition']['child'] ?? 0) + ($analytics['passenger_analytics']['composition']['infant'] ?? 0)) }}
                                 </span>
                                 <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-tight mt-0.5"
                                       x-show="((paxAnalytics.composition.adult || 0) + (paxAnalytics.composition.child || 0) + (paxAnalytics.composition.infant || 0)) === 0">
@@ -665,13 +665,13 @@
                             <span class="px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-900" x-text="'LF ' + (paxAnalytics.lf_avg_arr ? paxAnalytics.lf_avg_arr + '%' : '66.8%')">LF 66.8%</span>
                         </div>
                         <div class="text-lg font-black text-slate-900" x-text="(((paxAnalytics.composition_arr || {}).adult || 0) + ((paxAnalytics.composition_arr || {}).child || 0) + ((paxAnalytics.composition_arr || {}).infant || 0)).toLocaleString() + ' Pax'">
-                            12,843 Pax
+                            {{ number_format((($analytics['passenger_analytics']['composition_arr']['adult'] ?? 0) + ($analytics['passenger_analytics']['composition_arr']['child'] ?? 0) + ($analytics['passenger_analytics']['composition_arr']['infant'] ?? 0))) }} Pax
                         </div>
                         <div class="text-[10px] text-slate-500 font-medium">
-                            Adl: <span x-text="((paxAnalytics.composition_arr || {}).adult || 0).toLocaleString()">12,418</span> | Chd: <span x-text="(paxAnalytics.composition_arr || {}).child || 0">361</span> | Inf: <span x-text="(paxAnalytics.composition_arr || {}).infant || 0">64</span>
+                            Adl: <span x-text="((paxAnalytics.composition_arr || {}).adult || 0).toLocaleString()">{{ number_format($analytics['passenger_analytics']['composition_arr']['adult'] ?? 0) }}</span> | Chd: <span x-text="(paxAnalytics.composition_arr || {}).child || 0">{{ number_format($analytics['passenger_analytics']['composition_arr']['child'] ?? 0) }}</span> | Inf: <span x-text="(paxAnalytics.composition_arr || {}).infant || 0">{{ number_format($analytics['passenger_analytics']['composition_arr']['infant'] ?? 0) }}</span>
                         </div>
                         <div class="text-[10px] text-slate-500 font-medium pt-1 border-t border-amber-200/40">
-                            Cargo: <span x-text="(((paxAnalytics.payload_arr || {}).cargo_kg || 0) / 1000).toFixed(2) + ' t'">106.42 t</span> | Bag: <span x-text="((paxAnalytics.payload_arr || {}).baggage_kg || 0).toLocaleString() + ' kg'">73,541 kg</span>
+                            Cargo: <span x-text="(((paxAnalytics.payload_arr || {}).cargo_kg || 0) / 1000).toFixed(2) + ' t'">{{ number_format(($analytics['passenger_analytics']['payload_arr']['cargo_kg'] ?? 0) / 1000, 2) }} t</span> | Bag: <span x-text="((paxAnalytics.payload_arr || {}).baggage_kg || 0).toLocaleString() + ' kg'">{{ number_format($analytics['passenger_analytics']['payload_arr']['baggage_kg'] ?? 0) }} kg</span>
                         </div>
                     </div>
 
@@ -687,16 +687,16 @@
                                 <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5 12 3m0 0 7.5 7.5M12 3v18"/></svg>
                                 <span>Departure Pax</span>
                             </div>
-                            <span class="px-2 py-0.5 rounded text-[10px] font-black bg-blue-100 text-blue-900" x-text="'LF ' + (paxAnalytics.lf_avg_dep ? paxAnalytics.lf_avg_dep + '%' : '70.1%')">LF 70.1%</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-black bg-blue-100 text-blue-900" x-text="'LF ' + (paxAnalytics.lf_avg_dep ? paxAnalytics.lf_avg_dep + '%' : '{{ $analytics['passenger_analytics']['lf_avg_dep'] ?? '0.0%' }}')">LF {{ $analytics['passenger_analytics']['lf_avg_dep'] ?? '0.0%' }}</span>
                         </div>
                         <div class="text-lg font-black text-slate-900" x-text="(((paxAnalytics.composition_dep || {}).adult || 0) + ((paxAnalytics.composition_dep || {}).child || 0) + ((paxAnalytics.composition_dep || {}).infant || 0)).toLocaleString() + ' Pax'">
-                            12,784 Pax
+                            {{ number_format((($analytics['passenger_analytics']['composition_dep']['adult'] ?? 0) + ($analytics['passenger_analytics']['composition_dep']['child'] ?? 0) + ($analytics['passenger_analytics']['composition_dep']['infant'] ?? 0))) }} Pax
                         </div>
                         <div class="text-[10px] text-slate-500 font-medium">
-                            Adl: <span x-text="((paxAnalytics.composition_dep || {}).adult || 0).toLocaleString()">12,356</span> | Chd: <span x-text="(paxAnalytics.composition_dep || {}).child || 0">396</span> | Inf: <span x-text="(paxAnalytics.composition_dep || {}).infant || 0">32</span>
+                            Adl: <span x-text="((paxAnalytics.composition_dep || {}).adult || 0).toLocaleString()">{{ number_format($analytics['passenger_analytics']['composition_dep']['adult'] ?? 0) }}</span> | Chd: <span x-text="(paxAnalytics.composition_dep || {}).child || 0">{{ number_format($analytics['passenger_analytics']['composition_dep']['child'] ?? 0) }}</span> | Inf: <span x-text="(paxAnalytics.composition_dep || {}).infant || 0">{{ number_format($analytics['passenger_analytics']['composition_dep']['infant'] ?? 0) }}</span>
                         </div>
                         <div class="text-[10px] text-slate-500 font-medium pt-1 border-t border-blue-200/40">
-                            Cargo: <span x-text="(((paxAnalytics.payload_dep || {}).cargo_kg || 0) / 1000).toFixed(2) + ' t'">102.55 t</span> | Bag: <span x-text="((paxAnalytics.payload_dep || {}).baggage_kg || 0).toLocaleString() + ' kg'">73,914 kg</span>
+                            Cargo: <span x-text="(((paxAnalytics.payload_dep || {}).cargo_kg || 0) / 1000).toFixed(2) + ' t'">{{ number_format(($analytics['passenger_analytics']['payload_dep']['cargo_kg'] ?? 0) / 1000, 2) }} t</span> | Bag: <span x-text="((paxAnalytics.payload_dep || {}).baggage_kg || 0).toLocaleString() + ' kg'">{{ number_format($analytics['passenger_analytics']['payload_dep']['baggage_kg'] ?? 0) }} kg</span>
                         </div>
                     </div>
 
@@ -1521,24 +1521,24 @@ function fdrDashboardController() {
             time_basis: '{{ $timeBasis }}',
             v: {{ time() }},
         },
-        activeChips: @json($filterResult['active_chips']),
-        kpis: @json($analytics['kpis']),
-        schedVsReal: @json($analytics['schedule_vs_realization']),
-        paxAnalytics: @json($analytics['passenger_analytics']),
-        airlineRoute: @json($analytics['airline_route']),
+        activeChips: @json($filterResult['active_chips'] ?? []),
+        kpis: @json($analytics['kpis'] ?? new \stdClass()),
+        schedVsReal: @json($analytics['schedule_vs_realization'] ?? new \stdClass()),
+        paxAnalytics: @json($analytics['passenger_analytics'] ?? new \stdClass()),
+        airlineRoute: @json($analytics['airline_route'] ?? new \stdClass()),
         fleetPerformance: @json($analytics['fleet_performance'] ?? []),
-        groundOps: @json($analytics['ground_operations']),
+        groundOps: @json($analytics['ground_operations'] ?? new \stdClass()),
         combinedTrend: @json($analytics['combined_trend'] ?? null),
-        hourlyDistribution: @json($analytics['hourly_distribution'] ?? null),
-        flightRecords: @json($records),
-        totalRecords: {{ $filterResult['filtered_count'] }},
+        hourlyDistribution: @json($analytics['hourly_distribution'] ?? new \stdClass()),
+        flightRecords: @json($records ?? []),
+        totalRecords: {{ $filterResult['filtered_count'] ?? 0 }},
         panel3Tab: 'operators',
         panel4Tab: 'stands',
         pagination: {
             current_page: 1,
             per_page: 50,
-            total_pages: Math.max(1, Math.ceil({{ $filterResult['filtered_count'] }} / 50)),
-            total: {{ $filterResult['filtered_count'] }}
+            total_pages: Math.max(1, Math.ceil({{ $filterResult['filtered_count'] ?? 0 }} / 50)),
+            total: {{ $filterResult['filtered_count'] ?? 0 }}
         },
         selectedFlight: null,
         isFiltering: false,
@@ -2450,7 +2450,7 @@ function fdrDashboardController() {
         },
 
         removeChip(key) {
-            if (key === 'airport') this.filters.airport = {{ count($airports) <= 1 ? "'" . ($airports[0] ?? ($meta['report_airport'] ?? ($meta['airport'] ?? 'CGK'))) . "'" : "'ALL'" }};
+            if (key === 'airport') this.filters.airport = {!! json_encode(count($airports) <= 1 ? ($airports[0] ?? ($meta['report_airport'] ?? ($meta['airport'] ?? 'CGK'))) : 'ALL') !!};
             if (key === 'leg') this.filters.leg = 'ALL';
             if (key === 'operator') this.filters.operator = 'ALL';
             if (key === 'traffic') this.filters.traffic = 'ALL';
@@ -2465,7 +2465,7 @@ function fdrDashboardController() {
         },
 
         clearAllFilters() {
-            this.filters.airport = {{ count($airports) <= 1 ? "'" . ($airports[0] ?? ($meta['report_airport'] ?? ($meta['airport'] ?? 'CGK'))) . "'" : "'ALL'" }};
+            this.filters.airport = {!! json_encode(count($airports) <= 1 ? ($airports[0] ?? ($meta['report_airport'] ?? ($meta['airport'] ?? 'CGK'))) : 'ALL') !!};
             this.filters.leg = 'ALL';
             this.filters.operator = 'ALL';
             this.filters.traffic = 'ALL';
