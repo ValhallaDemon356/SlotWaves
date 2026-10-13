@@ -380,6 +380,11 @@ function fdrSupabaseUploader(config) {
                     throw new Error(this.extractError(data, `Backend processing failed (HTTP ${response.status}).`));
                 }
 
+                if (data.is_async_job && data.job_id && data.process_url) {
+                    await this.processFdrJob(data);
+                    return;
+                }
+
                 this.uploadState.status = 'completed';
                 this.uploadState.successMessage = data.message || `Successfully ingested ${data.valid_rows || 'all'} flight movements.`;
                 this.uploadState.redirectUrl = data.redirect_url || '#';
@@ -410,6 +415,88 @@ function fdrSupabaseUploader(config) {
             }
         },
 
+        async processFdrJob(jobData) {
+            const processUrl = jobData.process_url;
+            const fallbackRedirect = jobData.redirect_url || '#';
+
+            this.uploadState.status = 'processing';
+            this.uploadState.progress = 5;
+            this.uploadState.statusTitle = 'Processing Flight Daily Report...';
+            this.uploadState.detailText = 'Reading and normalizing OASYS flight movements';
+            this.uploadState.speedText = 'Incremental processing';
+
+            const maxAttempts = 240;
+
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                const processResponse = await fetch(processUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': this.csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                const processData = await this.readJsonResponse(processResponse);
+
+                if (!processResponse.ok && processData?.error) {
+                    throw new Error(this.extractError(
+                        processData,
+                        `FDR processing failed (HTTP ${processResponse.status}).`
+                    ));
+                }
+
+                const status = processData.status || processData.stage || 'PARSING';
+                const progress = Number(processData.progress ?? 0);
+
+                this.uploadState.progress = Math.max(
+                    5,
+                    Math.min(99, Number.isFinite(progress) ? progress : 5)
+                );
+
+                this.uploadState.statusTitle =
+                    status === 'READY'
+                        ? 'FDR Dashboard Ready'
+                        : (processData.stage_label || 'Processing Flight Daily Report...');
+
+                if (Number.isFinite(Number(processData.processed_rows))) {
+                    this.uploadState.detailText =
+                        `${Number(processData.processed_rows).toLocaleString()} flight movements processed`;
+                }
+
+                if (status === 'READY' || processData.result_url) {
+                    this.uploadState.status = 'completed';
+                    this.uploadState.progress = 100;
+                    this.uploadState.successMessage =
+                        'Flight Daily Report berhasil dibaca dan diproses.';
+                    this.uploadState.redirectUrl =
+                        processData.result_url || fallbackRedirect;
+
+                    setTimeout(() => {
+                        if (this.uploadState.redirectUrl) {
+                            window.location.href = this.uploadState.redirectUrl;
+                        }
+                    }, 500);
+                    return;
+                }
+
+                if (status === 'FAILED' || status === 'PAUSED') {
+                    throw new Error(
+                        processData?.error?.message ||
+                        processData?.error_message ||
+                        'FDR processing failed.'
+                    );
+                }
+
+                // processJob returns after a bounded parsing step.
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            throw new Error(
+                'FDR processing timed out while waiting for the next processing step.'
+            );
+        },
+
         async readJsonResponse(response) {
             const text = await response.text();
             if (!text) return {};
@@ -438,6 +525,11 @@ function fdrSupabaseUploader(config) {
             return new Promise((resolve, reject) => {
                 const xhr = new XMLHttpRequest();
                 xhr.open('PUT', signedUrl, true);
+
+                if (this.supabaseKey) {
+                    xhr.setRequestHeader('apikey', this.supabaseKey);
+                    xhr.setRequestHeader('Authorization', `Bearer ${this.supabaseKey}`);
+                }
 
                 if (xhr.upload && onProgress) {
                     xhr.upload.onprogress = (e) => {
