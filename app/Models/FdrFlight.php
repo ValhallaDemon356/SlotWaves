@@ -156,9 +156,9 @@ class FdrFlight extends Model
         }
 
         // 7. Date Scope filter
-        $dateScope = strtoupper(trim($filters['date_scope'] ?? 'ALL_PERIOD'));
+        $dateScope = strtoupper(trim($filters['date_scope'] ?? ''));
         $analysisLevel = strtoupper(trim($filters['analysis_level'] ?? ''));
-        $analysisDate = trim($filters['analysis_date'] ?? '');
+        $analysisDate = trim($filters['analysis_date'] ?? ($filters['date'] ?? ''));
         $startDate = trim($filters['start_date'] ?? '');
         $endDate = trim($filters['end_date'] ?? '');
         $analysisMonth = trim($filters['analysis_month'] ?? '');
@@ -166,7 +166,7 @@ class FdrFlight extends Model
 
         if ($dateScope === 'ALL_PERIOD' || $dateScope === 'ALL' || $dateScope === 'FULL_RANGE') {
             // Full dataset view: no date restriction
-        } elseif ($dateScope === 'DAY' && !empty($analysisDate) && !in_array(strtoupper($analysisDate), ['ALL', 'ALL_PERIOD', 'FULL', 'FULL_RANGE'], true)) {
+        } elseif (!empty($analysisDate) && !in_array(strtoupper($analysisDate), ['ALL', 'ALL_PERIOD', 'FULL', 'FULL_RANGE', 'N/A'], true)) {
             $stdDate = \App\Services\FlightDailyReport\FlightDailyReportFilter::standardizeDate($analysisDate);
             if ($stdDate !== 'N/A') {
                 $query->where('flight_date', $stdDate);

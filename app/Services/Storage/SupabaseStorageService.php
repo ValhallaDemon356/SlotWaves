@@ -20,6 +20,7 @@ class SupabaseStorageService
     {
         $this->supabaseUrl    = rtrim(config('services.supabase.url', env('SUPABASE_URL', '')), '/');
         $this->serviceRoleKey = config('services.supabase.service_role_key', env('SUPABASE_SERVICE_ROLE_KEY', ''));
+        $this->anonKey        = config('services.supabase.anon_key', env('SUPABASE_ANON_KEY', ''));
         $this->defaultBucket  = config('services.supabase.bucket', env('NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET', 'flight-reports'));
 
         $this->httpClient = $httpClient ?: new Client([
@@ -27,6 +28,89 @@ class SupabaseStorageService
             'connect_timeout' => 15,
             'http_errors'     => false,
         ]);
+    }
+
+    /**
+     * Create a signed upload URL using Supabase Storage API.
+     * Allows client browser to upload large files directly without exposing service_role credentials or hitting RLS limits.
+     *
+     * @param string $filePath Destination path in storage bucket
+     * @param string|null $bucket Bucket name, defaults to configured bucket
+     * @param int $expiresIn Expiration time in seconds (default 3600)
+     * @param bool $upsert Allow overwriting existing files
+     * @return array Contains signed_url, token, path, and bucket
+     */
+    public function createSignedUploadUrl(string $filePath, ?string $bucket = null, int $expiresIn = 3600, bool $upsert = true): array
+    {
+        $bucket = $bucket ?: $this->defaultBucket;
+        $cleanPath = $this->sanitizeStoragePath($filePath);
+
+        if (empty($this->supabaseUrl)) {
+            throw new RuntimeException("FDR_STORAGE_ERROR: Supabase URL is not configured. Set SUPABASE_URL in environment.");
+        }
+
+        $apiKey = !empty($this->serviceRoleKey) ? $this->serviceRoleKey : $this->anonKey;
+        if (empty($apiKey)) {
+            throw new RuntimeException("FDR_STORAGE_ERROR: Neither SUPABASE_SERVICE_ROLE_KEY nor SUPABASE_ANON_KEY is configured.");
+        }
+
+        $endpoint = "{$this->supabaseUrl}/storage/v1/object/upload/sign/{$bucket}/{$cleanPath}";
+
+        try {
+            $response = $this->httpClient->request('POST', $endpoint, [
+                'headers' => [
+                    'apikey'        => $apiKey,
+                    'Authorization' => "Bearer {$apiKey}",
+                    'Content-Type'  => 'application/json',
+                ],
+                'json' => [
+                    'upsert' => $upsert,
+                ],
+            ]);
+
+            $statusCode = $response->getStatusCode();
+            $body = (string) $response->getBody();
+            $data = json_decode($body, true);
+
+            if ($statusCode < 200 || $statusCode >= 300 || empty($data['url'])) {
+                $errDetail = $data['message'] ?? ($data['error'] ?? $body);
+                if ($statusCode === 404 || str_contains($body, 'NoSuchBucket') || str_contains(strtolower($body), 'bucket not found')) {
+                    throw new RuntimeException("FDR_STORAGE_ERROR: Bucket '{$bucket}' tidak ditemukan di Supabase Storage (404). Pastikan bucket '{$bucket}' ada di Supabase Dashboard.");
+                }
+                if ($statusCode === 403 || str_contains(strtolower($body), 'row-level security') || str_contains(strtolower($body), 'unauthorized')) {
+                    throw new RuntimeException("FDR_STORAGE_ERROR: Akses ditolak RLS Policy Supabase Storage (HTTP 403): {$errDetail}");
+                }
+                throw new RuntimeException("FDR_SIGNED_UPLOAD_ERROR: Supabase Storage returned HTTP {$statusCode}: {$errDetail}");
+            }
+
+            // Construct full signed PUT upload URL
+            // Supabase returns relative url e.g. /object/upload/sign/bucket/path?token=xyz or /bucket/path?token=xyz
+            $token = $data['token'] ?? null;
+            if (!$token && preg_match('/token=([^&]+)/', $data['url'], $m)) {
+                $token = $m[1];
+            }
+
+            $rawUrl = $data['url'];
+            $signedUploadUrl = str_starts_with($rawUrl, 'http')
+                ? $rawUrl
+                : "{$this->supabaseUrl}/storage/v1" . (str_starts_with($rawUrl, '/') ? '' : '/') . $rawUrl;
+
+            return [
+                'success'           => true,
+                'signed_url'        => $signedUploadUrl,
+                'token'             => $token,
+                'path'              => $cleanPath,
+                'bucket'            => $bucket,
+                'storage_full_path' => "supabase://{$bucket}/{$cleanPath}",
+            ];
+
+        } catch (GuzzleException $e) {
+            Log::error("Supabase createSignedUploadUrl error: " . $e->getMessage(), [
+                'bucket' => $bucket,
+                'path'   => $cleanPath,
+            ]);
+            throw new RuntimeException("FDR_SIGNED_UPLOAD_ERROR: Failed to connect to Supabase Storage: " . $e->getMessage(), 0, $e);
+        }
     }
 
     /**
@@ -45,7 +129,7 @@ class SupabaseStorageService
         $cleanPath = $this->sanitizeStoragePath($filePath);
 
         if (empty($this->supabaseUrl)) {
-            throw new RuntimeException("Supabase URL is not configured. Please set SUPABASE_URL in your environment.");
+            throw new RuntimeException("FDR_STORAGE_ERROR: Supabase URL is not configured. Please set SUPABASE_URL in your environment.");
         }
 
         // Prefer service_role key for backend operations; fallback to anon key
@@ -95,24 +179,23 @@ class SupabaseStorageService
             }
 
             if ($statusCode !== 200) {
-                @unlink($tempFile);
                 $bodyPreview = '';
                 if (file_exists($tempFile)) {
                     $bodyPreview = file_get_contents($tempFile, false, null, 0, 512);
                     @unlink($tempFile);
                 }
                 if ($statusCode === 404 || str_contains($bodyPreview, 'NoSuchBucket') || str_contains(strtolower($bodyPreview), 'bucket not found')) {
-                    throw new RuntimeException("Bucket '{$bucket}' tidak ditemukan di Supabase Storage (NoSuchBucket/404). Silakan pastikan bucket '{$bucket}' telah dibuat di Supabase Dashboard (Storage -> New Bucket) dan NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET={$bucket} terkonfigurasi di file .env.");
+                    throw new RuntimeException("FDR_STORAGE_ERROR: Bucket '{$bucket}' tidak ditemukan di Supabase Storage (NoSuchBucket/404). Silakan pastikan bucket '{$bucket}' telah dibuat di Supabase Dashboard (Storage -> New Bucket) dan NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET={$bucket} terkonfigurasi di file .env.");
                 }
                 if ($statusCode === 403 || str_contains(strtolower($bodyPreview), 'row-level security') || str_contains(strtolower($bodyPreview), 'unauthorized')) {
-                    throw new RuntimeException("Akses ditolak oleh RLS Policy Supabase Storage untuk bucket '{$bucket}'. Pastikan bucket memiliki izin SELECT/READ untuk role anon/authenticated.");
+                    throw new RuntimeException("FDR_STORAGE_ERROR: Akses ditolak oleh RLS Policy Supabase Storage untuk bucket '{$bucket}' (HTTP 403). Pastikan bucket memiliki izin SELECT/READ untuk role anon/service_role.");
                 }
-                throw new RuntimeException("Failed to download file from Supabase Storage (HTTP {$statusCode}): {$bodyPreview}");
+                throw new RuntimeException("FDR_STORAGE_ERROR: Failed to download file from Supabase Storage (HTTP {$statusCode}): " . ($bodyPreview ?: 'Empty response body'));
             }
 
             if (!file_exists($tempFile) || filesize($tempFile) === 0) {
                 @unlink($tempFile);
-                throw new RuntimeException("Downloaded file from Supabase Storage is empty or unreadable.");
+                throw new RuntimeException("FDR_STORAGE_ERROR: Downloaded file from Supabase Storage is empty (0 bytes). Check that object exists at '{$cleanPath}'.");
             }
 
             Log::info("SupabaseStorageService: Download completed successfully", [
@@ -128,7 +211,7 @@ class SupabaseStorageService
                 'bucket' => $bucket,
                 'path'   => $cleanPath,
             ]);
-            throw new RuntimeException("Connection error downloading from Supabase Storage: " . $e->getMessage(), 0, $e);
+            throw new RuntimeException("FDR_STORAGE_ERROR: Connection error downloading from Supabase Storage: " . $e->getMessage(), 0, $e);
         }
     }
 

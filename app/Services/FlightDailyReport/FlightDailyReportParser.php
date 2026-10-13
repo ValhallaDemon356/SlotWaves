@@ -11,29 +11,31 @@ class FlightDailyReportParser
      * Strict raw FDR headers mapping regex.
      */
     protected const HEADER_MAPPINGS = [
+        'flight_date' => '/^(flight\s*date|flt\s*date|operational\s*date|op\s*date|date|tanggal)$/i',
         'air_line'    => '/^(air\s*line|airline|maskapai|operator)$/i',
-        'flight_no'   => '/^(flight\s*no\.?|flt\s*no\.?|flight\s*number|no\s*penerbangan)$/i',
-        'paired_no'   => '/^(paired\s*no\.?|pair\s*no\.?|paired\s*flight|no\s*pasangan)$/i',
-        'desc'        => '/^(desc|description|keterangan)$/i',
-        'sibt'        => '/^(sibt|sched(uled)?\s*in(\s*block)?(\s*time)?|sta\b)$/i',
-        'sobt'        => '/^(sobt|sched(uled)?\s*off(\s*block)?(\s*time)?|std\b)$/i',
+        'flight_no'   => '/^(flight\s*no\.?|flt\s*no\.?|flight\s*number|flightno|fltno|no\s*penerbangan)$/i',
+        'paired_no'   => '/^(paired\s*no\.?|pair\s*no\.?|paired\s*flight|pairedno|pairno|no\s*pasangan)$/i',
+        'desc'        => '/^(desc|description|keterangan|ac\s*type|aircraft\s*type|tipe\s*pesawat)$/i',
+        'sibt'        => '/^(sibt|sched(uled)?\s*in(\s*block)?(\s*time)?|sta\b|sibt\(sched\))$/i',
+        'sobt'        => '/^(sobt|sched(uled)?\s*off(\s*block)?(\s*time)?|std\b|sobt\(sched\))$/i',
         'sibt_sobt'   => '/^(sibt[\s\/\-_]+sobt|sibt\s*sobt|sched(uled)?\s*block(\s*time)?)$/i',
-        'aibt'        => '/^(aibt|actual\s*in(\s*block)?(\s*time)?|ata\b)$/i',
-        'aobt'        => '/^(aobt|actual\s*off(\s*block)?(\s*time)?|atd\b)$/i',
+        'aibt'        => '/^(aibt|actual\s*in(\s*block)?(\s*time)?|ata\b|aibt\(act\))$/i',
+        'aobt'        => '/^(aobt|actual\s*off(\s*block)?(\s*time)?|atd\b|aobt\(act\))$/i',
         'aibt_aobt'   => '/^(aibt[\s\/\-_]+aobt|aibt\s*aobt|actual\s*block(\s*time)?)$/i',
         'leg'         => '/^(leg|leg\s*type|status\s*leg|a\/d\s*sched)$/i',
         'city_1'      => '/^(city\s*1|origin|asal|dari|bandara\s*asal|dep\s*apt)$/i',
         'city_2'      => '/^(city\s*2|destination|dest|tujuan|ke|bandara\s*tujuan|arr\s*apt)$/i',
         'mtow'        => '/^(mt\s*ow|mtow|max\s*take\s*off\s*weight)$/i',
-        'reg_no'      => '/^(reg\.?\s*no\.?|registration|tail\s*no\.?|no\s*registrasi)$/i',
+        'reg_no'      => '/^(reg\.?\s*no\.?|registration|tail\s*no\.?|regno|no\s*registrasi)$/i',
         'cap'         => '/^(cap\.?|capacity|seat\s*capacity|kapasitas(\s*kursi)?)$/i',
-        'load'        => '/^(load|total\s*load|pax\s*load|muatan|penumpang\s*total)$/i',
-        'adult'       => '/^(adult|dewasa)$/i',
-        'child'       => '/^(child|anak)$/i',
-        'infant'      => '/^(infant|bayi)$/i',
-        'transit'     => '/^(transit)$/i',
-        'transfer'    => '/^(transfer|tranfer)$/i',
-        'divert'      => '/^(divert|diverted)$/i',
+        'load'        => '/^(lo\s*ad|load|total\s*load|pax\s*load|muatan|penumpang\s*total)$/i',
+        'load_factor' => '/^(load\s*factor|lf\s*%?|load\s*factor\s*%|lf%)$/i',
+        'adult'       => '/^(adu\s*lt|adult|dewasa)$/i',
+        'child'       => '/^(chi\s*ld|child|anak)$/i',
+        'infant'      => '/^(inf\s*ant|infant|bayi)$/i',
+        'transit'     => '/^(tran\s*sit|transit)$/i',
+        'transfer'    => '/^(tran\s*fer|transfer)$/i',
+        'divert'      => '/^(div\s*ert|divert|diverted)$/i',
         'miss'        => '/^(miss|missed|batal|cancel)$/i',
         'crw'         => '/^(crw|crew|awak)$/i',
         'ex_crw'      => '/^(ex\.?\s*crw|extra\s*crew|awak\s*ekstra)$/i',
@@ -43,9 +45,9 @@ class FlightDailyReportParser
         'pos_kg'      => '/^(pos\.?\s*\(?kg\)?|post|mail)$/i',
         'stand'       => '/^(stand|gate|parking\s*stand|apron\s*stand)$/i',
         'runway'      => '/^(run\s*way|runway|rwy)$/i',
-        'final'       => '/^(final|status\s*final)$/i',
+        'final'       => '/^(final|status\s*final|status)$/i',
         'final_time'  => '/^(final\s*time|waktu\s*final)$/i',
-        'branch'      => '/^(branch|cabang)$/i',
+        'branch'      => '/^(bra\s*nch|branch|cabang)$/i',
     ];
 
     /**
@@ -416,16 +418,18 @@ class FlightDailyReportParser
             $meta = $this->extractMetadata($metaHeaders, []);
             $meta['detected_format'] = 'OASYS HTML XLS';
 
-            preg_match_all('/<tr[^>]*>(.*?)<\/tr>/is', $lead, $trs);
-            foreach ($trs[1] as $tr) {
-                preg_match_all('/<t[dh][^>]*>(.*?)<\/t[dh]>/is', $tr, $tds);
+            preg_match_all('/<tr[^>]*>(.*?)<\/tr>/is', $lead, $trs, PREG_OFFSET_CAPTURE);
+            foreach ($trs[1] as $idx => $match) {
+                $trContent = $match[0];
+                preg_match_all('/<t[dh][^>]*>(.*?)<\/t[dh]>/is', $trContent, $tds);
                 $cells = array_map(function($c) {
                     return trim(html_entity_decode(strip_tags($c), ENT_QUOTES, 'UTF-8'));
                 }, $tds[1]);
                 $rowStr = implode(' ', $cells);
                 if (stripos($rowStr, 'AIRLINE') !== false || stripos($rowStr, 'AIR LINE') !== false || stripos($rowStr, 'FLIGHT NO') !== false || stripos($rowStr, 'SIBT') !== false) {
                     $headerCols = $cells;
-                    $headerByteOffset = strpos($lead, '</tr>', stripos($lead, 'AIR')) + 5;
+                    $fullTrMatch = $trs[0][$idx];
+                    $headerByteOffset = $fullTrMatch[1] + strlen($fullTrMatch[0]);
                     break;
                 }
             }
@@ -1436,7 +1440,8 @@ class FlightDailyReportParser
 
             // Capacity & Load Guardrails
             $cap  = $getNumeric('cap', 0);
-            $load = $getNumeric('load', 0);
+            $rawLoadStr = $get('load', '');
+            $rawLfStr   = $get('load_factor', '');
 
             // Passengers
             $adult    = $getNumeric('adult', 0);
@@ -1446,14 +1451,33 @@ class FlightDailyReportParser
             $transfer = $getNumeric('transfer', 0);
             $umroh    = $getNumeric('umroh', 0);
 
-            // If load is 0 but adult+child is present, calculate load
-            if ($load === 0 && ($adult > 0 || $child > 0)) {
-                $load = $adult + $child;
+            // In OASYS FDR exports, column LO AD frequently contains Load Factor % (e.g. "58 %", "71.8%")
+            $isLoadColumnLf = str_contains($rawLoadStr, '%');
+            $loadFactorVal = null;
+
+            if ($isLoadColumnLf) {
+                $cleanLf = (float) preg_replace('/[^0-9\.]/', '', $rawLoadStr);
+                $loadFactorVal = $cleanLf > 0 ? $cleanLf : null;
+                $load = ($adult > 0 || $child > 0) ? ($adult + $child) : 0;
+            } elseif (!empty($rawLfStr) && $rawLfStr !== 'N/A') {
+                $cleanLf = (float) preg_replace('/[^0-9\.]/', '', $rawLfStr);
+                $loadFactorVal = $cleanLf > 0 ? $cleanLf : null;
+                $load = $getNumeric('load', 0);
+                if ($load === 0 && ($adult > 0 || $child > 0)) {
+                    $load = $adult + $child;
+                }
+            } else {
+                $load = $getNumeric('load', 0);
+                if ($load === 0 && ($adult > 0 || $child > 0)) {
+                    $load = $adult + $child;
+                }
             }
 
             // Load Factor Guardrail: Missing or CAP. = 0 strictly returns 'N/A'
             $loadFactor = 'N/A';
-            if ($cap > 0) {
+            if ($loadFactorVal !== null) {
+                $loadFactor = round($loadFactorVal, 1);
+            } elseif ($cap > 0 && $load > 0) {
                 $calcLf = ($load / $cap) * 100.0;
                 $loadFactor = round($calcLf, 1);
             }
@@ -1528,9 +1552,17 @@ class FlightDailyReportParser
             $schedMovementRaw = ($direction === 'ARRIVAL') ? $schedArrivalRaw : $schedDepRaw;
             $actMovementRaw   = ($direction === 'ARRIVAL') ? $actArrivalRaw   : $actDepRaw;
 
+            // Date extraction: check row flight_date first, then timestamp
+            $rowDateVal = $get('flight_date', 'N/A');
+            $rowDate = null;
+            if ($rowDateVal !== 'N/A' && !empty($rowDateVal)) {
+                $parsedRowDate = $this->parseDateTimeString($rowDateVal);
+                $rowDate = $parsedRowDate['date'];
+            }
+
             // Parse timestamps
-            $schedParsed = $this->parseDateTimeString($schedMovementRaw, $meta['period_start'] ?? null);
-            $actParsed   = $this->parseDateTimeString($actMovementRaw, $meta['period_start'] ?? null);
+            $schedParsed = $this->parseDateTimeString($schedMovementRaw, $rowDate ?: ($meta['period_start'] ?? null));
+            $actParsed   = $this->parseDateTimeString($actMovementRaw, $rowDate ?: ($meta['period_start'] ?? null));
 
             $scheduledDatetime = $schedParsed['datetime'];
             $actualDatetime    = $actParsed['datetime'];
@@ -1538,8 +1570,8 @@ class FlightDailyReportParser
             $scheduledHour = $schedParsed['hour'];
             $actualHour    = $actParsed['hour'];
 
-            // Operational Date based on SCHEDULED timestamp (PART 7)
-            $operationalDate       = $schedParsed['date'] ?: ($actParsed['date'] ?: ($meta['period_start'] ?? date('Y-m-d')));
+            // Operational Date based on SCHEDULED timestamp or row date or actual
+            $operationalDate       = $schedParsed['date'] ?: ($actParsed['date'] ?: ($rowDate ?: ($meta['period_start'] ?? date('Y-m-d'))));
             $actualOperationalDate = $actParsed['date'];
 
             // Operational Hour: scheduled_hour prefered for planned analytics, actual_hour for realized (PART 8)

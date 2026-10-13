@@ -61,11 +61,20 @@ class FdrStreamingParser
      * @param string|null $airlineHint Airline hint detected from folder path / client
      * @return array
      */
+    protected ?string $detectedAirport = 'CGK';
+
     public function parseStreaming(string $filePath, ?string $originalFilename = null, ?string $airlineHint = null): array
     {
         if (!file_exists($filePath)) {
             throw new InvalidArgumentException("File not found on disk: {$filePath}");
         }
+
+        $airport = 'CGK';
+        $fn = $originalFilename ?: basename($filePath);
+        if (preg_match('/\b(HLP|BDO|SUB|DPS|KNO|UPG|JOG|SRG|YIA|BPN|BDJ|MDC|BTJ|PKU|PDG|DJB|PLM|TKG|PNK|TRK|KOE|AMQ|DJJ|TIM|BIK|MKQ|SOQ|MKW|GTO|KDI|TTE|TJQ|PGK|TNJ|BTH|DTB|BWX|MLG)\b/i', $fn, $mAp)) {
+            $airport = strtoupper($mAp[1]);
+        }
+        $this->detectedAirport = $airport;
 
         $format = $this->detectFormat($filePath);
         $startMem = memory_get_usage(true);
@@ -413,11 +422,13 @@ class FdrStreamingParser
         $city1 = strtoupper($getVal('city_1') ?: '');
         $city2 = strtoupper($getVal('city_2') ?: '');
 
-        // Direction Resolution: relative to CGK
+        $reportAirport = $this->detectedAirport ?? 'CGK';
+
+        // Direction Resolution: relative to reportAirport
         $direction = 'ARRIVAL';
-        if ($city2 === 'CGK' && $city1 !== 'CGK') {
+        if ($city2 === $reportAirport && $city1 !== $reportAirport) {
             $direction = 'ARRIVAL';
-        } elseif ($city1 === 'CGK' && $city2 !== 'CGK') {
+        } elseif ($city1 === $reportAirport && $city2 !== $reportAirport) {
             $direction = 'DEPARTURE';
         } elseif ($leg === 'ARRIVAL' || $leg === 'DEPARTURE') {
             $direction = $leg;
@@ -491,8 +502,8 @@ class FdrStreamingParser
             'movement_type'      => $direction === 'ARRIVAL' ? 'Arrival' : 'Departure',
             'city_1'             => $city1,
             'city_2'             => $city2,
-            'origin'             => $city1 ?: ($direction === 'DEPARTURE' ? 'CGK' : 'N/A'),
-            'destination'        => $city2 ?: ($direction === 'ARRIVAL' ? 'CGK' : 'N/A'),
+            'origin'             => $city1 ?: ($direction === 'DEPARTURE' ? $reportAirport : 'N/A'),
+            'destination'        => $city2 ?: ($direction === 'ARRIVAL' ? $reportAirport : 'N/A'),
             'reg_no'             => strtoupper($getVal('reg_no') ?: ''),
             'flight_date'        => $flightDate,
             'operational_date'   => $flightDate,
@@ -513,7 +524,7 @@ class FdrStreamingParser
             'is_realized'        => $isRealized,
             'is_scheduled'       => true,
             'traffic'            => $traffic,
-            'report_airport'     => 'CGK',
+            'report_airport'     => $reportAirport,
             'cap'                => $cap,
             'load'               => $load,
             'adult'              => $adult,

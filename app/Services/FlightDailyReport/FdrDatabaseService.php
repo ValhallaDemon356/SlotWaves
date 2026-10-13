@@ -138,12 +138,24 @@ class FdrDatabaseService
      */
     public function transformRecordToDbRow(array $r, int $uploadId, string $defaultAirport, array $meta, $now): ?array
     {
-        if (($r['row_type'] ?? 'MOVEMENT') === 'SUMMARY') {
+        $flNo = trim((string)($r['flight_no'] ?? ($r['flight_number'] ?? 'N/A')));
+        $airline = trim((string)($r['air_line'] ?? ($r['airline'] ?? ($r['airline_code'] ?? ($r['operator'] ?? 'N/A')))));
+
+        if ($airline === 'N/A' || empty($airline)) {
+            if (preg_match('/^([A-Z0-9]{2,3})\s*\d+/i', $flNo, $mCode)) {
+                $airline = strtoupper($mCode[1]);
+            }
+        }
+
+        if (($r['row_type'] ?? 'MOVEMENT') === 'SUMMARY'
+            || strcasecmp($airline, 'PAX ALL') === 0
+            || stripos($airline, 'PAX ALL') !== false
+            || stripos($flNo, 'PAX ALL') !== false
+            || stripos($flNo, 'TOTAL') !== false
+            || stripos($flNo, 'GRAND') !== false) {
             return null;
         }
 
-        $flNo = trim((string)($r['flight_no'] ?? 'N/A'));
-        $airline = trim((string)($r['air_line'] ?? 'N/A'));
         if ($flNo === 'N/A' && $airline === 'N/A') {
             return null;
         }
@@ -192,11 +204,22 @@ class FdrDatabaseService
             $status = 'IRREGULAR';
         }
 
+        $paxLoad = 0;
+        if (isset($r['load']) && is_numeric($r['load']) && !str_contains((string)$r['load'], '%')) {
+            $paxLoad = (int)$r['load'];
+        } elseif (isset($r['passenger_load']) && is_numeric($r['passenger_load'])) {
+            $paxLoad = (int)$r['passenger_load'];
+        } elseif (isset($r['pax_total']) && is_numeric($r['pax_total'])) {
+            $paxLoad = (int)$r['pax_total'];
+        } else {
+            $paxLoad = (int)($r['adult'] ?? 0) + (int)($r['child'] ?? 0);
+        }
+
         $loadFactor = null;
         if (isset($r['load_factor']) && is_numeric($r['load_factor'])) {
             $loadFactor = (float)$r['load_factor'];
-        } elseif ((int)($r['cap'] ?? 0) > 0) {
-            $loadFactor = round(((int)($r['load'] ?? 0) / (int)$r['cap']) * 100.0, 2);
+        } elseif ((int)($r['cap'] ?? 0) > 0 && $paxLoad > 0) {
+            $loadFactor = round(($paxLoad / (int)$r['cap']) * 100.0, 2);
         }
 
         $schedTimeStr = $r['sched_display'] ?? ($direction === 'ARRIVAL' ? ($r['sibt'] ?? null) : ($r['sobt'] ?? null));
@@ -233,7 +256,7 @@ class FdrDatabaseService
             'is_realized'          => $isRealized ? 'true' : 'false',
             'is_irregular'         => (!empty($r['is_irregular'])) ? 'true' : 'false',
             'passenger_capacity'   => (int)($r['cap'] ?? 0),
-            'passenger_load'       => (int)($r['load'] ?? 0),
+            'passenger_load'       => $paxLoad,
             'load_factor'          => $loadFactor,
             'pax_adult'            => (int)($r['adult'] ?? 0),
             'pax_child'            => (int)($r['child'] ?? 0),
@@ -304,15 +327,20 @@ class FdrDatabaseService
         $delayPercent = $realized > 0 ? round(($delayed / $realized) * 100, 1) : 0.0;
         $loadFactorAvg = $totCap > 0 ? round(($totLoad / $totCap) * 100, 1) : 0.0;
 
+        $timeBasis = in_array($filters['time_basis'] ?? '', ['scheduled', 'actual'], true) ? $filters['time_basis'] : 'actual';
+        $hourCol = ($timeBasis === 'scheduled')
+            ? "COALESCE(scheduled_hour, actual_hour, 0)"
+            : "COALESCE(actual_hour, scheduled_hour, 0)";
+
         // 2. Hourly Movement Distribution (Strictly 24 hourly buckets: 00:00 to 23:00)
         $hourlyRows = (clone $base)->selectRaw("
-            operational_hour,
+            {$hourCol} as op_hour,
             COUNT(CASE WHEN direction = 'ARRIVAL' AND traffic_type = 'DOMESTIC' THEN 1 END) as arr_dom,
             COUNT(CASE WHEN direction = 'ARRIVAL' AND traffic_type = 'INTERNATIONAL' THEN 1 END) as arr_int,
             COUNT(CASE WHEN direction = 'DEPARTURE' AND traffic_type = 'DOMESTIC' THEN 1 END) as dep_dom,
             COUNT(CASE WHEN direction = 'DEPARTURE' AND traffic_type = 'INTERNATIONAL' THEN 1 END) as dep_int,
             COUNT(*) as total
-        ")->groupBy('operational_hour')->get()->keyBy('operational_hour');
+        ")->groupByRaw($hourCol)->get()->keyBy('op_hour');
 
         $arrDomArr = array_fill(0, 24, 0);
         $arrIntArr = array_fill(0, 24, 0);

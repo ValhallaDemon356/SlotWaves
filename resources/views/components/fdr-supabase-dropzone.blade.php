@@ -6,6 +6,7 @@
 @props([
     'bucket' => config('services.supabase.bucket', env('NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET', 'flight-reports')),
     'endpoint' => route('fdr.handle-uploaded'),
+    'signedUrlEndpoint' => route('fdr.signed-upload-url'),
     'maxSizeMb' => 100,
 ])
 
@@ -14,6 +15,7 @@
     supabaseKey: '{{ config('services.supabase.anon_key') }}',
     bucket: '{{ $bucket }}',
     backendEndpoint: '{{ $endpoint }}',
+    signedUrlEndpoint: '{{ $signedUrlEndpoint }}',
     csrfToken: '{{ csrf_token() }}',
     maxSizeMb: {{ $maxSizeMb }}
 })" class="w-full space-y-4">
@@ -184,6 +186,7 @@ function fdrSupabaseUploader(config) {
         supabaseKey: config.supabaseKey,
         bucket: config.bucket || (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET) || window.ENV?.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'flight-reports',
         backendEndpoint: config.backendEndpoint,
+        signedUrlEndpoint: config.signedUrlEndpoint,
         csrfToken: config.csrfToken,
         maxSizeBytes: (config.maxSizeMb || 100) * 1024 * 1024,
 
@@ -295,38 +298,88 @@ function fdrSupabaseUploader(config) {
             this.uploadState.detailText = `0 MB of ${(file.size / 1048576).toFixed(1)} MB`;
             this.uploadState.speedText = 'Initiating stream...';
 
-            // Generate clean unique storage path: raw_fdr/YYYY/MM/timestamp_filename
-            const date = new Date();
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const timestamp = Date.now();
-            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-            const storagePath = `raw_fdr/${year}/${month}/${timestamp}_${safeName}`;
-
             const startTime = Date.now();
+            let storagePath = null;
+            let useSigned = false;
 
             try {
-                // Execute direct upload using standard XMLHttpRequest for true byte-level progress reporting
-                await this.uploadViaXhr(file, storagePath, (loaded, total) => {
-                    const pct = Math.round((loaded / total) * 100);
-                    this.uploadState.progress = Math.min(99, pct);
-                    const loadedMb = (loaded / 1048576).toFixed(1);
-                    const totalMb = (total / 1048576).toFixed(1);
-                    this.uploadState.detailText = `${loadedMb} MB of ${totalMb} MB`;
+                // ── Strategy 1: Attempt Authenticated Signed Upload URL ──
+                if (this.signedUrlEndpoint) {
+                    try {
+                        const signRes = await fetch(this.signedUrlEndpoint, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': this.csrfToken,
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: JSON.stringify({
+                                filename: file.name,
+                                file_size: file.size,
+                                content_type: file.type || 'application/vnd.ms-excel',
+                                bucket_name: this.bucket
+                            })
+                        });
 
-                    const elapsedSec = (Date.now() - startTime) / 1000;
-                    if (elapsedSec > 0.5) {
-                        const speedKb = Math.round((loaded / 1024) / elapsedSec);
-                        this.uploadState.speedText = speedKb > 1024 ? `${(speedKb / 1024).toFixed(1)} MB/s` : `${speedKb} KB/s`;
+                        const signText = await signRes.text();
+                        let signData = null;
+                        try { signData = JSON.parse(signText); } catch(e) {}
+
+                        if (signRes.ok && signData && signData.success && signData.signed_upload_url) {
+                            storagePath = signData.storage_path;
+                            this.uploadState.statusTitle = 'Uploading via Authenticated Signed URL...';
+
+                            await this.uploadViaSignedUrl(file, signData.signed_upload_url, (loaded, total) => {
+                                const pct = Math.round((loaded / total) * 100);
+                                this.uploadState.progress = Math.min(99, pct);
+                                const loadedMb = (loaded / 1048576).toFixed(1);
+                                const totalMb = (total / 1048576).toFixed(1);
+                                this.uploadState.detailText = `${loadedMb} MB of ${totalMb} MB`;
+
+                                const elapsedSec = (Date.now() - startTime) / 1000;
+                                if (elapsedSec > 0.5) {
+                                    const speedKb = Math.round((loaded / 1024) / elapsedSec);
+                                    this.uploadState.speedText = speedKb > 1024 ? `${(speedKb / 1024).toFixed(1)} MB/s` : `${speedKb} KB/s`;
+                                }
+                            });
+                            useSigned = true;
+                        }
+                    } catch (signErr) {
+                        console.warn('Signed upload negotiation failed, falling back to direct upload:', signErr);
                     }
-                });
+                }
 
-                // Direct upload completed: now notify backend with metadata
+                // ── Strategy 2: Direct Upload Fallback (using anon_key) ──
+                if (!useSigned) {
+                    const date = new Date();
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const timestamp = Date.now();
+                    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                    storagePath = `raw_fdr/${year}/${month}/${timestamp}_${safeName}`;
+
+                    await this.uploadViaXhr(file, storagePath, (loaded, total) => {
+                        const pct = Math.round((loaded / total) * 100);
+                        this.uploadState.progress = Math.min(99, pct);
+                        const loadedMb = (loaded / 1048576).toFixed(1);
+                        const totalMb = (total / 1048576).toFixed(1);
+                        this.uploadState.detailText = `${loadedMb} MB of ${totalMb} MB`;
+
+                        const elapsedSec = (Date.now() - startTime) / 1000;
+                        if (elapsedSec > 0.5) {
+                            const speedKb = Math.round((loaded / 1024) / elapsedSec);
+                            this.uploadState.speedText = speedKb > 1024 ? `${(speedKb / 1024).toFixed(1)} MB/s` : `${speedKb} KB/s`;
+                        }
+                    });
+                }
+
+                // ── Step 2: Notify Backend to initialize Job ──
                 this.uploadState.status = 'processing';
-                this.uploadState.progress = 100;
-                this.uploadState.statusTitle = 'Validating and Streaming Extraction in Laravel...';
-                this.uploadState.detailText = 'Memory-safe streaming parser active on Vercel runtime';
-                this.uploadState.speedText = 'Parsing rows sequentially';
+                this.uploadState.progress = 5;
+                this.uploadState.statusTitle = 'Initializing background streaming extraction...';
+                this.uploadState.detailText = 'Connecting to backend processing pipeline';
+                this.uploadState.speedText = 'Registering processing job';
 
                 const response = await fetch(this.backendEndpoint, {
                     method: 'POST',
@@ -340,30 +393,111 @@ function fdrSupabaseUploader(config) {
                         file_path: storagePath,
                         bucket_name: this.bucket,
                         original_filename: file.name,
+                        file_size: file.size,
                         airline_type: this.detectedMetadata.airline
                     })
                 });
 
-                const data = await response.json();
-
-                if (!response.ok || !data.success) {
-                    throw new Error(data.error || (data.errors ? data.errors.join('; ') : 'Backend processing failed'));
+                const resText = await response.text();
+                let initData = null;
+                try {
+                    initData = JSON.parse(resText);
+                } catch (pe) {
+                    const tMatch = resText.match(/<title>(.*?)<\/title>/i);
+                    throw new Error(`Backend error (${response.status}): ${tMatch ? tMatch[1] : resText.slice(0, 200)}`);
                 }
 
-                this.uploadState.status = 'completed';
-                this.uploadState.successMessage = data.message || `Successfully ingested ${data.valid_rows || 'all'} flight movements.`;
-                this.uploadState.redirectUrl = data.redirect_url || '#';
+                if (!response.ok || !initData.success) {
+                    throw new Error(initData.error || (initData.errors ? initData.errors.join('; ') : 'Backend registration failed'));
+                }
 
-                // Automatically redirect after a brief moment
-                setTimeout(() => {
-                    if (data.redirect_url) {
-                        window.location.href = data.redirect_url;
+                // ── Step 3: Incremental Streaming Processing Loop ──
+                if (initData.async && initData.process_url) {
+                    let currentJobStatus = initData.status || 'QUEUED';
+                    let resultUrl = initData.result_url;
+                    let processUrl = initData.process_url;
+                    let consecutiveErrors = 0;
+
+                    this.uploadState.statusTitle = 'Streaming flight movements into database...';
+                    this.uploadState.detailText = 'Ingesting flight movements';
+                    this.uploadState.speedText = 'Processing chunks sequentially';
+
+                    while (currentJobStatus !== 'READY') {
+                        try {
+                            const pollRes = await fetch(processUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': this.csrfToken,
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                }
+                            });
+
+                            const pollText = await pollRes.text();
+                            let pollData = null;
+                            try {
+                                pollData = JSON.parse(pollText);
+                            } catch (pe) {
+                                const tMatch = pollText.match(/<title>(.*?)<\/title>/i);
+                                throw new Error(`Processing error (${pollRes.status}): ${tMatch ? tMatch[1] : pollText.slice(0, 200)}`);
+                            }
+
+                            if (!pollRes.ok || !pollData.success) {
+                                const errDetail = pollData.error?.message || pollData.error_message || pollData.error || 'Processing chunk failed';
+                                throw new Error(errDetail);
+                            }
+
+                            currentJobStatus = pollData.status || currentJobStatus;
+                            this.uploadState.progress = Math.max(this.uploadState.progress, Math.min(99, pollData.progress || 0));
+                            if (pollData.stage_label) {
+                                this.uploadState.statusTitle = pollData.stage_label;
+                            }
+                            if (pollData.processed_rows !== undefined) {
+                                this.uploadState.detailText = `${Number(pollData.processed_rows).toLocaleString()} flight movements inserted`;
+                            }
+                            if (pollData.result_url) {
+                                resultUrl = pollData.result_url;
+                            }
+
+                            if (currentJobStatus === 'READY') {
+                                this.uploadState.progress = 100;
+                                this.uploadState.status = 'completed';
+                                const rowCount = pollData.movement_rows || pollData.total_rows || 0;
+                                this.uploadState.successMessage = `Berhasil memproses seluruh ${Number(rowCount).toLocaleString()} penerbangan ke database.`;
+                                this.uploadState.redirectUrl = resultUrl || '#';
+                                setTimeout(() => {
+                                    if (resultUrl) window.location.href = resultUrl;
+                                }, 1000);
+                                break;
+                            }
+
+                            consecutiveErrors = 0;
+                            await new Promise(r => setTimeout(r, 200));
+
+                        } catch (pollErr) {
+                            consecutiveErrors++;
+                            console.warn('FDR poll error attempt', consecutiveErrors, pollErr);
+                            if (consecutiveErrors >= 3) {
+                                throw pollErr;
+                            }
+                            await new Promise(r => setTimeout(r, 1000));
+                        }
                     }
-                }, 1200);
+                } else {
+                    // Synchronous completion fallback
+                    this.uploadState.status = 'completed';
+                    this.uploadState.successMessage = initData.message || `Successfully ingested flight movements.`;
+                    this.uploadState.redirectUrl = initData.redirect_url || '#';
+                    setTimeout(() => {
+                        if (initData.redirect_url) window.location.href = initData.redirect_url;
+                    }, 1000);
+                }
 
             } catch (err) {
-                console.error('Direct Supabase Upload Error:', err);
+                console.error('FDR Upload or Processing Error:', err);
                 this.uploadState.error = true;
+                this.uploadState.status = 'selected';
                 if (/NoSuchBucket|bucket tidak ditemukan|Bucket not found/i.test(err.message)) {
                     this.uploadState.errorTitle = 'STORAGE BUCKET TIDAK DITEMUKAN (404)';
                 } else if (/RLS Policy|row-level security|Akses upload ditolak|unauthorized/i.test(err.message)) {
@@ -371,15 +505,44 @@ function fdrSupabaseUploader(config) {
                 } else if (/terlalu besar|payload too large|exceeded/i.test(err.message)) {
                     this.uploadState.errorTitle = 'FILE TERLALU BESAR (413)';
                 } else {
-                    this.uploadState.errorTitle = 'UPLOAD ATAU EKSTRAKSI GAGAL';
+                    this.uploadState.errorTitle = 'GAGAL MEMPROSES FLIGHT DAILY REPORT';
                 }
-                this.uploadState.errorMessage = err.message || 'An unexpected error occurred during direct upload.';
-                this.uploadState.status = 'selected';
+                this.uploadState.errorMessage = err.message || 'An unexpected error occurred during upload or extraction.';
             }
         },
 
         handleStartDirectUpload() {
             return this.startDirectUpload();
+        },
+
+        uploadViaSignedUrl(file, signedUrl, onProgress) {
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('PUT', signedUrl, true);
+                xhr.setRequestHeader('Content-Type', file.type || 'application/vnd.ms-excel');
+
+                if (xhr.upload && onProgress) {
+                    xhr.upload.onprogress = (e) => {
+                        if (e.lengthComputable) {
+                            onProgress(e.loaded, e.total);
+                        }
+                    };
+                }
+
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve(xhr.response);
+                    } else {
+                        reject(new Error(`Supabase Storage Signed Upload failed (HTTP ${xhr.status}): ${xhr.responseText}`));
+                    }
+                };
+
+                xhr.onerror = () => {
+                    reject(new Error('Network error during Supabase Storage Signed Upload. Check network connectivity.'));
+                };
+
+                xhr.send(file);
+            });
         },
 
         uploadViaXhr(file, storagePath, onProgress) {
