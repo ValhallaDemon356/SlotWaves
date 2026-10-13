@@ -464,7 +464,7 @@ function fdrSupabaseUploader(config) {
                         `${Number(processData.processed_rows).toLocaleString()} flight movements processed`;
                 }
 
-                if (status === 'READY' || processData.result_url) {
+                if (status === 'READY') {
                     this.uploadState.status = 'completed';
                     this.uploadState.progress = 100;
                     this.uploadState.successMessage =
