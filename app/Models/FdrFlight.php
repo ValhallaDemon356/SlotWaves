@@ -206,9 +206,16 @@ class FdrFlight extends Model
             $query->where(function (Builder $sub) use ($s) {
                 $sub->whereRaw('LOWER(flight_number) LIKE ?', [$s])
                     ->orWhereRaw('LOWER(airline_code) LIKE ?', [$s])
+                    ->orWhereRaw('LOWER(COALESCE(raw_data->>\'air_line\', \'\')) LIKE ?', [$s])
                     ->orWhereRaw('LOWER(COALESCE(registration_number, \'\')) LIKE ?', [$s])
                     ->orWhereRaw('LOWER(COALESCE(origin_airport, \'\')) LIKE ?', [$s])
                     ->orWhereRaw('LOWER(COALESCE(destination_airport, \'\')) LIKE ?', [$s])
+                    ->orWhereRaw("LOWER(COALESCE(origin_airport, '') || ' → ' || COALESCE(destination_airport, '')) LIKE ?", [$s])
+                    ->orWhereRaw("LOWER(COALESCE(origin_airport, '') || ' - ' || COALESCE(destination_airport, '')) LIKE ?", [$s])
+                    ->orWhereRaw("LOWER(COALESCE(origin_airport, '') || ' -> ' || COALESCE(destination_airport, '')) LIKE ?", [$s])
+                    ->orWhereRaw("LOWER(COALESCE(origin_airport, '') || ' ' || COALESCE(destination_airport, '')) LIKE ?", [$s])
+                    ->orWhereRaw("LOWER(COALESCE(origin_airport, '') || COALESCE(destination_airport, '')) LIKE ?", [$s])
+                    ->orWhereRaw("LOWER(COALESCE(raw_data->>'route', '')) LIKE ?", [$s])
                     ->orWhereRaw('LOWER(COALESCE(stand, \'\')) LIKE ?', [$s])
                     ->orWhereRaw('LOWER(COALESCE(runway, \'\')) LIKE ?', [$s])
                     ->orWhereRaw('LOWER(COALESCE(aircraft_type, \'\')) LIKE ?', [$s]);

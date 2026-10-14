@@ -1185,8 +1185,8 @@ class FlightDailyReportController extends Controller
 
             $analytics = $this->fdrDbService->computeAnalyticsFromDb($upload, $filters, $meta);
 
-            $filteredQuery = FdrFlight::where('upload_id', $upload->id)->applyFilters($filters);
-            $totalRecords = $filteredQuery->count();
+            $filteredQuery = $this->fdrDbService->buildFdrFilteredQuery($upload->id, $filters);
+            $totalRecords = (clone $filteredQuery)->count();
             $records = (clone $filteredQuery)->orderBy('id')->take(50)->get()->map->toFdrArray()->toArray();
 
             $airports = FdrFlight::where('upload_id', $upload->id)
@@ -1423,8 +1423,8 @@ class FlightDailyReportController extends Controller
 
             $analytics = $this->fdrDbService->computeAnalyticsFromDb($upload, $filters, $meta);
 
-            $baseQuery = FdrFlight::where('upload_id', $upload->id)->applyFilters($filters);
-            $total = $baseQuery->count();
+            $baseQuery = $this->fdrDbService->buildFdrFilteredQuery($upload->id, $filters);
+            $total = (clone $baseQuery)->count();
             $offset = ($page - 1) * $perPage;
             $pagedFlights = (clone $baseQuery)->orderBy('id')->skip($offset)->take($perPage)->get();
             $pagedRecords = $pagedFlights->map->toFdrArray()->toArray();
@@ -1725,7 +1725,7 @@ class FlightDailyReportController extends Controller
 
             $idx = 0;
             if ($hasDb) {
-                $cursor = FdrFlight::where('upload_id', $upload->id)->applyFilters($filters)->orderBy('id')->cursor();
+                $cursor = $this->fdrDbService->buildFdrFilteredQuery($upload->id, $filters)->orderBy('id')->cursor();
                 foreach ($cursor as $flight) {
                     $idx++;
                     $r = $flight->toFdrArray();
@@ -1888,6 +1888,16 @@ class FlightDailyReportController extends Controller
             'report_mode'    => (int)$request->query('report_mode', 1),
             'search'         => trim($request->query('search', '')),
         ];
+
+        $hasDb = $this->fdrDbService->hasDatabaseRecords($upload);
+        if ($hasDb) {
+            $records = $this->fdrDbService->buildFdrFilteredQuery($upload->id, $filters)
+                ->orderBy('id')
+                ->get()
+                ->map->toFdrArray()
+                ->toArray();
+            return $this->pdfExport->download($records, $meta, $filters);
+        }
 
         $filterResult = $this->filterService->apply($rawRecords, $filters, $meta);
 

@@ -7,6 +7,7 @@ use App\Models\Upload;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 
 class FdrDatabaseService
 {
@@ -278,11 +279,23 @@ class FdrDatabaseService
     }
 
     /**
+     * Single canonical query builder for all FDR filtering needs:
+     * KPI, Charts, Detailed Flight Registry, Search, and Exports.
+     * Guaranteed upload_id scoping and deterministic sorting.
+     */
+    public function buildFdrFilteredQuery(int $uploadId, array $filters): Builder
+    {
+        return FdrFlight::query()
+            ->where('upload_id', $uploadId)
+            ->applyFilters($filters);
+    }
+
+    /**
      * Compute presentation-ready analytics directly from database for high performance.
      */
     public function computeAnalyticsFromDb(Upload $upload, array $filters, array $meta = []): array
     {
-        $base = FdrFlight::where('upload_id', $upload->id)->applyFilters($filters);
+        $base = $this->buildFdrFilteredQuery($upload->id, $filters);
 
         // 1. Core KPIs Aggregation with Directional and Class Splits
         $kpiRow = (clone $base)->selectRaw("

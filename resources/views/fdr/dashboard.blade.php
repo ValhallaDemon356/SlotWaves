@@ -235,7 +235,7 @@
                 <div>
                     <label class="block text-[11px] font-bold text-slate-500 mb-1">Search</label>
                     <div class="relative">
-                        <input type="text" x-model.debounce.300ms="filters.search" @input="triggerFilter()"
+                        <input type="text" x-model="filters.search" @input.debounce.300ms="triggerFilter(1)" @keydown.enter.prevent="triggerFilter(1)"
                                placeholder="Flight no, route, reg, airline..."
                                class="w-full text-xs rounded-xl border border-slate-200 bg-slate-50/50 pl-8 pr-2.5 py-1.5 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
                         <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1235,7 +1235,7 @@
                 <div class="flex flex-wrap items-center gap-2.5">
                     {{-- Search in Table --}}
                     <div class="relative">
-                        <input type="text" x-model.debounce.300ms="filters.search" @input="triggerFilter()"
+                        <input type="text" x-model="filters.search" @input.debounce.300ms="triggerFilter(1)" @keydown.enter.prevent="triggerFilter(1)"
                                placeholder="Search flight no, route, reg, airline..."
                                class="text-xs rounded-xl border border-slate-200 bg-slate-50/50 pl-8 pr-3 py-1.5 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 w-64">
                         <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1509,6 +1509,8 @@ const _fdrCharts = {
 function fdrDashboardController() {
     return {
         uploadId: {{ $upload->id }},
+        lockedAirport: '{{ strtoupper(trim($meta['report_airport'] ?? ($meta['airport'] ?? ($airports[0] ?? 'CGK')))) }}',
+        abortController: null,
         availableDates: @json($availableDates),
         sourceSummary: @json($sourceSummary),
         dateScope: '{{ $dateScope ?? 'ALL_PERIOD' }}',
@@ -2401,15 +2403,24 @@ function fdrDashboardController() {
             const reqId = ++this.activeRequestId;
             this.filters.v = Date.now();
 
+            if (this.abortController) {
+                this.abortController.abort();
+            }
+            this.abortController = new AbortController();
+
+            // Ensure airport is locked if empty or ALL
+            const activeAirport = (this.filters.airport && this.filters.airport !== 'ALL') ? this.filters.airport : this.lockedAirport;
+            this.filters.airport = activeAirport;
+
             const params = new URLSearchParams({
                 date_scope: this.dateScope,
-                airport: this.filters.airport,
-                leg: this.filters.leg,
-                operator: this.filters.operator,
-                traffic: this.filters.traffic,
-                realization: this.filters.realization,
+                airport: activeAirport,
+                leg: this.filters.leg || 'ALL',
+                operator: this.filters.operator || 'ALL',
+                traffic: this.filters.traffic || 'ALL',
+                realization: this.filters.realization || 'ALL',
                 analysis_date: this.dateScope === 'ALL_PERIOD' ? '' : (this.filters.analysis_date || ''),
-                search: this.filters.search,
+                search: (this.filters.search || '').trim(),
                 page: page,
                 per_page: this.pagination.per_page,
                 time_basis: this.filters.time_basis,
@@ -2417,6 +2428,7 @@ function fdrDashboardController() {
             });
 
             fetch(`/fdr/${this.uploadId}/filter?` + params.toString(), {
+                signal: this.abortController.signal,
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
             .then(res => {
@@ -2458,6 +2470,9 @@ function fdrDashboardController() {
                 });
             })
             .catch(err => {
+                if (err.name === 'AbortError') {
+                    return; // Normal cancellation of superseded request
+                }
                 if (reqId !== this.activeRequestId) return;
                 this.isFiltering = false;
                 this.filterError = 'FDR data gagal dimuat: ' + (err.message || 'Terjadi kesalahan sistem');
@@ -2476,7 +2491,7 @@ function fdrDashboardController() {
         },
 
         removeChip(key) {
-            if (key === 'airport') this.filters.airport = {!! json_encode(count($airports) <= 1 ? ($airports[0] ?? ($meta['report_airport'] ?? ($meta['airport'] ?? 'CGK'))) : 'ALL') !!};
+            if (key === 'airport') this.filters.airport = this.lockedAirport;
             if (key === 'leg') this.filters.leg = 'ALL';
             if (key === 'operator') this.filters.operator = 'ALL';
             if (key === 'traffic') this.filters.traffic = 'ALL';
@@ -2491,7 +2506,7 @@ function fdrDashboardController() {
         },
 
         clearAllFilters() {
-            this.filters.airport = {!! json_encode(count($airports) <= 1 ? ($airports[0] ?? ($meta['report_airport'] ?? ($meta['airport'] ?? 'CGK'))) : 'ALL') !!};
+            this.filters.airport = this.lockedAirport;
             this.filters.leg = 'ALL';
             this.filters.operator = 'ALL';
             this.filters.traffic = 'ALL';
