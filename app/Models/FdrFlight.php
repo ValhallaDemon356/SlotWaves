@@ -227,6 +227,7 @@ class FdrFlight extends Model
         return array_merge([
             'id'                  => $this->id,
             'index'               => $raw['index'] ?? $this->id,
+            'source_row_number'   => $raw['source_row_number'] ?? ($raw['index'] ?? $this->id),
             'row_type'            => 'MOVEMENT',
             'air_line'            => $this->airline_code,
             'flight_no'           => $this->flight_number,

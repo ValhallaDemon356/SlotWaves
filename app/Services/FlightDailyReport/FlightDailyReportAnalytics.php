@@ -144,6 +144,8 @@ class FlightDailyReportAnalytics
         $arrInt = 0;
         $depDom = 0;
         $depInt = 0;
+        $scheduledFlights = 0;
+        $actualFlights = 0;
 
         foreach ($records as $r) {
             $isArr = ($r['direction'] ?? '') === 'ARRIVAL' || ($r['movement_type'] ?? '') === 'A' || ($r['flow'] ?? '') === 'ARR';
@@ -156,6 +158,15 @@ class FlightDailyReportAnalytics
             } else {
                 $departures++;
                 if ($isDom) $depDom++; else $depInt++;
+            }
+
+            $mvType = strtoupper(trim($r['movement_type'] ?? ($r['sched_type'] ?? '')));
+            if (in_array($mvType, ['SCHEDULED', 'SCHED'], true)) {
+                $scheduledFlights++;
+            }
+            $actAt = $r['actual_at'] ?? ($r['actual_time'] ?? ($r['aibt'] ?? ($r['aobt'] ?? null)));
+            if (!empty($actAt) && $actAt !== 'N/A') {
+                $actualFlights++;
             }
 
             $rAdult = (int)($r['adult'] ?? ($r['pax_adult'] ?? 0));
@@ -215,8 +226,14 @@ class FlightDailyReportAnalytics
         $irregularTotal = $diverts + $misses + $unscheduled;
         $irregularRate = ($totalFlights > 0) ? round(($irregularTotal / $totalFlights) * 100, 1) : 0.0;
 
+        if ($actualFlights === 0 && $totalFlights > 0) {
+            $actualFlights = $totalFlights;
+        }
+
         return [
             'total_flights'            => $totalFlights,
+            'scheduled_flights'        => $scheduledFlights,
+            'actual_flights'           => $actualFlights,
             'arrivals'                 => $arrivals,
             'total_arrivals'           => $arrivals,
             'departures'               => $departures,
@@ -288,7 +305,7 @@ class FlightDailyReportAnalytics
         $histBins = [
             'early_gt60' => [
                 'key'           => 'early_gt60',
-                'label'         => '>60 MIN EARLY',
+                'label'         => 'EARLY > 60 min',
                 'legacy_label'  => '<-60',
                 'category'      => 'EARLY',
                 'group'         => 'EARLY',
@@ -301,7 +318,7 @@ class FlightDailyReportAnalytics
             ],
             'early_31_60' => [
                 'key'           => 'early_31_60',
-                'label'         => '31–60 MIN EARLY',
+                'label'         => 'EARLY 31–60 min',
                 'legacy_label'  => '-60~-31',
                 'category'      => 'EARLY',
                 'group'         => 'EARLY',
@@ -314,7 +331,7 @@ class FlightDailyReportAnalytics
             ],
             'early_16_30' => [
                 'key'           => 'early_16_30',
-                'label'         => '16–30 MIN EARLY',
+                'label'         => 'EARLY 16–30 min',
                 'legacy_label'  => '-30~-16',
                 'category'      => 'EARLY',
                 'group'         => 'EARLY',
@@ -327,7 +344,7 @@ class FlightDailyReportAnalytics
             ],
             'early_6_15' => [
                 'key'           => 'early_6_15',
-                'label'         => '6–15 MIN EARLY',
+                'label'         => 'EARLY 6–15 min',
                 'legacy_label'  => '-15~-6',
                 'category'      => 'EARLY',
                 'group'         => 'EARLY',
@@ -340,7 +357,7 @@ class FlightDailyReportAnalytics
             ],
             'on_time' => [
                 'key'           => 'on_time',
-                'label'         => 'ON TIME ±5 MIN',
+                'label'         => 'ON TIME ±5 min',
                 'legacy_label'  => '-5~5',
                 'category'      => 'ON TIME',
                 'group'         => 'ON TIME',
@@ -353,7 +370,7 @@ class FlightDailyReportAnalytics
             ],
             'late_6_15' => [
                 'key'           => 'late_6_15',
-                'label'         => '6–15 MIN LATE',
+                'label'         => 'LATE 6–15 min',
                 'legacy_label'  => '6~15',
                 'category'      => 'LATE',
                 'group'         => 'LATE',
@@ -366,7 +383,7 @@ class FlightDailyReportAnalytics
             ],
             'late_16_30' => [
                 'key'           => 'late_16_30',
-                'label'         => '16–30 MIN LATE',
+                'label'         => 'LATE 16–30 min',
                 'legacy_label'  => '16~30',
                 'category'      => 'LATE',
                 'group'         => 'LATE',
@@ -379,7 +396,7 @@ class FlightDailyReportAnalytics
             ],
             'late_31_60' => [
                 'key'           => 'late_31_60',
-                'label'         => '31–60 MIN LATE',
+                'label'         => 'LATE 31–60 min',
                 'legacy_label'  => '31~60',
                 'category'      => 'LATE',
                 'group'         => 'LATE',
@@ -392,7 +409,7 @@ class FlightDailyReportAnalytics
             ],
             'late_gt60' => [
                 'key'           => 'late_gt60',
-                'label'         => '>60 MIN LATE',
+                'label'         => 'LATE >60 min',
                 'legacy_label'  => '>60',
                 'category'      => 'LATE',
                 'group'         => 'LATE',

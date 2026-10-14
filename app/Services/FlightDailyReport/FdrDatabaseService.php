@@ -269,7 +269,9 @@ class FdrDatabaseService
             'stand'                => $r['stand'] ?? null,
             'runway'               => $r['runway'] ?? null,
             'mtow'                 => $r['mtow'] ?? null,
-            'raw_data'             => json_encode($r),
+            'raw_data'             => json_encode(array_merge($r, [
+                'source_row_number' => $r['source_row_number'] ?? ($r['index'] ?? null),
+            ])),
             'created_at'           => $now,
             'updated_at'           => $now,
         ];
@@ -291,6 +293,7 @@ class FdrDatabaseService
             COUNT(CASE WHEN direction = 'ARRIVAL' AND traffic_type = 'INTERNATIONAL' THEN 1 END) as arrivals_int,
             COUNT(CASE WHEN direction = 'DEPARTURE' AND traffic_type = 'DOMESTIC' THEN 1 END) as departures_dom,
             COUNT(CASE WHEN direction = 'DEPARTURE' AND traffic_type = 'INTERNATIONAL' THEN 1 END) as departures_int,
+            COUNT(CASE WHEN movement_type = 'SCHEDULED' THEN 1 END) as scheduled_flights,
             COUNT(CASE WHEN is_realized = true THEN 1 END) as realized_flights,
             COUNT(CASE WHEN is_realized = false THEN 1 END) as planned_unrealized,
             COUNT(CASE WHEN is_realized = true AND delay_minutes < -15 THEN 1 END) as early_flights,
@@ -334,15 +337,16 @@ class FdrDatabaseService
             COALESCE(SUM(CASE WHEN direction = 'DEPARTURE' THEN pos_kg END), 0) as dep_pos_kg
         ")->first();
 
-        $totFlights = (int)($kpiRow->total_flights ?? 0);
-        $arrFlights = (int)($kpiRow->arrivals ?? 0);
-        $depFlights = (int)($kpiRow->departures ?? 0);
-        $realized   = (int)($kpiRow->realized_flights ?? 0);
-        $onTime     = (int)($kpiRow->on_time_flights ?? 0);
-        $delayed    = (int)($kpiRow->delayed_flights ?? 0);
-        $earlyCount = (int)($kpiRow->early_flights ?? 0);
-        $totLoad    = (int)($kpiRow->total_load ?? 0);
-        $totCap     = (int)($kpiRow->total_capacity ?? 0);
+        $totFlights   = (int)($kpiRow->total_flights ?? 0);
+        $schedFlights = (int)($kpiRow->scheduled_flights ?? 0);
+        $arrFlights   = (int)($kpiRow->arrivals ?? 0);
+        $depFlights   = (int)($kpiRow->departures ?? 0);
+        $realized     = (int)($kpiRow->realized_flights ?? 0);
+        $onTime       = (int)($kpiRow->on_time_flights ?? 0);
+        $delayed      = (int)($kpiRow->delayed_flights ?? 0);
+        $earlyCount   = (int)($kpiRow->early_flights ?? 0);
+        $totLoad      = (int)($kpiRow->total_load ?? 0);
+        $totCap       = (int)($kpiRow->total_capacity ?? 0);
 
         $totPax = (int)$kpiRow->total_adult + (int)$kpiRow->total_child + (int)$kpiRow->total_infant;
         if ($totPax === 0 && $totLoad > 0) {
@@ -434,6 +438,8 @@ class FdrDatabaseService
         $hourlyDistribution = [
             'labels'        => $hourlyLabels,
             'time_ranges'   => $timeRanges,
+            'arr'           => array_map(fn($a, $b) => $a + $b, $arrDomArr, $arrIntArr),
+            'dep'           => array_map(fn($a, $b) => $a + $b, $depDomArr, $depIntArr),
             'arr_dom'       => $arrDomArr,
             'arr_int'       => $arrIntArr,
             'dep_dom'       => $depDomArr,
@@ -451,17 +457,17 @@ class FdrDatabaseService
             ],
         ];
 
-        // 3. Delay Histogram (9 Standard Bins: 4 Early, 1 On Time, 4 Late)
+        // 3. Delay Histogram (9 Standard Bins: 4 Early, 1 On Time, 4 Late - Prompt Item 19)
         $delayBins = [
-            ['label' => '>60 MIN EARLY',  'legacy_label' => '<-60',    'min' => -9999, 'max' => -61, 'color' => '#1E3A8A', 'group' => 'EARLY', 'desc' => '>60 minutes early'],
-            ['label' => '31–60 MIN EARLY', 'legacy_label' => '-60~-31', 'min' => -60,   'max' => -31, 'color' => '#2563EB', 'group' => 'EARLY', 'desc' => '31–60 minutes early'],
-            ['label' => '16–30 MIN EARLY', 'legacy_label' => '-30~-16', 'min' => -30,   'max' => -16, 'color' => '#38BDF8', 'group' => 'EARLY', 'desc' => '16–30 minutes early'],
-            ['label' => '6–15 MIN EARLY',  'legacy_label' => '-15~-6',  'min' => -15,   'max' => -6,  'color' => '#BAE6FD', 'group' => 'EARLY', 'desc' => '6–15 minutes early'],
-            ['label' => 'ON TIME ±5 MIN',  'legacy_label' => '-5~5',    'min' => -5,    'max' => 5,   'color' => '#10B981', 'group' => 'ON TIME', 'desc' => 'Within ±5 minutes'],
-            ['label' => '6–15 MIN LATE',   'legacy_label' => '6~15',    'min' => 6,     'max' => 15,  'color' => '#FDE047', 'group' => 'LATE', 'desc' => '6–15 minutes late'],
-            ['label' => '16–30 MIN LATE',  'legacy_label' => '16~30',   'min' => 16,    'max' => 30,  'color' => '#F59E0B', 'group' => 'LATE', 'desc' => '16–30 minutes late'],
-            ['label' => '31–60 MIN LATE',  'legacy_label' => '31~60',   'min' => 31,    'max' => 60,  'color' => '#EA580C', 'group' => 'LATE', 'desc' => '31–60 minutes late'],
-            ['label' => '>60 MIN LATE',    'legacy_label' => '>60',     'min' => 61,    'max' => 9999,'color' => '#DC2626', 'group' => 'LATE', 'desc' => '>60 minutes late'],
+            ['label' => 'EARLY > 60 min',  'legacy_label' => '<-60',    'min' => -9999, 'max' => -61, 'color' => '#1E3A8A', 'group' => 'EARLY', 'desc' => '>60 minutes early'],
+            ['label' => 'EARLY 31–60 min', 'legacy_label' => '-60~-31', 'min' => -60,   'max' => -31, 'color' => '#2563EB', 'group' => 'EARLY', 'desc' => '31–60 minutes early'],
+            ['label' => 'EARLY 16–30 min', 'legacy_label' => '-30~-16', 'min' => -30,   'max' => -16, 'color' => '#38BDF8', 'group' => 'EARLY', 'desc' => '16–30 minutes early'],
+            ['label' => 'EARLY 6–15 min',  'legacy_label' => '-15~-6',  'min' => -15,   'max' => -6,  'color' => '#BAE6FD', 'group' => 'EARLY', 'desc' => '6–15 minutes early'],
+            ['label' => 'ON TIME ±5 min',  'legacy_label' => '-5~5',    'min' => -5,    'max' => 5,   'color' => '#10B981', 'group' => 'ON TIME', 'desc' => 'Within ±5 minutes'],
+            ['label' => 'LATE 6–15 min',   'legacy_label' => '6~15',    'min' => 6,     'max' => 15,  'color' => '#FDE047', 'group' => 'LATE', 'desc' => '6–15 minutes late'],
+            ['label' => 'LATE 16–30 min',  'legacy_label' => '16~30',   'min' => 16,    'max' => 30,  'color' => '#F59E0B', 'group' => 'LATE', 'desc' => '16–30 minutes late'],
+            ['label' => 'LATE 31–60 min',  'legacy_label' => '31~60',   'min' => 31,    'max' => 60,  'color' => '#EA580C', 'group' => 'LATE', 'desc' => '31–60 minutes late'],
+            ['label' => 'LATE >60 min',    'legacy_label' => '>60',     'min' => 61,    'max' => 9999,'color' => '#DC2626', 'group' => 'LATE', 'desc' => '>60 minutes late'],
         ];
 
         $histCounts = (clone $base)->whereRaw('is_realized = true')->selectRaw("
@@ -481,9 +487,9 @@ class FdrDatabaseService
             $delayBins[$i]['count'] = (int)($histCounts->$key ?? 0);
         }
 
-        // 4. Passenger & Cargo Hourly Trend
+        // 4. Passenger & Cargo Hourly Trend (Strictly aligned with time_basis)
         $hourlyFlow = (clone $base)->selectRaw("
-            operational_hour,
+            {$hourCol} as op_hour,
             COALESCE(SUM(CASE WHEN direction = 'ARRIVAL' THEN (pax_adult + pax_child + pax_infant) END), 0) as arr_pax,
             COALESCE(SUM(CASE WHEN direction = 'DEPARTURE' THEN (pax_adult + pax_child + pax_infant) END), 0) as dep_pax,
             COALESCE(SUM(CASE WHEN direction = 'ARRIVAL' AND traffic_type = 'DOMESTIC' THEN (pax_adult + pax_child + pax_infant) END), 0) as arr_dom_pax,
@@ -496,7 +502,7 @@ class FdrDatabaseService
             COALESCE(SUM(CASE WHEN direction = 'ARRIVAL' AND traffic_type = 'INTERNATIONAL' THEN cargo_kg END), 0) as arr_int_cargo,
             COALESCE(SUM(CASE WHEN direction = 'DEPARTURE' AND traffic_type = 'DOMESTIC' THEN cargo_kg END), 0) as dep_dom_cargo,
             COALESCE(SUM(CASE WHEN direction = 'DEPARTURE' AND traffic_type = 'INTERNATIONAL' THEN cargo_kg END), 0) as dep_int_cargo
-        ")->groupBy('operational_hour')->get()->keyBy('operational_hour');
+        ")->groupByRaw($hourCol)->get()->keyBy('op_hour');
 
         $arrPaxArr = array_fill(0, 24, 0);
         $depPaxArr = array_fill(0, 24, 0);
@@ -708,6 +714,8 @@ class FdrDatabaseService
 
         $kpis = [
             'total_flights'            => $totFlights,
+            'scheduled_flights'        => $schedFlights,
+            'actual_flights'           => $realized,
             'arrivals'                 => $arrFlights,
             'total_arrivals'           => $arrFlights,
             'departures'               => $depFlights,

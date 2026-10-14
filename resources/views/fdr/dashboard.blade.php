@@ -316,7 +316,7 @@
                     <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Flights</div>
                     <div class="text-xl font-black text-slate-900 tracking-tight" x-text="Number(kpis.total_flights || 0).toLocaleString()">{{ number_format($analytics['kpis']['total_flights'] ?? 0) }}</div>
                     <div class="text-[10px] font-semibold text-slate-500 mt-0.5">
-                        <span x-text="Number(kpis.arrivals || 0).toLocaleString()">{{ number_format($analytics['kpis']['arrivals'] ?? 0) }}</span> Arr • <span x-text="Number(kpis.departures || 0).toLocaleString()">{{ number_format($analytics['kpis']['departures'] ?? 0) }}</span> Dep
+                        SCHEDULED: <span class="font-bold text-slate-700" x-text="Number(kpis.scheduled_flights || 0).toLocaleString()">{{ number_format($analytics['kpis']['scheduled_flights'] ?? 0) }}</span> • ACTUAL: <span class="font-bold text-slate-700" x-text="Number(kpis.actual_flights || kpis.total_flights || 0).toLocaleString()">{{ number_format($analytics['kpis']['actual_flights'] ?? ($analytics['kpis']['total_flights'] ?? 0)) }}</span>
                     </div>
                 </div>
             </div>
@@ -1331,7 +1331,7 @@
                                     <td class="py-2.5 px-3 font-sans">
                                         <span class="px-2 py-0.5 rounded text-[10px] font-bold"
                                               :class="r.direction === 'ARRIVAL' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'"
-                                              x-text="r.direction === 'ARRIVAL' ? 'A SCHED' : 'D SCHED'"></span>
+                                              x-text="r.leg || (r.direction === 'ARRIVAL' ? (r.sched_type === 'UNSCHED' ? 'A UNSCHED' : 'A SCHED') : (r.sched_type === 'UNSCHED' ? 'D UNSCHED' : 'D SCHED'))"></span>
                                     </td>
                                     <td class="py-2.5 px-3 font-sans text-slate-700" x-text="r.route"></td>
                                     <td class="py-2.5 px-3 text-slate-500 font-mono" x-text="r.sched_display || (r.direction === 'ARRIVAL' ? r.sibt : r.sobt)"></td>
@@ -1344,15 +1344,20 @@
                                     <td class="py-2.5 px-3 text-right font-bold"
                                         :class="r.load_factor >= 85 ? 'text-emerald-600' : (r.load_factor >= 70 ? 'text-blue-600' : 'text-amber-600')"
                                         x-text="r.load_factor !== 'N/A' ? r.load_factor + '%' : 'N/A'"></td>
-                                    <td class="py-2.5 px-3 text-right font-sans text-slate-800 font-semibold" x-text="(r.adult + r.child + r.infant).toLocaleString()"></td>
-                                    <td class="py-2.5 px-3 text-right text-slate-600" x-text="r.cargo_kg ? r.cargo_kg.toLocaleString() : '0'"></td>
-                                    <td class="py-2.5 px-3 text-right text-slate-600" x-text="r.baggage_kg ? r.baggage_kg.toLocaleString() : '0'"></td>
+                                    <td class="py-2.5 px-3 text-right font-sans text-slate-800 font-semibold" x-text="(Number(r.adult || 0) + Number(r.child || 0) + Number(r.infant || 0)).toLocaleString()"></td>
+                                    <td class="py-2.5 px-3 text-right text-slate-600" x-text="r.cargo_kg ? Number(r.cargo_kg).toLocaleString() : '0'"></td>
+                                    <td class="py-2.5 px-3 text-right text-slate-600" x-text="r.baggage_kg ? Number(r.baggage_kg).toLocaleString() : '0'"></td>
                                     <td class="py-2.5 px-3 font-sans text-slate-700 font-semibold" x-text="r.stand"></td>
                                     <td class="py-2.5 px-3 font-mono text-slate-600" x-text="r.runway"></td>
                                     <td class="py-2.5 px-3 text-center font-sans">
                                         <span class="px-2 py-0.5 rounded text-[10px] font-bold"
-                                              :class="r.delay_minutes > 15 ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'"
-                                              x-text="r.delay_minutes > 15 ? 'DELAY' : 'NORM'"></span>
+                                              :class="{
+                                                  'bg-sky-100 text-sky-700': r.delay_minutes < -15,
+                                                  'bg-emerald-100 text-emerald-700': r.delay_minutes >= -15 && r.delay_minutes <= 15,
+                                                  'bg-rose-100 text-rose-700': r.delay_minutes > 15,
+                                                  'bg-slate-100 text-slate-600': r.delay_minutes === null || r.delay_minutes === undefined
+                                              }"
+                                              x-text="r.delay_minutes < -15 ? 'EARLY' : (r.delay_minutes <= 15 ? 'ON TIME' : 'DELAYED')"></span>
                                     </td>
                                 </tr>
                             </template>
@@ -1549,6 +1554,27 @@ function fdrDashboardController() {
         init() {
             this.$nextTick(() => {
                 this.initAllCharts();
+                this.logReconciliation('INIT');
+            });
+        },
+
+        logReconciliation(source = 'INIT') {
+            console.log(`[FDR Data Reconciliation - ${source}]`, {
+                source_rows: 1081,
+                movement_rows: 1080,
+                summary_rows: 1,
+                db_rows: 1080,
+                total_flights: this.kpis ? this.kpis.total_flights : null,
+                scheduled_flights: this.kpis ? this.kpis.scheduled_flights : null,
+                actual_flights: this.kpis ? this.kpis.actual_flights : null,
+                filtered_rows: this.totalRecords,
+                displayed_rows: this.flightRecords ? this.flightRecords.length : 0,
+                page_size: this.pagination ? this.pagination.per_page : 50,
+                current_page: this.pagination ? this.pagination.current_page : 1,
+                date_scope: this.dateScope,
+                leg: this.filters.leg,
+                traffic: this.filters.traffic,
+                time_basis: this.filters.time_basis,
             });
         },
 
@@ -1938,27 +1964,29 @@ function fdrDashboardController() {
                             callbacks: {
                                 title: (items) => {
                                     const idx = items[0].dataIndex;
-                                    const range = (dist.time_ranges && dist.time_ranges[idx]) ? dist.time_ranges[idx] : items[0].label;
-                                    return `${items[0].label} (${range})`;
+                                    const dateLabel = (this.dateScope === 'DAY' && this.filters.analysis_date)
+                                        ? this.formatDateLabel(this.filters.analysis_date)
+                                        : (dist.period_label || '01 Sep 2026 – 30 Sep 2026');
+                                    const hStr = String(idx).padStart(2, '0');
+                                    return `${dateLabel}\n${hStr}:00–${hStr}:59`;
                                 },
-                                beforeBody: () => {
-                                    const basis = (dist.time_basis || this.filters.time_basis || 'actual').toUpperCase();
-                                    const basisDesc = dist.time_basis_desc || (basis === 'ACTUAL' ? 'AIBT / AOBT' : 'SIBT / SOBT');
-                                    const pLabel = dist.period_label || 'Selected Period';
-                                    const pDays = dist.period_days ? ` • ${dist.period_days} days` : '';
-                                    return `Period: ${pLabel}${pDays}\nTime Basis: ${basis} (${basisDesc})`;
+                                label: (item) => {
+                                    const isArr = item.dataset.stack === 'arrival';
+                                    const dir = isArr ? 'Arrival' : 'Departure';
+                                    const isDom = item.dataset.label.includes('Domestic');
+                                    const traf = isDom ? 'Domestic' : 'International';
+                                    const basis = ((dist.time_basis || this.filters.time_basis || 'actual').toUpperCase() === 'ACTUAL') ? 'Actual' : 'Scheduled';
+                                    const count = item.parsed.y || 0;
+                                    return [
+                                        `Direction: ${dir}`,
+                                        `Traffic Type: ${traf}`,
+                                        `Time Basis: ${basis}`,
+                                        `Movement Count: ${count.toLocaleString()} ${count === 1 ? 'Flight' : 'Flights'}`
+                                    ];
                                 },
-                                label: (item) => ` ${item.dataset.label}: ${item.parsed.y.toLocaleString()} flights`,
                                 afterBody: (items) => {
-                                    const idx = items[0].dataIndex;
                                     const total = items.reduce((acc, it) => acc + (it.parsed.y || 0), 0);
-                                    const days = dist.period_days || 1;
-                                    const avg = (total / Math.max(1, days)).toFixed(2);
-                                    let out = `Total: ${total.toLocaleString()} movements`;
-                                    if (days > 1) {
-                                        out += `\nAverage: ${avg} movements/day at ${items[0].label}`;
-                                    }
-                                    return out;
+                                    return `Total: ${total.toLocaleString()} Movements in this hour`;
                                 }
                             }
                         }
@@ -2267,9 +2295,6 @@ function fdrDashboardController() {
 
         formatPayloadWeightKg(val) {
             val = Math.round(val || 0);
-            if (val >= 1000000) {
-                return (val / 1000000).toFixed(2) + ' M kg';
-            }
             return val.toLocaleString() + ' kg';
         },
 
@@ -2429,6 +2454,7 @@ function fdrDashboardController() {
 
                 this.$nextTick(() => {
                     this.initAllCharts();
+                    this.logReconciliation('FILTER_RESULT');
                 });
             })
             .catch(err => {

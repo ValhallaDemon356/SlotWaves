@@ -1601,6 +1601,7 @@ class FlightDailyReportParser
 
             $records[] = [
                 'index'                        => count($records) + 1,
+                'source_row_number'            => (int)$firstCell,
                 'row_type'                     => 'MOVEMENT',
                 'air_line'                     => $airLine,
                 'flight_no'                    => $flightNo,
