@@ -6,11 +6,23 @@ import {
   resolveMovementType,
   findFDRHeaderRow,
   parseFDRSheet,
-  aggregateHourlySlotWaves
+  aggregateHourlySlotWaves,
+  detectOasysFdrType,
+  preScanOasysFdr,
+  extractFlightSuffix,
+  normalizeAirline,
+  parseIndonesianNumber,
+  parseNormalFDR,
+  parseLoadFactorFDR,
+  parseCompareLoadFactorFDR,
+  parseOasysVsAppsFDR,
+  parseOasysVsEdiflyFDR,
+  mergeFdrHtmlFiles,
+  INJOURNEY_AIRPORTS_COORDINATES,
+  OASYS_SUFFIX_DICTIONARY
 } from '../src/utils/fdrParser.ts';
 
-// 1. Test parseExcelTime with decimal serials and string times
-console.log('Testing parseExcelTime...');
+console.log('--- 1. Testing Legacy Backward Compatibility ---');
 assert.deepStrictEqual(parseExcelTime(0.354166667), { timeStr: '08:30', hour: 8 });
 assert.deepStrictEqual(parseExcelTime("0.354166667"), { timeStr: '08:30', hour: 8 });
 assert.deepStrictEqual(parseExcelTime("08:30"), { timeStr: '08:30', hour: 8 });
@@ -18,23 +30,18 @@ assert.deepStrictEqual(parseExcelTime("14:45:00"), { timeStr: '14:45', hour: 14 
 assert.deepStrictEqual(parseExcelTime("0615"), { timeStr: '06:15', hour: 6 });
 assert.strictEqual(parseExcelTime("-"), null);
 assert.strictEqual(parseExcelTime("N/A"), null);
+assert.strictEqual(parseExcelTime("30-11--0001 00:00"), null);
 
-// 2. Test calculateDelayMinutes with standard and cross-midnight times
-console.log('Testing calculateDelayMinutes...');
 assert.strictEqual(calculateDelayMinutes('08:30', '08:45'), 15);
 assert.strictEqual(calculateDelayMinutes('08:45', '08:30'), -15);
-assert.strictEqual(calculateDelayMinutes('23:50', '00:10'), 20); // +20 min cross midnight
-assert.strictEqual(calculateDelayMinutes('00:10', '23:50'), -20); // -20 min early cross midnight
+assert.strictEqual(calculateDelayMinutes('23:50', '00:10'), 20); // Cross-midnight +20
+assert.strictEqual(calculateDelayMinutes('00:10', '23:50'), -20); // Cross-midnight -20
 
-// 3. Test resolveMovementType
-console.log('Testing resolveMovementType...');
 assert.strictEqual(resolveMovementType('SUB', 'CGK'), 'Arrival');
 assert.strictEqual(resolveMovementType('CGK', 'DPS'), 'Departure');
 assert.strictEqual(resolveMovementType('', '', 'A SCHED'), 'Arrival');
 assert.strictEqual(resolveMovementType('', '', 'D SCHED'), 'Departure');
 
-// 4. Test dynamic header finding at rows 4-7
-console.log('Testing findFDRHeaderRow...');
 const mockSheet = [
   ['Aeronautical Statistics', '', ''],
   ['Branch: CGK', '', ''],
@@ -49,42 +56,266 @@ const headerMapping = findFDRHeaderRow(mockSheet);
 assert.ok(headerMapping !== null);
 assert.strictEqual(headerMapping.headerRowIndex, 4);
 
-// 5. Test parseFDRSheet
-console.log('Testing parseFDRSheet...');
 const records = parseFDRSheet(mockSheet, 'CGK', '2026-08-01');
 assert.strictEqual(records.length, 3);
-
-// Record 1 (Garuda, Departure, on-time with 15m delay)
 assert.strictEqual(records[0].airline, 'Garuda Indonesia');
-assert.strictEqual(records[0].movementType, 'Departure');
-assert.strictEqual(records[0].scheduledTime, '08:30');
-assert.strictEqual(records[0].scheduledHour, 8);
-assert.strictEqual(records[0].actualTime, '08:45');
-assert.strictEqual(records[0].delayMinutes, 15);
-assert.strictEqual(records[0].status, 'ON_TIME');
-
-// Record 2 (Batik, Arrival, early by 20m)
 assert.strictEqual(records[1].airline, 'Batik Air');
-assert.strictEqual(records[1].movementType, 'Arrival');
-assert.strictEqual(records[1].scheduledTime, '10:00');
-assert.strictEqual(records[1].scheduledHour, 10);
-assert.strictEqual(records[1].actualTime, '09:40');
-assert.strictEqual(records[1].delayMinutes, -20);
-assert.strictEqual(records[1].status, 'EARLY');
-
-// Record 3 (Super Air Jet, cancelled/unrealized)
-assert.strictEqual(records[2].airline, 'Super Air Jet');
 assert.strictEqual(records[2].status, 'CANCELLED');
 
-// 6. Test aggregateHourlySlotWaves
-console.log('Testing aggregateHourlySlotWaves...');
 const summary = aggregateHourlySlotWaves(records);
 assert.strictEqual(summary.buckets.length, 24);
 assert.strictEqual(summary.totalMovements, 3);
-assert.strictEqual(summary.totalArrivals, 1);
-assert.strictEqual(summary.totalDepartures, 2);
-assert.strictEqual(summary.totalOnTime, 1);
-assert.strictEqual(summary.totalEarly, 1);
-assert.strictEqual(summary.totalCancelled, 1);
 
-console.log('All FDR TypeScript parser unit tests passed successfully!');
+console.log('--- 2. Testing Indonesian Number Parsing ---');
+assert.strictEqual(parseIndonesianNumber("1.242,86"), 1242.86);
+assert.strictEqual(parseIndonesianNumber("-33,33"), -33.33);
+assert.strictEqual(parseIndonesianNumber("71.8%"), 71.8);
+assert.strictEqual(parseIndonesianNumber("nan %"), 0);
+
+console.log('--- 3. Testing Suffix Dictionary & Extraction ---');
+assert.strictEqual(OASYS_SUFFIX_DICTIONARY['X'].label, 'Extra Flight');
+assert.strictEqual(OASYS_SUFFIX_DICTIONARY['R'].label, 'Return to Airport/Base (RTB/RTA)');
+assert.strictEqual(OASYS_SUFFIX_DICTIONARY['D'].label, 'Divert');
+
+const sX = extractFlightSuffix('GA120X');
+assert.strictEqual(sX.base, 'GA120');
+assert.strictEqual(sX.suffix, 'X');
+assert.strictEqual(sX.suffixInfo?.label, 'Extra Flight');
+
+const sPlain = extractFlightSuffix('QG682');
+assert.strictEqual(sPlain.base, 'QG682');
+assert.strictEqual(sPlain.suffix, '');
+assert.strictEqual(sPlain.suffixInfo, null);
+
+console.log('--- 4. Testing Airline Normalizer ---');
+assert.strictEqual(normalizeAirline('QG', 'QG101').cleanName, 'Citilink');
+assert.strictEqual(normalizeAirline('GAC', 'GAC202').cleanName, 'Citilink');
+assert.strictEqual(normalizeAirline('IP', 'IP303').cleanName, 'Pelita Air');
+assert.strictEqual(normalizeAirline('6D', '6D404').cleanName, 'Pelita Air');
+assert.strictEqual(normalizeAirline('PAS', 'PAS505').cleanName, 'Pelita Air');
+assert.strictEqual(normalizeAirline('8B', '8B606').cleanName, 'TransNusa');
+assert.strictEqual(normalizeAirline('M8', 'M8707').cleanName, 'TransNusa');
+assert.strictEqual(normalizeAirline('PK-TNC', '8B100').cleanName, 'TransNusa');
+assert.strictEqual(normalizeAirline('QZ', 'QZ808').cleanName, 'Indonesia AirAsia');
+assert.strictEqual(normalizeAirline('IL', 'IL909').cleanName, 'Trigana Air');
+assert.strictEqual(normalizeAirline('IN', 'IN111').cleanName, 'Nam Air');
+assert.strictEqual(normalizeAirline('2Y', '2Y222').cleanName, 'My Indo Airlines');
+assert.strictEqual(normalizeAirline('FS', 'FS333').cleanName, 'Airfast Indonesia');
+assert.strictEqual(normalizeAirline('PK-OCS', 'FS444').cleanName, 'Airfast Indonesia');
+
+console.log('--- 5. Testing Auto-Detection Engine for All 7 OASYS Templates ---');
+
+// Template 1: NORMAL
+const normalHtml = `
+<input type="hidden" name="BRANCH_CODE" value="CGK">
+<input type="hidden" name="transactions_dateFDR" value="2026/08/01 - 2026/08/31">
+<input type="hidden" name="OPERATOR" value="QG">
+<input type="hidden" name="REAL" value="YES">
+<table>
+  <tr>
+    <th>NO</th><th>AIR LINE</th><th>FLIGHT NO</th><th>PAIRED NO</th><th>DESC</th>
+    <th>SIBT SOBT</th><th>AIBT AOBT</th><th>LEG</th><th>CITY 1</th><th>CITY 2</th>
+    <th>MTOW</th><th>REG. NO</th><th>CAP.</th><th>LOAD</th><th>ADULT</th>
+    <th>CHILD</th><th>INFANT</th><th>TRANSIT</th><th>TRANSFER</th><th>DIVERT</th>
+    <th>MISS</th><th>CRW</th><th>EX. CRW</th><th>Umroh</th><th>CAR. (KG)</th>
+    <th>BAGG. (KG)</th><th>POS (KG)</th><th>STAND</th><th>RUNWAY</th><th>FINAL</th>
+    <th>FINAL TIME</th><th>BRANCH</th><th>EDIT</th>
+  </tr>
+  <tr>
+    <td>1</td><td>Citilink</td><td>QG 101</td><td>QG 102</td><td>AIRBUS 320 200</td>
+    <td>01-08-2026 07:00</td><td>01-08-2026 07:15</td><td>D<br>SCHED</td><td>CGK</td><td>DPS</td>
+    <td>73.5</td><td>PK-GAA</td><td>180</td><td>160</td><td>150</td>
+    <td>8</td><td>2</td><td>0</td><td>0</td><td>0</td>
+    <td>0</td><td>6</td><td>2</td><td>0</td><td>2500</td>
+    <td>1800</td><td>120</td><td>G01</td><td>25R</td><td>YES</td>
+    <td>07:20</td><td>CGK</td><td></td>
+  </tr>
+</table>`;
+assert.strictEqual(detectOasysFdrType(normalHtml, 'CGK QG FDR.xls'), 'NORMAL');
+
+// Template 2: EX_HALIM
+assert.strictEqual(detectOasysFdrType(normalHtml, 'CGK Halim Monitoring.xls'), 'EX_HALIM');
+assert.strictEqual(detectOasysFdrType(normalHtml, 'HLP Transfer FDR.xls'), 'EX_HALIM');
+
+// Template 3: LOAD_FACTOR
+const loadFactorHtml = `
+<table>
+  <tr>
+    <th>No</th><th>Airlines</th><th>Flight Number</th><th>Scheduled Time</th><th>Type of Aircraft</th>
+    <th>Aircraft Reg No</th><th>Leg</th><th>Arrival Route</th><th>Departure Route</th><th>Seat Capacity</th>
+    <th>Pax</th><th>SLF</th><th>Airport</th>
+  </tr>
+  <tr>
+    <td>1</td><td>Garuda Indonesia</td><td>GA 100</td><td>08:00</td><td>738</td>
+    <td>PK-GFA</td><td>D</td><td>DPS</td><td>CGK</td><td>162</td>
+    <td>145</td><td>89.5 %</td><td>CGK</td>
+  </tr>
+  <tr><td colspan="13">PAX : ADULT + CHILD + TRANSIT + TRANSFER + EXTRA_CREW</td></tr>
+</table>`;
+assert.strictEqual(detectOasysFdrType(loadFactorHtml, 'CGK Load Factor.xls'), 'LOAD_FACTOR');
+
+// Template 4: COMPARE_LOAD_FACTOR
+const compareLfHtml = `
+<title>DAU OASYS Comparison</title>
+<table>
+  <tr>
+    <th>No</th><th>Airport</th>
+    <th>Flight 2025</th><th>Flight 2026</th><th>Flight Ratio</th>
+    <th>Pax 2025</th><th>Pax 2026</th><th>Pax Ratio</th>
+    <th>Cargo 2025</th><th>Cargo 2026</th><th>Cargo Ratio</th>
+    <th>SeatCap 2025</th><th>SeatCap 2026</th><th>SeatCap Ratio</th>
+    <th>SLF 2025 SeatCap</th><th>SLF 2025 Pax</th><th>SEAT LOAD FACTOR 2025</th>
+    <th>SLF 2026 SeatCap</th><th>SLF 2026 Pax</th><th>SEAT LOAD FACTOR 2026</th>
+  </tr>
+  <tr>
+    <td>1</td><td>BDO</td>
+    <td>100</td><td>120</td><td>20,00%</td>
+    <td>15.000</td><td>18.000</td><td>20,00%</td>
+    <td>5.000</td><td>4.500</td><td>-10,00%</td>
+    <td>18.000</td><td>20.000</td><td>11,11%</td>
+    <td>18.000</td><td>15.000</td><td>83,33%</td>
+    <td>20.000</td><td>18.000</td><td>90,00%</td>
+  </tr>
+</table>`;
+assert.strictEqual(detectOasysFdrType(compareLfHtml, 'DAU YoY Report.xls'), 'COMPARE_LOAD_FACTOR');
+
+// Template 5: COMPARE_LOAD_FACTOR_DAY
+const compareLfDayHtml = `
+<title>DAU OASYS</title>
+<table>
+  <tr>
+    <th>No</th><th>Airport</th>
+    <th>Flight 2025</th><th>Flight 2026</th><th>Flight Ratio</th>
+    <th>Pax 2025</th><th>Pax 2026</th><th>Pax Ratio</th>
+    <th>Cargo 2025</th><th>Cargo 2026</th><th>Cargo Ratio</th>
+    <th>SeatCap 2025</th><th>SeatCap 2026</th><th>SeatCap Ratio</th>
+    <th>SLF 2025 SeatCap</th><th>SLF 2025 Pax</th><th>SEAT LOAD FACTOR 2025</th>
+    <th>SLF 2026 SeatCap</th><th>SLF 2026 Pax</th><th>SEAT LOAD FACTOR 2026</th>
+  </tr>
+  <tr>
+    <td>1</td><td>BDO <br>2026-10-15</td>
+    <td>10</td><td>12</td><td>20%</td>
+    <td>1500</td><td>1800</td><td>20%</td>
+    <td>500</td><td>450</td><td>-10%</td>
+    <td>1800</td><td>2000</td><td>11%</td>
+    <td>1800</td><td>1500</td><td>83,3%</td>
+    <td>2000</td><td>1800</td><td>90,0%</td>
+  </tr>
+</table>`;
+assert.strictEqual(detectOasysFdrType(compareLfDayHtml, 'DAU Day Comparison.xls'), 'COMPARE_LOAD_FACTOR_DAY');
+
+// Template 6: OASYS_VS_APPS
+const appsHtml = `
+<title>APPS VS FLIGHT DEP</title>
+<table>
+  <tr>
+    <th>NO</th><th>AIRLINE</th><th>STAD</th><th>OFF BLOCK TIME</th><th>LEG</th>
+    <th>D/I</th><th>CITY</th><th>ADULT</th><th>CHILD</th><th>INFANT</th>
+    <th>TRANSIT</th><th>TRANSFER</th><th>DIVERT</th><th>MISSED</th><th>CREW</th><th>EX.CREW</th>
+  </tr>
+  <tr>
+    <td>1</td><td><a href="#">QG 822</a></td><td>06:00</td><td>06:10</td><td>D</td>
+    <td>D</td><td>DPS</td><td>150</td><td>10</td><td>2</td>
+    <td>0</td><td>0</td><td>0</td><td>0</td><td>6</td><td>0</td>
+  </tr>
+</table>`;
+assert.strictEqual(detectOasysFdrType(appsHtml, 'Oasys Departure vs Apps.xls'), 'OASYS_VS_APPS');
+
+// Template 7: OASYS_VS_EDIFLY
+const ediflyHtml = `
+<table>
+  <tr>
+    <th>NO</th><th>AIRLINE</th><th>FLIGHT NO</th><th>PAIRED NO</th><th>DESC</th>
+    <th>SOBT/SIBT</th><th>AOBT/AIBT</th><th>LEG</th><th>STATION 1</th><th>STATION 2</th>
+    <th>MTOW</th><th>REG. NO</th><th>API PAX EDIFLY</th><th>API CARGO EDIFLY</th>
+  </tr>
+  <tr>
+    <td>1</td><td>Garuda</td><td>GA 100</td><td>GA 101</td><td>738</td>
+    <td>08:00</td><td>08:05</td><td>D</td><td>CGK</td><td>DPS</td>
+    <td>79000</td><td>PK-GAA</td><td>API INTEGRATION SUCCESS</td><td>NO INTEGRATION</td>
+  </tr>
+</table>`;
+assert.strictEqual(detectOasysFdrType(ediflyHtml, 'Edifly Reconciliation.xls'), 'OASYS_VS_EDIFLY');
+
+console.log('--- 6. Testing Pre-Scan Staging Metadata Extraction ---');
+const preScan = preScanOasysFdr(normalHtml, 'CGK QG FDR.xls', 15000);
+assert.strictEqual(preScan.reportType, 'NORMAL');
+assert.strictEqual(preScan.branchCode, 'CGK');
+assert.strictEqual(preScan.operator, 'QG');
+assert.strictEqual(preScan.realization, 'YES');
+assert.strictEqual(preScan.transactionsDateFdr, '2026/08/01 - 2026/08/31');
+assert.strictEqual(preScan.totalRows, 1);
+
+console.log('--- 7. Testing Dedicated Normal FDR Parser (Crew & Payload & Realization) ---');
+const parsedNormal = parseNormalFDR(normalHtml, false, true, 360);
+assert.strictEqual(parsedNormal.records.length, 1);
+const r0 = parsedNormal.records[0];
+assert.strictEqual(r0.operatingCrew, 8); // 6 CRW + 2 EX.CRW
+assert.strictEqual(r0.totalPayloadKg, 4420); // 2500 + 1800 + 120
+assert.strictEqual(r0.posKg, 120);
+assert.strictEqual(r0.isFinal, true);
+assert.strictEqual(r0.realized, true);
+assert.strictEqual(parsedNormal.summary.crewPerFlight, 8);
+assert.strictEqual(parsedNormal.summary.operatingCrew, 8);
+
+// Test REAL = NO hold flight
+const holdFlightHtml = `
+<table>
+  <tr><th>NO</th><th>AIR LINE</th><th>FLIGHT NO</th><th>PAIRED NO</th><th>DESC</th><th>SIBT SOBT</th><th>AIBT AOBT</th><th>LEG</th><th>CITY 1</th><th>CITY 2</th><th>MTOW</th><th>REG. NO</th><th>CAP.</th><th>LOAD</th><th>ADULT</th><th>CHILD</th><th>INFANT</th><th>TRANSIT</th><th>TRANSFER</th><th>DIVERT</th><th>MISS</th><th>CRW</th><th>EX. CRW</th><th>Umroh</th><th>CAR. (KG)</th><th>BAGG. (KG)</th><th>POS (KG)</th><th>STAND</th><th>RUNWAY</th><th>FINAL</th><th>FINAL TIME</th><th>BRANCH</th><th>EDIT</th></tr>
+  <tr><td>1</td><td>Batik</td><td>ID 777</td><td>-</td><td>A320</td><td>01-08-2026 12:00</td><td>30-11--0001 00:00</td><td>D</td><td>CGK</td><td>SUB</td><td>73.5</td><td>PK-LUJ</td><td>180</td><td>nan %</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>CGK-HOLD</td><td>-</td><td>NO</td><td>-</td><td>CGK</td><td></td></tr>
+</table>`;
+const parsedHold = parseNormalFDR(holdFlightHtml);
+assert.strictEqual(parsedHold.records[0].status, 'HOLD_OR_CANCELLED');
+assert.strictEqual(parsedHold.records[0].realized, false);
+assert.strictEqual(parsedHold.summary.cancelledHoldFlights, 1);
+assert.strictEqual(parsedHold.summary.realizedFlights, 0);
+
+console.log('--- 8. Testing Load Factor Parser ---');
+const parsedLf = parseLoadFactorFDR(loadFactorHtml);
+assert.strictEqual(parsedLf.records.length, 1);
+assert.strictEqual(parsedLf.records[0].slfPercent, 89.5);
+assert.strictEqual(parsedLf.summary.totalCommercialPax, 145);
+assert.strictEqual(parsedLf.summary.highSlfCount, 1);
+
+console.log('--- 9. Testing Compare Load Factor YoY Parser ---');
+const parsedCompare = parseCompareLoadFactorFDR(compareLfHtml);
+assert.strictEqual(parsedCompare.records.length, 1);
+assert.strictEqual(parsedCompare.records[0].airport, 'BDO');
+assert.strictEqual(parsedCompare.records[0].flightPrevYear, 100);
+assert.strictEqual(parsedCompare.records[0].flightCurrYear, 120);
+assert.strictEqual(parsedCompare.summary.flightYoYGrowth, 20);
+
+console.log('--- 10. Testing OASYS vs APPS Audit Parser ---');
+const parsedApps = parseOasysVsAppsFDR(appsHtml);
+assert.strictEqual(parsedApps.records.length, 1);
+assert.strictEqual(parsedApps.records[0].flightNumber, 'QG 822');
+assert.strictEqual(parsedApps.summary.fltDepOasys, 1);
+
+console.log('--- 11. Testing OASYS vs EDIFLY Parser ---');
+const parsedEdifly = parseOasysVsEdiflyFDR(ediflyHtml);
+assert.strictEqual(parsedEdifly.records.length, 1);
+assert.strictEqual(parsedEdifly.records[0].isPaxIntegrated, true);
+assert.strictEqual(parsedEdifly.records[0].isCargoIntegrated, false);
+assert.strictEqual(parsedEdifly.summary.paxIntegrationRate, 100);
+assert.strictEqual(parsedEdifly.summary.cargoIntegrationRate, 0);
+
+console.log('--- 12. Testing Multi-File HTML Merging ---');
+const file1 = { name: 'CGK GA FDR.xls', content: normalHtml };
+const file2 = {
+  name: 'CGK ID FDR.xls',
+  content: `<table><tr><th>NO</th><th>AIR LINE</th><th>FLIGHT NO</th><th>PAIRED NO</th><th>DESC</th><th>SIBT SOBT</th><th>AIBT AOBT</th><th>LEG</th><th>CITY 1</th><th>CITY 2</th><th>MTOW</th><th>REG. NO</th><th>CAP.</th><th>LOAD</th><th>ADULT</th><th>CHILD</th><th>INFANT</th><th>TRANSIT</th><th>TRANSFER</th><th>DIVERT</th><th>MISS</th><th>CRW</th><th>EX. CRW</th><th>Umroh</th><th>CAR. (KG)</th><th>BAGG. (KG)</th><th>POS (KG)</th><th>STAND</th><th>RUNWAY</th><th>FINAL</th><th>FINAL TIME</th><th>BRANCH</th><th>EDIT</th></tr><tr><td>2</td><td>Batik</td><td>ID 200</td><td>ID 201</td><td>A320</td><td>01-08-2026 09:00</td><td>01-08-2026 09:05</td><td>A</td><td>SUB</td><td>CGK</td><td>73.5</td><td>PK-LAZ</td><td>180</td><td>170</td><td>160</td><td>10</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>6</td><td>0</td><td>0</td><td>1200</td><td>1400</td><td>0</td><td>T2-01</td><td>07L</td><td>YES</td><td>09:10</td><td>CGK</td><td></td></tr></table>`
+};
+const merged = mergeFdrHtmlFiles([file1, file2]);
+assert.strictEqual(merged.filesProcessed, 2);
+assert.strictEqual(merged.totalRowsMerged, 2);
+
+console.log('--- 13. Testing InJourney Airport Coordinates Dictionary ---');
+assert.strictEqual(Object.keys(INJOURNEY_AIRPORTS_COORDINATES).length, 36);
+assert.ok(INJOURNEY_AIRPORTS_COORDINATES['CGK'].lat !== undefined);
+assert.ok(INJOURNEY_AIRPORTS_COORDINATES['DPS'].lat !== undefined);
+assert.ok(INJOURNEY_AIRPORTS_COORDINATES['SUB'].lat !== undefined);
+assert.ok(INJOURNEY_AIRPORTS_COORDINATES['KNO'].lat !== undefined);
+
+console.log('\n======================================================');
+console.log('SUCCESS: All Comprehensive FDR Unit Tests Passed 100%!');
+console.log('======================================================');

@@ -26,8 +26,15 @@
             <div class="h-8 w-px bg-slate-200 hidden sm:block"></div>
 
             <div>
-                <h1 class="text-sm font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                <h1 class="text-sm font-extrabold text-slate-900 tracking-tight flex flex-wrap items-center gap-2">
                     <span>Flight Daily Report (FDR)</span>
+                    <span x-show="activeReportType === 'EX_HALIM'" class="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-amber-500 text-white shadow-2xs">
+                        EX HALIM (CGK) MONITORING
+                    </span>
+                    <span class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider shadow-2xs"
+                          :class="getReportTypeBadgeClass()"
+                          x-text="getReportTypeBadgeLabel()">
+                    </span>
                     <span class="px-2 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-300"
                           x-text="'SOURCE TYPE: ' + (sourceSummary.source_type || '{{ $sourceType ?? 'MONTHLY' }}')">
                         SOURCE TYPE: {{ $sourceType ?? ($sourceSummary['source_type'] ?? 'MONTHLY') }}
@@ -44,6 +51,16 @@
         {{-- Right: Source File & Source Period Metadata + Export Actions --}}
         <div class="flex flex-wrap items-center gap-2.5">
             
+            {{-- Pre-Scan Staging Button --}}
+            <button type="button" @click="showStagingCard = !showStagingCard"
+                    class="text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-2xs cursor-pointer">
+                <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                </svg>
+                <span>Pre-Scan Staging</span>
+                <span x-show="stagedFiles.length > 0" class="px-1.5 py-0.2 rounded-full text-[9px] bg-blue-600 text-white font-mono" x-text="stagedFiles.length"></span>
+            </button>
+
             {{-- Source File Card --}}
             <div class="flex items-center gap-2.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50/80">
                 <div class="w-7 h-7 rounded-lg bg-emerald-600 flex items-center justify-center text-white text-xs font-black shadow-2xs">
@@ -100,6 +117,33 @@
 
     {{-- ══ MAIN CONTENT AREA ═══════════════════════════════════════════════════ --}}
     <main class="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-5">
+
+        {{-- ══ STAGE A: PRE-SCAN & FILE STAGING ════════════════════════════════ --}}
+        @include('fdr.partials.stage_a_staging')
+
+        {{-- ══ POLYMORPHIC DASHBOARD VIEWS (STAGE B) ═══════════════════════════ --}}
+        {{-- Case 2: LOAD_FACTOR (13 Columns) --}}
+        <template x-if="activeReportType === 'LOAD_FACTOR'">
+            @include('fdr.partials.view_load_factor')
+        </template>
+
+        {{-- Case 3: COMPARE_LOAD_FACTOR & COMPARE_LOAD_FACTOR_DAY (20 Columns YoY) --}}
+        <template x-if="activeReportType === 'COMPARE_LOAD_FACTOR' || activeReportType === 'COMPARE_LOAD_FACTOR_DAY'">
+            @include('fdr.partials.view_compare_load_factor')
+        </template>
+
+        {{-- Case 4: OASYS_VS_APPS (16 Columns) --}}
+        <template x-if="activeReportType === 'OASYS_VS_APPS'">
+            @include('fdr.partials.view_oasys_vs_apps')
+        </template>
+
+        {{-- Case 5: OASYS_VS_EDIFLY (14 Columns) --}}
+        <template x-if="activeReportType === 'OASYS_VS_EDIFLY'">
+            @include('fdr.partials.view_oasys_vs_edifly')
+        </template>
+
+        {{-- Case 1: NORMAL & EX_HALIM (33 Columns Full Operational Control Room) --}}
+        <div x-show="activeReportType === 'NORMAL' || activeReportType === 'EX_HALIM'" class="space-y-5">
 
         {{-- ══ 2. FILTER BAR (COMPACT DEDICATED CARD) ═════════════════════════ --}}
         <div class="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs space-y-3">
@@ -315,8 +359,11 @@
                 <div class="mt-2">
                     <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Flights</div>
                     <div class="text-xl font-black text-slate-900 tracking-tight" x-text="Number(kpis.total_flights || 0).toLocaleString()">{{ number_format($analytics['kpis']['total_flights'] ?? 0) }}</div>
-                    <div class="text-[10px] font-semibold text-slate-500 mt-0.5">
-                        SCHEDULED: <span class="font-bold text-slate-700" x-text="Number(kpis.scheduled_flights || 0).toLocaleString()">{{ number_format($analytics['kpis']['scheduled_flights'] ?? 0) }}</span> • ACTUAL: <span class="font-bold text-slate-700" x-text="Number(kpis.actual_flights || kpis.total_flights || 0).toLocaleString()">{{ number_format($analytics['kpis']['actual_flights'] ?? ($analytics['kpis']['total_flights'] ?? 0)) }}</span>
+                    <div class="text-[10px] font-semibold text-slate-500 mt-0.5 truncate">
+                        Sched: <span class="font-bold text-slate-700" x-text="Number(kpis.scheduled_flights || 0).toLocaleString()">{{ number_format($analytics['kpis']['scheduled_flights'] ?? 0) }}</span> • Realized: <span class="font-bold text-emerald-700" x-text="Number(kpis.actual_flights || kpis.realized_flights || kpis.total_flights || 0).toLocaleString()">{{ number_format($analytics['kpis']['actual_flights'] ?? ($analytics['kpis']['total_flights'] ?? 0)) }}</span>
+                        <template x-if="(kpis.cancelled_or_hold_flights || 0) > 0">
+                            <span> • Hold/Cnl: <span class="font-bold text-rose-600" x-text="Number(kpis.cancelled_or_hold_flights).toLocaleString()"></span></span>
+                        </template>
                     </div>
                 </div>
             </div>
@@ -431,8 +478,12 @@
                 <div class="mt-2">
                     <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Irregular Flights</div>
                     <div class="text-xl font-black text-slate-900 tracking-tight" x-text="schedVsReal.late_count ?? (kpis.irregular_flights ?? 0)">{{ $analytics['schedule_vs_realization']['late_count'] ?? ($analytics['kpis']['irregular_flights'] ?? 0) }}</div>
-                    <div class="text-[10px] font-semibold text-rose-500 mt-0.5">
-                        <span x-text="schedVsReal.late_count ?? (kpis.delayed_flights ?? 0)">{{ $analytics['schedule_vs_realization']['late_count'] ?? ($analytics['kpis']['delayed_flights'] ?? 0) }}</span> Delay | <span x-text="(kpis.irregularities ? (kpis.irregularities.divert + kpis.irregularities.miss + kpis.irregularities.unscheduled) : 0)">{{ ($analytics['kpis']['irregularities']['divert'] ?? 0) + ($analytics['kpis']['irregularities']['miss'] ?? 0) + ($analytics['kpis']['irregularities']['unscheduled'] ?? 0) }}</span> Other
+                    <div class="text-[10px] font-semibold text-rose-500 mt-0.5 truncate">
+                        <span x-text="schedVsReal.late_count ?? (kpis.delayed_flights ?? 0)">{{ $analytics['schedule_vs_realization']['late_count'] ?? ($analytics['kpis']['delayed_flights'] ?? 0) }}</span> Delay
+                        <template x-if="(kpis.cancelled_or_hold_flights || 0) > 0">
+                            <span> | <span x-text="kpis.cancelled_or_hold_flights"></span> Hold/Cnl</span>
+                        </template>
+                        | <span x-text="(kpis.irregularities ? (kpis.irregularities.divert + kpis.irregularities.miss + kpis.irregularities.unscheduled) : 0)">{{ ($analytics['kpis']['irregularities']['divert'] ?? 0) + ($analytics['kpis']['irregularities']['miss'] ?? 0) + ($analytics['kpis']['irregularities']['unscheduled'] ?? 0) }}</span> Other
                     </div>
                 </div>
             </div>
@@ -457,7 +508,13 @@
                             1. Schedule vs Actual <span class="text-slate-400 font-semibold normal-case">(SIBT/SOBT vs AIBT/AOBT)</span>
                         </h2>
                     </div>
-                    <span class="text-[10px] font-bold text-slate-400">Time Variance Analysis</span>
+                    <div class="flex items-center gap-2">
+                        <label class="inline-flex items-center gap-1.5 cursor-pointer text-[10px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-lg border border-slate-200 transition">
+                            <input type="checkbox" x-model="filterOutliers" @change="buildDelayHistChart()" class="rounded text-blue-600 focus:ring-0 w-3 h-3 cursor-pointer">
+                            <span>Outlier Filter (&gt;360m)</span>
+                        </label>
+                        <span class="text-[10px] font-bold text-slate-400 hidden sm:inline">Time Variance</span>
+                    </div>
                 </div>
 
                 {{-- Top 3 Status Cards (On-Time, Early, Late) --}}
@@ -518,21 +575,24 @@
                 <div class="grid grid-cols-4 gap-2 pt-2 border-t border-slate-100 text-center">
                     <div class="p-2 rounded-xl bg-slate-50 border border-slate-100">
                         <div class="text-[9px] uppercase font-bold text-slate-400">Average Delay</div>
-                        <div class="text-xs font-black font-mono text-slate-800 mt-0.5" x-text="schedVsReal.avg_delay_minutes">-5.9 min</div>
+                        <div class="text-xs font-black font-mono text-slate-800 mt-0.5" x-text="filterOutliers ? (schedVsReal.avg_delay_filtered || schedVsReal.avg_delay_minutes) : schedVsReal.avg_delay_minutes">-5.9 min</div>
                     </div>
                     <div class="p-2 rounded-xl bg-slate-50 border border-slate-100">
                         <div class="text-[9px] uppercase font-bold text-slate-400">Median Delay</div>
-                        <div class="text-xs font-black font-mono text-slate-800 mt-0.5" x-text="schedVsReal.median_delay">0 min</div>
+                        <div class="text-xs font-black font-mono text-slate-800 mt-0.5" x-text="filterOutliers ? (schedVsReal.median_delay_filtered || schedVsReal.median_delay) : schedVsReal.median_delay">0 min</div>
                     </div>
                     <div class="p-2 rounded-xl bg-slate-50 border border-slate-100">
                         <div class="text-[9px] uppercase font-bold text-slate-400">Min Delay</div>
-                        <div class="text-xs font-black font-mono text-slate-800 mt-0.5" x-text="schedVsReal.min_delay">-1424 min</div>
+                        <div class="text-xs font-black font-mono text-slate-800 mt-0.5" x-text="filterOutliers ? (schedVsReal.min_delay_filtered || schedVsReal.min_delay) : schedVsReal.min_delay">-1424 min</div>
                     </div>
                     <div class="p-2 rounded-xl bg-slate-50 border border-slate-100">
                         <div class="text-[9px] uppercase font-bold text-slate-400">Max Delay</div>
-                        <div class="text-xs font-black font-mono text-slate-800 mt-0.5" x-text="schedVsReal.max_delay">+37 min</div>
+                        <div class="text-xs font-black font-mono text-slate-800 mt-0.5" x-text="filterOutliers ? (schedVsReal.max_delay_filtered || schedVsReal.max_delay) : schedVsReal.max_delay">+37 min</div>
                     </div>
                 </div>
+                <template x-if="filterOutliers && schedVsReal.outliers_count > 0">
+                    <div class="text-[9.5px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-center font-medium" x-text="schedVsReal.outliers_count + ' cross-midnight outlier(s) filtered (>360m)'"></div>
+                </template>
 
             </div>
 
@@ -592,10 +652,16 @@
                                 <span class="flex items-center gap-1.5 font-bold"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>Infant</span>
                                 <span class="font-mono text-slate-700"><strong x-text="(paxAnalytics.composition.infant || 0).toLocaleString() + ' Pax'"></strong> (<span x-text="getPaxPct('infant')"></span>)</span>
                             </div>
+                            <template x-if="(paxAnalytics.composition.umroh || 0) > 0">
+                                <div class="flex items-center justify-between text-purple-700 bg-purple-50/70 px-1 py-0.5 rounded">
+                                    <span class="flex items-center gap-1.5 font-bold"><span class="w-2.5 h-2.5 rounded-full bg-purple-600"></span>Umroh Pax</span>
+                                    <span class="font-mono"><strong x-text="(paxAnalytics.composition.umroh || 0).toLocaleString() + ' Pax'"></strong></span>
+                                </div>
+                            </template>
                         </div>
                     </div>
 
-                    {{-- DONUT 2: Payload Composition (Cargo, Baggage) --}}
+                    {{-- DONUT 2: Payload Composition (Cargo, Baggage, Pos) --}}
                     <div class="flex flex-col items-center bg-slate-50/60 rounded-xl p-3.5 border border-slate-100/80">
                         <div class="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-2">
                             Payload Composition
@@ -606,12 +672,12 @@
                             <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-1">
                                 <span class="text-[8px] uppercase font-extrabold text-slate-400 tracking-wider leading-tight">TOTAL PAYLOAD</span>
                                 <span class="text-xs font-black text-slate-900 font-mono tracking-tight mt-0.5"
-                                      x-show="((kpis.total_cargo_kg || 0) + (kpis.total_baggage_kg || 0)) > 0"
-                                      x-text="formatPayloadWeightKg((kpis.total_cargo_kg || 0) + (kpis.total_baggage_kg || 0))">
+                                      x-show="((kpis.total_cargo_kg || 0) + (kpis.total_baggage_kg || 0) + (kpis.pos_kg || 0)) > 0"
+                                      x-text="formatPayloadWeightKg((kpis.total_cargo_kg || 0) + (kpis.total_baggage_kg || 0) + (kpis.pos_kg || 0))">
                                     725,017 kg
                                 </span>
                                 <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-tight mt-0.5"
-                                      x-show="((kpis.total_cargo_kg || 0) + (kpis.total_baggage_kg || 0)) === 0">
+                                      x-show="((kpis.total_cargo_kg || 0) + (kpis.total_baggage_kg || 0) + (kpis.pos_kg || 0)) === 0">
                                     NO PAYLOAD DATA
                                 </span>
                             </div>
@@ -626,13 +692,17 @@
                                 <span class="flex items-center gap-1.5 font-bold"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>Baggage</span>
                                 <span class="font-mono text-slate-700"><strong x-text="formatPayloadWeightKg(kpis.total_baggage_kg || 0)"></strong> (<span x-text="getPayloadPct('baggage')"></span>)</span>
                             </div>
+                            <div class="flex items-center justify-between">
+                                <span class="flex items-center gap-1.5 font-bold"><span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>Pos / Mail</span>
+                                <span class="font-mono text-slate-700"><strong x-text="formatPayloadWeightKg(kpis.pos_kg || 0)"></strong> (<span x-text="getPayloadPct('pos')"></span>)</span>
+                            </div>
                         </div>
                     </div>
 
                 </div>
 
-                {{-- Compact Flow Badges: Transit, Transfer, Crew (MUTUALLY EXCLUSIVE FROM PIE) --}}
-                <div class="grid grid-cols-3 gap-2 text-center py-2 px-3 bg-slate-50 rounded-xl border border-slate-100">
+                {{-- Compact Flow Badges: Transit, Transfer, Operating Crew, Crew / Flight --}}
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center py-2 px-3 bg-slate-50 rounded-xl border border-slate-100">
                     <div>
                         <div class="text-[9px] uppercase font-bold text-slate-400">Transit Flow</div>
                         <div class="text-xs font-black font-mono text-slate-800 mt-0.5" x-text="(paxAnalytics.composition.transit || 0).toLocaleString()">0</div>
@@ -643,7 +713,31 @@
                     </div>
                     <div>
                         <div class="text-[9px] uppercase font-bold text-slate-400">Operating Crew</div>
-                        <div class="text-xs font-black font-mono text-slate-800 mt-0.5" x-text="(paxAnalytics.composition.crew || 0).toLocaleString()">646</div>
+                        <div class="text-xs font-black font-mono text-slate-800 mt-0.5" x-text="(kpis.operating_crew || paxAnalytics.composition.crew || 0).toLocaleString()">646</div>
+                    </div>
+                    <div>
+                        <div class="text-[9px] uppercase font-bold text-slate-400">Crew / Flight</div>
+                        <div class="text-xs font-black font-mono text-blue-700 mt-0.5" x-text="(kpis.crew_per_flight ? kpis.crew_per_flight : '0.0')">0.0</div>
+                    </div>
+                </div>
+
+                {{-- Operational Telemetry: MTOW & Finalization Lock Status --}}
+                <div class="grid grid-cols-3 gap-2 text-center py-2 px-3 bg-slate-50/70 rounded-xl border border-slate-100 text-xs">
+                    <div>
+                        <div class="text-[9px] uppercase font-bold text-slate-400">Total MTOW</div>
+                        <div class="text-xs font-black font-mono text-slate-800 mt-0.5" x-text="Number(kpis.total_mtow_ton || 0).toLocaleString() + ' Ton'">0 Ton</div>
+                    </div>
+                    <div>
+                        <div class="text-[9px] uppercase font-bold text-slate-400">Avg MTOW / Flight</div>
+                        <div class="text-xs font-black font-mono text-slate-800 mt-0.5" x-text="Number(kpis.avg_mtow_ton || 0).toFixed(1) + ' Ton'">0.0 Ton</div>
+                    </div>
+                    <div>
+                        <div class="text-[9px] uppercase font-bold text-slate-400">Data Final Status</div>
+                        <div class="text-xs font-black mt-0.5"
+                             :class="(kpis.final_no_count === 0 && (kpis.final_yes_count || 0) > 0) ? 'text-emerald-700' : 'text-amber-700'"
+                             x-text="(kpis.final_no_count === 0 && (kpis.final_yes_count || 0) > 0) ? 'FINAL LOCKED (YES)' : ('FINAL: ' + (kpis.final_yes_count || 0) + 'Y / ' + (kpis.final_no_count || 0) + 'N')">
+                            FINAL: YES
+                        </div>
                     </div>
                 </div>
 
@@ -980,6 +1074,9 @@
             </div>
 
         </div>
+
+        {{-- ══ ROUTE ANALYTICS, SPECIAL SUFFIXES & INJOURNEY NETWORK MAP ═══════ --}}
+        @include('fdr.partials.view_normal_route_analytics')
 
         {{-- ══ 5. FLIGHT / PASSENGER / CARGO ANALYTICS ════════════════════════ --}}
         <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
@@ -1393,6 +1490,8 @@
 
         </div>
 
+    </div>
+
     </main>
 
     {{-- ══ FLIGHT DETAILS MODAL ════════════════════════════════════════════════ --}}
@@ -1504,11 +1603,35 @@ const _fdrCharts = {
     flightMovement: null,
     paxTrend: null,
     cargoTrend: null,
+    // Polymorphic views
+    slfHist: null,
+    slfRoute: null,
+    slfAircraft: null,
+    slfHourly: null,
+    yoyBar: null,
+    yoyTrend: null,
+    appsVariance: null,
+    appsDest: null,
+    ediflyDonut: null,
+    ediflyGap: null,
 };
 
 function fdrDashboardController() {
     return {
         uploadId: {{ $upload->id }},
+        activeReportType: '{{ $reportType ?? 'NORMAL' }}',
+        isExHalim: {{ ($reportType ?? '') === 'EX_HALIM' ? 'true' : 'false' }},
+        currentStage: 'dashboard',
+        showStagingCard: false,
+        isDragging: false,
+        isScanning: false,
+        scanError: null,
+        stagedFiles: [],
+        preScanData: null,
+        mergedHtml: '',
+        clientParsedData: null,
+        filterOutliers: true,
+        hoveredAirport: null,
         lockedAirport: '{{ strtoupper(trim($meta['report_airport'] ?? ($meta['airport'] ?? ($airports[0] ?? 'CGK')))) }}',
         abortController: null,
         availableDates: @json($availableDates),
@@ -1582,12 +1705,31 @@ function fdrDashboardController() {
 
         initAllCharts() {
             if (!window.Chart) return;
-            this.buildDelayHistChart();
-            this.buildPaxDonutChart();
-            this.buildPayloadDonutChart();
-            this.buildFlightMovementChart();
-            this.buildPaxTrendChart();
-            this.buildCargoTrendChart();
+            const type = this.activeReportType;
+            if (type === 'LOAD_FACTOR') {
+                this.buildSlfHistChart();
+                this.buildSlfRouteChart();
+                this.buildSlfAircraftChart();
+                this.buildSlfHourlyChart();
+            } else if (type === 'COMPARE_LOAD_FACTOR' || type === 'COMPARE_LOAD_FACTOR_DAY') {
+                this.buildYoyBarChart();
+                if (type === 'COMPARE_LOAD_FACTOR_DAY') {
+                    this.buildYoyTrendChart();
+                }
+            } else if (type === 'OASYS_VS_APPS') {
+                this.buildAppsVarianceChart();
+                this.buildAppsDestChart();
+            } else if (type === 'OASYS_VS_EDIFLY') {
+                this.buildEdiflyDonutChart();
+                this.buildEdiflyGapChart();
+            } else {
+                this.buildDelayHistChart();
+                this.buildPaxCompDonutChart();
+                this.buildPayloadCompDonutChart();
+                this.buildFlightMovementChart();
+                this.buildPaxTrendChart();
+                this.buildCargoTrendChart();
+            }
         },
 
         buildDelayHistChart() {
@@ -1598,9 +1740,11 @@ function fdrDashboardController() {
                 _fdrCharts.delayHist = null;
             }
 
-            const histData = (this.schedVsReal.hist_bins && this.schedVsReal.hist_bins.length === 9)
-                ? this.schedVsReal.hist_bins
-                : (this.schedVsReal.histogram || []);
+            const histData = (this.filterOutliers && this.schedVsReal.hist_bins_filtered)
+                ? this.schedVsReal.hist_bins_filtered
+                : (this.schedVsReal.hist_bins && this.schedVsReal.hist_bins.length === 9)
+                    ? this.schedVsReal.hist_bins
+                    : (this.schedVsReal.histogram || []);
 
             const labels = histData.map(b => b.label);
             const counts = histData.map(b => b.count);
@@ -1736,21 +1880,23 @@ function fdrDashboardController() {
 
             const cargo = Math.round(this.kpis.total_cargo_kg || 0);
             const baggage = Math.round(this.kpis.total_baggage_kg || 0);
-            const total = cargo + baggage;
+            const pos = Math.round(this.kpis.pos_kg || 0);
+            const total = cargo + baggage + pos;
 
             const hasData = total > 0;
-            const dataVals = hasData ? [cargo, baggage] : [1];
-            const bgColors = hasData ? ['#10B981', '#3B82F6'] : ['#E2E8F0'];
+            const dataVals = hasData ? [cargo, baggage, pos] : [1];
+            const bgColors = hasData ? ['#10B981', '#3B82F6', '#8B5CF6'] : ['#E2E8F0'];
 
             const metaSegments = [
                 { formattedValue: this.formatPayloadWeightKg(cargo), percentage: total > 0 ? ((cargo / total) * 100).toFixed(1) + '%' : '0.0%' },
                 { formattedValue: this.formatPayloadWeightKg(baggage), percentage: total > 0 ? ((baggage / total) * 100).toFixed(1) + '%' : '0.0%' },
+                { formattedValue: this.formatPayloadWeightKg(pos), percentage: total > 0 ? ((pos / total) * 100).toFixed(1) + '%' : '0.0%' },
             ];
 
             _fdrCharts.payloadDonut = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: hasData ? ['Cargo', 'Baggage'] : ['No Data'],
+                    labels: hasData ? ['Cargo', 'Baggage', 'Pos / Mail'] : ['No Data'],
                     datasets: [{
                         data: dataVals,
                         backgroundColor: bgColors,
@@ -2289,9 +2435,13 @@ function fdrDashboardController() {
         getPayloadPct(type) {
             const cargo = Math.round(this.kpis.total_cargo_kg || 0);
             const baggage = Math.round(this.kpis.total_baggage_kg || 0);
-            const total = cargo + baggage;
+            const pos = Math.round(this.kpis.pos_kg || 0);
+            const total = cargo + baggage + pos;
             if (total <= 0) return '0.0%';
-            const val = type === 'cargo' ? cargo : baggage;
+            let val = 0;
+            if (type === 'cargo') val = cargo;
+            else if (type === 'baggage') val = baggage;
+            else if (type === 'pos') val = pos;
             return ((val / total) * 100).toFixed(1) + '%';
         },
 
@@ -2537,6 +2687,784 @@ function fdrDashboardController() {
             return pages;
         },
 
+        // ── Stage A: Pre-Scan & Multi-File Staging Methods ────────────────────────
+        async handleFileInput(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+            await this.processUploadedFileList(Array.from(files));
+        },
+
+        async handleFileDrop(event) {
+            const files = event.dataTransfer ? event.dataTransfer.files : null;
+            if (!files || files.length === 0) return;
+            await this.processUploadedFileList(Array.from(files));
+        },
+
+        async processUploadedFileList(fileList) {
+            this.isScanning = true;
+            this.scanError = null;
+            try {
+                if (!window.fdrEngine) {
+                    throw new Error('FDR Processing Engine is not ready. Please refresh the page.');
+                }
+                const result = await window.fdrEngine.processFdrFiles(fileList);
+                this.preScanData = result.preScan;
+                this.stagedFiles = result.files;
+                this.mergedHtml = result.mergedHtml;
+                this.clientParsedData = result.parsedData;
+                this.activeReportType = result.preScan.reportType;
+
+                const hasHalim = fileList.some(f => /halim|hlp/i.test(f.name));
+                if (hasHalim && result.preScan.reportType === 'NORMAL') {
+                    this.isExHalim = true;
+                } else if (result.preScan.reportType === 'EX_HALIM') {
+                    this.isExHalim = true;
+                }
+            } catch (err) {
+                console.error('Pre-scan error:', err);
+                this.scanError = 'Gagal memproses file: ' + (err.message || 'Format file tidak didukung');
+            } finally {
+                this.isScanning = false;
+            }
+        },
+
+        resetStagedFiles() {
+            this.stagedFiles = [];
+            this.preScanData = null;
+            this.mergedHtml = '';
+            this.clientParsedData = null;
+            this.scanError = null;
+        },
+
+        generateDashboardFromStaged() {
+            if (!this.preScanData) return;
+            const targetType = this.isExHalim ? 'EX_HALIM' : this.preScanData.reportType;
+            this.activeReportType = targetType;
+            this.currentStage = 'dashboard';
+            this.showStagingCard = false;
+
+            if (this.clientParsedData) {
+                if (targetType === 'LOAD_FACTOR') {
+                    this.pagination.total = this.clientParsedData.records ? this.clientParsedData.records.length : 0;
+                    this.pagination.total_pages = Math.max(1, Math.ceil(this.pagination.total / this.pagination.per_page));
+                    this.pagination.current_page = 1;
+                }
+            }
+
+            this.$nextTick(() => {
+                this.initAllCharts();
+            });
+        },
+
+        // ── Template Badges & Helpers ─────────────────────────────────────────────
+        getReportTypeBadgeClass() {
+            const t = this.isExHalim ? 'EX_HALIM' : (this.activeReportType || 'NORMAL');
+            switch (t) {
+                case 'EX_HALIM': return 'bg-amber-100 text-amber-800 border border-amber-300';
+                case 'LOAD_FACTOR': return 'bg-emerald-100 text-emerald-800 border border-emerald-300';
+                case 'COMPARE_LOAD_FACTOR': return 'bg-indigo-100 text-indigo-800 border border-indigo-300';
+                case 'COMPARE_LOAD_FACTOR_DAY': return 'bg-purple-100 text-purple-800 border border-purple-300';
+                case 'OASYS_VS_APPS': return 'bg-teal-100 text-teal-800 border border-teal-300';
+                case 'OASYS_VS_EDIFLY': return 'bg-sky-100 text-sky-800 border border-sky-300';
+                default: return 'bg-blue-100 text-blue-800 border border-blue-300';
+            }
+        },
+
+        getReportTypeBadgeLabel() {
+            const t = this.isExHalim ? 'EX_HALIM' : (this.activeReportType || 'NORMAL');
+            return 'TEMPLATE: ' + t.replace(/_/g, ' ');
+        },
+
+        getTemplateBadgeClass(type) {
+            switch (type) {
+                case 'EX_HALIM': return 'bg-amber-500 text-white';
+                case 'LOAD_FACTOR': return 'bg-emerald-600 text-white';
+                case 'COMPARE_LOAD_FACTOR': return 'bg-indigo-600 text-white';
+                case 'COMPARE_LOAD_FACTOR_DAY': return 'bg-purple-600 text-white';
+                case 'OASYS_VS_APPS': return 'bg-teal-600 text-white';
+                case 'OASYS_VS_EDIFLY': return 'bg-sky-600 text-white';
+                default: return 'bg-blue-600 text-white';
+            }
+        },
+
+        getTemplateBadgeText(type) {
+            return (type || 'NORMAL').replace(/_/g, ' ');
+        },
+
+        resolveAirportName(code) {
+            if (window.fdrEngine && window.fdrEngine.INJOURNEY_AIRPORTS && window.fdrEngine.INJOURNEY_AIRPORTS[code]) {
+                const a = window.fdrEngine.INJOURNEY_AIRPORTS[code];
+                return `${a.name} (${a.city})`;
+            }
+            return code ? `${code} Airport` : 'Bandara';
+        },
+
+        formatFileSize(bytes) {
+            if (!bytes || bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        },
+
+        // ── Load Factor (13 Columns) Getters & Chart Builders ────────────────────
+        getLfRecords() {
+            if (this.clientParsedData && this.clientParsedData.records) {
+                return this.clientParsedData.records;
+            }
+            return this.flightRecords || [];
+        },
+
+        getPaginatedLfRecords() {
+            const recs = this.getLfRecords();
+            const start = (this.pagination.current_page - 1) * this.pagination.per_page;
+            return recs.slice(start, start + this.pagination.per_page);
+        },
+
+        getLfTotalFlights() {
+            return this.getLfRecords().length;
+        },
+
+        getLfArrivals() {
+            return this.getLfRecords().filter(r => (r.leg === 'A' || r.leg === 'ARRIVAL')).length;
+        },
+
+        getLfDepartures() {
+            return this.getLfRecords().filter(r => (r.leg === 'D' || r.leg === 'DEPARTURE')).length;
+        },
+
+        getLfTotalSeatCap() {
+            if (this.clientParsedData && this.clientParsedData.metadata && this.clientParsedData.metadata.totalSeatCapacity) {
+                return this.clientParsedData.metadata.totalSeatCapacity;
+            }
+            return this.getLfRecords().reduce((acc, r) => acc + (Number(r.seatCapacity || r.cap) || 0), 0);
+        },
+
+        getLfTotalPax() {
+            if (this.clientParsedData && this.clientParsedData.metadata && this.clientParsedData.metadata.totalPax) {
+                return this.clientParsedData.metadata.totalPax;
+            }
+            return this.getLfRecords().reduce((acc, r) => acc + (Number(r.pax || r.load) || 0), 0);
+        },
+
+        getLfAvgSlf() {
+            const cap = this.getLfTotalSeatCap();
+            const pax = this.getLfTotalPax();
+            if (cap === 0) return '0.0';
+            return ((pax / cap) * 100).toFixed(1);
+        },
+
+        getLfHighSlfCount() {
+            return this.getLfRecords().filter(r => parseFloat(r.slf || r.load_factor || 0) >= 80).length;
+        },
+
+        getLfLowSlfCount() {
+            return this.getLfRecords().filter(r => parseFloat(r.slf || r.load_factor || 0) < 50).length;
+        },
+
+        buildSlfHistChart() {
+            const ctx = document.getElementById('fdrSlfHistChart');
+            if (!ctx) return;
+            if (_fdrCharts.slfHist) {
+                _fdrCharts.slfHist.destroy();
+                _fdrCharts.slfHist = null;
+            }
+            const recs = this.getLfRecords();
+            const buckets = [
+                { label: '<40%', min: 0, max: 40, count: 0, color: '#EF4444' },
+                { label: '40-50%', min: 40, max: 50, count: 0, color: '#F87171' },
+                { label: '50-60%', min: 50, max: 60, count: 0, color: '#FBBF24' },
+                { label: '60-70%', min: 60, max: 70, count: 0, color: '#60A5FA' },
+                { label: '70-80%', min: 70, max: 80, count: 0, color: '#3B82F6' },
+                { label: '80-90%', min: 80, max: 90, count: 0, color: '#34D399' },
+                { label: '90-100%', min: 90, max: 101, count: 0, color: '#10B981' },
+            ];
+            recs.forEach(r => {
+                const slf = parseFloat(r.slf || r.load_factor || 0);
+                for (const b of buckets) {
+                    if (slf >= b.min && slf < b.max) {
+                        b.count++;
+                        break;
+                    }
+                }
+            });
+            _fdrCharts.slfHist = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: buckets.map(b => b.label),
+                    datasets: [{
+                        data: buckets.map(b => b.count),
+                        backgroundColor: buckets.map(b => b.color),
+                        borderRadius: 6,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold' } } },
+                        y: { beginAtZero: true, grid: { color: '#F1F5F9' }, ticks: { precision: 0 } }
+                    }
+                }
+            });
+        },
+
+        buildSlfRouteChart() {
+            const ctx = document.getElementById('fdrSlfRouteChart');
+            if (!ctx) return;
+            if (_fdrCharts.slfRoute) {
+                _fdrCharts.slfRoute.destroy();
+                _fdrCharts.slfRoute = null;
+            }
+            const recs = this.getLfRecords();
+            const routeMap = {};
+            recs.forEach(r => {
+                const rt = (r.arrivalRoute && r.departureRoute) ? `${r.arrivalRoute} → ${r.departureRoute}` : (r.route || 'ROUTE');
+                if (!routeMap[rt]) routeMap[rt] = { cap: 0, pax: 0, count: 0 };
+                routeMap[rt].cap += Number(r.seatCapacity || r.cap) || 0;
+                routeMap[rt].pax += Number(r.pax || r.load) || 0;
+                routeMap[rt].count++;
+            });
+            const topRoutes = Object.entries(routeMap).sort((a,b) => b[1].count - a[1].count).slice(0, 7);
+            _fdrCharts.slfRoute = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: topRoutes.map(t => t[0]),
+                    datasets: [
+                        { label: 'Seat Capacity', data: topRoutes.map(t => t[1].cap), backgroundColor: '#93C5FD', borderRadius: 4 },
+                        { label: 'Commercial Pax', data: topRoutes.map(t => t[1].pax), backgroundColor: '#10B981', borderRadius: 4 },
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 10, weight: 'bold' } } } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 9, weight: 'bold' } } },
+                        y: { beginAtZero: true, grid: { color: '#F1F5F9' } }
+                    }
+                }
+            });
+        },
+
+        buildSlfAircraftChart() {
+            const ctx = document.getElementById('fdrSlfAircraftChart');
+            if (!ctx) return;
+            if (_fdrCharts.slfAircraft) {
+                _fdrCharts.slfAircraft.destroy();
+                _fdrCharts.slfAircraft = null;
+            }
+            const recs = this.getLfRecords();
+            const acMap = {};
+            recs.forEach(r => {
+                const ac = r.typeOfAircraft || r.aircraft_type || r.desc || 'OTHER';
+                if (!acMap[ac]) acMap[ac] = { cap: 0, pax: 0 };
+                acMap[ac].cap += Number(r.seatCapacity || r.cap) || 0;
+                acMap[ac].pax += Number(r.pax || r.load) || 0;
+            });
+            const topAc = Object.entries(acMap).slice(0, 6);
+            _fdrCharts.slfAircraft = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: topAc.map(a => a[0]),
+                    datasets: [{
+                        label: 'Average SLF (%)',
+                        data: topAc.map(a => a[1].cap > 0 ? ((a[1].pax / a[1].cap) * 100).toFixed(1) : 0),
+                        backgroundColor: '#6366F1',
+                        borderRadius: 6,
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } },
+                        y: { grid: { display: false } }
+                    }
+                }
+            });
+        },
+
+        buildSlfHourlyChart() {
+            const ctx = document.getElementById('fdrSlfHourlyChart');
+            if (!ctx) return;
+            if (_fdrCharts.slfHourly) {
+                _fdrCharts.slfHourly.destroy();
+                _fdrCharts.slfHourly = null;
+            }
+            const recs = this.getLfRecords();
+            const hours = Array(24).fill(0);
+            recs.forEach(r => {
+                const timeStr = r.scheduledTime || r.sibt || r.sobt || '';
+                const m = timeStr.match(/(\d{1,2}):\d{2}/);
+                if (m) {
+                    const h = parseInt(m[1], 10);
+                    if (h >= 0 && h < 24) hours[h] += (Number(r.seatCapacity || r.cap) || 0);
+                }
+            });
+            _fdrCharts.slfHourly = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: hours.map((_, i) => `${String(i).padStart(2,'0')}:00`),
+                    datasets: [{
+                        label: 'Seats Offered',
+                        data: hours,
+                        borderColor: '#10B981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { maxTicksLimit: 12, font: { size: 9 } } },
+                        y: { beginAtZero: true, grid: { color: '#F1F5F9' } }
+                    }
+                }
+            });
+        },
+
+        // ── Compare Load Factor (YoY) Getters & Chart Builders ───────────────────
+        getYoyRecords() {
+            if (this.clientParsedData && this.clientParsedData.records) {
+                return this.clientParsedData.records;
+            }
+            return [];
+        },
+
+        getYoyKpi(key) {
+            const recs = this.getYoyRecords();
+            if (!recs.length) return key.includes('Ratio') ? '0.0' : 0;
+            const sum = (k) => recs.reduce((a, b) => a + (Number(b[k]) || 0), 0);
+            const fp = sum('flightPrevYear'), fc = sum('flightCurrYear');
+            const pp = sum('paxPrevYear'), pc = sum('paxCurrYear');
+            const cp = sum('cargoPrevYear'), cc = sum('cargoCurrYear');
+            const sp = sum('seatCapPrevYear'), sc = sum('seatCapCurrYear');
+
+            switch (key) {
+                case 'flightPrev': return fp;
+                case 'flightCurr': return fc;
+                case 'flightRatio': return fp > 0 ? ((fc / fp) * 100).toFixed(1) : '100.0';
+                case 'paxPrev': return pp;
+                case 'paxCurr': return pc;
+                case 'paxRatio': return pp > 0 ? ((pc / pp) * 100).toFixed(1) : '100.0';
+                case 'cargoPrev': return cp;
+                case 'cargoCurr': return cc;
+                case 'cargoRatio': return cp > 0 ? ((cc / cp) * 100).toFixed(1) : '100.0';
+                case 'seatcapPrev': return sp;
+                case 'seatcapCurr': return sc;
+                case 'seatcapRatio': return sp > 0 ? ((sc / sp) * 100).toFixed(1) : '100.0';
+                case 'slfPrevRatio': return sp > 0 ? ((pp / sp) * 100).toFixed(1) : '0.0';
+                case 'slfCurrRatio': return sc > 0 ? ((pc / sc) * 100).toFixed(1) : '0.0';
+                default: return 0;
+            }
+        },
+
+        buildYoyBarChart() {
+            const ctx = document.getElementById('fdrYoyBarChart');
+            if (!ctx) return;
+            if (_fdrCharts.yoyBar) {
+                _fdrCharts.yoyBar.destroy();
+                _fdrCharts.yoyBar = null;
+            }
+            const recs = this.getYoyRecords().slice(0, 10);
+            _fdrCharts.yoyBar = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: recs.map(r => r.airport),
+                    datasets: [
+                        { label: 'Prev Year Pax', data: recs.map(r => r.paxPrevYear), backgroundColor: '#94A3B8', borderRadius: 4 },
+                        { label: 'Curr Year Pax', data: recs.map(r => r.paxCurrYear), backgroundColor: '#3B82F6', borderRadius: 4 },
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 10, weight: 'bold' } } } },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { beginAtZero: true, grid: { color: '#F1F5F9' } }
+                    }
+                }
+            });
+        },
+
+        buildYoyTrendChart() {
+            const ctx = document.getElementById('fdrYoyTrendChart');
+            if (!ctx) return;
+            if (_fdrCharts.yoyTrend) {
+                _fdrCharts.yoyTrend.destroy();
+                _fdrCharts.yoyTrend = null;
+            }
+            const recs = this.getYoyRecords().filter(r => r.date).sort((a,b) => (a.date || '').localeCompare(b.date || ''));
+            _fdrCharts.yoyTrend = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: recs.map(r => r.date),
+                    datasets: [
+                        { label: 'Prev Year Pax', data: recs.map(r => r.paxPrevYear), borderColor: '#94A3B8', tension: 0.2 },
+                        { label: 'Curr Year Pax', data: recs.map(r => r.paxCurrYear), borderColor: '#3B82F6', tension: 0.2 },
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top' } },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { beginAtZero: true, grid: { color: '#F1F5F9' } }
+                    }
+                }
+            });
+        },
+
+        // ── OASYS vs APPS Getters & Chart Builders ────────────────────────────────
+        getAppsRecords() {
+            if (this.clientParsedData && this.clientParsedData.records) {
+                return this.clientParsedData.records;
+            }
+            return [];
+        },
+
+        getPaginatedAppsRecords() {
+            const recs = this.getAppsRecords();
+            const start = (this.pagination.current_page - 1) * this.pagination.per_page;
+            return recs.slice(start, start + this.pagination.per_page);
+        },
+
+        getAppsMatrixVal(category, metric) {
+            if (this.clientParsedData && this.clientParsedData.reconciliationMatrix) {
+                const matrix = this.clientParsedData.reconciliationMatrix;
+                const row = metric === 'fltDep' ? 'fltDep' : (metric === 'apps' ? 'apps' : 'deviation');
+                if (matrix[row]) {
+                    return matrix[row][category] || 0;
+                }
+            }
+            return 0;
+        },
+
+        getAppsTotalFltDep() {
+            return this.getAppsMatrixVal('total', 'fltDep') || this.getAppsRecords().length;
+        },
+
+        getAppsTotalApps() {
+            return this.getAppsMatrixVal('total', 'apps') || this.getAppsRecords().length;
+        },
+
+        getAppsTotalDev() {
+            return this.getAppsMatrixVal('total', 'dev');
+        },
+
+        getAppsTotalPax() {
+            return this.getAppsRecords().reduce((acc, r) => acc + (Number(r.adult || 0) + Number(r.child || 0) + Number(r.infant || 0)), 0);
+        },
+
+        getAppsTotalCrew() {
+            return this.getAppsRecords().reduce((acc, r) => acc + (Number(r.crew || 0) + Number(r.exCrew || 0)), 0);
+        },
+
+        buildAppsVarianceChart() {
+            const ctx = document.getElementById('fdrAppsVarianceChart');
+            if (!ctx) return;
+            if (_fdrCharts.appsVariance) {
+                _fdrCharts.appsVariance.destroy();
+                _fdrCharts.appsVariance = null;
+            }
+            const recs = this.getAppsRecords();
+            let onTime = 0, early = 0, late = 0;
+            recs.forEach(r => {
+                if (!r.stad || !r.offBlockTime) return;
+                const parseMin = (s) => {
+                    const m = s.match(/(\d{1,2}):(\d{2})/);
+                    return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : 0;
+                };
+                const diff = parseMin(r.offBlockTime) - parseMin(r.stad);
+                if (Math.abs(diff) <= 15) onTime++;
+                else if (diff < -15) early++;
+                else late++;
+            });
+            _fdrCharts.appsVariance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['On-Time (±15m)', 'Early (>15m)', 'Late (>15m)'],
+                    datasets: [{
+                        data: [onTime, early, late],
+                        backgroundColor: ['#10B981', '#3B82F6', '#EF4444'],
+                        borderWidth: 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        },
+
+        buildAppsDestChart() {
+            const ctx = document.getElementById('fdrAppsDestChart');
+            if (!ctx) return;
+            if (_fdrCharts.appsDest) {
+                _fdrCharts.appsDest.destroy();
+                _fdrCharts.appsDest = null;
+            }
+            const recs = this.getAppsRecords();
+            const cityMap = {};
+            recs.forEach(r => {
+                const c = r.city || 'UNKNOWN';
+                const p = (Number(r.adult || 0) + Number(r.child || 0));
+                cityMap[c] = (cityMap[c] || 0) + p;
+            });
+            const topCities = Object.entries(cityMap).sort((a,b) => b[1] - a[1]).slice(0, 6);
+            _fdrCharts.appsDest = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: topCities.map(c => c[0]),
+                    datasets: [{
+                        label: 'Departure Pax',
+                        data: topCities.map(c => c[1]),
+                        backgroundColor: '#0D9488',
+                        borderRadius: 6,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { beginAtZero: true, grid: { color: '#F1F5F9' } }
+                    }
+                }
+            });
+        },
+
+        // ── OASYS vs EDIFLY Getters & Chart Builders ─────────────────────────────
+        getEdiflyRecords() {
+            if (this.clientParsedData && this.clientParsedData.records) {
+                return this.clientParsedData.records;
+            }
+            return [];
+        },
+
+        getPaginatedEdiflyRecords() {
+            const recs = this.getEdiflyRecords();
+            const start = (this.pagination.current_page - 1) * this.pagination.per_page;
+            return recs.slice(start, start + this.pagination.per_page);
+        },
+
+        getEdiflyTotalMovements() {
+            return this.getEdiflyRecords().length;
+        },
+
+        getEdiflyPaxIntegrationRate() {
+            const recs = this.getEdiflyRecords();
+            if (!recs.length) return '0.0';
+            const integrated = recs.filter(r => !/NO INTEGRATION/i.test(r.apiPaxEdifly || '')).length;
+            return ((integrated / recs.length) * 100).toFixed(1);
+        },
+
+        getEdiflyCargoIntegrationRate() {
+            const recs = this.getEdiflyRecords();
+            if (!recs.length) return '0.0';
+            const integrated = recs.filter(r => !/NO INTEGRATION/i.test(r.apiCargoEdifly || '')).length;
+            return ((integrated / recs.length) * 100).toFixed(1);
+        },
+
+        getEdiflyUnintegratedCount() {
+            const recs = this.getEdiflyRecords();
+            return recs.filter(r => /NO INTEGRATION/i.test(r.apiPaxEdifly || '') || /NO INTEGRATION/i.test(r.apiCargoEdifly || '')).length;
+        },
+
+        getEdiflyTotalMtow() {
+            return Math.round(this.getEdiflyRecords().reduce((acc, r) => acc + (parseFloat(r.mtow) || 0), 0));
+        },
+
+        buildEdiflyDonutChart() {
+            const ctx = document.getElementById('fdrEdiflyDonutChart');
+            if (!ctx) return;
+            if (_fdrCharts.ediflyDonut) {
+                _fdrCharts.ediflyDonut.destroy();
+                _fdrCharts.ediflyDonut = null;
+            }
+            const recs = this.getEdiflyRecords();
+            const paxInt = recs.filter(r => !/NO INTEGRATION/i.test(r.apiPaxEdifly || '')).length;
+            const paxNo = recs.length - paxInt;
+            _fdrCharts.ediflyDonut = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Integrated', 'NO INTEGRATION'],
+                    datasets: [{
+                        data: [paxInt, paxNo],
+                        backgroundColor: ['#0284C7', '#EF4444'],
+                        borderWidth: 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        },
+
+        buildEdiflyGapChart() {
+            const ctx = document.getElementById('fdrEdiflyGapChart');
+            if (!ctx) return;
+            if (_fdrCharts.ediflyGap) {
+                _fdrCharts.ediflyGap.destroy();
+                _fdrCharts.ediflyGap = null;
+            }
+            const recs = this.getEdiflyRecords();
+            const airlineGaps = {};
+            recs.forEach(r => {
+                const al = r.airline || 'UNKNOWN';
+                const isGap = /NO INTEGRATION/i.test(r.apiPaxEdifly || '') || /NO INTEGRATION/i.test(r.apiCargoEdifly || '');
+                if (isGap) airlineGaps[al] = (airlineGaps[al] || 0) + 1;
+            });
+            const topGaps = Object.entries(airlineGaps).sort((a,b) => b[1] - a[1]).slice(0, 5);
+            _fdrCharts.ediflyGap = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: topGaps.map(g => g[0]),
+                    datasets: [{
+                        label: 'Unintegrated Flights',
+                        data: topGaps.map(g => g[1]),
+                        backgroundColor: '#F43F5E',
+                        borderRadius: 6,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { beginAtZero: true, grid: { color: '#F1F5F9' }, ticks: { precision: 0 } }
+                    }
+                }
+            });
+        },
+
+        // ── Normal View: Route Analytics, Suffixes & Network Map ──────────────────
+        getSpecialSuffixTotalCount() {
+            const dist = this.getSuffixDistribution();
+            return dist.reduce((acc, d) => acc + d.count, 0);
+        },
+
+        getSuffixDistribution() {
+            if (this.airlineRoute && this.airlineRoute.suffix_distribution) {
+                return this.airlineRoute.suffix_distribution;
+            }
+            return [];
+        },
+
+        getLegSubtypeCount(type) {
+            if (this.airlineRoute && this.airlineRoute.leg_subtypes && this.airlineRoute.leg_subtypes[type] != null) {
+                return this.airlineRoute.leg_subtypes[type];
+            }
+            return 0;
+        },
+
+        getLegSubtypePct(type) {
+            const total = (this.kpis ? this.kpis.total_flights : 0) || this.totalRecords || 1;
+            const cnt = this.getLegSubtypeCount(type);
+            return ((cnt / total) * 100).toFixed(1) + '%';
+        },
+
+        getBusiestRoutes() {
+            if (this.airlineRoute && this.airlineRoute.top_busiest_routes) {
+                return this.airlineRoute.top_busiest_routes;
+            }
+            return (this.airlineRoute && this.airlineRoute.top_routes) ? this.airlineRoute.top_routes.slice(0, 10) : [];
+        },
+
+        getMostDelayedRoutes() {
+            if (this.airlineRoute && this.airlineRoute.top_delayed_routes) {
+                return this.airlineRoute.top_delayed_routes;
+            }
+            return [];
+        },
+
+        getHighestSlfRoutes() {
+            if (this.airlineRoute && this.airlineRoute.top_slf_routes) {
+                return this.airlineRoute.top_slf_routes;
+            }
+            return [];
+        },
+
+        getNetworkAirportNodes() {
+            const dict = (window.fdrEngine && window.fdrEngine.INJOURNEY_AIRPORTS) || {};
+            const hub = this.filters.airport || this.lockedAirport || 'CGK';
+            const connectedAirports = new Set();
+            this.getBusiestRoutes().forEach(r => {
+                if (r.route) {
+                    const parts = r.route.split(/[\s\-→]+/);
+                    parts.forEach(p => connectedAirports.add(p.trim().toUpperCase()));
+                }
+            });
+            connectedAirports.add(hub);
+
+            return Object.keys(dict).map(code => {
+                const info = dict[code];
+                const x = Math.round(((info.lon - 94.0) / (141.0 - 94.0)) * 820 + 50);
+                const y = Math.round(((6.0 - info.lat) / (6.0 - -11.0)) * 280 + 40);
+                const isActive = code === hub || connectedAirports.has(code);
+                return {
+                    code,
+                    name: info.name,
+                    city: info.city,
+                    x,
+                    y,
+                    isActive,
+                    flightsCount: code === hub ? (this.kpis.total_flights || 0) : 0,
+                };
+            });
+        },
+
+        getNetworkRouteLines() {
+            const dict = (window.fdrEngine && window.fdrEngine.INJOURNEY_AIRPORTS) || {};
+            const routes = this.getBusiestRoutes();
+            const hub = this.filters.airport || this.lockedAirport || 'CGK';
+            const lines = [];
+
+            routes.forEach((r) => {
+                if (!r.route) return;
+                const parts = r.route.split(/[\s\-→]+/);
+                if (parts.length < 2) return;
+                const c1 = parts[0].trim().toUpperCase();
+                const c2 = parts[1].trim().toUpperCase();
+                const a1 = dict[c1];
+                const a2 = dict[c2];
+                if (!a1 || !a2) return;
+
+                const x1 = Math.round(((a1.lon - 94.0) / (141.0 - 94.0)) * 820 + 50);
+                const y1 = Math.round(((6.0 - a1.lat) / (6.0 - -11.0)) * 280 + 40);
+                const x2 = Math.round(((a2.lon - 94.0) / (141.0 - 94.0)) * 820 + 50);
+                const y2 = Math.round(((6.0 - a2.lat) / (6.0 - -11.0)) * 280 + 40);
+
+                const mx = (x1 + x2) / 2;
+                const my = Math.min(y1, y2) - Math.abs(x2 - x1) * 0.15;
+                const pathD = `M ${x1} ${y1} Q ${mx} ${my} ${x2} ${y2}`;
+                const strokeWidth = Math.max(1, Math.min(4, Math.round((r.count || 1) / 10)));
+
+                lines.push({
+                    pathD,
+                    strokeWidth,
+                    title: `${c1} → ${c2}: ${r.count || 0} flights`,
+                });
+            });
+
+            return lines;
+        },
+
         getExportUrl(type) {
             const params = new URLSearchParams({
                 date_scope: this.dateScope,
@@ -2548,6 +3476,7 @@ function fdrDashboardController() {
                 analysis_date: this.dateScope === 'ALL_PERIOD' ? '' : (this.filters.analysis_date || ''),
                 search: this.filters.search,
                 time_basis: this.filters.time_basis,
+                report_type: this.isExHalim ? 'EX_HALIM' : this.activeReportType,
             });
             return `/fdr/${this.uploadId}/export/${type}?` + params.toString();
         }

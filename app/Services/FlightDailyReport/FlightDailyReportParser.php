@@ -11,6 +11,7 @@ class FlightDailyReportParser
      * Strict raw FDR headers mapping regex.
      */
     protected const HEADER_MAPPINGS = [
+        'no'          => '/^(no|no\.?|nomor|#)$/i',
         'flight_date' => '/^(flight\s*date|flt\s*date|operational\s*date|op\s*date|date|tanggal)$/i',
         'air_line'    => '/^(air\s*line|airline|maskapai|operator)$/i',
         'flight_no'   => '/^(flight\s*no\.?|flt\s*no\.?|flight\s*number|flightno|fltno|no\s*penerbangan)$/i',
@@ -59,6 +60,203 @@ class FlightDailyReportParser
         'PNK', 'TRK', 'KOE', 'AMQ', 'DJJ', 'TIM', 'BIK', 'MKQ', 'SOQ', 'MKW',
         'GTO', 'KDI', 'TTE', 'TJQ', 'PGK', 'TNJ', 'BTH', 'DTB', 'BWX', 'MLG'
     ];
+
+    /**
+     * Official OASYS Suffix Dictionary.
+     */
+    public const OASYS_SUFFIX_DICTIONARY = [
+        'X' => ['label' => 'Extra Flight', 'desc' => 'Additional unscheduled movement', 'category' => 'Additional'],
+        'R' => ['label' => 'Return to Airport/Base (RTB/RTA)', 'desc' => 'Flight returned to departure station or base', 'category' => 'Irregular'],
+        'I' => ['label' => 'Haji Flight', 'desc' => 'Pilgrimage charter movement', 'category' => 'Special'],
+        'D' => ['label' => 'Divert', 'desc' => 'Flight diverted to alternate station', 'category' => 'Irregular'],
+        'A' => ['label' => 'Hanggar / Reschedule 4 Jam', 'desc' => 'Maintenance hangar movement or rescheduling >= 4h', 'category' => 'Technical'],
+        'F' => ['label' => 'Ferry Flight', 'desc' => 'Aircraft repositioning without commercial payload', 'category' => 'Operational'],
+        'H' => ['label' => 'Charter Cargo/Mail', 'desc' => 'Dedicated cargo charter flight', 'category' => 'Charter'],
+        'O' => ['label' => 'Charter Special Handling', 'desc' => 'Special handling charter flight', 'category' => 'Charter'],
+        'L' => ['label' => 'Military Flight', 'desc' => 'Indonesian military transport or exercise', 'category' => 'State/Military'],
+        '&' => ['label' => 'Military Flight', 'desc' => 'Military / Special operations', 'category' => 'State/Military'],
+        'G' => ['label' => 'Government Flight', 'desc' => 'State official or government mission', 'category' => 'State/Military'],
+        'V' => ['label' => 'VIP Flight', 'desc' => 'Head of state / VVIP movement', 'category' => 'State/Military'],
+        'M' => ['label' => 'Medical Flight', 'desc' => 'Medevac or air ambulance movement', 'category' => 'Emergency'],
+        'N' => ['label' => 'Next Day / Postpone', 'desc' => 'Flight postponed to next operating day', 'category' => 'Irregular'],
+        'Z' => ['label' => 'Extend', 'desc' => 'Operational slot extension', 'category' => 'Operational'],
+        'S' => ['label' => 'Flying School / Training', 'desc' => 'Flight crew pilot training', 'category' => 'Training'],
+        'T' => ['label' => 'Flying School / Training', 'desc' => 'Technical flight test', 'category' => 'Training'],
+        'K' => ['label' => 'Flying School / Training', 'desc' => 'Cadet training movement', 'category' => 'Training'],
+    ];
+
+    /**
+     * Deterministically auto-detect which of the 7 OASYS FDR templates an HTML string corresponds to.
+     */
+    public static function detectOasysFdrType(string $htmlString, string $fileName = ''): string
+    {
+        $lower = strtolower($htmlString);
+        $fnLower = strtolower($fileName);
+
+        if (
+            str_contains($lower, 'apps vs flight dep') ||
+            str_contains($lower, 'oasys departure vs apps data') ||
+            (str_contains($lower, 'off block time') && str_contains($lower, 'stad'))
+        ) {
+            return 'OASYS_VS_APPS';
+        }
+
+        if (
+            str_contains($lower, 'api pax edifly') ||
+            str_contains($lower, 'api cargo edifly') ||
+            (str_contains($lower, 'station 1') && str_contains($lower, 'station 2') && str_contains($lower, 'edifly'))
+        ) {
+            return 'OASYS_VS_EDIFLY';
+        }
+
+        if (
+            str_contains($lower, 'seat load factor 202') ||
+            (str_contains($lower, 'dau oasys') && str_contains($lower, 'seat load factor')) ||
+            (str_contains($lower, 'load factor') && (str_contains($lower, 'prevyear') || (str_contains($lower, '2025') && str_contains($lower, '2026'))))
+        ) {
+            if (
+                preg_match('/<td[^>]*>[A-Z]{3}\s*<br\s*\/?>\s*\d{4}-\d{2}-\d{2}/i', $htmlString) ||
+                preg_match('/[A-Z]{3}\s*<br\s*\/?>\s*\d{4}-\d{2}-\d{2}/i', $htmlString) ||
+                str_contains($fnLower, 'day') ||
+                str_contains($lower, 'day by day')
+            ) {
+                return 'COMPARE_LOAD_FACTOR_DAY';
+            }
+            return 'COMPARE_LOAD_FACTOR';
+        }
+
+        if (
+            str_contains($lower, 'type of aircraft') &&
+            (str_contains($lower, 'arrival route') || str_contains($lower, 'departure route')) &&
+            (str_contains($lower, 'slf') || str_contains($lower, 'extra_crew'))
+        ) {
+            return 'LOAD_FACTOR';
+        }
+
+        if (
+            str_contains($lower, 'paired no') ||
+            str_contains($lower, 'sibt sobt') ||
+            str_contains($lower, 'aibt aobt') ||
+            str_contains($lower, 'umroh') ||
+            (str_contains($lower, 'stand') && str_contains($lower, 'runway') && str_contains($lower, 'mtow'))
+        ) {
+            if (str_contains($fnLower, 'halim') || str_contains($fnLower, 'hlp')) {
+                return 'EX_HALIM';
+            }
+            return 'NORMAL';
+        }
+
+        if (str_contains($fnLower, 'halim') || str_contains($fnLower, 'hlp')) return 'EX_HALIM';
+        if (str_contains($fnLower, 'load_factor') || str_contains($fnLower, 'slf')) return 'LOAD_FACTOR';
+        if (str_contains($fnLower, 'apps')) return 'OASYS_VS_APPS';
+        if (str_contains($fnLower, 'edifly')) return 'OASYS_VS_EDIFLY';
+
+        return 'NORMAL';
+    }
+
+    /**
+     * Normalize airline names and codes.
+     */
+    public static function normalizeAirlineName(string $rawAirline, string $flightNo = '', string $tailNo = ''): array
+    {
+        $raw = trim($rawAirline);
+        $rawUpper = strtoupper($raw);
+        $fltUpper = strtoupper(trim($flightNo));
+        $tailUpper = strtoupper(trim($tailNo));
+
+        if (stripos($rawUpper, 'CITILINK') !== false || stripos($rawUpper, 'GAC') !== false || stripos($rawUpper, 'CTV') !== false || preg_match('/\bQG\s*\d+/i', $fltUpper) || $rawUpper === 'QG') {
+            return ['code' => 'QG', 'name' => 'Citilink', 'clean_name' => 'Citilink', 'raw' => $raw];
+        }
+        if (stripos($rawUpper, 'PELITA') !== false || stripos($rawUpper, 'PAS') !== false || $rawUpper === '6D' || preg_match('/\bIP\s*\d+/i', $fltUpper) || $rawUpper === 'IP') {
+            return ['code' => 'IP', 'name' => 'Pelita Air', 'clean_name' => 'Pelita Air', 'raw' => $raw];
+        }
+        if (
+            stripos($rawUpper, 'TRANSNUSA') !== false || stripos($rawUpper, 'TNE') !== false || stripos($rawUpper, 'TNV') !== false ||
+            stripos($rawUpper, 'TRN') !== false || $rawUpper === '8B' || $rawUpper === 'M8' || preg_match('/\b8B\s*\d+/i', $fltUpper) ||
+            preg_match('/^PK-T(NC|NJ|NR|NS|VY|VZ)/i', $rawUpper) || preg_match('/^PK-T(NC|NJ|NR|NS|VY|VZ)/i', $tailUpper)
+        ) {
+            return ['code' => '8B', 'name' => 'TransNusa', 'clean_name' => 'TransNusa', 'raw' => $raw];
+        }
+        if (stripos($rawUpper, 'AIRASIA') !== false || stripos($rawUpper, 'AWQ') !== false || stripos($rawUpper, 'XT') !== false || preg_match('/\bQZ\s*\d+/i', $fltUpper) || $rawUpper === 'QZ') {
+            return ['code' => 'QZ', 'name' => 'Indonesia AirAsia', 'clean_name' => 'Indonesia AirAsia', 'raw' => $raw];
+        }
+        if (stripos($rawUpper, 'TRIGANA') !== false || stripos($rawUpper, 'GY') !== false || $rawUpper === 'TN' || preg_match('/\bIL\s*\d+/i', $fltUpper) || $rawUpper === 'IL') {
+            return ['code' => 'IL', 'name' => 'Trigana Air', 'clean_name' => 'Trigana Air', 'raw' => $raw];
+        }
+        if (stripos($rawUpper, 'NAM') !== false || $rawUpper === 'NM' || preg_match('/\bIN\s*\d+/i', $fltUpper) || $rawUpper === 'IN') {
+            return ['code' => 'IN', 'name' => 'Nam Air', 'clean_name' => 'Nam Air', 'raw' => $raw];
+        }
+        if (stripos($rawUpper, 'MY INDO') !== false || stripos($rawUpper, 'MYU') !== false || $rawUpper === '3Y' || preg_match('/\b2Y\s*\d+/i', $fltUpper) || $rawUpper === '2Y') {
+            return ['code' => '2Y', 'name' => 'My Indo Airlines', 'clean_name' => 'My Indo Airlines', 'raw' => $raw];
+        }
+        if (stripos($rawUpper, 'AIRFAST') !== false || $rawUpper === 'AP' || preg_match('/\bFS\s*\d+/i', $fltUpper) || $rawUpper === 'FS' || preg_match('/^PK-OC[STU]/i', $rawUpper) || preg_match('/^PK-OC[STU]/i', $tailUpper)) {
+            return ['code' => 'FS', 'name' => 'Airfast Indonesia', 'clean_name' => 'Airfast Indonesia', 'raw' => $raw];
+        }
+        if (stripos($rawUpper, 'GARUDA') !== false || stripos($rawUpper, 'GIA') !== false || preg_match('/\bGA\s*\d+/i', $fltUpper) || $rawUpper === 'GA') {
+            return ['code' => 'GA', 'name' => 'Garuda Indonesia', 'clean_name' => 'Garuda Indonesia', 'raw' => $raw];
+        }
+        if (stripos($rawUpper, 'BATIK') !== false || stripos($rawUpper, 'BTK') !== false || preg_match('/\bID\s*\d+/i', $fltUpper) || $rawUpper === 'ID') {
+            return ['code' => 'ID', 'name' => 'Batik Air', 'clean_name' => 'Batik Air', 'raw' => $raw];
+        }
+        if (stripos($rawUpper, 'SUPER AIR JET') !== false || stripos($rawUpper, 'SJV') !== false || preg_match('/\bIU\s*\d+/i', $fltUpper) || $rawUpper === 'IU') {
+            return ['code' => 'IU', 'name' => 'Super Air Jet', 'clean_name' => 'Super Air Jet', 'raw' => $raw];
+        }
+        if (stripos($rawUpper, 'LION') !== false || stripos($rawUpper, 'LNI') !== false || preg_match('/\bJT\s*\d+/i', $fltUpper) || $rawUpper === 'JT') {
+            return ['code' => 'JT', 'name' => 'Lion Air', 'clean_name' => 'Lion Air', 'raw' => $raw];
+        }
+        if (stripos($rawUpper, 'SRIWIJAYA') !== false || stripos($rawUpper, 'SJY') !== false || preg_match('/\bSJ\s*\d+/i', $fltUpper) || $rawUpper === 'SJ') {
+            return ['code' => 'SJ', 'name' => 'Sriwijaya Air', 'clean_name' => 'Sriwijaya Air', 'raw' => $raw];
+        }
+        if (stripos($rawUpper, 'WINGS') !== false || stripos($rawUpper, 'WON') !== false || preg_match('/\bIW\s*\d+/i', $fltUpper) || $rawUpper === 'IW') {
+            return ['code' => 'IW', 'name' => 'Wings Air', 'clean_name' => 'Wings Air', 'raw' => $raw];
+        }
+
+        return ['code' => substr($rawUpper, 0, 3) ?: 'N/A', 'name' => $raw ?: 'Other Airline', 'clean_name' => $raw ?: 'Other Airline', 'raw' => $raw];
+    }
+
+    /**
+     * Extract flight number base and trailing suffix letter mapped to OASYS Suffix Dictionary.
+     */
+    public static function extractFlightSuffix(string $flightNo, string $pairedNo = ''): array
+    {
+        $cleanFlt = trim($flightNo);
+        $cleanPair = trim($pairedNo);
+        $base = $cleanFlt;
+        $suffix = '';
+        $label = '';
+        $desc = '';
+        $category = 'Regular';
+
+        if (preg_match('/^([A-Z0-9]*?\d+)([A-Z<$&^])?$/i', $cleanFlt, $m) && !empty($m[2])) {
+            $base = $m[1];
+            $suffix = strtoupper($m[2]);
+        } elseif (preg_match('/^([A-Z0-9]+?)([A-Z])$/i', $cleanFlt, $m) && preg_match('/\d/', $m[1])) {
+            $base = $m[1];
+            $suffix = strtoupper($m[2]);
+        }
+
+        if (empty($suffix) && !empty($cleanPair) && $cleanPair !== 'N/A') {
+            if (preg_match('/^([A-Z0-9]*?\d+)([A-Z<$&^])?$/i', $cleanPair, $pm) && !empty($pm[2])) {
+                $suffix = strtoupper($pm[2]);
+            }
+        }
+
+        if (!empty($suffix) && isset(self::OASYS_SUFFIX_DICTIONARY[$suffix])) {
+            $dict = self::OASYS_SUFFIX_DICTIONARY[$suffix];
+            $label = $dict['label'];
+            $desc = $dict['desc'];
+            $category = $dict['category'];
+        }
+
+        return [
+            'base'              => $base,
+            'suffix'            => $suffix,
+            'label'             => $label,
+            'desc'              => $desc,
+            'category'          => $category,
+            'is_special_suffix' => !empty($suffix),
+        ];
+    }
 
     /**
      * Detect actual markup and container format of FDR source file (Prompt Item 12 & 13).
@@ -1363,9 +1561,20 @@ class FlightDailyReportParser
                 continue;
             }
 
-            // Movement row detection: First cell must be a positive numeric row number (Section 18)
-            if (!is_numeric($firstCell) || (int)$firstCell <= 0) {
-                continue;
+            // Movement row detection: If 'no' column is mapped, check that cell; otherwise check first cell or flight identifier
+            if (isset($map['no']) && isset($row[$map['no']])) {
+                $noVal = trim((string)$row[$map['no']]);
+                if (!is_numeric($noVal) || (int)$noVal <= 0) {
+                    continue;
+                }
+            } else {
+                if (!is_numeric($firstCell) || (int)$firstCell <= 0) {
+                    $hasIdent = (isset($map['flight_no']) && !empty($row[$map['flight_no']])) ||
+                                (isset($map['air_line']) && !empty($row[$map['air_line']]));
+                    if (!$hasIdent) {
+                        continue;
+                    }
+                }
             }
 
             // Extract raw fields using map
@@ -1428,15 +1637,13 @@ class FlightDailyReportParser
                 continue;
             }
 
-            // Extract Flight Suffix if present (e.g. GA120A => base GA120, suffix A)
-            $flightNoBase = $flightNo;
-            $flightSuffix = '';
-            if ($flightNo !== 'N/A' && preg_match('/^([A-Z0-9]+?)([A-Z])$/i', $flightNo, $suffixMatch)) {
-                if (preg_match('/\d/', $suffixMatch[1])) {
-                    $flightNoBase = $suffixMatch[1];
-                    $flightSuffix = strtoupper($suffixMatch[2]);
-                }
-            }
+            // Extract Flight Suffix using OASYS Suffix Dictionary
+            $suffixInfo = self::extractFlightSuffix($flightNo, $pairedNo);
+            $flightNoBase = $suffixInfo['base'];
+            $flightSuffix = $suffixInfo['suffix'];
+
+            // Normalize Airline
+            $normalizedAirline = self::normalizeAirlineName($airLine, $flightNo, $regNo);
 
             // Capacity & Load Guardrails
             $cap  = $getNumeric('cap', 0);
@@ -1486,16 +1693,20 @@ class FlightDailyReportParser
             $divert = $getNumeric('divert', 0);
             $miss   = $getNumeric('miss', 0);
 
-            // Crew
-            $crw   = $getNumeric('crw', 0);
-            $exCrw = $getNumeric('ex_crw', 0);
+            // Crew - Operating Crew = CRW + EX. CRW
+            $crw           = $getNumeric('crw', 0);
+            $exCrw         = $getNumeric('ex_crw', 0);
+            $operatingCrew = $crw + $exCrw;
+
+            // MTOW Tons
+            $mtowTon = (float)str_replace(',', '.', preg_replace('/[^0-9\.,]/', '', $mtow));
 
             // Cargo, Baggage, Pos
             $cargoKg   = $getFloat('cargo_kg', 0.0);
             $baggageKg = $getFloat('baggage_kg', 0.0);
             $posKg     = $getFloat('pos_kg', 0.0);
 
-            // Determine Leg Direction & Sched Type
+            // Determine Leg Direction & Sched Type & Subtype
             $direction = 'ARRIVAL';
             $schedType = 'SCHEDULED';
 
@@ -1507,6 +1718,15 @@ class FlightDailyReportParser
                 if ($city1 === $meta['airport'] && $city2 !== $meta['airport']) {
                     $direction = 'DEPARTURE';
                 }
+            }
+
+            $legSubtype = 'SCHED';
+            if (stripos($rawLeg, 'CARGO') !== false) {
+                $legSubtype = 'CARGO';
+            } elseif (stripos($rawLeg, 'UNSCHED') !== false || stripos($rawLeg, 'TIDAK') !== false) {
+                $legSubtype = 'UNSCHED';
+            } elseif (stripos($rawLeg, 'CHARTER') !== false) {
+                $legSubtype = 'CHARTER';
             }
 
             if (str_contains($legUpper, 'UNSCHED') || str_contains($legUpper, 'TIDAK')) {
@@ -1584,9 +1804,28 @@ class FlightDailyReportParser
                 $delayMinutes = $this->calculateTimeDifferenceMinutes($schedMovementRaw, $actMovementRaw, $scheduledDatetime, $actualDatetime);
             }
 
+            // Realization & Cancelled/Hold Flights Check
+            $isHoldOrCancelled = false;
+            $rawActStr = (string)$actMovementRaw;
+            if (
+                str_contains($rawActStr, '30-11--0001') ||
+                str_contains((string)$aibtAobtVal, '30-11--0001') ||
+                str_ends_with($stand, '-HOLD') ||
+                $stand === 'CGK-HOLD' ||
+                stripos($rawLoadStr, 'nan') !== false ||
+                ((isset($meta['real']) && strtoupper(trim($meta['real'])) === 'NO') && (empty($rawActStr) || $rawActStr === '-' || $rawActStr === 'N/A'))
+            ) {
+                $isHoldOrCancelled = true;
+            }
+
+            $isRealized = !$isHoldOrCancelled && ($actualDatetime !== null && $rawActStr !== '' && $rawActStr !== '-' && $rawActStr !== 'N/A' && !str_contains($rawActStr, '30-11--0001'));
+
+            if ($isHoldOrCancelled) {
+                $delayMinutes = 0;
+            }
+
             // Irregularity Flag: Divert > 0, Miss > 0, or Unscheduled (PART 13)
-            $isIrregular = ($divert > 0 || $miss > 0 || $schedType === 'UNSCHEDULED');
-            $isRealized  = ($actualDatetime !== null && $actMovementRaw !== null && $actMovementRaw !== '-' && $actMovementRaw !== 'N/A');
+            $isIrregular = ($divert > 0 || $miss > 0 || $schedType === 'UNSCHEDULED' || $isHoldOrCancelled);
 
             // Traffic: DOMESTIC vs INTERNATIONAL
             $traffic = 'DOMESTIC';
@@ -1604,9 +1843,14 @@ class FlightDailyReportParser
                 'source_row_number'            => (int)$firstCell,
                 'row_type'                     => 'MOVEMENT',
                 'air_line'                     => $airLine,
+                'air_line_clean'               => $normalizedAirline['clean_name'],
+                'air_line_code'                => $normalizedAirline['code'],
                 'flight_no'                    => $flightNo,
                 'flight_no_base'               => $flightNoBase,
                 'flight_suffix'                => $flightSuffix,
+                'flight_suffix_label'          => $suffixInfo['label'],
+                'flight_suffix_desc'           => $suffixInfo['desc'],
+                'flight_suffix_category'       => $suffixInfo['category'],
                 'paired_no'                    => $pairedNo,
                 'desc'                         => $desc,
                 'sibt'                         => $sibt,
@@ -1633,6 +1877,7 @@ class FlightDailyReportParser
                 'operational_datetime'         => $operationalDatetime,
                 'leg'                          => $normalizedLeg,
                 'raw_leg'                      => $rawLeg,
+                'leg_subtype'                  => $legSubtype,
                 'direction'                    => $direction,
                 'sched_type'                   => $schedType,
                 'is_scheduled'                 => ($schedType === 'SCHEDULED'),
@@ -1642,6 +1887,7 @@ class FlightDailyReportParser
                 'traffic'                      => $traffic,
                 'route_type'                   => $traffic,
                 'mtow'                         => $mtow,
+                'mtow_ton'                     => $mtowTon,
                 'reg_no'                       => $regNo,
                 'cap'                          => $cap,
                 'load'                         => $load,
@@ -1656,6 +1902,8 @@ class FlightDailyReportParser
                 'miss'                         => $miss,
                 'crw'                          => $crw,
                 'ex_crw'                       => $exCrw,
+                'operating_crew'               => $operatingCrew,
+                'total_crew'                   => $operatingCrew,
                 'cargo_kg'                     => $cargoKg,
                 'baggage_kg'                   => $baggageKg,
                 'pos_kg'                       => $posKg,
@@ -1667,9 +1915,11 @@ class FlightDailyReportParser
                 'report_airport'               => !empty($branch) && $branch !== 'N/A' ? strtoupper($branch) : ($meta['airport'] ?? 'CGK'),
                 'origin_airport'               => $city1,
                 'destination_airport'          => $city2,
-                'delay_minutes'        => $delayMinutes,
-                'is_irregular'         => $isIrregular,
-                'is_realized'          => $isRealized,
+                'delay_minutes'                => $delayMinutes,
+                'is_irregular'                 => $isIrregular,
+                'is_realized'                  => $isRealized,
+                'is_hold_or_cancelled'         => $isHoldOrCancelled,
+                'status'                       => $isHoldOrCancelled ? 'HOLD_OR_CANCELLED' : ($isRealized ? 'REALIZED' : 'SCHEDULED'),
             ];
         }
 
@@ -1767,21 +2017,33 @@ class FlightDailyReportParser
     /**
      * Calculate difference in minutes between scheduled and actual time.
      */
-    public static function calculateTimeDifferenceMinutes(string $sched, string $act, ?string $schedDt = null, ?string $actDt = null): int
+    public static function calculateTimeDifferenceMinutes(string $sched, string $act, ?string $schedDt = null, ?string $actDt = null, bool $crossMidnightAdjust = true): int
     {
         try {
+            $diff = null;
             if ($schedDt && $actDt) {
-                return (int) Carbon::parse($schedDt)->diffInMinutes(Carbon::parse($actDt), false);
+                $diff = (int) Carbon::parse($schedDt)->diffInMinutes(Carbon::parse($actDt), false);
+            } elseif (preg_match('/(\d{1,2}[-\/]\d{1,2}[-\/]\d{4}\s+\d{1,2}:\d{2})/', $sched) && preg_match('/(\d{1,2}[-\/]\d{1,2}[-\/]\d{4}\s+\d{1,2}:\d{2})/', $act)) {
+                $diff = (int) Carbon::parse(str_replace('/', '-', $sched))->diffInMinutes(Carbon::parse(str_replace('/', '-', $act)), false);
+            } else {
+                preg_match('/(\d{1,2}):(\d{2})/', $sched, $sm);
+                preg_match('/(\d{1,2}):(\d{2})/', $act, $am);
+                if (!empty($sm) && !empty($am)) {
+                    $schedMins = ((int)$sm[1] * 60) + (int)$sm[2];
+                    $actMins   = ((int)$am[1] * 60) + (int)$am[2];
+                    $diff = $actMins - $schedMins;
+                }
             }
-            if (preg_match('/(\d{1,2}[-\/]\d{1,2}[-\/]\d{4}\s+\d{1,2}:\d{2})/', $sched) && preg_match('/(\d{1,2}[-\/]\d{1,2}[-\/]\d{4}\s+\d{1,2}:\d{2})/', $act)) {
-                return (int) Carbon::parse(str_replace('/', '-', $sched))->diffInMinutes(Carbon::parse(str_replace('/', '-', $act)), false);
-            }
-            preg_match('/(\d{1,2}):(\d{2})/', $sched, $sm);
-            preg_match('/(\d{1,2}):(\d{2})/', $act, $am);
-            if (!empty($sm) && !empty($am)) {
-                $schedMins = ((int)$sm[1] * 60) + (int)$sm[2];
-                $actMins   = ((int)$am[1] * 60) + (int)$am[2];
-                return $actMins - $schedMins;
+
+            if ($diff !== null) {
+                if ($crossMidnightAdjust) {
+                    if ($diff < -720) {
+                        $diff += 1440;
+                    } elseif ($diff > 720) {
+                        $diff -= 1440;
+                    }
+                }
+                return $diff;
             }
         } catch (\Throwable $e) {}
         return 0;

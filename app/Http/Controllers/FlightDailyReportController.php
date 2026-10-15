@@ -556,6 +556,7 @@ class FlightDailyReportController extends Controller
             $disk = config('filesystems.default', 'local');
             $storedPath = $job->stored_path ?: "uploads/fdr/{$job->upload_token}.xls";
             $localTmpPath = sys_get_temp_dir() . '/fdr_src_' . $job->id . '.bin';
+            $fullPath = null;
 
             // Direct-upload FDR sources are persisted in private Supabase Storage.
             if (str_starts_with($storedPath, 'supabase://')) {
@@ -1224,9 +1225,12 @@ class FlightDailyReportController extends Controller
                 ],
             ];
 
+            $reportType = $request->query('report_type', $meta['report_type'] ?? ($upload->report_data['meta']['report_type'] ?? 'NORMAL'));
+
             return view('fdr.dashboard', [
                 'upload'          => $upload,
                 'meta'            => $meta,
+                'reportType'      => $reportType,
                 'filters'         => $filters,
                 'filterResult'    => $filterResult,
                 'analytics'       => $analytics,
@@ -1323,9 +1327,12 @@ class FlightDailyReportController extends Controller
         $airports = array_keys($reportAirports);
         sort($airports);
 
+        $reportType = $request->query('report_type', $meta['report_type'] ?? ($upload->report_data['meta']['report_type'] ?? 'NORMAL'));
+
         return view('fdr.dashboard', [
             'upload'          => $upload,
             'meta'            => $meta,
+            'reportType'      => $reportType,
             'filters'         => $filters,
             'filterResult'    => $filterResult,
             'analytics'       => $analytics,
@@ -1713,102 +1720,243 @@ class FlightDailyReportController extends Controller
             fputcsv($handle, ['Export Timestamp:', date('Y-m-d H:i:s')]);
             fputcsv($handle, []);
 
-            // Strict raw FDR headers
-            $csvHeaders = [
-                'NO', 'AIR LINE', 'FLIGHT NO', 'PAIRED NO', 'SIBT', 'SOBT', 'AIBT', 'AOBT',
-                'LEG', 'DIRECTION', 'CITY 1', 'CITY 2', 'ROUTE', 'TRAFFIC', 'MTOW', 'REG. NO',
-                'CAP.', 'LOAD', 'LOAD FACTOR (%)', 'ADULT', 'CHILD', 'INFANT', 'TRANSIT', 'TRANSFER',
-                'DIVERT', 'MISS', 'CRW', 'EX. CRW', 'CAR. (KG)', 'BAGG. (KG)', 'POS (KG)',
-                'STAND', 'RUN WAY', 'STATUS'
-            ];
-            fputcsv($handle, $csvHeaders);
+            $reportType = strtoupper($meta['report_type'] ?? ($upload->report_data['report_type'] ?? 'NORMAL'));
 
-            $idx = 0;
-            if ($hasDb) {
-                $cursor = $this->fdrDbService->buildFdrFilteredQuery($upload->id, $filters)->orderBy('id')->cursor();
-                foreach ($cursor as $flight) {
+            if ($reportType === 'LOAD_FACTOR') {
+                $csvHeaders = [
+                    'NO', 'AIRLINES', 'FLIGHT NUMBER', 'SCHEDULED TIME', 'TYPE OF AIRCRAFT', 'AIRCRAFT REG NO',
+                    'LEG', 'ARRIVAL ROUTE', 'DEPARTURE ROUTE', 'SEAT CAPACITY', 'PAX', 'SLF (%)', 'AIRPORT'
+                ];
+                fputcsv($handle, $csvHeaders);
+
+                $records = $hasDb ? $this->fdrDbService->buildFdrFilteredQuery($upload->id, $filters)->orderBy('id')->get()->map(fn($f) => $f->toFdrArray())->toArray() : ($upload->getOffloadedRecords() ?? []);
+                $idx = 0;
+                foreach ($records as $r) {
                     $idx++;
-                    $r = $flight->toFdrArray();
-                    $lfDisplay = ($r['load_factor'] !== 'N/A') ? $r['load_factor'] . '%' : 'N/A';
                     fputcsv($handle, [
                         $idx,
-                        $r['air_line'],
-                        $r['flight_no'],
-                        $r['paired_no'],
-                        $r['sibt'],
-                        $r['sobt'],
-                        $r['aibt'],
-                        $r['aobt'],
-                        $r['leg'],
-                        $r['direction'],
-                        $r['city_1'],
-                        $r['city_2'],
-                        $r['route'],
-                        $r['traffic'],
-                        $r['mtow'],
-                        $r['reg_no'],
-                        $r['cap'],
-                        $r['load'],
-                        $lfDisplay,
-                        $r['adult'],
-                        $r['child'],
-                        $r['infant'],
-                        $r['transit'],
-                        $r['transfer'],
+                        $r['air_line'] ?? ($r['airline'] ?? ''),
+                        $r['flight_no'] ?? ($r['flight_number'] ?? ''),
+                        $r['sibt'] ?? ($r['sobt'] ?? ($r['scheduled_time'] ?? '')),
+                        $r['aircraft_type'] ?? ($r['type_of_aircraft'] ?? ($r['desc'] ?? '')),
+                        $r['reg_no'] ?? ($r['aircraft_reg_no'] ?? ''),
+                        $r['leg'] ?? '',
+                        $r['arrival_route'] ?? ($r['city_1'] ?? ''),
+                        $r['departure_route'] ?? ($r['city_2'] ?? ''),
+                        $r['cap'] ?? ($r['seat_capacity'] ?? 0),
+                        $r['load'] ?? ($r['pax'] ?? 0),
+                        $r['load_factor'] ?? ($r['slf'] ?? '0.0%'),
+                        $r['airport'] ?? ($meta['airport'] ?? 'CGK'),
+                    ]);
+                }
+            } elseif (in_array($reportType, ['COMPARE_LOAD_FACTOR', 'COMPARE_LOAD_FACTOR_DAY'])) {
+                $csvHeaders = [
+                    'NO', 'AIRPORT', 'FLIGHT PREV YEAR', 'FLIGHT CURR YEAR', 'FLIGHT RATIO (%)',
+                    'PAX PREV YEAR', 'PAX CURR YEAR', 'PAX RATIO (%)',
+                    'CARGO PREV YEAR', 'CARGO CURR YEAR', 'CARGO RATIO (%)',
+                    'SEAT CAP PREV YEAR', 'SEAT CAP CURR YEAR', 'SEAT CAP RATIO (%)',
+                    'SLF PREV YEAR SEAT CAP', 'SLF PREV YEAR PAX', 'SLF PREV YEAR (%)',
+                    'SLF CURR YEAR SEAT CAP', 'SLF CURR YEAR PAX', 'SLF CURR YEAR (%)'
+                ];
+                fputcsv($handle, $csvHeaders);
+
+                $records = $upload->report_data['yoY']['records'] ?? ($upload->getOffloadedRecords() ?? []);
+                $idx = 0;
+                foreach ($records as $r) {
+                    $idx++;
+                    fputcsv($handle, [
+                        $idx,
+                        $r['airport'] ?? ($r['station'] ?? ''),
+                        $r['flight_prev'] ?? 0,
+                        $r['flight_curr'] ?? 0,
+                        $r['flight_ratio'] ?? '0.0%',
+                        $r['pax_prev'] ?? 0,
+                        $r['pax_curr'] ?? 0,
+                        $r['pax_ratio'] ?? '0.0%',
+                        $r['cargo_prev'] ?? 0,
+                        $r['cargo_curr'] ?? 0,
+                        $r['cargo_ratio'] ?? '0.0%',
+                        $r['seatcap_prev'] ?? 0,
+                        $r['seatcap_curr'] ?? 0,
+                        $r['seatcap_ratio'] ?? '0.0%',
+                        $r['slf_prev_seatcap'] ?? 0,
+                        $r['slf_prev_pax'] ?? 0,
+                        $r['slf_prev_ratio'] ?? '0.0%',
+                        $r['slf_curr_seatcap'] ?? 0,
+                        $r['slf_curr_pax'] ?? 0,
+                        $r['slf_curr_ratio'] ?? '0.0%',
+                    ]);
+                }
+            } elseif ($reportType === 'OASYS_VS_APPS') {
+                $csvHeaders = [
+                    'NO', 'AIRLINE', 'STAD', 'OFF BLOCK TIME', 'LEG', 'D/I', 'CITY',
+                    'ADULT', 'CHILD', 'INFANT', 'TRANSIT', 'TRANSFER', 'DIVERT', 'MISSED', 'CREW', 'EX. CREW'
+                ];
+                fputcsv($handle, $csvHeaders);
+
+                $records = $upload->getOffloadedRecords() ?? [];
+                $idx = 0;
+                foreach ($records as $r) {
+                    $idx++;
+                    fputcsv($handle, [
+                        $idx,
+                        $r['air_line'] ?? ($r['airline'] ?? ''),
+                        $r['sobt'] ?? ($r['stad'] ?? ''),
+                        $r['aobt'] ?? ($r['off_block_time'] ?? ''),
+                        $r['leg'] ?? 'D',
+                        $r['traffic'] ?? ($r['di'] ?? 'D'),
+                        $r['city_1'] ?? ($r['city'] ?? ''),
+                        $r['adult'] ?? 0,
+                        $r['child'] ?? 0,
+                        $r['infant'] ?? 0,
+                        $r['transit'] ?? 0,
+                        $r['transfer'] ?? 0,
                         $r['divert'] ?? 0,
-                        $r['miss'] ?? 0,
-                        $r['crw'] ?? 0,
+                        $r['miss'] ?? ($r['missed'] ?? 0),
+                        $r['crw'] ?? ($r['crew'] ?? 0),
                         $r['ex_crw'] ?? 0,
-                        $r['cargo_kg'],
-                        $r['baggage_kg'],
-                        $r['pos_kg'],
-                        $r['stand'],
-                        $r['runway'],
-                        !empty($r['is_irregular']) ? 'IRREGULAR' : 'NORMAL',
+                    ]);
+                }
+            } elseif ($reportType === 'OASYS_VS_EDIFLY') {
+                $csvHeaders = [
+                    'NO', 'AIRLINE', 'FLIGHT NO', 'PAIRED NO', 'DESC', 'SOBT/SIBT', 'AOBT/AIBT',
+                    'LEG', 'STATION 1', 'STATION 2', 'MTOW', 'REG. NO', 'API PAX EDIFLY', 'API CARGO EDIFLY'
+                ];
+                fputcsv($handle, $csvHeaders);
+
+                $records = $upload->getOffloadedRecords() ?? [];
+                $idx = 0;
+                foreach ($records as $r) {
+                    $idx++;
+                    fputcsv($handle, [
+                        $idx,
+                        $r['air_line'] ?? ($r['airline'] ?? ''),
+                        $r['flight_no'] ?? '',
+                        $r['paired_no'] ?? '',
+                        $r['desc'] ?? '',
+                        $r['sobt'] ?? ($r['sibt'] ?? ''),
+                        $r['aobt'] ?? ($r['aibt'] ?? ''),
+                        $r['leg'] ?? '',
+                        $r['city_1'] ?? ($r['station_1'] ?? ''),
+                        $r['city_2'] ?? ($r['station_2'] ?? ''),
+                        $r['mtow'] ?? ($r['mtow_ton'] ?? 0),
+                        $r['reg_no'] ?? '',
+                        $r['api_pax_edifly'] ?? ($r['pax_integration'] ?? 'NO INTEGRATION'),
+                        $r['api_cargo_edifly'] ?? ($r['cargo_integration'] ?? 'NO INTEGRATION'),
                     ]);
                 }
             } else {
-                $rawRecords = $upload->getOffloadedRecords();
-                $filterResult = $this->filterService->apply($rawRecords, $filters, $meta);
-                foreach ($filterResult['records'] as $r) {
-                    $idx++;
-                    $lfDisplay = ($r['load_factor'] !== 'N/A') ? $r['load_factor'] . '%' : 'N/A';
-                    fputcsv($handle, [
-                        $idx,
-                        $r['air_line'],
-                        $r['flight_no'],
-                        $r['paired_no'],
-                        $r['sibt'],
-                        $r['sobt'],
-                        $r['aibt'],
-                        $r['aobt'],
-                        $r['leg'],
-                        $r['direction'],
-                        $r['city_1'],
-                        $r['city_2'],
-                        $r['route'],
-                        $r['traffic'],
-                        $r['mtow'],
-                        $r['reg_no'],
-                        $r['cap'],
-                        $r['load'],
-                        $lfDisplay,
-                        $r['adult'],
-                        $r['child'],
-                        $r['infant'],
-                        $r['transit'],
-                        $r['transfer'],
-                        $r['divert'] ?? 0,
-                        $r['miss'] ?? 0,
-                        $r['crw'] ?? 0,
-                        $r['ex_crw'] ?? 0,
-                        $r['cargo_kg'],
-                        $r['baggage_kg'],
-                        $r['pos_kg'],
-                        $r['stand'],
-                        $r['runway'],
-                        !empty($r['is_irregular']) ? 'IRREGULAR' : 'NORMAL',
-                    ]);
+                // Strict raw FDR headers for NORMAL / EX_HALIM
+                $csvHeaders = [
+                    'NO', 'AIR LINE', 'FLIGHT NO', 'PAIRED NO', 'SUFFIX', 'SUFFIX_LABEL', 'SIBT', 'SOBT', 'AIBT', 'AOBT',
+                    'DELAY_MINUTES', 'LEG', 'LEG_SUBTYPE', 'DIRECTION', 'CITY 1', 'CITY 2', 'ROUTE', 'TRAFFIC', 'MTOW (TON)', 'REG. NO',
+                    'CAP.', 'LOAD', 'LOAD FACTOR (%)', 'ADULT', 'CHILD', 'INFANT', 'UMROH', 'TRANSIT', 'TRANSFER',
+                    'DIVERT', 'MISS', 'CRW', 'EX. CRW', 'OPERATING_CREW', 'CAR. (KG)', 'BAGG. (KG)', 'POS (KG)',
+                    'STAND', 'RUN WAY', 'FINAL', 'STATUS'
+                ];
+                fputcsv($handle, $csvHeaders);
+
+                $idx = 0;
+                if ($hasDb) {
+                    $cursor = $this->fdrDbService->buildFdrFilteredQuery($upload->id, $filters)->orderBy('id')->cursor();
+                    foreach ($cursor as $flight) {
+                        $idx++;
+                        $r = $flight->toFdrArray();
+                        $lfDisplay = ($r['load_factor'] !== 'N/A') ? $r['load_factor'] . '%' : 'N/A';
+                        fputcsv($handle, [
+                            $idx,
+                            $r['air_line'],
+                            $r['flight_no'],
+                            $r['paired_no'],
+                            $r['flight_suffix'] ?? '',
+                            $r['suffix_label'] ?? '',
+                            $r['sibt'],
+                            $r['sobt'],
+                            $r['aibt'],
+                            $r['aobt'],
+                            $r['delay_minutes'] ?? 0,
+                            $r['leg'],
+                            $r['leg_subtype'] ?? '',
+                            $r['direction'],
+                            $r['city_1'],
+                            $r['city_2'],
+                            $r['route'],
+                            $r['traffic'],
+                            $r['mtow'],
+                            $r['reg_no'],
+                            $r['cap'],
+                            $r['load'],
+                            $lfDisplay,
+                            $r['adult'],
+                            $r['child'],
+                            $r['infant'],
+                            $r['umroh'] ?? 0,
+                            $r['transit'],
+                            $r['transfer'],
+                            $r['divert'] ?? 0,
+                            $r['miss'] ?? 0,
+                            $r['crw'] ?? 0,
+                            $r['ex_crw'] ?? 0,
+                            $r['operating_crew'] ?? (($r['crw'] ?? 0) + ($r['ex_crw'] ?? 0)),
+                            $r['cargo_kg'],
+                            $r['baggage_kg'],
+                            $r['pos_kg'],
+                            $r['stand'],
+                            $r['runway'],
+                            $r['final'] ?? 'YES',
+                            !empty($r['is_hold_or_cancelled']) ? 'HOLD_OR_CANCELLED' : (!empty($r['is_irregular']) ? 'IRREGULAR' : 'NORMAL'),
+                        ]);
+                    }
+                } else {
+                    $rawRecords = $upload->getOffloadedRecords();
+                    $filterResult = $this->filterService->apply($rawRecords, $filters, $meta);
+                    foreach ($filterResult['records'] as $r) {
+                        $idx++;
+                        $lfDisplay = ($r['load_factor'] !== 'N/A') ? $r['load_factor'] . '%' : 'N/A';
+                        fputcsv($handle, [
+                            $idx,
+                            $r['air_line'],
+                            $r['flight_no'],
+                            $r['paired_no'],
+                            $r['flight_suffix'] ?? '',
+                            $r['suffix_label'] ?? '',
+                            $r['sibt'],
+                            $r['sobt'],
+                            $r['aibt'],
+                            $r['aobt'],
+                            $r['delay_minutes'] ?? 0,
+                            $r['leg'],
+                            $r['leg_subtype'] ?? '',
+                            $r['direction'],
+                            $r['city_1'],
+                            $r['city_2'],
+                            $r['route'],
+                            $r['traffic'],
+                            $r['mtow'],
+                            $r['reg_no'],
+                            $r['cap'],
+                            $r['load'],
+                            $lfDisplay,
+                            $r['adult'],
+                            $r['child'],
+                            $r['infant'],
+                            $r['umroh'] ?? 0,
+                            $r['transit'],
+                            $r['transfer'],
+                            $r['divert'] ?? 0,
+                            $r['miss'] ?? 0,
+                            $r['crw'] ?? 0,
+                            $r['ex_crw'] ?? 0,
+                            $r['operating_crew'] ?? (($r['crw'] ?? 0) + ($r['ex_crw'] ?? 0)),
+                            $r['cargo_kg'],
+                            $r['baggage_kg'],
+                            $r['pos_kg'],
+                            $r['stand'],
+                            $r['runway'],
+                            $r['final'] ?? 'YES',
+                            !empty($r['is_hold_or_cancelled']) ? 'HOLD_OR_CANCELLED' : (!empty($r['is_irregular']) ? 'IRREGULAR' : 'NORMAL'),
+                        ]);
+                    }
                 }
             }
 

@@ -6,6 +6,45 @@ use Carbon\Carbon;
 
 class FlightDailyReportAnalytics
 {
+    public const INJOURNEY_AIRPORTS_COORDINATES = [
+        'CGK' => ['lat' => -6.1256, 'lng' => 106.6559, 'name' => 'Soekarno-Hatta (Jakarta)'],
+        'HLP' => ['lat' => -6.2667, 'lng' => 106.8917, 'name' => 'Halim Perdanakusuma (Jakarta)'],
+        'KJT' => ['lat' => -6.6475, 'lng' => 108.1883, 'name' => 'Kertajati (Majalengka)'],
+        'BDO' => ['lat' => -6.9006, 'lng' => 107.5761, 'name' => 'Husein Sastranegara (Bandung)'],
+        'SRG' => ['lat' => -6.9742, 'lng' => 110.3756, 'name' => 'Jenderal Ahmad Yani (Semarang)'],
+        'YIA' => ['lat' => -7.9072, 'lng' => 110.0544, 'name' => 'Yogyakarta International (Kulon Progo)'],
+        'JOG' => ['lat' => -7.7881, 'lng' => 110.4317, 'name' => 'Adisutjipto (Yogyakarta)'],
+        'SUB' => ['lat' => -7.3797, 'lng' => 112.7875, 'name' => 'Juanda (Surabaya)'],
+        'BWX' => ['lat' => -8.3103, 'lng' => 114.3394, 'name' => 'Banyuwangi'],
+        'DPS' => ['lat' => -8.7481, 'lng' => 115.1672, 'name' => 'I Gusti Ngurah Rai (Bali)'],
+        'LOP' => ['lat' => -8.7578, 'lng' => 116.2764, 'name' => 'Lombok International (Praya)'],
+        'KOE' => ['lat' => -10.1714, 'lng' => 123.6653, 'name' => 'El Tari (Kupang)'],
+        'KNO' => ['lat' => 3.6422, 'lng' => 98.8853, 'name' => 'Kualanamu (Medan)'],
+        'BTJ' => ['lat' => 5.5225, 'lng' => 95.4194, 'name' => 'Sultan Iskandar Muda (Banda Aceh)'],
+        'DTB' => ['lat' => 2.2575, 'lng' => 98.9839, 'name' => 'Sisingamangaraja XII (Silangit)'],
+        'PDG' => ['lat' => -0.7867, 'lng' => 100.2806, 'name' => 'Minangkabau (Padang)'],
+        'PKU' => ['lat' => 0.4608, 'lng' => 101.4447, 'name' => 'Sultan Syarif Kasim II (Pekanbaru)'],
+        'BTH' => ['lat' => 1.1211, 'lng' => 104.1189, 'name' => 'Hang Nadim (Batam)'],
+        'TNJ' => ['lat' => 0.9236, 'lng' => 104.5317, 'name' => 'Raja Haji Fisabilillah (Tanjung Pinang)'],
+        'DJB' => ['lat' => -1.6381, 'lng' => 103.6444, 'name' => 'Sultan Thaha (Jambi)'],
+        'PLM' => ['lat' => -2.8983, 'lng' => 104.7000, 'name' => 'Sultan Mahmud Badaruddin II (Palembang)'],
+        'PGK' => ['lat' => -2.1625, 'lng' => 106.1394, 'name' => 'Depati Amir (Pangkal Pinang)'],
+        'TJQ' => ['lat' => -2.7608, 'lng' => 107.7547, 'name' => 'H.A.S. Hanandjoeddin (Belitung)'],
+        'BKS' => ['lat' => -3.8639, 'lng' => 102.3400, 'name' => 'Fatmawati Soekarno (Bengkulu)'],
+        'TKG' => ['lat' => -5.2425, 'lng' => 105.1786, 'name' => 'Radin Inten II (Lampung)'],
+        'PNK' => ['lat' => -0.1506, 'lng' => 109.4039, 'name' => 'Supadio (Pontianak)'],
+        'BPN' => ['lat' => -1.2683, 'lng' => 116.8947, 'name' => 'Sultan Aji Muhammad Sulaiman Sepinggan (Balikpapan)'],
+        'BDJ' => ['lat' => -3.4422, 'lng' => 114.7578, 'name' => 'Syamsudin Noor (Banjarmasin)'],
+        'PKY' => ['lat' => -2.2253, 'lng' => 113.9436, 'name' => 'Tjilik Riwut (Palangkaraya)'],
+        'UPG' => ['lat' => -5.0617, 'lng' => 119.5542, 'name' => 'Sultan Hasanuddin (Makassar)'],
+        'MDC' => ['lat' => 1.5492, 'lng' => 124.9258, 'name' => 'Sam Ratulangi (Manado)'],
+        'AMQ' => ['lat' => -3.7092, 'lng' => 128.0894, 'name' => 'Pattimura (Ambon)'],
+        'BIK' => ['lat' => -1.1903, 'lng' => 136.1097, 'name' => 'Frans Kaisiepo (Biak)'],
+        'DJJ' => ['lat' => -2.5769, 'lng' => 140.5164, 'name' => 'Sentani (Jayapura)'],
+        'PWL' => ['lat' => -7.4586, 'lng' => 109.0208, 'name' => 'Purwokerto / Wirasaba'],
+        'PCB' => ['lat' => -6.3475, 'lng' => 106.7497, 'name' => 'Pondok Cabe'],
+    ];
+
     protected HourlyChartService $hourlyChartService;
     protected ReconciliationEngine $reconciliationEngine;
 
@@ -137,6 +176,14 @@ class FlightDailyReportAnalytics
         $misses = 0;
         $unscheduled = 0;
 
+        $operatingCrew = 0;
+        $exCrew = 0;
+        $totalMtowTon = 0.0;
+        $umroh = 0;
+        $cancelledHoldFlights = 0;
+        $finalYes = 0;
+        $finalNo = 0;
+
         $lfSum = 0.0;
         $lfCount = 0;
 
@@ -165,7 +212,7 @@ class FlightDailyReportAnalytics
                 $scheduledFlights++;
             }
             $actAt = $r['actual_at'] ?? ($r['actual_time'] ?? ($r['aibt'] ?? ($r['aobt'] ?? null)));
-            if (!empty($actAt) && $actAt !== 'N/A') {
+            if (!empty($actAt) && $actAt !== 'N/A' && !str_contains((string)$actAt, '30-11--0001')) {
                 $actualFlights++;
             }
 
@@ -174,12 +221,14 @@ class FlightDailyReportAnalytics
             $rInfant = (int)($r['infant'] ?? ($r['pax_infant'] ?? 0));
             $rTransit = (int)($r['transit'] ?? ($r['pax_transit'] ?? 0));
             $rTransfer = (int)($r['transfer'] ?? ($r['pax_transfer'] ?? 0));
+            $rUmroh = (int)($r['umroh'] ?? 0);
 
             $adult += $rAdult;
             $child += $rChild;
             $infant += $rInfant;
             $transit += $rTransit;
             $transfer += $rTransfer;
+            $umroh += $rUmroh;
 
             $cap = (int)($r['cap'] ?? ($r['capacity'] ?? 0));
             $load = (int)($r['load'] ?? ($r['pax_total'] ?? ($r['total_passenger'] ?? ($rAdult + $rChild + $rInfant))));
@@ -194,6 +243,27 @@ class FlightDailyReportAnalytics
             $cargoKg += (float)($r['cargo_kg'] ?? 0.0);
             $baggageKg += (float)($r['baggage_kg'] ?? 0.0);
             $posKg += (float)($r['pos_kg'] ?? 0.0);
+
+            // Crew calculation: CRW + EX. CRW
+            $rCrw = (int)($r['crw'] ?? ($r['crew'] ?? 0));
+            $rExCrw = (int)($r['ex_crw'] ?? ($r['ex_crew'] ?? 0));
+            $rOpCrew = (int)($r['operating_crew'] ?? ($rCrw + $rExCrw));
+            $operatingCrew += $rOpCrew;
+            $exCrew += $rExCrw;
+
+            // MTOW
+            $rMtow = (float)($r['mtow_ton'] ?? (is_numeric($r['mtow'] ?? null) ? $r['mtow'] : 0.0));
+            $totalMtowTon += $rMtow;
+
+            // Realization and Hold/Cancelled
+            $isHold = !empty($r['is_hold_or_cancelled']) || ($r['status'] ?? '') === 'HOLD_OR_CANCELLED';
+            if ($isHold) {
+                $cancelledHoldFlights++;
+            }
+
+            $fn = strtoupper(trim($r['final'] ?? ''));
+            if ($fn === 'YES' || $fn === 'Y') $finalYes++;
+            elseif ($fn === 'NO' || $fn === 'N') $finalNo++;
 
             $div = (int)($r['divert'] ?? 0);
             $ms = (int)($r['miss'] ?? 0);
@@ -227,13 +297,25 @@ class FlightDailyReportAnalytics
         $irregularRate = ($totalFlights > 0) ? round(($irregularTotal / $totalFlights) * 100, 1) : 0.0;
 
         if ($actualFlights === 0 && $totalFlights > 0) {
-            $actualFlights = $totalFlights;
+            $actualFlights = max(0, $totalFlights - $cancelledHoldFlights);
         }
+
+        // Operating Crew per Flight
+        $totalCrew = $operatingCrew;
+        $crewPerFlight = ($actualFlights > 0) ? round($totalCrew / $actualFlights, 1) : 0.0;
+
+        // MTOW per Flight
+        $avgMtowPerFlight = ($totalFlights > 0) ? round($totalMtowTon / $totalFlights, 1) : 0.0;
+
+        // Total Payload
+        $totalPayloadKg = $cargoKg + $baggageKg + $posKg;
 
         return [
             'total_flights'            => $totalFlights,
             'scheduled_flights'        => $scheduledFlights,
             'actual_flights'           => $actualFlights,
+            'realized_flights'         => $actualFlights,
+            'cancelled_hold_flights'   => $cancelledHoldFlights,
             'arrivals'                 => $arrivals,
             'total_arrivals'           => $arrivals,
             'departures'               => $departures,
@@ -250,6 +332,8 @@ class FlightDailyReportAnalytics
             'infant_passengers'        => $infant,
             'transit_passengers'       => $transit,
             'transfer_passengers'      => $transfer,
+            'umroh_passengers'         => $umroh,
+            'umroh'                    => $umroh,
             'pax_per_flight'           => $paxPerFlight,
             'pax_per_flight_display'   => "{$paxPerFlight} Pax / Flight",
             'total_capacity'           => $totalCap,
@@ -268,12 +352,27 @@ class FlightDailyReportAnalytics
             'total_baggage_kg'         => round($baggageKg, 1),
             'baggage_per_flight_kg'    => $baggagePerFlight,
             'pos_kg'                   => round($posKg, 1),
+            'total_pos_kg'             => round($posKg, 1),
+            'total_payload_kg'         => round($totalPayloadKg, 1),
+            'operating_crew'           => $operatingCrew,
+            'crew'                     => $operatingCrew,
+            'ex_crew'                  => $exCrew,
+            'total_crew'               => $totalCrew,
+            'crew_per_flight'          => $crewPerFlight,
+            'crew_per_flight_display'  => "{$crewPerFlight} Crew / Flight",
+            'mtow_ton'                 => round($totalMtowTon, 1),
+            'total_mtow_ton'           => round($totalMtowTon, 1),
+            'avg_mtow_per_flight'      => $avgMtowPerFlight,
+            'final_yes'                => $finalYes,
+            'final_no'                 => $finalNo,
+            'final_status'             => ($finalNo === 0 && $finalYes > 0) ? 'LOCKED / FINAL' : 'OPEN / UNLOCKED',
             'irregular_rate'           => $irregularRate,
             'irregularities'           => [
                 'total'        => $irregularTotal,
                 'divert'       => $diverts,
                 'miss'         => $misses,
                 'unscheduled'  => $unscheduled,
+                'cancelled_hold' => $cancelledHoldFlights,
             ],
         ];
     }
@@ -423,7 +522,10 @@ class FlightDailyReportAnalytics
         ];
 
         foreach ($records as $r) {
-            $isRealized = !empty($r['is_realized']) || !empty($r['realization']) || (!empty($r['aibt']) && $r['aibt'] !== 'N/A') || (!empty($r['aobt']) && $r['aobt'] !== 'N/A') || isset($r['delay_minutes']);
+            $isHold = !empty($r['is_hold_or_cancelled']) || ($r['status'] ?? '') === 'HOLD_OR_CANCELLED';
+            if ($isHold) continue;
+
+            $isRealized = !empty($r['is_realized']) || !empty($r['realization']) || (!empty($r['aibt']) && $r['aibt'] !== 'N/A' && !str_contains((string)$r['aibt'], '30-11--0001')) || (!empty($r['aobt']) && $r['aobt'] !== 'N/A' && !str_contains((string)$r['aobt'], '30-11--0001')) || isset($r['delay_minutes']);
             if (!$isRealized) continue;
 
             $delay = isset($r['delay_minutes']) ? (int)$r['delay_minutes'] : null;
@@ -439,6 +541,13 @@ class FlightDailyReportAnalytics
                 }
             }
             if ($delay === null) continue;
+
+            // Cross-midnight adjustment
+            if ($delay < -720) {
+                $delay += 1440;
+            } elseif ($delay > 720) {
+                $delay -= 1440;
+            }
 
             $totalEvaluated++;
             $delays[] = $delay;
@@ -533,18 +642,29 @@ class FlightDailyReportAnalytics
         $onTimePct    = $hasEvaluated ? round(($onTime / $totalEvaluated) * 100, 1) : null;
         $avgDelay     = $hasEvaluated ? round(array_sum($delays) / count($delays), 1) : null;
 
+        $delaysFiltered = array_values(array_filter($delays, fn($d) => abs($d) <= 360));
+        $avgDelayFiltered = count($delaysFiltered) > 0 ? round(array_sum($delaysFiltered) / count($delaysFiltered), 1) : $avgDelay;
+        $maxDelayFiltered = count($delaysFiltered) > 0 ? max($delaysFiltered) : $maxDelay;
+        $minDelayFiltered = count($delaysFiltered) > 0 ? min($delaysFiltered) : $minDelay;
+        $outlierCount     = count($delays) - count($delaysFiltered);
+
         return [
-            'has_evaluation'        => $hasEvaluated,
-            'evaluated_count'       => $totalEvaluated,
-            'evaluated_flights'     => $hasEvaluated ? $totalEvaluated : 'N/A',
-            'tolerance_minutes'     => $toleranceMinutes,
-            'on_time_count'         => $onTime,
-            'early_count'           => $earlyBeyond,
-            'late_count'            => $lateBeyond,
-            'on_time_percentage'    => $hasEvaluated ? "{$onTimePct}%" : 'N/A',
-            'on_time_pct_num'       => $onTimePct ?? 0,
-            'avg_delay_minutes'     => $hasEvaluated ? "{$avgDelay} min" : 'N/A',
-            'avg_delay_num'         => $avgDelay ?? 0,
+            'has_evaluation'             => $hasEvaluated,
+            'evaluated_count'            => $totalEvaluated,
+            'evaluated_flights'          => $hasEvaluated ? $totalEvaluated : 'N/A',
+            'tolerance_minutes'          => $toleranceMinutes,
+            'on_time_count'              => $onTime,
+            'early_count'                => $earlyBeyond,
+            'late_count'                 => $lateBeyond,
+            'on_time_percentage'         => $hasEvaluated ? "{$onTimePct}%" : 'N/A',
+            'on_time_pct_num'            => $onTimePct ?? 0,
+            'avg_delay_minutes'          => $hasEvaluated ? "{$avgDelay} min" : 'N/A',
+            'avg_delay_num'              => $avgDelay ?? 0,
+            'avg_delay_filtered_minutes' => $hasEvaluated ? "{$avgDelayFiltered} min" : 'N/A',
+            'avg_delay_filtered_num'     => $avgDelayFiltered ?? 0,
+            'max_delay_filtered_num'     => $maxDelayFiltered,
+            'min_delay_filtered_num'     => $minDelayFiltered,
+            'outlier_count'              => $outlierCount,
             'median_delay_num'      => $medianDelay,
             'median_delay'          => $hasEvaluated ? ($medianDelay >= 0 ? "+{$medianDelay}" : "{$medianDelay}") . ' min' : 'N/A',
             'max_delay_num'         => $maxDelay,
@@ -719,12 +839,16 @@ class FlightDailyReportAnalytics
     {
         $airlines = [];
         $routes = [];
+        $suffixCounts = [];
 
         foreach ($records as $r) {
-            $al = $r['air_line'] ?? 'N/A';
+            $al = $r['air_line_clean'] ?? ($r['air_line'] ?? 'N/A');
+            $rawAl = $r['air_line'] ?? 'N/A';
             if (!isset($airlines[$al])) {
                 $airlines[$al] = [
                     'airline'      => $al,
+                    'raw_airline'  => $rawAl,
+                    'code'         => $r['air_line_code'] ?? substr(strtoupper($rawAl), 0, 3),
                     'flights'      => 0,
                     'passengers'   => 0,
                     'capacity'     => 0,
@@ -738,23 +862,53 @@ class FlightDailyReportAnalytics
             $airlines[$al]['load'] += (int)($r['load'] ?? 0);
             $airlines[$al]['cargo_kg'] += (float)($r['cargo_kg'] ?? 0.0);
 
+            // Special Suffix Tracking
+            $sfx = strtoupper(trim($r['flight_suffix'] ?? ''));
+            if (!empty($sfx)) {
+                if (!isset($suffixCounts[$sfx])) {
+                    $suffixCounts[$sfx] = [
+                        'suffix'   => $sfx,
+                        'label'    => $r['flight_suffix_label'] ?? ($sfx . ' Suffix'),
+                        'desc'     => $r['flight_suffix_desc'] ?? '',
+                        'category' => $r['flight_suffix_category'] ?? 'Special',
+                        'count'    => 0,
+                        'flights'  => [],
+                    ];
+                }
+                $suffixCounts[$sfx]['count']++;
+                if (count($suffixCounts[$sfx]['flights']) < 5) {
+                    $suffixCounts[$sfx]['flights'][] = $r['flight_no'] ?? 'N/A';
+                }
+            }
+
             $rt = $r['route'] ?? 'N/A';
             if ($rt !== 'N/A') {
+                $orig = strtoupper(trim($r['city_1'] ?? ''));
+                $dest = strtoupper(trim($r['city_2'] ?? ''));
+
                 if (!isset($routes[$rt])) {
                     $routes[$rt] = [
-                        'route'      => $rt,
-                        'origin'     => $r['city_1'] ?? '',
-                        'dest'       => $r['city_2'] ?? '',
-                        'flights'    => 0,
-                        'passengers' => 0,
-                        'capacity'   => 0,
-                        'load'       => 0,
+                        'route'       => $rt,
+                        'origin'      => $orig,
+                        'dest'        => $dest,
+                        'flights'     => 0,
+                        'passengers'  => 0,
+                        'capacity'    => 0,
+                        'load'        => 0,
+                        'delay_sum'   => 0,
+                        'delay_count' => 0,
+                        'origin_coord'=> self::INJOURNEY_AIRPORTS_COORDINATES[$orig] ?? null,
+                        'dest_coord'  => self::INJOURNEY_AIRPORTS_COORDINATES[$dest] ?? null,
                     ];
                 }
                 $routes[$rt]['flights']++;
                 $routes[$rt]['passengers'] += ((int)($r['adult'] ?? 0) + (int)($r['child'] ?? 0) + (int)($r['infant'] ?? 0));
                 $routes[$rt]['capacity'] += (int)($r['cap'] ?? 0);
                 $routes[$rt]['load'] += (int)($r['load'] ?? 0);
+                if (isset($r['delay_minutes']) && is_numeric($r['delay_minutes'])) {
+                    $routes[$rt]['delay_sum'] += (int)$r['delay_minutes'];
+                    $routes[$rt]['delay_count']++;
+                }
             }
         }
 
@@ -767,17 +921,39 @@ class FlightDailyReportAnalytics
         unset($a);
         usort($airlines, fn($x, $y) => $y['flights'] <=> $x['flights']);
 
-        // Sort routes by flights desc
+        // Finalize route metrics
         foreach ($routes as &$rt) {
             $rt['avg_load_factor'] = ($rt['capacity'] > 0) ? round(($rt['load'] / $rt['capacity']) * 100, 1) . '%' : 'N/A';
             $rt['lf_num'] = ($rt['capacity'] > 0) ? round(($rt['load'] / $rt['capacity']) * 100, 1) : 0;
+            $rt['avg_delay_min'] = ($rt['delay_count'] > 0) ? round($rt['delay_sum'] / $rt['delay_count'], 1) : 0.0;
         }
         unset($rt);
-        usort($routes, fn($x, $y) => $y['flights'] <=> $x['flights']);
+
+        $allRoutes = array_values($routes);
+
+        // Busiest Routes: sorted by flights desc
+        $busiestRoutes = $allRoutes;
+        usort($busiestRoutes, fn($x, $y) => $y['flights'] <=> $x['flights']);
+
+        // Most Delayed Routes: sorted by avg_delay_min desc (min 2 flights)
+        $delayedRoutes = array_filter($allRoutes, fn($r) => $r['flights'] >= 2 && $r['delay_count'] > 0);
+        usort($delayedRoutes, fn($x, $y) => $y['avg_delay_min'] <=> $x['avg_delay_min']);
+
+        // Highest SLF Routes: sorted by lf_num desc (min capacity > 0)
+        $highestSlfRoutes = array_filter($allRoutes, fn($r) => $r['capacity'] > 0);
+        usort($highestSlfRoutes, fn($x, $y) => $y['lf_num'] <=> $x['lf_num']);
+
+        // Suffix breakdown sorted by count desc
+        usort($suffixCounts, fn($x, $y) => $y['count'] <=> $x['count']);
 
         return [
-            'ranked_airlines' => array_values($airlines),
-            'top_routes'      => array_slice(array_values($routes), 0, 15),
+            'ranked_airlines'     => array_values($airlines),
+            'top_routes'          => array_slice($busiestRoutes, 0, 15),
+            'busiest_routes'      => array_slice($busiestRoutes, 0, 10),
+            'most_delayed_routes' => array_slice(array_values($delayedRoutes), 0, 10),
+            'highest_slf_routes'  => array_slice(array_values($highestSlfRoutes), 0, 10),
+            'suffix_breakdown'    => array_values($suffixCounts),
+            'airport_coordinates' => self::INJOURNEY_AIRPORTS_COORDINATES,
         ];
     }
 

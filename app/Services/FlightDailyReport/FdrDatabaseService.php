@@ -648,7 +648,7 @@ class FdrDatabaseService
                 aircraft_type,
                 COUNT(*) as movements,
                 AVG(CASE WHEN passenger_capacity > 0 THEN passenger_capacity END) as avg_cap,
-                AVG(CASE WHEN passenger_capacity > 0 THEN (passenger_load::float / passenger_capacity * 100) END) as avg_lf
+                AVG(CASE WHEN passenger_capacity > 0 THEN (CAST(passenger_load AS REAL) / passenger_capacity * 100) END) as avg_lf
             ")
             ->groupBy('aircraft_type')
             ->orderByDesc('movements')
