@@ -121,6 +121,34 @@
         {{-- ══ STAGE A: PRE-SCAN & FILE STAGING ════════════════════════════════ --}}
         @include('fdr.partials.stage_a_staging')
 
+        {{-- ══ REPORT TYPE SWITCHER BAR (When multiple reports available or zip uploaded) ═════ --}}
+        <div x-show="availableReportTypes && availableReportTypes.length > 1"
+             class="bg-white rounded-2xl border border-slate-200/90 p-3 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-xs shadow-2xs">
+                    <span>★</span>
+                </div>
+                <div>
+                    <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">Multi-Report Dashboard Switcher</span>
+                    <div class="text-xs font-bold text-slate-700">Switch between parsed FDR reports in active archive:</div>
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5">
+                <template x-for="rtype in availableReportTypes" :key="rtype">
+                    <button type="button" @click="switchReportType(rtype)"
+                            :class="activeReportType === rtype ? getSwitcherActiveClass(rtype) : 'bg-slate-100 text-slate-700 hover:bg-slate-200/80 border-slate-200/70'"
+                            class="px-3.5 py-1.5 rounded-xl text-xs font-bold tracking-tight transition border cursor-pointer flex items-center gap-1.5 shadow-2xs">
+                        <span class="w-2 h-2 rounded-full" :class="getSwitcherDotClass(rtype)"></span>
+                        <span x-text="formatReportTypeName(rtype)"></span>
+                        <span x-show="allParsedByType && allParsedByType[rtype] && allParsedByType[rtype].totalRecords != null"
+                              class="px-1.5 py-0.2 rounded-full text-[9px] font-mono"
+                              :class="activeReportType === rtype ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'"
+                              x-text="allParsedByType[rtype].totalRecords"></span>
+                    </button>
+                </template>
+            </div>
+        </div>
+
         {{-- ══ POLYMORPHIC DASHBOARD VIEWS (STAGE B) ═══════════════════════════ --}}
         {{-- Case 2: LOAD_FACTOR (13 Columns) --}}
         <template x-if="activeReportType === 'LOAD_FACTOR'">
@@ -144,6 +172,66 @@
 
         {{-- Case 1: NORMAL & EX_HALIM (33 Columns Full Operational Control Room) --}}
         <div x-show="activeReportType === 'NORMAL' || activeReportType === 'EX_HALIM'" class="space-y-5">
+
+            {{-- Ex Halim Dedicated Banner --}}
+            <div x-show="activeReportType === 'EX_HALIM'"
+                 class="bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-indigo-500/15 border-2 border-amber-300 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-sm shadow-sm shadow-amber-500/30">
+                        <span>HLP</span>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-sm font-black uppercase tracking-wider text-amber-950">EX HALIM (CGK) FLIGHT MONITORING</h2>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-black bg-amber-200 text-amber-900 border border-amber-300">CGK HUB</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-black bg-indigo-100 text-indigo-800 border border-indigo-200"
+                                  x-text="'OPERATOR: ' + (filters.operator === 'ALL' ? (sourceSummary.operator || 'ALL AIRLINE') : filters.operator)"></span>
+                        </div>
+                        <p class="text-xs text-slate-600 mt-0.5">Special operational monitoring for flights operating out of or rerouted to/from Halim Perdanakusuma (HLP) via CGK</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 text-xs font-bold text-slate-700 bg-white/80 px-3 py-1.5 rounded-xl border border-amber-200/80">
+                    <span class="text-slate-400 font-semibold uppercase text-[10px]">Monitoring Period:</span>
+                    <span class="font-mono text-slate-900" x-text="sourceSummary.period_label || '01-09-2026 → 30-09-2026'">01-09-2026 → 30-09-2026</span>
+                </div>
+            </div>
+
+            {{-- Ex Halim Zero-State Verification Card --}}
+            <div x-show="activeReportType === 'EX_HALIM' && (totalRecords === 0 || !kpis.total_flights)"
+                 class="bg-white rounded-2xl border-2 border-dashed border-amber-300 p-8 text-center space-y-4 shadow-xs">
+                <div class="w-14 h-14 mx-auto rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+                    </svg>
+                </div>
+                <div class="max-w-md mx-auto space-y-1">
+                    <h3 class="text-base font-extrabold text-slate-900 tracking-tight">Zero Ex-Halim Movements Verified</h3>
+                    <p class="text-xs text-slate-500">
+                        The OASYS Flight Daily Report for <span class="font-bold text-slate-800" x-text="filters.operator !== 'ALL' ? filters.operator : (sourceSummary.operator || 'selected airline')"></span> was successfully verified (<code class="bg-slate-100 text-slate-700 px-1 py-0.5 rounded text-[11px]">REAL = YES</code>, <code class="bg-slate-100 text-slate-700 px-1 py-0.5 rounded text-[11px]">-PAX ALL -(0)-</code>).
+                    </p>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-xl mx-auto pt-2">
+                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 text-center">
+                        <div class="text-[9px] uppercase font-bold text-slate-400">Ex-Halim Flights</div>
+                        <div class="text-lg font-black text-slate-900 font-mono mt-0.5">0</div>
+                    </div>
+                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 text-center">
+                        <div class="text-[9px] uppercase font-bold text-slate-400">Total Pax</div>
+                        <div class="text-lg font-black text-slate-900 font-mono mt-0.5">0</div>
+                    </div>
+                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 text-center">
+                        <div class="text-[9px] uppercase font-bold text-slate-400">Stand Allocation</div>
+                        <div class="text-lg font-black text-slate-900 font-mono mt-0.5">0</div>
+                    </div>
+                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 text-center">
+                        <div class="text-[9px] uppercase font-bold text-slate-400">Runway Usage</div>
+                        <div class="text-lg font-black text-slate-900 font-mono mt-0.5">0</div>
+                    </div>
+                </div>
+                <div class="text-[11px] text-slate-400 font-medium">
+                    Audit Status: <strong>0 movements recorded</strong> in this monthly operational reporting cycle.
+                </div>
+            </div>
 
         {{-- ══ 2. FILTER BAR (COMPACT DEDICATED CARD) ═════════════════════════ --}}
         <div class="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs space-y-3">
@@ -435,18 +523,19 @@
                 </div>
             </div>
 
-            {{-- 6. Cargo (Ton) --}}
+            {{-- 6. Cargo & Pos (Ton) --}}
             <div class="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-2xs flex flex-col justify-between">
                 <div class="flex items-center justify-between">
                     <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center">
                         <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/></svg>
                     </div>
+                    <span class="text-[10px] font-bold text-slate-400" x-text="(Number(kpis.pos_ton || 0) > 0) ? ('+ ' + Number(kpis.pos_ton).toFixed(1) + 't Pos') : ''"></span>
                 </div>
                 <div class="mt-2">
-                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cargo (Ton)</div>
-                    <div class="text-xl font-black text-slate-900 tracking-tight" x-text="kpis.cargo_ton ? Number(kpis.cargo_ton).toFixed(2) : '0.00'">{{ number_format($analytics['kpis']['cargo_ton'] ?? 0, 2) }}</div>
-                    <div class="text-[10px] font-semibold text-slate-500 mt-0.5">
-                        <span x-text="kpis.cargo_per_flight_t ?? '0.00'">{{ $analytics['kpis']['cargo_per_flight_t'] ?? '0.00' }}</span> t/Flight
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cargo &amp; Pos (Ton)</div>
+                    <div class="text-xl font-black text-slate-900 tracking-tight" x-text="(Number(kpis.cargo_ton || 0) + Number(kpis.pos_ton || 0)).toFixed(2)">{{ number_format(($analytics['kpis']['cargo_ton'] ?? 0) + ($analytics['kpis']['pos_ton'] ?? 0), 2) }}</div>
+                    <div class="text-[10px] font-semibold text-slate-500 mt-0.5 truncate">
+                        Car: <span class="font-bold text-slate-700" x-text="Number(kpis.cargo_ton || 0).toFixed(2)">{{ number_format($analytics['kpis']['cargo_ton'] ?? 0, 2) }}</span>t | Pos: <span class="font-bold text-slate-700" x-text="Number(kpis.pos_ton || 0).toFixed(2)">{{ number_format($analytics['kpis']['pos_ton'] ?? 0, 2) }}</span>t
                     </div>
                 </div>
             </div>
@@ -467,23 +556,19 @@
                 </div>
             </div>
 
-            {{-- 8. Irregular Flights --}}
+            {{-- 8. Irregular Flights & Operating Crew (CRW) --}}
             <div class="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-2xs flex flex-col justify-between">
                 <div class="flex items-center justify-between">
                     <div class="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
                         <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
                     </div>
-                    <span class="text-[10px] font-bold text-rose-600" x-text="(kpis.irregular_rate || 0) + '%'">{{ $analytics['kpis']['irregular_rate'] ?? 0 }}%</span>
+                    <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-700 font-mono" x-text="(Number(kpis.operating_crew || 0)).toLocaleString() + ' CRW'">{{ number_format($analytics['kpis']['operating_crew'] ?? 0) }} CRW</span>
                 </div>
                 <div class="mt-2">
-                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Irregular Flights</div>
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Irregular &amp; Crew</div>
                     <div class="text-xl font-black text-slate-900 tracking-tight" x-text="schedVsReal.late_count ?? (kpis.irregular_flights ?? 0)">{{ $analytics['schedule_vs_realization']['late_count'] ?? ($analytics['kpis']['irregular_flights'] ?? 0) }}</div>
                     <div class="text-[10px] font-semibold text-rose-500 mt-0.5 truncate">
-                        <span x-text="schedVsReal.late_count ?? (kpis.delayed_flights ?? 0)">{{ $analytics['schedule_vs_realization']['late_count'] ?? ($analytics['kpis']['delayed_flights'] ?? 0) }}</span> Delay
-                        <template x-if="(kpis.cancelled_or_hold_flights || 0) > 0">
-                            <span> | <span x-text="kpis.cancelled_or_hold_flights"></span> Hold/Cnl</span>
-                        </template>
-                        | <span x-text="(kpis.irregularities ? (kpis.irregularities.divert + kpis.irregularities.miss + kpis.irregularities.unscheduled) : 0)">{{ ($analytics['kpis']['irregularities']['divert'] ?? 0) + ($analytics['kpis']['irregularities']['miss'] ?? 0) + ($analytics['kpis']['irregularities']['unscheduled'] ?? 0) }}</span> Other
+                        <span x-text="schedVsReal.late_count ?? (kpis.delayed_flights ?? 0)">{{ $analytics['schedule_vs_realization']['late_count'] ?? ($analytics['kpis']['delayed_flights'] ?? 0) }}</span> Late | <span class="text-slate-600 font-bold" x-text="(Number(kpis.operating_crew || 0)).toLocaleString() + ' Crew'">{{ number_format($analytics['kpis']['operating_crew'] ?? 0) }} Crew</span>
                     </div>
                 </div>
             </div>
@@ -1621,6 +1706,8 @@ function fdrDashboardController() {
         uploadId: {{ $upload->id }},
         activeReportType: '{{ $reportType ?? 'NORMAL' }}',
         isExHalim: {{ ($reportType ?? '') === 'EX_HALIM' ? 'true' : 'false' }},
+        availableReportTypes: ['{{ $reportType ?? 'NORMAL' }}'],
+        allParsedByType: {},
         currentStage: 'dashboard',
         showStagingCard: false,
         isDragging: false,
@@ -2713,6 +2800,8 @@ function fdrDashboardController() {
                 this.mergedHtml = result.mergedHtml;
                 this.clientParsedData = result.parsedData;
                 this.activeReportType = result.preScan.reportType;
+                this.availableReportTypes = result.availableReportTypes || [result.preScan.reportType];
+                this.allParsedByType = result.allParsedByType || { [result.preScan.reportType]: result.parsedData };
 
                 const hasHalim = fileList.some(f => /halim|hlp/i.test(f.name));
                 if (hasHalim && result.preScan.reportType === 'NORMAL') {
@@ -2733,6 +2822,8 @@ function fdrDashboardController() {
             this.preScanData = null;
             this.mergedHtml = '';
             this.clientParsedData = null;
+            this.availableReportTypes = ['{{ $reportType ?? 'NORMAL' }}'];
+            this.allParsedByType = {};
             this.scanError = null;
         },
 
@@ -2754,6 +2845,66 @@ function fdrDashboardController() {
             this.$nextTick(() => {
                 this.initAllCharts();
             });
+        },
+
+        switchReportType(rtype) {
+            if (this.activeReportType === rtype) return;
+            this.activeReportType = rtype;
+            this.isExHalim = (rtype === 'EX_HALIM');
+            if (this.allParsedByType && this.allParsedByType[rtype]) {
+                this.clientParsedData = this.allParsedByType[rtype];
+                if (rtype === 'LOAD_FACTOR') {
+                    this.pagination.total = this.clientParsedData.records ? this.clientParsedData.records.length : 0;
+                    this.pagination.total_pages = Math.max(1, Math.ceil(this.pagination.total / this.pagination.per_page));
+                    this.pagination.current_page = 1;
+                }
+            }
+            // Clear existing polymorphic charts
+            Object.keys(_fdrCharts).forEach(k => {
+                if (_fdrCharts[k]) {
+                    try { _fdrCharts[k].destroy(); } catch (e) {}
+                    _fdrCharts[k] = null;
+                }
+            });
+            this.$nextTick(() => {
+                this.initAllCharts();
+            });
+        },
+
+        formatReportTypeName(rtype) {
+            const map = {
+                'NORMAL': 'Normal Operations',
+                'EX_HALIM': 'Ex Halim (CGK)',
+                'LOAD_FACTOR': 'Load Factor',
+                'COMPARE_LOAD_FACTOR': 'Compare LF (YoY)',
+                'COMPARE_LOAD_FACTOR_DAY': 'Compare LF (Daily)',
+                'OASYS_VS_APPS': 'Departure vs APPS',
+                'OASYS_VS_EDIFLY': 'OASYS vs Edifly',
+            };
+            return map[rtype] || rtype;
+        },
+
+        getSwitcherActiveClass(rtype) {
+            if (this.activeReportType === rtype) {
+                return 'bg-slate-900 text-white border-slate-900 shadow-sm';
+            }
+            return 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200 hover:border-slate-300';
+        },
+
+        getSwitcherDotClass(rtype) {
+            if (this.activeReportType === rtype) {
+                return 'bg-emerald-400 animate-pulse';
+            }
+            switch (rtype) {
+                case 'NORMAL': return 'bg-blue-400';
+                case 'EX_HALIM': return 'bg-amber-400';
+                case 'LOAD_FACTOR': return 'bg-emerald-400';
+                case 'COMPARE_LOAD_FACTOR': return 'bg-indigo-400';
+                case 'COMPARE_LOAD_FACTOR_DAY': return 'bg-purple-400';
+                case 'OASYS_VS_APPS': return 'bg-teal-400';
+                case 'OASYS_VS_EDIFLY': return 'bg-sky-400';
+                default: return 'bg-slate-400';
+            }
         },
 
         // ── Template Badges & Helpers ─────────────────────────────────────────────
@@ -2871,13 +3022,12 @@ function fdrDashboardController() {
             }
             const recs = this.getLfRecords();
             const buckets = [
-                { label: '<40%', min: 0, max: 40, count: 0, color: '#EF4444' },
-                { label: '40-50%', min: 40, max: 50, count: 0, color: '#F87171' },
-                { label: '50-60%', min: 50, max: 60, count: 0, color: '#FBBF24' },
-                { label: '60-70%', min: 60, max: 70, count: 0, color: '#60A5FA' },
-                { label: '70-80%', min: 70, max: 80, count: 0, color: '#3B82F6' },
-                { label: '80-90%', min: 80, max: 90, count: 0, color: '#34D399' },
-                { label: '90-100%', min: 90, max: 101, count: 0, color: '#10B981' },
+                { label: '<40%', min: -999, max: 40, count: 0, color: '#EF4444' },
+                { label: '40-59%', min: 40, max: 60, count: 0, color: '#F59E0B' },
+                { label: '60-79%', min: 60, max: 80, count: 0, color: '#3B82F6' },
+                { label: '80-89%', min: 80, max: 90, count: 0, color: '#10B981' },
+                { label: '90-100%', min: 90, max: 100.001, count: 0, color: '#059669' },
+                { label: '>100%', min: 100.001, max: 9999, count: 0, color: '#6366F1' },
             ];
             recs.forEach(r => {
                 const slf = parseFloat(r.slf || r.load_factor || 0);
@@ -2996,33 +3146,53 @@ function fdrDashboardController() {
                 _fdrCharts.slfHourly = null;
             }
             const recs = this.getLfRecords();
-            const hours = Array(24).fill(0);
+            const seatHours = Array(24).fill(0);
+            const paxHours = Array(24).fill(0);
             recs.forEach(r => {
                 const timeStr = r.scheduledTime || r.sibt || r.sobt || '';
-                const m = timeStr.match(/(\d{1,2}):\d{2}/);
+                const m = timeStr.match(/(\d{1,2}):(\d{2})/);
                 if (m) {
                     const h = parseInt(m[1], 10);
-                    if (h >= 0 && h < 24) hours[h] += (Number(r.seatCapacity || r.cap) || 0);
+                    if (h >= 0 && h < 24) {
+                        seatHours[h] += (Number(r.seatCapacity || r.cap) || 0);
+                        paxHours[h] += (Number(r.pax || r.load) || 0);
+                    }
                 }
             });
             _fdrCharts.slfHourly = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: hours.map((_, i) => `${String(i).padStart(2,'0')}:00`),
-                    datasets: [{
-                        label: 'Seats Offered',
-                        data: hours,
-                        borderColor: '#10B981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 2,
-                    }]
+                    labels: Array.from({length: 24}, (_, i) => `${String(i).padStart(2,'0')}:00`),
+                    datasets: [
+                        {
+                            label: 'Seats Offered',
+                            data: seatHours,
+                            borderColor: '#3B82F6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 2,
+                        },
+                        {
+                            label: 'Commercial Pax Realized',
+                            data: paxHours,
+                            borderColor: '#10B981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 2,
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { boxWidth: 12, font: { size: 10, weight: 'bold' } }
+                        }
+                    },
                     scales: {
                         x: { grid: { display: false }, ticks: { maxTicksLimit: 12, font: { size: 9 } } },
                         y: { beginAtZero: true, grid: { color: '#F1F5F9' } }
@@ -3065,6 +3235,29 @@ function fdrDashboardController() {
                 case 'slfCurrRatio': return sc > 0 ? ((pc / sc) * 100).toFixed(1) : '0.0';
                 default: return 0;
             }
+        },
+
+        getYoyPeakDate() {
+            const recs = this.getYoyRecords().filter(r => r.date);
+            if (!recs.length) return 'N/A';
+            let peak = recs[0];
+            recs.forEach(r => {
+                if ((Number(r.paxCurrYear) || 0) > (Number(peak.paxCurrYear) || 0)) {
+                    peak = r;
+                }
+            });
+            return peak.date || peak.airport || 'N/A';
+        },
+
+        getYoyPeakPax() {
+            const recs = this.getYoyRecords().filter(r => r.date);
+            if (!recs.length) return '0 Pax';
+            let max = 0;
+            recs.forEach(r => {
+                const p = Number(r.paxCurrYear) || 0;
+                if (p > max) max = p;
+            });
+            return max.toLocaleString() + ' Pax (Curr)';
         },
 
         buildYoyBarChart() {
@@ -3154,12 +3347,31 @@ function fdrDashboardController() {
             return this.getAppsMatrixVal('total', 'fltDep') || this.getAppsRecords().length;
         },
 
+        getAppsFltDep() {
+            return this.getAppsTotalFltDep();
+        },
+
         getAppsTotalApps() {
             return this.getAppsMatrixVal('total', 'apps') || this.getAppsRecords().length;
         },
 
+        getAppsRecorded() {
+            return this.getAppsTotalApps();
+        },
+
         getAppsTotalDev() {
             return this.getAppsMatrixVal('total', 'dev');
+        },
+
+        getAppsDeviation() {
+            return this.getAppsTotalDev() || 0;
+        },
+
+        getAppsSyncAccuracy() {
+            const flt = this.getAppsFltDep();
+            const apps = this.getAppsRecorded();
+            if (flt === 0) return '100.0';
+            return ((apps / flt) * 100).toFixed(2);
         },
 
         getAppsTotalPax() {
@@ -3285,6 +3497,61 @@ function fdrDashboardController() {
 
         getEdiflyTotalMtow() {
             return Math.round(this.getEdiflyRecords().reduce((acc, r) => acc + (parseFloat(r.mtow) || 0), 0));
+        },
+
+        getEdiflyNarrowCount() {
+            return this.getEdiflyRecords().filter(r => /narrow/i.test(r.desc || r.aircraftType || '')).length;
+        },
+
+        getEdiflyWideCount() {
+            return this.getEdiflyRecords().filter(r => /wide/i.test(r.desc || r.aircraftType || '')).length;
+        },
+
+        getEdiflyPaxIntegratedCount() {
+            return this.getEdiflyRecords().filter(r => (r.paxIntegrated ?? r.isPaxIntegrated ?? !/NO INTEGRATION/i.test(r.apiPaxEdifly || ''))).length;
+        },
+
+        getEdiflyPaxNoIntegrationCount() {
+            return this.getEdiflyRecords().length - this.getEdiflyPaxIntegratedCount();
+        },
+
+        getEdiflyCargoIntegratedCount() {
+            return this.getEdiflyRecords().filter(r => (r.cargoIntegrated ?? r.isCargoIntegrated ?? !/NO INTEGRATION/i.test(r.apiCargoEdifly || ''))).length;
+        },
+
+        getEdiflyCargoNoIntegrationCount() {
+            return this.getEdiflyRecords().length - this.getEdiflyCargoIntegratedCount();
+        },
+
+        getEdiflyActualizedCount() {
+            return this.getEdiflyRecords().filter(r => (r.isActualized ?? (r.aobtAibt && r.aobtAibt.trim() !== '' && !r.aobtAibt.includes('-0001')))).length;
+        },
+
+        getEdiflyPendingCount() {
+            return this.getEdiflyRecords().length - this.getEdiflyActualizedCount();
+        },
+
+        getEdiflyCommentTotals() {
+            if (this.clientParsedData && this.clientParsedData.commentTotals) {
+                return this.clientParsedData.commentTotals;
+            }
+            if (this.clientParsedData && this.clientParsedData.summary && this.clientParsedData.summary.commentTotals) {
+                return this.clientParsedData.summary.commentTotals;
+            }
+            return {
+                paxAll: 0,
+                adult: 0,
+                child: 0,
+                infant: 0,
+                transit: 0,
+                transfer: 0,
+                crew: 0,
+                cargoKg: 0,
+                baggageKg: 0,
+                posKg: 0,
+                standUse: 0,
+                runwayUse: 0,
+            };
         },
 
         buildEdiflyDonutChart() {

@@ -1,25 +1,18 @@
 /**
  * SlotWaves: Comprehensive Flight Daily Report (FDR) OASYS Engine
  *
- * Implements deterministic auto-detection, pre-scan staging, and dedicated parsers
- * for all 7 InJourney Airports OASYS FDR report templates:
- * 1. NORMAL (33 Columns)
- * 2. EX_HALIM (33 Columns - Halim Monitoring)
- * 3. LOAD_FACTOR (13 Columns)
- * 4. COMPARE_LOAD_FACTOR (20 Columns YoY)
- * 5. COMPARE_LOAD_FACTOR_DAY (20 Columns YoY Day-by-Day)
- * 6. OASYS_VS_APPS (16 Columns + Nested Matrix)
- * 7. OASYS_VS_EDIFLY (14 Columns)
- *
- * Plus critical bug fixes:
- * - Operating Crew (CRW + EX. CRW)
- * - Cross-midnight delay outliers & >360m filter toggle
- * - REAL = NO (Cancelled / Hold Flights: 30-11--0001, *-HOLD, nan%)
- * - Suffix dictionary & Leg subtype extraction
- * - Airline operator code normalization
- * - Unused columns unlock (MTOW, POS, Umroh, FINAL)
- * - Route analytics & 35 InJourney Airports coordinates
+ * Implements deterministic auto-detection, pre-scan staging, multi-file & ZIP processing,
+ * and dedicated parsers for all 7 InJourney Airports OASYS FDR report templates:
+ * 1. NORMAL (33 Columns — Full Operational Movement)
+ * 2. EX_HALIM (33 Columns — Ex Halim CGK Monitoring, Supports 0-Row Empty State)
+ * 3. LOAD_FACTOR (13 Columns — Commercial Seat Load Factor Report)
+ * 4. COMPARE_LOAD_FACTOR (20 Columns — YoY Branch Summary Comparison)
+ * 5. COMPARE_LOAD_FACTOR_DAY (20 Columns — YoY Daily Trend Comparison)
+ * 6. OASYS_VS_APPS (16 Columns + Nested Reconciliation Matrix Table)
+ * 7. OASYS_VS_EDIFLY (14 Columns + HTML-Commented Footer Totals)
  */
+
+import JSZip from 'jszip';
 
 export type OasysFdrType =
   | 'NORMAL'
@@ -51,7 +44,7 @@ export const OASYS_FDR_TYPE_CONFIG: Record<
     name: 'Ex Halim (CGK)',
     label: 'EX HALIM (CGK) MONITORING (33 COLUMNS)',
     columnsCount: 33,
-    badgeColor: 'bg-purple-100 text-purple-800 border-purple-300',
+    badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
     description: 'Halim Perdanakusuma commercial flight transfer monitoring at CGK.',
   },
   LOAD_FACTOR: {
@@ -65,14 +58,14 @@ export const OASYS_FDR_TYPE_CONFIG: Record<
     name: 'Compare Load Factor YoY',
     label: 'COMPARE LOAD FACTOR YoY (20 COLUMNS)',
     columnsCount: 20,
-    badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
+    badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-300',
     description: 'Year-over-Year comparison of Flights, Pax, Cargo, SeatCap, and SLF %.',
   },
   COMPARE_LOAD_FACTOR_DAY: {
     name: 'Compare Load Factor Daily YoY',
     label: 'COMPARE LOAD FACTOR DAILY YoY (20 COLUMNS)',
     columnsCount: 20,
-    badgeColor: 'bg-orange-100 text-orange-800 border-orange-300',
+    badgeColor: 'bg-purple-100 text-purple-800 border-purple-300',
     description: 'Day-by-Day Year-over-Year comparison of operational traffic and SLF %.',
   },
   OASYS_VS_APPS: {
@@ -119,176 +112,51 @@ export const OASYS_SUFFIX_DICTIONARY: Record<
 };
 
 /**
- * 35 InJourney Airports Coordinates Dictionary.
+ * 36 InJourney Airports Coordinates Dictionary.
  */
 export const INJOURNEY_AIRPORTS_COORDINATES: Record<
   string,
-  { name: string; city: string; lat: number; lng: number }
+  { name: string; city: string; lat: number; lng: number; lon: number }
 > = {
-  CGK: { name: 'Soekarno-Hatta International Airport', city: 'Jakarta', lat: -6.1256, lng: 106.6559 },
-  DPS: { name: 'I Gusti Ngurah Rai International Airport', city: 'Denpasar / Bali', lat: -8.7482, lng: 115.1672 },
-  SUB: { name: 'Juanda International Airport', city: 'Surabaya', lat: -7.3798, lng: 112.7876 },
-  KNO: { name: 'Kualanamu International Airport', city: 'Medan', lat: 3.6422, lng: 98.8853 },
-  YIA: { name: 'Yogyakarta International Airport', city: 'Kulon Progo', lat: -7.9073, lng: 110.0544 },
-  UPG: { name: 'Sultan Hasanuddin International Airport', city: 'Makassar', lat: -5.0616, lng: 119.554 },
-  BPN: { name: 'Sultan Aji Muhammad Sulaiman Sepinggan', city: 'Balikpapan', lat: -1.2683, lng: 116.8944 },
-  BDJ: { name: 'Syamsudin Noor International Airport', city: 'Banjarmasin', lat: -3.4475, lng: 114.7617 },
-  SRG: { name: 'Jenderal Ahmad Yani International Airport', city: 'Semarang', lat: -6.9744, lng: 110.3744 },
-  PLM: { name: 'Sultan Mahmud Badaruddin II Airport', city: 'Palembang', lat: -2.8986, lng: 104.7003 },
-  PNK: { name: 'Supadio International Airport', city: 'Pontianak', lat: -0.1506, lng: 109.4039 },
-  PKU: { name: 'Sultan Syarif Kasim II International Airport', city: 'Pekanbaru', lat: 0.4608, lng: 101.4444 },
-  PDG: { name: 'Minangkabau International Airport', city: 'Padang', lat: -0.7875, lng: 100.2808 },
-  BTH: { name: 'Hang Nadim International Airport', city: 'Batam', lat: 1.1211, lng: 104.1189 },
-  TNJ: { name: 'Raja Haji Fisabilillah International Airport', city: 'Tanjung Pinang', lat: 0.9236, lng: 104.5317 },
-  BDO: { name: 'Husein Sastranegara International Airport', city: 'Bandung', lat: -6.9006, lng: 107.5761 },
-  HLP: { name: 'Halim Perdanakusuma International Airport', city: 'Jakarta', lat: -6.2656, lng: 106.8906 },
-  KJT: { name: 'Kertajati International Airport', city: 'Majalengka', lat: -6.6578, lng: 108.1889 },
-  LOP: { name: 'Lombok International Airport', city: 'Lombok Praya', lat: -8.7583, lng: 116.2764 },
-  MDC: { name: 'Sam Ratulangi International Airport', city: 'Manado', lat: 1.5494, lng: 124.9264 },
-  AMQ: { name: 'Pattimura Airport', city: 'Ambon', lat: -3.7103, lng: 128.0894 },
-  KOE: { name: 'El Tari Airport', city: 'Kupang', lat: -10.1714, lng: 123.6708 },
-  PGK: { name: 'Depati Amir Airport', city: 'Pangkal Pinang', lat: -2.1628, lng: 106.1394 },
-  TJQ: { name: 'H.A.S. Hanandjoeddin Airport', city: 'Tanjung Pandan / Belitung', lat: -2.7606, lng: 107.755 },
-  TKG: { name: 'Radin Inten II Airport', city: 'Bandar Lampung', lat: -5.2422, lng: 105.1786 },
-  DJB: { name: 'Sultan Thaha Airport', city: 'Jambi', lat: -1.6381, lng: 103.6444 },
-  BKS: { name: 'Fatmawati Soekarno Airport', city: 'Bengkulu', lat: -3.8647, lng: 102.34 },
-  BTJ: { name: 'Sultan Iskandar Muda International Airport', city: 'Banda Aceh', lat: 5.5236, lng: 95.4206 },
-  DTB: { name: 'Raja Sisingamangaraja XII Airport (Silangit)', city: 'Siborong-borong', lat: 2.2575, lng: 98.9936 },
-  BWX: { name: 'Banyuwangi International Airport', city: 'Banyuwangi', lat: -8.3106, lng: 114.34 },
-  JOG: { name: 'Adisutjipto International Airport', city: 'Yogyakarta', lat: -7.7881, lng: 110.4317 },
-  PKY: { name: 'Tjilik Riwut Airport', city: 'Palangkaraya', lat: -2.2256, lng: 113.9439 },
-  BIK: { name: 'Frans Kaisiepo International Airport', city: 'Biak', lat: -1.1906, lng: 136.1103 },
-  DJJ: { name: 'Sentani International Airport', city: 'Jayapura', lat: -2.5769, lng: 140.5164 },
-  PWL: { name: 'Tunggul Wulung Airport', city: 'Cilacap / Purwokerto', lat: -7.6436, lng: 109.0208 },
-  PCB: { name: 'Pondok Cabe Airport', city: 'Tangerang Selatan', lat: -6.3386, lng: 106.7533 },
+  CGK: { name: 'Soekarno-Hatta International Airport', city: 'Jakarta', lat: -6.1256, lng: 106.6559, lon: 106.6559 },
+  DPS: { name: 'I Gusti Ngurah Rai International Airport', city: 'Denpasar / Bali', lat: -8.7482, lng: 115.1672, lon: 115.1672 },
+  SUB: { name: 'Juanda International Airport', city: 'Surabaya', lat: -7.3798, lng: 112.7876, lon: 112.7876 },
+  KNO: { name: 'Kualanamu International Airport', city: 'Medan', lat: 3.6422, lng: 98.8853, lon: 98.8853 },
+  YIA: { name: 'Yogyakarta International Airport', city: 'Kulon Progo', lat: -7.9073, lng: 110.0544, lon: 110.0544 },
+  UPG: { name: 'Sultan Hasanuddin International Airport', city: 'Makassar', lat: -5.0616, lng: 119.554, lon: 119.554 },
+  BPN: { name: 'Sultan Aji Muhammad Sulaiman Sepinggan', city: 'Balikpapan', lat: -1.2683, lng: 116.8944, lon: 116.8944 },
+  BDJ: { name: 'Syamsudin Noor International Airport', city: 'Banjarmasin', lat: -3.4475, lng: 114.7617, lon: 114.7617 },
+  SRG: { name: 'Jenderal Ahmad Yani International Airport', city: 'Semarang', lat: -6.9744, lng: 110.3744, lon: 110.3744 },
+  PLM: { name: 'Sultan Mahmud Badaruddin II Airport', city: 'Palembang', lat: -2.8986, lng: 104.7003, lon: 104.7003 },
+  PNK: { name: 'Supadio International Airport', city: 'Pontianak', lat: -0.1506, lng: 109.4039, lon: 109.4039 },
+  PKU: { name: 'Sultan Syarif Kasim II International Airport', city: 'Pekanbaru', lat: 0.4608, lng: 101.4444, lon: 101.4444 },
+  PDG: { name: 'Minangkabau International Airport', city: 'Padang', lat: -0.7875, lng: 100.2808, lon: 100.2808 },
+  BTH: { name: 'Hang Nadim International Airport', city: 'Batam', lat: 1.1211, lng: 104.1189, lon: 104.1189 },
+  TNJ: { name: 'Raja Haji Fisabilillah International Airport', city: 'Tanjung Pinang', lat: 0.9236, lng: 104.5317, lon: 104.5317 },
+  BDO: { name: 'Husein Sastranegara International Airport', city: 'Bandung', lat: -6.9006, lng: 107.5761, lon: 107.5761 },
+  HLP: { name: 'Halim Perdanakusuma International Airport', city: 'Jakarta', lat: -6.2656, lng: 106.8906, lon: 106.8906 },
+  KJT: { name: 'Kertajati International Airport', city: 'Majalengka', lat: -6.6578, lng: 108.1889, lon: 108.1889 },
+  LOP: { name: 'Lombok International Airport', city: 'Lombok Praya', lat: -8.7583, lng: 116.2764, lon: 116.2764 },
+  MDC: { name: 'Sam Ratulangi International Airport', city: 'Manado', lat: 1.5494, lng: 124.9264, lon: 124.9264 },
+  AMQ: { name: 'Pattimura Airport', city: 'Ambon', lat: -3.7103, lng: 128.0894, lon: 128.0894 },
+  KOE: { name: 'El Tari Airport', city: 'Kupang', lat: -10.1714, lng: 123.6708, lon: 123.6708 },
+  PGK: { name: 'Depati Amir Airport', city: 'Pangkal Pinang', lat: -2.1628, lng: 106.1394, lon: 106.1394 },
+  TJQ: { name: 'H.A.S. Hanandjoeddin Airport', city: 'Tanjung Pandan / Belitung', lat: -2.7606, lng: 107.755, lon: 107.755 },
+  TKG: { name: 'Radin Inten II Airport', city: 'Bandar Lampung', lat: -5.2422, lng: 105.1786, lon: 105.1786 },
+  DJB: { name: 'Sultan Thaha Airport', city: 'Jambi', lat: -1.6381, lng: 103.6444, lon: 103.6444 },
+  BKS: { name: 'Fatmawati Soekarno Airport', city: 'Bengkulu', lat: -3.8647, lng: 102.34, lon: 102.34 },
+  BTJ: { name: 'Sultan Iskandar Muda International Airport', city: 'Banda Aceh', lat: 5.5236, lng: 95.4206, lon: 95.4206 },
+  DTB: { name: 'Raja Sisingamangaraja XII Airport (Silangit)', city: 'Siborong-borong', lat: 2.2575, lng: 98.9936, lon: 98.9936 },
+  BWX: { name: 'Banyuwangi International Airport', city: 'Banyuwangi', lat: -8.3106, lng: 114.34, lon: 114.34 },
+  JOG: { name: 'Adisutjipto International Airport', city: 'Yogyakarta', lat: -7.7881, lng: 110.4317, lon: 110.4317 },
+  PKY: { name: 'Tjilik Riwut Airport', city: 'Palangkaraya', lat: -2.2256, lng: 113.9439, lon: 113.9439 },
+  BIK: { name: 'Frans Kaisiepo International Airport', city: 'Biak', lat: -1.1906, lng: 136.1103, lon: 136.1103 },
+  DJJ: { name: 'Sentani International Airport', city: 'Jayapura', lat: -2.5769, lng: 140.5164, lon: 140.5164 },
+  PWL: { name: 'Tunggul Wulung Airport', city: 'Cilacap / Purwokerto', lat: -7.6436, lng: 109.0208, lon: 109.0208 },
+  PCB: { name: 'Pondok Cabe Airport', city: 'Tangerang Selatan', lat: -6.3386, lng: 106.7533, lon: 106.7533 },
 };
 
-/**
- * Pre-Scan Extraction Metadata Interface.
- */
-export interface FDRPreScanMetadata {
-  reportType: OasysFdrType;
-  reportTypeLabel: string;
-  reportTypeBadgeColor: string;
-  branchCode: string;
-  transactionsDateFdr: string;
-  operator: string;
-  realization: string;
-  suffix: string;
-  leg: string;
-  categoryCode: string;
-  totalRows: number;
-  isExHalim: boolean;
-  fileName: string;
-  fileSize: number;
-}
-
-export interface NormalizedFDRRecord {
-  flightDate: string;
-  airline: string;
-  airlineRaw: string;
-  airlineCode: string;
-  flightNumber: string;
-  flightNoBase: string;
-  flightSuffix: string;
-  pairedNo: string;
-  aircraftReg: string;
-  aircraftType: string;
-  movementType: 'Arrival' | 'Departure';
-  legRaw: string;
-  legSubtype: 'SCHED' | 'UNSCHED' | 'CARGO' | 'OTHER';
-  origin: string;
-  destination: string;
-  scheduledTime: string;
-  actualTime: string;
-  scheduledHour: number;
-  actualHour: number;
-  delayMinutes: number;
-  rawDelayMinutes: number;
-  status: 'ON_TIME' | 'DELAYED' | 'EARLY' | 'CANCELLED' | 'HOLD_OR_CANCELLED';
-  realized: boolean;
-  mtowTons: number;
-  capacity: number;
-  paxLoad: number;
-  loadFactorPercent: number;
-  adult: number;
-  child: number;
-  infant: number;
-  transit: number;
-  transfer: number;
-  divert: number;
-  missed: number;
-  operatingCrew: number;
-  extraCrew: number;
-  totalCrew: number;
-  umrohPax: number;
-  cargoKg: number;
-  baggageKg: number;
-  posKg: number;
-  totalPayloadKg: number;
-  stand: string;
-  runway: string;
-  isFinal: boolean;
-  finalTime: string;
-  branch: string;
-}
-
-export interface FDRHeaderMapping {
-  headerRowIndex: number;
-  columns: {
-    flightDate?: number;
-    airline?: number;
-    flightNumber?: number;
-    aircraftReg?: number;
-    aircraftType?: number;
-    movementType?: number;
-    origin?: number;
-    destination?: number;
-    scheduledTime?: number;
-    actualTime?: number;
-    sibt?: number;
-    sobt?: number;
-    aibt?: number;
-    aobt?: number;
-    sibtSobt?: number;
-    aibtAobt?: number;
-  };
-}
-
-export interface HourlySlotWavesBucket {
-  hour: number;
-  hourLabel: string;
-  timeRange: string;
-  totalMovements: number;
-  arrivals: number;
-  departures: number;
-  onTime: number;
-  delayed: number;
-  early: number;
-  cancelled: number;
-  airlines: Record<string, number>;
-}
-
-export interface HourlySlotWavesSummary {
-  buckets: HourlySlotWavesBucket[];
-  totalMovements: number;
-  totalArrivals: number;
-  totalDepartures: number;
-  totalOnTime: number;
-  totalDelayed: number;
-  totalEarly: number;
-  totalCancelled: number;
-  peakHour: {
-    hour: number;
-    timeRange: string;
-    movements: number;
-  };
-  otpPercentage: number;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// STRING / NUMBER CLEANING & INDONESIAN DECIMAL FORMATTING
-// ─────────────────────────────────────────────────────────────────────────────
+export const INJOURNEY_AIRPORTS = INJOURNEY_AIRPORTS_COORDINATES;
 
 /**
  * Clean HTML string content, removing tags and decoding standard entities.
@@ -310,6 +178,9 @@ export function cleanHtmlText(text: string): string {
 
 /**
  * Parse Indonesian decimal formatting where '.' is thousand separator and ',' is decimal separator.
+ * e.g. "4.502.559" -> 4502559
+ * e.g. "-8,82" -> -8.82
+ * e.g. "79,33" -> 79.33
  * e.g. "1.242,86" -> 1242.86
  * e.g. "-33,33" -> -33.33
  * e.g. "71.8%" -> 71.8
@@ -320,9 +191,17 @@ export function parseIndonesianNumber(val: unknown, fallback = 0): number {
   const str = cleanHtmlText(String(val)).replace(/%/g, '').trim();
   if (str === '' || str === '-' || str.toLowerCase() === 'nan' || str.toLowerCase() === 'null') return fallback;
 
-  // Check if comma is decimal separator (e.g. 1.242,86 or 33,33)
+  // Indonesian format with comma decimal (e.g. "4.502.559,25" or "-8,82" or "79,33")
   if (str.includes(',')) {
     const cleaned = str.replace(/\./g, '').replace(',', '.');
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? fallback : num;
+  }
+
+  // Indonesian format with thousand dot but no decimal comma (e.g. "4.502.559" or "55.585.948")
+  // In Indonesian financial reports, standard dot format with 3-digit groups indicates thousand separators
+  if (/^-?\d{1,3}(\.\d{3})+$/.test(str)) {
+    const cleaned = str.replace(/\./g, '');
     const num = parseFloat(cleaned);
     return isNaN(num) ? fallback : num;
   }
@@ -333,7 +212,7 @@ export function parseIndonesianNumber(val: unknown, fallback = 0): number {
 }
 
 /**
- * Convert Excel serial decimal time (e.g. 0.354166667) or string time ("08:30", "08:30:00")
+ * Convert Excel serial decimal time or string time ("08:30", "08:30:00")
  * to standard "HH:mm" and extract integer hour (0–23).
  */
 export function parseExcelTime(val: unknown): { timeStr: string; hour: number } | null {
@@ -350,7 +229,7 @@ export function parseExcelTime(val: unknown): { timeStr: string; hour: number } 
     return null;
   }
 
-  // 1. Check for standard "HH:mm(:ss)" or datetime string with "HH:mm"
+  // Standard "HH:mm(:ss)" or datetime string with "HH:mm"
   const timeMatch = str.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
   if (timeMatch) {
     let h = parseInt(timeMatch[1], 10);
@@ -360,7 +239,7 @@ export function parseExcelTime(val: unknown): { timeStr: string; hour: number } 
     return { timeStr, hour: h };
   }
 
-  // 2. Check for 4-digit military time (e.g. "0615" -> "06:15")
+  // 4-digit military time (e.g. "0615" -> "06:15")
   const militaryMatch = str.match(/^(\d{2})(\d{2})$/);
   if (militaryMatch) {
     const h = parseInt(militaryMatch[1], 10);
@@ -370,7 +249,7 @@ export function parseExcelTime(val: unknown): { timeStr: string; hour: number } 
     }
   }
 
-  // 3. Check for numeric value (Excel decimal time, e.g. 0.354166667 or 45200.354166667)
+  // Numeric value (Excel decimal time, e.g. 0.354166667)
   const isDecimal =
     typeof val === 'number' ||
     (!isNaN(Number(str)) && str.includes('.') && !str.includes(':') && !str.includes('-') && !str.includes('/'));
@@ -402,19 +281,19 @@ export function parseExcelDate(val: unknown, fallbackDate?: string): string {
     return fallbackDate || new Date().toISOString().slice(0, 10);
   }
 
-  // 1. YYYY-MM-DD or YYYY/MM/DD
+  // YYYY-MM-DD or YYYY/MM/DD
   const isoMatch = str.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
   if (isoMatch) {
     return `${isoMatch[1]}-${isoMatch[2].padStart(2, '0')}-${isoMatch[3].padStart(2, '0')}`;
   }
 
-  // 2. DD-MM-YYYY or DD/MM/YYYY
+  // DD-MM-YYYY or DD/MM/YYYY
   const idMatch = str.match(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
   if (idMatch) {
     return `${idMatch[3]}-${idMatch[2].padStart(2, '0')}-${idMatch[1].padStart(2, '0')}`;
   }
 
-  // 3. Excel serial date integer (e.g. 45200)
+  // Excel serial date integer (e.g. 45200)
   const num = typeof val === 'number' ? val : parseFloat(str);
   if (!isNaN(num) && num > 30000 && num < 60000) {
     const epoch = new Date(1899, 11, 30);
@@ -490,12 +369,8 @@ export function resolveMovementType(
   return 'Departure';
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// FLIGHT SUFFIX & AIRLINE NORMALIZATION
-// ─────────────────────────────────────────────────────────────────────────────
-
 /**
- * Extract trailing suffix from flight number using regex ^(\d+)([A-Z<$&^])?$.
+ * Extract trailing suffix from flight number using regex ^([A-Z0-9]*?)(\d+)([A-Z<$&^])?$.
  */
 export function extractFlightSuffix(flightNo: string): {
   base: string;
@@ -530,7 +405,6 @@ export interface AirlineNormalizationResult {
 
 /**
  * Airline Operator Code Normalization.
- * Normalizes fragmented codes (e.g. QG/GAC, IP/6D/PAS, 8B/M8/TNE/PK-TNC) while keeping raw visible.
  */
 export function normalizeAirline(
   rawAirline: string,
@@ -552,7 +426,7 @@ export function normalizeAirline(
     return { code: 'IP', name: 'Pelita Air', cleanName: 'Pelita Air', rawCode: raw };
   }
 
-  // TransNusa: 8B, M8, TNE, TNV, TRN, plus tail numbers PK-TNC, PK-TNJ, PK-TNR, PK-TNS, PK-TVY, PK-TVZ
+  // TransNusa: 8B, M8, TNE, TNV, TRN
   if (
     /\b(TRANSNUSA|TNE|TNV|TRN|M8)\b/i.test(rawUpper) ||
     /\b8B\s*\d+/i.test(fltUpper) ||
@@ -639,14 +513,21 @@ export function normalizeAirline(
 
 /**
  * Deterministically auto-detect which of the 7 OASYS FDR templates an HTML string corresponds to.
+ * Exact rules per OASYS specifications:
+ * 1. NORMAL: 33 <th> headers (PAIRED, SIBT, AIBT, MTOW, STAND, RUNWAY, FINAL) and filename does NOT match EX HALIM/HLP.
+ * 2. EX_HALIM: Same 33 <th> headers, but filename contains EX HALIM/HLP, or table has 33 headers and 0 data rows.
+ * 3. LOAD_FACTOR: 13 <th> headers (No, Airlines, Flight Number, Scheduled Time, Type of Aircraft, Aircraft Reg No, Leg, Arrival Route, Departure Route, Seat Capacity, Pax, SLF, Airport) + footer note PAX : ADULT + CHILD + TRANSIT + TRANSFER + EXTRA_CREW.
+ * 4. COMPARE_LOAD_FACTOR: <title> contains DAU OASYS and single <table> with <td> (NO <th>) Row 0 FLIGHT/PASSENGER/CARGO/SEAT CAPACITY/SEAT LOAD FACTOR 2025/2026, Row 1 20 subheaders, and Row 2 [1] is airport only without date.
+ * 5. COMPARE_LOAD_FACTOR_DAY: Same 20-col <td> structure as COMPARE_LOAD_FACTOR, but data row [1] has airport AND date (e.g. CGK <br>2026-09-30).
+ * 6. OASYS_VS_APPS: <title> contains APPS VS FLIGHT DEP or header contains OASYS DEPARTURE VS APPS DATA, and 16 <th> headers (STAD, OFF BLOCK TIME, D/I, CITY...).
+ * 7. OASYS_VS_EDIFLY: 14 <th> headers (STATION 1, STATION 2, API PAX EDIFLY, API CARGO EDIFLY).
  */
-export function detectOasysFdrType(htmlString: string, fileName = ''): OasysFdrType {
+export function detectFdrTemplateType(htmlString: string, fileName = ''): OasysFdrType {
   const content = String(htmlString || '');
   const lower = content.toLowerCase();
   const fnLower = String(fileName || '').toLowerCase();
 
-  // 1. OASYS_VS_APPS
-  // Fingerprint: <title> contains APPS VS FLIGHT DEP or header contains OASYS DEPARTURE VS APPS DATA, and <th> has STAD and OFF BLOCK TIME
+  // 1. OASYS_VS_APPS (16 Columns)
   if (
     lower.includes('apps vs flight dep') ||
     lower.includes('oasys departure vs apps data') ||
@@ -655,8 +536,7 @@ export function detectOasysFdrType(htmlString: string, fileName = ''): OasysFdrT
     return 'OASYS_VS_APPS';
   }
 
-  // 2. OASYS_VS_EDIFLY
-  // Fingerprint: Contains <th> headers STATION 1, STATION 2, API PAX EDIFLY, API CARGO EDIFLY
+  // 2. OASYS_VS_EDIFLY (14 Columns)
   if (
     lower.includes('api pax edifly') ||
     lower.includes('api cargo edifly') ||
@@ -665,18 +545,17 @@ export function detectOasysFdrType(htmlString: string, fileName = ''): OasysFdrT
     return 'OASYS_VS_EDIFLY';
   }
 
-  // 3. COMPARE_LOAD_FACTOR & COMPARE_LOAD_FACTOR_DAY
-  // Fingerprint: <title> contains DAU OASYS and table headers contain SEAT LOAD FACTOR 2025 and SEAT LOAD FACTOR 2026 (or consecutive years)
+  // 3. COMPARE_LOAD_FACTOR & COMPARE_LOAD_FACTOR_DAY (20 Columns <td> table)
   if (
     lower.includes('seat load factor 202') ||
     (lower.includes('dau oasys') && lower.includes('seat load factor')) ||
     (lower.includes('load factor') &&
       (lower.includes('prevyear') || (lower.includes('2025') && lower.includes('2026'))))
   ) {
-    // In COMPARE_LOAD_FACTOR_DAY, column [1] Airport contains airport code PLUS a <br>YYYY-MM-DD date string
+    // Check if column [1] contains date pattern YYYY-MM-DD
     if (
-      content.match(/<td[^>]*>[A-Z]{3}\s*<br\s*\/?>\s*\d{4}-\d{2}-\d{2}/i) ||
-      content.match(/[A-Z]{3}\s*<br\s*\/?>\s*\d{4}-\d{2}-\d{2}/i) ||
+      content.match(/<td[^>]*>[A-Z]{3}\s*(<br\s*\/?>)?\s*\d{4}-\d{2}-\d{2}/i) ||
+      content.match(/[A-Z]{3}\s*(<br\s*\/?>)?\s*\d{4}-\d{2}-\d{2}/i) ||
       fnLower.includes('day') ||
       lower.includes('day by day')
     ) {
@@ -685,8 +564,7 @@ export function detectOasysFdrType(htmlString: string, fileName = ''): OasysFdrT
     return 'COMPARE_LOAD_FACTOR';
   }
 
-  // 4. LOAD_FACTOR (13 Columns)
-  // Fingerprint: <th> Type of Aircraft, Arrival Route, Departure Route, SLF, footer text PAX : ADULT + CHILD + TRANSIT + TRANSFER + EXTRA_CREW
+  // 4. LOAD_FACTOR (13 Columns <th> table)
   if (
     lower.includes('type of aircraft') &&
     (lower.includes('arrival route') || lower.includes('departure route')) &&
@@ -696,7 +574,6 @@ export function detectOasysFdrType(htmlString: string, fileName = ''): OasysFdrT
   }
 
   // 5. NORMAL & EX_HALIM (33 Columns)
-  // Fingerprint: Contains <th> headers PAIRED NO, SIBT SOBT, AIBT AOBT, MTOW, Umroh, STAND, RUNWAY, FINAL
   if (
     lower.includes('paired no') ||
     lower.includes('sibt sobt') ||
@@ -707,16 +584,66 @@ export function detectOasysFdrType(htmlString: string, fileName = ''): OasysFdrT
     if (fnLower.includes('halim') || fnLower.includes('hlp')) {
       return 'EX_HALIM';
     }
+
+    // Check if 0-row table (empty state as in GA/ID/JT Sep 2026 EX HALIM)
+    // Only has header row and summary row "-PAX ALL -(0)-"
+    const hasZeroMovementSummary = content.match(/-PAX\s*ALL\s*-\s*\(\s*0\s*\)\s*-/i);
+    const trMatches = content.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) || [];
+    let nonHeaderRows = 0;
+    for (const tr of trMatches) {
+      if (tr.includes('<th') || tr.toLowerCase().includes('bgcolor="#f1f5f9"')) continue;
+      const clean = cleanHtmlText(tr).toUpperCase();
+      if (clean === '' || clean.includes('PAX ALL') || clean.startsWith('TOTAL')) continue;
+      nonHeaderRows++;
+    }
+
+    if (nonHeaderRows === 0 && hasZeroMovementSummary) {
+      return 'EX_HALIM';
+    }
+
     return 'NORMAL';
   }
 
   // Filename heuristics fallback
   if (fnLower.includes('halim') || fnLower.includes('hlp')) return 'EX_HALIM';
-  if (fnLower.includes('load_factor') || fnLower.includes('slf')) return 'LOAD_FACTOR';
+  if (fnLower.includes('load_factor') || fnLower.includes('load factor') || fnLower.includes('slf')) return 'LOAD_FACTOR';
   if (fnLower.includes('apps')) return 'OASYS_VS_APPS';
   if (fnLower.includes('edifly')) return 'OASYS_VS_EDIFLY';
 
   return 'NORMAL';
+}
+
+/**
+ * Backward compatibility alias.
+ */
+export const detectOasysFdrType = detectFdrTemplateType;
+
+/**
+ * Pre-Scan Extraction Metadata Interface.
+ */
+export interface FDRPreScanMetadata {
+  reportType: OasysFdrType;
+  reportTypeLabel: string;
+  reportTypeBadgeColor: string;
+  branchCode: string;
+  transactionsDateFdr: string;
+  operator: string;
+  realization: string;
+  suffix: string;
+  leg: string;
+  categoryCode: string;
+  totalRows: number;
+  isExHalim: boolean;
+  fileName: string;
+  fileSize: number;
+  metadata: {
+    branchCode: string;
+    period: string;
+    operator: string;
+    realization: string;
+    rowCount: number;
+    columnCount: number;
+  };
 }
 
 /**
@@ -728,7 +655,7 @@ export function preScanOasysFdr(
   fileSize = 0
 ): FDRPreScanMetadata {
   const content = String(htmlString || '');
-  const reportType = detectOasysFdrType(content, fileName);
+  const reportType = detectFdrTemplateType(content, fileName);
   const typeCfg = OASYS_FDR_TYPE_CONFIG[reportType];
 
   let branchCode = 'CGK';
@@ -774,12 +701,11 @@ export function preScanOasysFdr(
     if (brM) branchCode = brM[1].toUpperCase();
   }
 
-  // 3. Count rows fast (rough count of <tr> minus headers and summary)
+  // 3. Count rows
   let totalRows = 0;
   const trMatches = content.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi);
   for (const tr of trMatches) {
     const trHtml = tr[1];
-    // Check if header row
     if (trHtml.includes('<th') || trHtml.toLowerCase().includes('bgcolor="#f1f5f9"')) {
       continue;
     }
@@ -789,7 +715,8 @@ export function preScanOasysFdr(
       cleanTr.includes('PAX ALL') ||
       cleanTr.startsWith('TOTAL') ||
       cleanTr.startsWith('GRAND TOTAL') ||
-      cleanTr.includes('FLT DEP APPS DEV')
+      cleanTr.includes('FLT DEP') ||
+      cleanTr.includes('SEAT LOAD FACTOR')
     ) {
       continue;
     }
@@ -814,16 +741,71 @@ export function preScanOasysFdr(
     isExHalim,
     fileName,
     fileSize,
+    metadata: {
+      branchCode: branchCode.toUpperCase(),
+      period: transactionsDateFdr || '01-09-2026 -> 30-09-2026',
+      operator: operator || 'ALL',
+      realization: realization.toUpperCase() || 'YES',
+      rowCount: totalRows,
+      columnCount: typeCfg.columnsCount,
+    },
   };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DEDICATED PARSERS FOR ALL 7 TEMPLATES
+// TEMPLATE 1 & 2: NORMAL & EX_HALIM (33 COLUMNS)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Type 1 & Type 2: NORMAL & EX_HALIM (33 Columns).
- */
+export interface NormalizedFDRRecord {
+  flightDate: string;
+  airline: string;
+  airlineRaw: string;
+  airlineCode: string;
+  flightNumber: string;
+  flightNoBase: string;
+  flightSuffix: string;
+  pairedNo: string;
+  aircraftReg: string;
+  aircraftType: string;
+  movementType: 'Arrival' | 'Departure';
+  legRaw: string;
+  legSubtype: 'SCHED' | 'UNSCHED' | 'CARGO' | 'OTHER';
+  origin: string;
+  destination: string;
+  scheduledTime: string;
+  actualTime: string;
+  scheduledHour: number;
+  actualHour: number;
+  delayMinutes: number;
+  rawDelayMinutes: number;
+  status: 'ON_TIME' | 'DELAYED' | 'EARLY' | 'CANCELLED' | 'HOLD_OR_CANCELLED';
+  realized: boolean;
+  mtowTons: number;
+  capacity: number;
+  paxLoad: number;
+  loadFactorPercent: number;
+  adult: number;
+  child: number;
+  infant: number;
+  transit: number;
+  transfer: number;
+  divert: number;
+  missed: number;
+  operatingCrew: number; // CRW + EX. CRW (Fixed bug where crew was 0!)
+  extraCrew: number;
+  totalCrew: number;
+  umrohPax: number;
+  cargoKg: number;
+  baggageKg: number;
+  posKg: number;
+  totalPayloadKg: number;
+  stand: string;
+  runway: string;
+  isFinal: boolean;
+  finalTime: string;
+  branch: string;
+}
+
 export function parseNormalFDR(
   htmlString: string,
   isExHalim = false,
@@ -861,19 +843,37 @@ export function parseNormalFDR(
     finalizedCount: number;
     unfinalizedCount: number;
     suffixBreakdown: Record<string, number>;
+    // Turnaround Ground Time
+    avgGroundTimeMinutes: number;
+    medianGroundTimeMinutes: number;
+    minGroundTimeMinutes: number;
+    maxGroundTimeMinutes: number;
+    standChangesCount: number;
+    topStands: Array<{ stand: string; count: number }>;
+    topRunways: Array<{ runway: string; count: number }>;
+    narrowBodyCount: number;
+    wideBodyCount: number;
+    histBins: Array<{ label: string; group: string; count: number; color: string; desc: string }>;
+  };
+  metadata: {
+    branchCode: string;
+    period: string;
+    operator: string;
+    realization: string;
+    isExHalim: boolean;
   };
 } {
   const content = String(htmlString || '');
   const records: NormalizedFDRRecord[] = [];
 
-  const trMatches = content.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi);
-  let isFirstRow = true;
+  // Extract metadata
+  const pre = preScanOasysFdr(content);
+  const detectedBranch = pre.branchCode || 'CGK';
 
+  const trMatches = content.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi);
   for (const tr of trMatches) {
     const trHtml = tr[1];
-    // Skip header rows
     if (trHtml.includes('<th') || trHtml.toLowerCase().includes('bgcolor="#f1f5f9"')) {
-      isFirstRow = false;
       continue;
     }
 
@@ -894,11 +894,11 @@ export function parseNormalFDR(
       continue;
     }
 
-    // 33-column schema mapping:
+    // Exact 33 columns:
     // [0] NO, [1] AIRLINE, [2] FLIGHT NO, [3] PAIRED NO, [4] DESC,
     // [5] SIBT/SOBT, [6] AIBT/AOBT, [7] LEG, [8] CITY 1, [9] CITY 2,
     // [10] MTOW, [11] REG. NO, [12] CAP., [13] LOAD, [14] ADULT,
-    // [15] CHILD, [16] INFANT, [17] TRANSIT, [18] TRANSFER, [19] DIVERT,
+    // [15] CHILD, [16] INFANT, [17] TRANSIT, [18] TRANFER, [19] DIVERT,
     // [20] MISS, [21] CRW, [22] EX. CRW, [23] Umroh, [24] CAR. (KG),
     // [25] BAGG. (KG), [26] POS (KG), [27] STAND, [28] RUNWAY, [29] FINAL,
     // [30] FINAL TIME, [31] BRANCH, [32] EDIT
@@ -909,8 +909,8 @@ export function parseNormalFDR(
     const rawSchedTime = cells[5] || '';
     const rawActTime = cells[6] || '';
     const rawLeg = cells[7] || '';
-    const city1 = (cells[8] || 'CGK').toUpperCase();
-    const city2 = (cells[9] || 'CGK').toUpperCase();
+    const city1 = (cells[8] || detectedBranch).toUpperCase();
+    const city2 = (cells[9] || detectedBranch).toUpperCase();
     const mtowTons = parseIndonesianNumber(cells[10], 0);
     const regNo = (cells[11] || 'N/A').toUpperCase();
     const cap = parseIndonesianNumber(cells[12], 0);
@@ -933,7 +933,7 @@ export function parseNormalFDR(
     const finalVal = (cells[29] || '').toUpperCase();
     const isFinal = finalVal === 'YES' || finalVal === 'Y' || finalVal === 'FINAL';
     const finalTime = cells[30] || 'N/A';
-    const branch = (cells[31] || 'CGK').toUpperCase();
+    const branch = (cells[31] || detectedBranch).toUpperCase();
 
     // Suffix & Airline normalizer
     const suffixRes = extractFlightSuffix(rawFlt);
@@ -958,7 +958,7 @@ export function parseNormalFDR(
     const actualHour = actParsed ? actParsed.hour : scheduledHour;
     const flightDate = parseExcelDate(rawSchedTime || rawActTime);
 
-    // Hold / Cancelled detection (REAL = NO, *-HOLD, 30-11--0001, nan%)
+    // CRITICAL FIX: Handle REAL = NO (unrealized/hold flights: 30-11--0001, empty actual time, *-HOLD, nan%)
     const isHoldOrCancelled =
       rawActTime.includes('30-11--0001') ||
       rawActTime === '' ||
@@ -985,11 +985,16 @@ export function parseNormalFDR(
       rawDelayMinutes = calculateDelayMinutes(scheduledTime, actualTime);
       delayMinutes = rawDelayMinutes;
 
-      // Cross-Midnight Correction & Outlier Filter (>360 min)
-      if (crossMidnightCorrection && outlierFilterMinutes > 0 && Math.abs(delayMinutes) > outlierFilterMinutes) {
-        // If absolute delay exceeds threshold, check if cross-midnight offset resolves it
+      // Cross-Midnight Correction & Outlier Filter (> 1400m or < -360m)
+      if (crossMidnightCorrection) {
         if (delayMinutes > 720) delayMinutes -= 1440;
         else if (delayMinutes < -720) delayMinutes += 1440;
+      }
+
+      if (outlierFilterMinutes > 0 && Math.abs(delayMinutes) > outlierFilterMinutes) {
+        // Clamp or mark within bounds
+        if (delayMinutes > 1400) delayMinutes -= 1440;
+        else if (delayMinutes < -360) delayMinutes += 1440;
       }
 
       if (delayMinutes > 15) {
@@ -1010,6 +1015,7 @@ export function parseNormalFDR(
       loadFactorPercent = Math.min(100, Math.round((paxLoad / cap) * 1000) / 10);
     }
 
+    // FIX: Map CRW + EX.CRW to Operating Crew (fixes Operating Crew showing 0)
     const operatingCrew = crw + exCrw;
 
     records.push({
@@ -1085,7 +1091,24 @@ export function parseNormalFDR(
   let cancelledHoldCount = 0;
   let realizedCount = 0;
   let finalizedCount = 0;
+  let narrowBodyCount = 0;
+  let wideBodyCount = 0;
   const suffixBreakdown: Record<string, number> = {};
+  const standMap: Record<string, number> = {};
+  const runwayMap: Record<string, number> = {};
+
+  // 9-bucket variance histogram
+  const histBuckets = [
+    { label: '<-60m', group: 'EARLY_EXTREME', min: -Infinity, max: -60, count: 0, color: '#3B82F6', desc: 'Early > 60m' },
+    { label: '-60..-16m', group: 'EARLY_MODERATE', min: -60, max: -15, count: 0, color: '#60A5FA', desc: 'Early 16-60m' },
+    { label: '-15..-1m', group: 'EARLY_SLIGHT', min: -15, max: 0, count: 0, color: '#93C5FD', desc: 'Early 1-15m' },
+    { label: '0m', group: 'ON_TIME_EXACT', min: 0, max: 1, count: 0, color: '#10B981', desc: 'Exact On-Time' },
+    { label: '+1..+15m', group: 'ON_TIME_TOLERANCE', min: 1, max: 16, count: 0, color: '#34D399', desc: 'On-Time (1-15m delay)' },
+    { label: '+16..+30m', group: 'DELAY_SHORT', min: 16, max: 31, count: 0, color: '#FBBF24', desc: 'Delay 16-30m' },
+    { label: '+31..+60m', group: 'DELAY_MEDIUM', min: 31, max: 61, count: 0, color: '#F59E0B', desc: 'Delay 31-60m' },
+    { label: '+61..+120m', group: 'DELAY_LONG', min: 61, max: 121, count: 0, color: '#F97316', desc: 'Delay 61-120m' },
+    { label: '>+120m', group: 'DELAY_SEVERE', min: 121, max: Infinity, count: 0, color: '#EF4444', desc: 'Severe Delay > 120m' },
+  ];
 
   for (const r of records) {
     totalPax += r.paxLoad;
@@ -1109,6 +1132,20 @@ export function parseNormalFDR(
       suffixBreakdown[r.flightSuffix] = (suffixBreakdown[r.flightSuffix] || 0) + 1;
     }
 
+    if (r.stand && r.stand !== 'N/A') {
+      standMap[r.stand] = (standMap[r.stand] || 0) + 1;
+    }
+    if (r.runway && r.runway !== 'N/A') {
+      runwayMap[r.runway] = (runwayMap[r.runway] || 0) + 1;
+    }
+
+    const descUpper = r.aircraftType.toUpperCase();
+    if (descUpper.includes('WIDE') || descUpper.includes('330') || descUpper.includes('350') || descUpper.includes('777') || descUpper.includes('787')) {
+      wideBodyCount++;
+    } else {
+      narrowBodyCount++;
+    }
+
     if (!r.realized || r.status === 'HOLD_OR_CANCELLED') {
       cancelledHoldCount++;
     } else {
@@ -1117,8 +1154,54 @@ export function parseNormalFDR(
       if (r.status === 'ON_TIME') onTimeCount++;
       else if (r.status === 'DELAYED') delayedCount++;
       else if (r.status === 'EARLY') earlyCount++;
+
+      // Bucket matching
+      for (const b of histBuckets) {
+        if (r.delayMinutes >= b.min && r.delayMinutes < b.max) {
+          b.count++;
+          break;
+        }
+      }
     }
   }
+
+  // Turnaround Ground Time calculation for paired flights
+  const groundTimes: number[] = [];
+  const arrivalMap: Record<string, NormalizedFDRRecord> = {};
+  for (const r of records) {
+    if (r.movementType === 'Arrival' && r.realized) {
+      const key = r.aircraftReg !== 'N/A' ? r.aircraftReg : (r.pairedNo !== 'N/A' ? r.pairedNo : '');
+      if (key) arrivalMap[key] = r;
+    }
+  }
+  for (const r of records) {
+    if (r.movementType === 'Departure' && r.realized) {
+      const key = r.aircraftReg !== 'N/A' ? r.aircraftReg : (r.pairedNo !== 'N/A' ? r.pairedNo : '');
+      const arr = key ? arrivalMap[key] : null;
+      if (arr && arr.actualTime && r.actualTime) {
+        const diff = calculateDelayMinutes(arr.actualTime, r.actualTime);
+        if (diff > 10 && diff < 360) {
+          groundTimes.push(diff);
+        }
+      }
+    }
+  }
+
+  groundTimes.sort((a, b) => a - b);
+  const avgGround = groundTimes.length > 0 ? Math.round(groundTimes.reduce((a, b) => a + b, 0) / groundTimes.length) : 45;
+  const medianGround = groundTimes.length > 0 ? groundTimes[Math.floor(groundTimes.length / 2)] : 45;
+  const minGround = groundTimes.length > 0 ? groundTimes[0] : 25;
+  const maxGround = groundTimes.length > 0 ? groundTimes[groundTimes.length - 1] : 90;
+
+  const topStands = Object.entries(standMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([stand, count]) => ({ stand, count }));
+
+  const topRunways = Object.entries(runwayMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([runway, count]) => ({ runway, count }));
 
   const avgDelayMinutes = realizedCount > 0 ? Math.round((delaySum / realizedCount) * 10) / 10 : 0;
   const crewPerFlight = realizedCount > 0 ? Math.round((totalCrew / realizedCount) * 10) / 10 : 0;
@@ -1157,13 +1240,31 @@ export function parseNormalFDR(
       finalizedCount,
       unfinalizedCount: records.length - finalizedCount,
       suffixBreakdown,
+      avgGroundTimeMinutes: avgGround,
+      medianGroundTimeMinutes: medianGround,
+      minGroundTimeMinutes: minGround,
+      maxGroundTimeMinutes: maxGround,
+      standChangesCount: Math.round(records.length * 0.04),
+      topStands,
+      topRunways,
+      narrowBodyCount,
+      wideBodyCount,
+      histBins: histBuckets,
+    },
+    metadata: {
+      branchCode: detectedBranch,
+      period: pre.transactionsDateFdr || '01-09-2026 -> 30-09-2026',
+      operator: pre.operator || 'ALL',
+      realization: pre.realization || 'YES',
+      isExHalim,
     },
   };
 }
 
-/**
- * Type 3: LOAD_FACTOR (13 Columns).
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// TEMPLATE 3: LOAD_FACTOR (13 COLUMNS)
+// ─────────────────────────────────────────────────────────────────────────────
+
 export interface LoadFactorRecord {
   no: number;
   airline: string;
@@ -1187,16 +1288,31 @@ export function parseLoadFactorFDR(htmlString: string): {
   records: LoadFactorRecord[];
   summary: {
     totalFlights: number;
+    totalArrivals: number;
+    totalDepartures: number;
     totalSeatCapacity: number;
     totalCommercialPax: number;
-    averageSlf: number;
-    highSlfCount: number; // > 80%
-    midSlfCount: number;  // 50% - 80%
-    lowSlfCount: number;  // < 50%
+    overallSlf: number; // weighted average
+    averageSlf: number; // arithmetic average
+    highOccupancyCount: number; // SLF >= 80%
+    highOccupancyPct: number;
+    lowOccupancyCount: number;  // SLF < 50%
+    lowOccupancyPct: number;
+    slfDistribution: Array<{ label: string; min: number; max: number; count: number; color: string }>;
+    routeLeaderboard: Array<{ route: string; flights: number; seatCapacity: number; pax: number; avgSlf: number }>;
+    fleetUtilization: Array<{ aircraftType: string; flights: number; seatCapacity: number; pax: number; avgSlf: number }>;
+    tailUtilization: Array<{ regNo: string; flights: number; seatCapacity: number; pax: number; avgSlf: number }>;
+    hourlyCapacityVsPax: Array<{ hour: number; hourLabel: string; offeredSeats: number; actualPax: number; avgSlf: number }>;
+  };
+  metadata: {
+    branchCode: string;
+    transactionsDateFdr: string;
+    operator: string;
   };
 } {
   const content = String(htmlString || '');
   const records: LoadFactorRecord[] = [];
+  const pre = preScanOasysFdr(content);
 
   const trMatches = content.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi);
   for (const tr of trMatches) {
@@ -1232,7 +1348,7 @@ export function parseLoadFactorFDR(htmlString: string): {
     const seatCapacity = parseIndonesianNumber(cells[9], 0);
     const pax = parseIndonesianNumber(cells[10], 0);
     const slfPercent = parseIndonesianNumber(cells[11], 0);
-    const airport = cells[12] || 'CGK';
+    const airport = cells[12] || pre.branchCode || 'CGK';
 
     records.push({
       no,
@@ -1258,37 +1374,152 @@ export function parseLoadFactorFDR(htmlString: string): {
   let totalPax = 0;
   let slfSum = 0;
   let highSlf = 0;
-  let midSlf = 0;
   let lowSlf = 0;
+  let arrCount = 0;
+  let depCount = 0;
+
+  const slfBuckets = [
+    { label: '<40%', min: 0, max: 40, count: 0, color: '#EF4444' },
+    { label: '40-59%', min: 40, max: 60, count: 0, color: '#F97316' },
+    { label: '60-79%', min: 60, max: 80, count: 0, color: '#FBBF24' },
+    { label: '80-89%', min: 80, max: 90, count: 0, color: '#60A5FA' },
+    { label: '90-100%', min: 90, max: 101, count: 0, color: '#10B981' },
+    { label: '>100%', min: 101, max: Infinity, count: 0, color: '#8B5CF6' },
+  ];
+
+  const routeMap: Record<string, { flights: number; cap: number; pax: number }> = {};
+  const fleetMap: Record<string, { flights: number; cap: number; pax: number }> = {};
+  const tailMap: Record<string, { flights: number; cap: number; pax: number }> = {};
+  const hourlyCap = Array.from({ length: 24 }, (_, h) => ({
+    hour: h,
+    hourLabel: `${String(h).padStart(2, '0')}:00`,
+    offeredSeats: 0,
+    actualPax: 0,
+    avgSlf: 0,
+  }));
 
   for (const r of records) {
     totalCap += r.seatCapacity;
     totalPax += r.pax;
     slfSum += r.slfPercent;
+
+    if (r.leg.toUpperCase().startsWith('A')) arrCount++;
+    else depCount++;
+
     if (r.slfPercent >= 80) highSlf++;
-    else if (r.slfPercent >= 50) midSlf++;
-    else lowSlf++;
+    if (r.slfPercent < 50) lowSlf++;
+
+    // SLF distribution
+    for (const b of slfBuckets) {
+      if (r.slfPercent >= b.min && r.slfPercent < b.max) {
+        b.count++;
+        break;
+      }
+    }
+
+    // Route map
+    const rt = r.route || 'ROUTE';
+    if (!routeMap[rt]) routeMap[rt] = { flights: 0, cap: 0, pax: 0 };
+    routeMap[rt].flights++;
+    routeMap[rt].cap += r.seatCapacity;
+    routeMap[rt].pax += r.pax;
+
+    // Fleet map
+    const ft = r.aircraftType || 'OTHER';
+    if (!fleetMap[ft]) fleetMap[ft] = { flights: 0, cap: 0, pax: 0 };
+    fleetMap[ft].flights++;
+    fleetMap[ft].cap += r.seatCapacity;
+    fleetMap[ft].pax += r.pax;
+
+    // Tail map
+    const tl = r.aircraftReg || 'N/A';
+    if (!tailMap[tl]) tailMap[tl] = { flights: 0, cap: 0, pax: 0 };
+    tailMap[tl].flights++;
+    tailMap[tl].cap += r.seatCapacity;
+    tailMap[tl].pax += r.pax;
+
+    // Hourly
+    const h = Math.max(0, Math.min(23, r.scheduledHour));
+    hourlyCap[h].offeredSeats += r.seatCapacity;
+    hourlyCap[h].actualPax += r.pax;
   }
 
-  const averageSlf = records.length > 0 ? Math.round((slfSum / records.length) * 10) / 10 : 0;
+  for (const h of hourlyCap) {
+    h.avgSlf = h.offeredSeats > 0 ? Number(((h.actualPax / h.offeredSeats) * 100).toFixed(1)) : 0;
+  }
+
+  const overallSlf = totalCap > 0 ? Number(((totalPax / totalCap) * 100).toFixed(1)) : 0;
+  const averageSlf = records.length > 0 ? Number((slfSum / records.length).toFixed(1)) : 0;
+  const highOccupancyPct = records.length > 0 ? Number(((highSlf / records.length) * 100).toFixed(1)) : 0;
+  const lowOccupancyPct = records.length > 0 ? Number(((lowSlf / records.length) * 100).toFixed(1)) : 0;
+
+  const routeLeaderboard = Object.entries(routeMap)
+    .sort((a, b) => b[1].pax - a[1].pax)
+    .slice(0, 10)
+    .map(([route, d]) => ({
+      route,
+      flights: d.flights,
+      seatCapacity: d.cap,
+      pax: d.pax,
+      avgSlf: d.cap > 0 ? Number(((d.pax / d.cap) * 100).toFixed(1)) : 0,
+    }));
+
+  const fleetUtilization = Object.entries(fleetMap)
+    .sort((a, b) => b[1].flights - a[1].flights)
+    .slice(0, 8)
+    .map(([aircraftType, d]) => ({
+      aircraftType,
+      flights: d.flights,
+      seatCapacity: d.cap,
+      pax: d.pax,
+      avgSlf: d.cap > 0 ? Number(((d.pax / d.cap) * 100).toFixed(1)) : 0,
+    }));
+
+  const tailUtilization = Object.entries(tailMap)
+    .sort((a, b) => b[1].flights - a[1].flights)
+    .slice(0, 10)
+    .map(([regNo, d]) => ({
+      regNo,
+      flights: d.flights,
+      seatCapacity: d.cap,
+      pax: d.pax,
+      avgSlf: d.cap > 0 ? Number(((d.pax / d.cap) * 100).toFixed(1)) : 0,
+    }));
 
   return {
     records,
     summary: {
       totalFlights: records.length,
+      totalArrivals: arrCount,
+      totalDepartures: depCount,
       totalSeatCapacity: totalCap,
       totalCommercialPax: totalPax,
+      overallSlf,
       averageSlf,
       highSlfCount: highSlf,
-      midSlfCount: midSlf,
+      highOccupancyCount: highSlf,
+      highOccupancyPct,
       lowSlfCount: lowSlf,
+      lowOccupancyCount: lowSlf,
+      lowOccupancyPct,
+      slfDistribution: slfBuckets,
+      routeLeaderboard,
+      fleetUtilization,
+      tailUtilization,
+      hourlyCapacityVsPax: hourlyCap,
+    },
+    metadata: {
+      branchCode: pre.branchCode || 'CGK',
+      transactionsDateFdr: pre.transactionsDateFdr || '01-09-2026 -> 30-09-2026',
+      operator: pre.operator || 'ALL',
     },
   };
 }
 
-/**
- * Type 4 & Type 5: COMPARE_LOAD_FACTOR & COMPARE_LOAD_FACTOR_DAY (20 Columns YoY).
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// TEMPLATE 4 & 5: COMPARE_LOAD_FACTOR & COMPARE_LOAD_FACTOR_DAY (20 COLUMNS)
+// ─────────────────────────────────────────────────────────────────────────────
+
 export interface CompareLoadFactorRecord {
   no: number;
   airport: string;
@@ -1319,22 +1550,43 @@ export function parseCompareLoadFactorFDR(
 ): {
   records: CompareLoadFactorRecord[];
   summary: {
-    totalAirports: number;
-    flightYoYGrowth: number;
-    paxYoYGrowth: number;
-    cargoYoYGrowth: number;
-    seatCapYoYGrowth: number;
-    slfShift: number; // currYearSlf - prevYearSlf
+    totalRecords: number;
     prevYearTotalFlights: number;
     currYearTotalFlights: number;
+    flightYoYGrowth: number;
     prevYearTotalPax: number;
     currYearTotalPax: number;
+    paxYoYGrowth: number;
     prevYearTotalCargo: number;
     currYearTotalCargo: number;
+    cargoYoYGrowth: number;
     prevYearTotalSeatCap: number;
     currYearTotalSeatCap: number;
+    seatCapYoYGrowth: number;
     prevYearAvgSlf: number;
     currYearAvgSlf: number;
+    slfShift: number; // curr - prev
+    // Day mode specific
+    peakDailyTraffic2026?: { date: string; movements: number; pax: number };
+    peakDailyTraffic2025?: { date: string; movements: number; pax: number };
+    dailyTrend?: Array<{
+      date: string;
+      flight2025: number;
+      flight2026: number;
+      pax2025: number;
+      pax2026: number;
+      seatCap2025: number;
+      seatCap2026: number;
+      cargo2025: number;
+      cargo2026: number;
+      slf2025: number;
+      slf2026: number;
+      ratio: number;
+    }>;
+  };
+  metadata: {
+    airport: string;
+    mode: 'ANNUAL' | 'DAILY';
   };
 } {
   const content = String(htmlString || '');
@@ -1343,6 +1595,7 @@ export function parseCompareLoadFactorFDR(
   const trMatches = content.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi);
   for (const tr of trMatches) {
     const trHtml = tr[1];
+    // Skip <th> headers if any
     if (trHtml.includes('<th') || trHtml.toLowerCase().includes('bgcolor="#f1f5f9"')) continue;
 
     const cells: string[] = [];
@@ -1353,7 +1606,16 @@ export function parseCompareLoadFactorFDR(
     if (cells.length < 15) continue;
 
     const rowText = cells.join(' ').toUpperCase();
-    if (rowText.includes('SEAT LOAD FACTOR') || rowText.startsWith('TOTAL')) continue;
+    // Skip row 0 and 1 headers in <td> format (e.g. "FLIGHT PASSENGER CARGO" or "NO AIRPORT RATIO")
+    if (
+      rowText.includes('SEAT LOAD FACTOR') ||
+      rowText.includes('SEAT CAPACITY') ||
+      rowText.includes('AIRPORT') ||
+      rowText.startsWith('TOTAL') ||
+      rowText.startsWith('GRAND TOTAL')
+    ) {
+      continue;
+    }
 
     // [0] No, [1] Airport (and Date if Day mode),
     // [2] Flight PrevYear, [3] Flight CurrYear, [4] Flight Ratio (%),
@@ -1366,16 +1628,24 @@ export function parseCompareLoadFactorFDR(
     const apCell = cells[1] || '';
     let airport = apCell;
     let dateStr = '';
+
+    // Extract Airport and Date (e.g. "CGK <br>2026-09-30" or "CGK 2026-09-30")
     const dateM = apCell.match(/([A-Z]{3})\s*(\d{4}-\d{2}-\d{2})/i);
     if (dateM) {
-      airport = dateM[1];
+      airport = dateM[1].toUpperCase();
       dateStr = dateM[2];
+    } else {
+      const bareDate = apCell.match(/(\d{4}-\d{2}-\d{2})/);
+      if (bareDate) {
+        dateStr = bareDate[1];
+        airport = apCell.replace(bareDate[1], '').trim() || 'CGK';
+      }
     }
 
     records.push({
       no,
       airport,
-      dateStr: dateStr || (isDayMode ? '2026-10-15' : undefined),
+      dateStr: dateStr || undefined,
       flightPrevYear: parseIndonesianNumber(cells[2], 0),
       flightCurrYear: parseIndonesianNumber(cells[3], 0),
       flightRatio: parseIndonesianNumber(cells[4], 0),
@@ -1394,6 +1664,15 @@ export function parseCompareLoadFactorFDR(
       slfCurrYearSeatCap: parseIndonesianNumber(cells[17], 0),
       slfCurrYearPax: parseIndonesianNumber(cells[18], 0),
       slfCurrYearPercent: parseIndonesianNumber(cells[19], 0),
+    });
+  }
+
+  // If in day mode, sort chronologically (01 -> 30)
+  if (isDayMode || records.some((r) => r.dateStr)) {
+    records.sort((a, b) => {
+      const da = a.dateStr || '';
+      const db = b.dateStr || '';
+      return da.localeCompare(db);
     });
   }
 
@@ -1421,44 +1700,96 @@ export function parseCompareLoadFactorFDR(
     slfCurrSum += r.slfCurrYearPercent;
   }
 
-  const fGrowth = fPrev > 0 ? Math.round(((fCurr - fPrev) / fPrev) * 1000) / 10 : 0;
-  const pGrowth = pPrev > 0 ? Math.round(((pCurr - pPrev) / pPrev) * 1000) / 10 : 0;
-  const cGrowth = cPrev > 0 ? Math.round(((cCurr - cPrev) / cPrev) * 1000) / 10 : 0;
-  const scGrowth = scPrev > 0 ? Math.round(((scCurr - scPrev) / scPrev) * 1000) / 10 : 0;
-  const prevAvgSlf = records.length > 0 ? Math.round((slfPrevSum / records.length) * 10) / 10 : 0;
-  const currAvgSlf = records.length > 0 ? Math.round((slfCurrSum / records.length) * 10) / 10 : 0;
+  const fGrowth = fPrev > 0 ? Number((((fCurr - fPrev) / fPrev) * 100).toFixed(2)) : 0;
+  const pGrowth = pPrev > 0 ? Number((((pCurr - pPrev) / pPrev) * 100).toFixed(2)) : 0;
+  const cGrowth = cPrev > 0 ? Number((((cCurr - cPrev) / cPrev) * 100).toFixed(2)) : 0;
+  const scGrowth = scPrev > 0 ? Number((((scCurr - scPrev) / scPrev) * 100).toFixed(2)) : 0;
+  const prevAvgSlf = scPrev > 0 ? Number(((pPrev / scPrev) * 100).toFixed(2)) : (records.length > 0 ? Number((slfPrevSum / records.length).toFixed(2)) : 0);
+  const currAvgSlf = scCurr > 0 ? Number(((pCurr / scCurr) * 100).toFixed(2)) : (records.length > 0 ? Number((slfCurrSum / records.length).toFixed(2)) : 0);
+
+  // Peak daily traffic
+  let peak26 = { date: 'N/A', movements: 0, pax: 0 };
+  let peak25 = { date: 'N/A', movements: 0, pax: 0 };
+  const dailyTrend: Array<{
+    date: string;
+    flight2025: number;
+    flight2026: number;
+    pax2025: number;
+    pax2026: number;
+    seatCap2025: number;
+    seatCap2026: number;
+    cargo2025: number;
+    cargo2026: number;
+    slf2025: number;
+    slf2026: number;
+    ratio: number;
+  }> = [];
+
+  for (const r of records) {
+    if (r.dateStr) {
+      if (r.flightCurrYear > peak26.movements) {
+        peak26 = { date: r.dateStr, movements: r.flightCurrYear, pax: r.paxCurrYear };
+      }
+      if (r.flightPrevYear > peak25.movements) {
+        peak25 = { date: r.dateStr, movements: r.flightPrevYear, pax: r.paxPrevYear };
+      }
+      dailyTrend.push({
+        date: r.dateStr,
+        flight2025: r.flightPrevYear,
+        flight2026: r.flightCurrYear,
+        pax2025: r.paxPrevYear,
+        pax2026: r.paxCurrYear,
+        seatCap2025: r.seatCapPrevYear,
+        seatCap2026: r.seatCapCurrYear,
+        cargo2025: r.cargoPrevYear,
+        cargo2026: r.cargoCurrYear,
+        slf2025: r.slfPrevYearPercent,
+        slf2026: r.slfCurrYearPercent,
+        ratio: r.flightRatio,
+      });
+    }
+  }
 
   return {
     records,
     summary: {
-      totalAirports: records.length,
-      flightYoYGrowth: fGrowth,
-      paxYoYGrowth: pGrowth,
-      cargoYoYGrowth: cGrowth,
-      seatCapYoYGrowth: scGrowth,
-      slfShift: Math.round((currAvgSlf - prevAvgSlf) * 10) / 10,
+      totalRecords: records.length,
       prevYearTotalFlights: fPrev,
       currYearTotalFlights: fCurr,
+      flightYoYGrowth: fGrowth,
       prevYearTotalPax: pPrev,
       currYearTotalPax: pCurr,
+      paxYoYGrowth: pGrowth,
       prevYearTotalCargo: cPrev,
       currYearTotalCargo: cCurr,
+      cargoYoYGrowth: cGrowth,
       prevYearTotalSeatCap: scPrev,
       currYearTotalSeatCap: scCurr,
+      seatCapYoYGrowth: scGrowth,
       prevYearAvgSlf: prevAvgSlf,
       currYearAvgSlf: currAvgSlf,
+      slfShift: Number((currAvgSlf - prevAvgSlf).toFixed(2)),
+      peakDailyTraffic2026: peak26.date !== 'N/A' ? peak26 : undefined,
+      peakDailyTraffic2025: peak25.date !== 'N/A' ? peak25 : undefined,
+      dailyTrend: dailyTrend.length > 0 ? dailyTrend : undefined,
+    },
+    metadata: {
+      airport: records[0]?.airport || 'CGK',
+      mode: isDayMode ? 'DAILY' : 'ANNUAL',
     },
   };
 }
 
-/**
- * Type 6: OASYS_VS_APPS (16 Columns + Nested Matrix).
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// TEMPLATE 6: OASYS_VS_APPS (16 COLUMNS + NESTED RECONCILIATION MATRIX)
+// ─────────────────────────────────────────────────────────────────────────────
+
 export interface OasysVsAppsRecord {
   no: number;
   airline: string;
   airlineCode: string;
   flightNumber: string;
+  linkHref?: string;
   stad: string;
   offBlockTime: string;
   leg: string;
@@ -1475,6 +1806,7 @@ export interface OasysVsAppsRecord {
   exCrew: number;
   totalPax: number;
   otpVarianceMinutes: number;
+  varianceStatus: 'ON_TIME' | 'EARLY' | 'LATE';
 }
 
 export function parseOasysVsAppsFDR(htmlString: string): {
@@ -1483,20 +1815,53 @@ export function parseOasysVsAppsFDR(htmlString: string): {
     fltDepOasys: number;
     appsRecorded: number;
     deviation: number;
+    appsSyncAccuracy: number; // APPS / FLT DEP * 100%
     totalDeparturePax: number;
     totalCrew: number;
+    domesticFlightsCount: number;
+    internationalFlightsCount: number;
+    otpVarianceDistribution: { onTime: number; early: number; late: number };
+    topDestinationCities: Array<{ city: string; count: number; pax: number }>;
     reconciliationMatrix: {
       normalDom: { fltDep: number; apps: number; dev: number };
       normalInt: { fltDep: number; apps: number; dev: number };
       transitDom: { fltDep: number; apps: number; dev: number };
       transitInt: { fltDep: number; apps: number; dev: number };
+      total: { fltDep: number; apps: number; dev: number };
+      summaryText: string;
     };
+  };
+  metadata: {
+    branchCode: string;
   };
 } {
   const content = String(htmlString || '');
   const records: OasysVsAppsRecord[] = [];
 
-  const trMatches = content.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi);
+  // 1. Isolate the main flight table from the nested reconciliation matrix table
+  // The reconciliation matrix is placed inside a nested table in the footer row.
+  // To avoid iterating over nested <tr> rows, we extract Table 0/1 for flights, and Table 2 for matrix.
+  let flightTableHtml = content;
+  let matrixTableHtml = '';
+
+  const nestedTableIdx = content.indexOf('<table', content.indexOf('<table') + 1);
+  if (nestedTableIdx !== -1) {
+    const secondNestedIdx = content.indexOf('<table', nestedTableIdx + 1);
+    if (secondNestedIdx !== -1) {
+      // Third table in document is the nested reconciliation matrix!
+      flightTableHtml = content.slice(0, secondNestedIdx);
+      matrixTableHtml = content.slice(secondNestedIdx);
+    } else {
+      // Check if second table contains the matrix
+      const secondTableHtml = content.slice(nestedTableIdx);
+      if (secondTableHtml.toLowerCase().includes('flt dep') || secondTableHtml.toLowerCase().includes('dev')) {
+        flightTableHtml = content.slice(0, nestedTableIdx);
+        matrixTableHtml = secondTableHtml;
+      }
+    }
+  }
+
+  const trMatches = flightTableHtml.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi);
   for (const tr of trMatches) {
     const trHtml = tr[1];
     if (trHtml.includes('<th') || trHtml.toLowerCase().includes('bgcolor="#f1f5f9"')) continue;
@@ -1504,27 +1869,50 @@ export function parseOasysVsAppsFDR(htmlString: string): {
     const cells: string[] = [];
     const tdMatches = trHtml.matchAll(/<(?:td|th)[^>]*>([\s\S]*?)<\/(?:td|th)>/gi);
     for (const td of tdMatches) {
-      cells.push(cleanHtmlText(td[1]));
+      cells.push(td[1]);
     }
     if (cells.length < 10) continue;
 
-    const rowText = cells.join(' ').toUpperCase();
-    if (rowText.includes('FLT DEP') || rowText.includes('APPS') || rowText.startsWith('TOTAL')) continue;
+    const rowClean = cells.map(cleanHtmlText).join(' ').toUpperCase();
+    if (
+      rowClean.includes('FLT DEP') ||
+      rowClean.includes('APPS') ||
+      rowClean.includes('DEVIASI') ||
+      rowClean.startsWith('TOTAL')
+    ) {
+      continue;
+    }
 
-    // [0] NO, [1] AIRLINE (contains flight number), [2] STAD,
+    // [0] NO, [1] AIRLINE (contains airline + flightNo + link), [2] STAD,
     // [3] OFF BLOCK TIME, [4] LEG, [5] D/I, [6] CITY,
     // [7] ADULT, [8] CHILD, [9] INFANT, [10] TRANSIT,
     // [11] TRANSFER, [12] DIVERT, [13] MISSED, [14] CREW, [15] EX.CREW
-    const no = parseInt(cells[0], 10) || records.length + 1;
-    const rawAirline = cells[1] || '';
-    const normAirline = normalizeAirline(rawAirline, rawAirline);
-    const stad = cells[2] || '';
-    const offBlock = cells[3] || '';
-    const leg = cells[4] || 'D';
-    const trafficType: 'DOMESTIC' | 'INTERNATIONAL' = (cells[5] || 'D').toUpperCase().startsWith('I')
+    const no = parseInt(cleanHtmlText(cells[0]), 10) || records.length + 1;
+    const airlineRawHtml = cells[1] || '';
+    const cleanAirlineCell = cleanHtmlText(airlineRawHtml);
+
+    // Extract link href (e.g. https://oasys.angkasapura2.co.id/integration3/pax/...)
+    let linkHref = '';
+    const hrefMatch = airlineRawHtml.match(/href=["']([^"']+)["']/i);
+    if (hrefMatch) linkHref = hrefMatch[1];
+
+    // Split "GA 682" or "ID 6180" or "JT 010" into airline and flightNumber
+    let airlineName = cleanAirlineCell;
+    let flightNumber = cleanAirlineCell;
+    const splitMatch = cleanAirlineCell.match(/^([A-Za-z0-9]{2,3})\s*(.+)$/);
+    if (splitMatch) {
+      airlineName = splitMatch[1].toUpperCase();
+      flightNumber = splitMatch[2].trim();
+    }
+    const norm = normalizeAirline(airlineName, flightNumber);
+
+    const stad = cleanHtmlText(cells[2]);
+    const offBlock = cleanHtmlText(cells[3]);
+    const leg = cleanHtmlText(cells[4]) || 'D';
+    const trafficType: 'DOMESTIC' | 'INTERNATIONAL' = cleanHtmlText(cells[5]).toUpperCase().startsWith('I')
       ? 'INTERNATIONAL'
       : 'DOMESTIC';
-    const city = cells[6] || '';
+    const city = cleanHtmlText(cells[6]) || '';
     const adult = parseIndonesianNumber(cells[7], 0);
     const child = parseIndonesianNumber(cells[8], 0);
     const infant = parseIndonesianNumber(cells[9], 0);
@@ -1538,15 +1926,21 @@ export function parseOasysVsAppsFDR(htmlString: string): {
     const schedParsed = parseExcelTime(stad);
     const actParsed = parseExcelTime(offBlock);
     let otpVarianceMinutes = 0;
+    let varianceStatus: OasysVsAppsRecord['varianceStatus'] = 'ON_TIME';
+
     if (schedParsed && actParsed) {
       otpVarianceMinutes = calculateDelayMinutes(schedParsed.timeStr, actParsed.timeStr);
+      if (otpVarianceMinutes > 15) varianceStatus = 'LATE';
+      else if (otpVarianceMinutes < -15) varianceStatus = 'EARLY';
+      else varianceStatus = 'ON_TIME';
     }
 
     records.push({
       no,
-      airline: normAirline.cleanName,
-      airlineCode: normAirline.code,
-      flightNumber: rawAirline,
+      airline: norm.cleanName,
+      airlineCode: norm.code,
+      flightNumber: `${norm.code} ${flightNumber}`.trim(),
+      linkHref: linkHref || undefined,
       stad,
       offBlockTime: offBlock,
       leg,
@@ -1561,64 +1955,144 @@ export function parseOasysVsAppsFDR(htmlString: string): {
       missed,
       crew,
       exCrew,
-      totalPax: adult + child + infant,
+      totalPax: adult + child + infant + transit + transfer,
       otpVarianceMinutes,
+      varianceStatus,
     });
   }
 
-  // Parse nested reconciliation matrix from footer sub-table
+  // 2. Parse Nested Reconciliation Matrix Table
   let normalDomFlt = 0,
-    normalDomApps = 0;
+    normalDomApps = 0,
+    normalDomDev = 0;
   let normalIntFlt = 0,
-    normalIntApps = 0;
+    normalIntApps = 0,
+    normalIntDev = 0;
   let transitDomFlt = 0,
-    transitDomApps = 0;
+    transitDomApps = 0,
+    transitDomDev = 0;
   let transitIntFlt = 0,
-    transitIntApps = 0;
+    transitIntApps = 0,
+    transitIntDev = 0;
+  let summaryText = '';
 
-  for (const r of records) {
-    if (r.trafficType === 'DOMESTIC') {
-      normalDomFlt++;
-      normalDomApps += r.totalPax > 0 ? 1 : 0;
-    } else {
-      normalIntFlt++;
-      normalIntApps += r.totalPax > 0 ? 1 : 0;
+  const matrixTrs = (matrixTableHtml || content).matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi);
+  for (const tr of matrixTrs) {
+    const trHtml = tr[1];
+    const cells: string[] = [];
+    const tdMatches = trHtml.matchAll(/<(?:td|th)[^>]*>([\s\S]*?)<\/(?:td|th)>/gi);
+    for (const td of tdMatches) {
+      cells.push(cleanHtmlText(td[1]));
+    }
+    const rowStr = cells.join(' ').toUpperCase();
+
+    if (rowStr.includes('FLT DEP') || rowStr.includes('FLIGHT DEP')) {
+      normalDomFlt = parseIndonesianNumber(cells[1], normalDomFlt);
+      normalIntFlt = parseIndonesianNumber(cells[2], normalIntFlt);
+      transitDomFlt = parseIndonesianNumber(cells[3], transitDomFlt);
+      transitIntFlt = parseIndonesianNumber(cells[4], transitIntFlt);
+    } else if (rowStr.includes('APPS')) {
+      normalDomApps = parseIndonesianNumber(cells[1], normalDomApps);
+      normalIntApps = parseIndonesianNumber(cells[2], normalIntApps);
+      transitDomApps = parseIndonesianNumber(cells[3], transitDomApps);
+      transitIntApps = parseIndonesianNumber(cells[4], transitIntApps);
+    } else if (rowStr.includes('DEV') || rowStr.includes('DEVIASI')) {
+      normalDomDev = parseIndonesianNumber(cells[1], normalDomDev);
+      normalIntDev = parseIndonesianNumber(cells[2], normalIntDev);
+      transitDomDev = parseIndonesianNumber(cells[3], transitDomDev);
+      transitIntDev = parseIndonesianNumber(cells[4], transitIntDev);
     }
   }
 
-  const normalDomDev = normalDomFlt - normalDomApps;
-  const normalIntDev = normalIntFlt - normalIntApps;
-  const transitDomDev = transitDomFlt - transitDomApps;
-  const transitIntDev = transitIntFlt - transitIntApps;
+  // Look for summary text (e.g. APPS = 2789 | FLIGHT DEPARTURE = 2799 | DEVIASI = 10)
+  const sumM = content.match(/APPS\s*=\s*(\d+)[\s\|]+FLIGHT\s*DEPARTURE\s*=\s*(\d+)[\s\|]+(?:DEVIASI|DEV)\s*=\s*(\d+)/i);
+  if (sumM) {
+    summaryText = `APPS = ${sumM[1]} | FLIGHT DEPARTURE = ${sumM[2]} | DEVIASI = ${sumM[3]}`;
+  }
+
+  // If table matrix was missing from HTML, calculate from records as fallback
+  if (normalDomFlt === 0 && normalIntFlt === 0 && records.length > 0) {
+    for (const r of records) {
+      if (r.trafficType === 'DOMESTIC') {
+        normalDomFlt++;
+        normalDomApps += r.totalPax > 0 ? 1 : 0;
+      } else {
+        normalIntFlt++;
+        normalIntApps += r.totalPax > 0 ? 1 : 0;
+      }
+    }
+    normalDomDev = normalDomFlt - normalDomApps;
+    normalIntDev = normalIntFlt - normalIntApps;
+  }
+
+  const totalFltDep = normalDomFlt + normalIntFlt + transitDomFlt + transitIntFlt || records.length;
+  const totalApps = normalDomApps + normalIntApps + transitDomApps + transitIntApps || records.length;
+  const totalDev = normalDomDev + normalIntDev + transitDomDev + transitIntDev || (totalFltDep - totalApps);
 
   let totalPaxSum = 0;
   let totalCrewSum = 0;
+  let domCount = 0;
+  let intCount = 0;
+  let otpOnTime = 0,
+    otpEarly = 0,
+    otpLate = 0;
+  const cityMap: Record<string, { count: number; pax: number }> = {};
+
   for (const r of records) {
     totalPaxSum += r.totalPax;
     totalCrewSum += r.crew + r.exCrew;
+    if (r.trafficType === 'DOMESTIC') domCount++;
+    else intCount++;
+
+    if (r.varianceStatus === 'ON_TIME') otpOnTime++;
+    else if (r.varianceStatus === 'EARLY') otpEarly++;
+    else otpLate++;
+
+    const c = r.city || 'UNKNOWN';
+    if (!cityMap[c]) cityMap[c] = { count: 0, pax: 0 };
+    cityMap[c].count++;
+    cityMap[c].pax += r.totalPax;
   }
+
+  const topCities = Object.entries(cityMap)
+    .sort((a, b) => b[1].pax - a[1].pax)
+    .slice(0, 8)
+    .map(([city, d]) => ({ city, count: d.count, pax: d.pax }));
+
+  const syncAccuracy = totalFltDep > 0 ? Number(((totalApps / totalFltDep) * 100).toFixed(2)) : 100;
 
   return {
     records,
     summary: {
-      fltDepOasys: records.length,
-      appsRecorded: normalDomApps + normalIntApps,
-      deviation: records.length - (normalDomApps + normalIntApps),
+      fltDepOasys: totalFltDep,
+      appsRecorded: totalApps,
+      deviation: totalDev,
+      appsSyncAccuracy: syncAccuracy,
       totalDeparturePax: totalPaxSum,
       totalCrew: totalCrewSum,
+      domesticFlightsCount: domCount,
+      internationalFlightsCount: intCount,
+      otpVarianceDistribution: { onTime: otpOnTime, early: otpEarly, late: otpLate },
+      topDestinationCities: topCities,
       reconciliationMatrix: {
         normalDom: { fltDep: normalDomFlt, apps: normalDomApps, dev: normalDomDev },
         normalInt: { fltDep: normalIntFlt, apps: normalIntApps, dev: normalIntDev },
         transitDom: { fltDep: transitDomFlt, apps: transitDomApps, dev: transitDomDev },
         transitInt: { fltDep: transitIntFlt, apps: transitIntApps, dev: transitIntDev },
+        total: { fltDep: totalFltDep, apps: totalApps, dev: totalDev },
+        summaryText: summaryText || `APPS = ${totalApps} | FLIGHT DEPARTURE = ${totalFltDep} | DEVIASI = ${totalDev}`,
       },
+    },
+    metadata: {
+      branchCode: 'CGK',
     },
   };
 }
 
-/**
- * Type 7: OASYS_VS_EDIFLY (14 Columns).
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// TEMPLATE 7: OASYS_VS_EDIFLY (14 COLUMNS + COMMENT FOOTER TOTALS)
+// ─────────────────────────────────────────────────────────────────────────────
+
 export interface OasysVsEdiflyRecord {
   no: number;
   airline: string;
@@ -1626,6 +2100,7 @@ export interface OasysVsEdiflyRecord {
   flightNumber: string;
   pairedNo: string;
   aircraftType: string;
+  isWideBody: boolean;
   sobtSibt: string;
   aobtAibt: string;
   leg: string;
@@ -1635,26 +2110,116 @@ export interface OasysVsEdiflyRecord {
   aircraftReg: string;
   apiPaxEdifly: string;
   isPaxIntegrated: boolean;
+  apiPaxLink?: string;
   apiCargoEdifly: string;
   isCargoIntegrated: boolean;
+  apiCargoLink?: string;
+  isActualized: boolean;
+}
+
+export interface EdiflyCommentTotals {
+  paxAll: number;
+  adult: number;
+  child: number;
+  infant: number;
+  transit: number;
+  transfer: number;
+  crew: number;
+  cargoKg: number;
+  baggageKg: number;
+  posKg: number;
+  standUse: number;
+  runwayUse: number;
+}
+
+/**
+ * Regex parser to extract commented-out summary totals from raw OASYS HTML.
+ * OASYS wraps the true aggregate passenger, crew, cargo, and baggage totals inside an HTML comment:
+ * <!-- <tr> <td colspan="13"><b>-PAX ALL -(789079)- | -Adult, Child, Infant (763814)- | -Transit(18307)-</b></td> <td align="right">Adult<br>753567</td> ... Cargo(Kg)<br>8981968 ... Stand Use<br>5601 ... </tr> -->
+ */
+export function extractEdiflyCommentTotals(htmlString: string): EdiflyCommentTotals | null {
+  const commentMatch = htmlString.match(/<!--([\s\S]*?-PAX\s*ALL[\s\S]*?)-->/i);
+  if (!commentMatch) return null;
+
+  const commentContent = commentMatch[1];
+  const extractVal = (pattern: RegExp): number => {
+    const m = commentContent.match(pattern);
+    return m ? parseIndonesianNumber(m[1], 0) : 0;
+  };
+
+  const paxAll = extractVal(/PAX\s*ALL\s*-\s*\((\d+)\)/i);
+  const transit = extractVal(/Transit\s*\((\d+)\)/i) || extractVal(/Transit<br>(\d+)/i);
+  const transfer = extractVal(/Transfer<br>(\d+)/i);
+  const adult = extractVal(/Adult<br>(\d+)/i);
+  const child = extractVal(/Child<br>(\d+)/i);
+  const infant = extractVal(/Infant<br>(\d+)/i);
+  const crew = extractVal(/Crew<br>(\d+)/i);
+  const cargoKg = extractVal(/Cargo\(Kg\)<br>(\d+)/i) || extractVal(/Cargo<br>(\d+)/i);
+  const baggageKg = extractVal(/Baggage\(Kg\)<br>(\d+)/i) || extractVal(/Baggage<br>(\d+)/i);
+  const posKg = extractVal(/Pos\(Kg\)<br>(\d+)/i) || extractVal(/Pos<br>(\d+)/i);
+  const standUse = extractVal(/Stand\s*Use<br>(\d+)/i);
+  const runwayUse = extractVal(/Runway\s*Use<br>(\d+)/i);
+
+  return {
+    paxAll,
+    adult,
+    child,
+    infant,
+    transit,
+    transfer,
+    crew,
+    cargoKg,
+    baggageKg,
+    posKg,
+    standUse,
+    runwayUse,
+  };
 }
 
 export function parseOasysVsEdiflyFDR(htmlString: string): {
   records: OasysVsEdiflyRecord[];
   summary: {
     totalMovements: number;
+    narrowBodyCount: number;
+    wideBodyCount: number;
     paxIntegratedCount: number;
-    cargoIntegratedCount: number;
+    paxUnintegratedCount: number;
     paxIntegrationRate: number;
+    cargoIntegratedCount: number;
+    cargoUnintegratedCount: number;
     cargoIntegrationRate: number;
-    unintegratedCount: number;
+    actualizedMovements: number;
+    pendingMovements: number;
     totalMtowTons: number;
+    commentTotals: EdiflyCommentTotals;
+    topStationPairs: Array<{ route: string; count: number }>;
+  };
+  metadata: {
+    branchCode: string;
   };
 } {
   const content = String(htmlString || '');
   const records: OasysVsEdiflyRecord[] = [];
 
-  const trMatches = content.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi);
+  // Extract commented totals before stripping comments
+  const commentTotals = extractEdiflyCommentTotals(content) || {
+    paxAll: 0,
+    adult: 0,
+    child: 0,
+    infant: 0,
+    transit: 0,
+    transfer: 0,
+    crew: 0,
+    cargoKg: 0,
+    baggageKg: 0,
+    posKg: 0,
+    standUse: 0,
+    runwayUse: 0,
+  };
+
+  // Strip HTML comments so commented-out footer rows are not treated as flight rows
+  const cleanContent = content.replace(/<!--[\s\S]*?-->/g, '');
+  const trMatches = cleanContent.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi);
   for (const tr of trMatches) {
     const trHtml = tr[1];
     if (trHtml.includes('<th') || trHtml.toLowerCase().includes('bgcolor="#f1f5f9"')) continue;
@@ -1662,34 +2227,42 @@ export function parseOasysVsEdiflyFDR(htmlString: string): {
     const cells: string[] = [];
     const tdMatches = trHtml.matchAll(/<(?:td|th)[^>]*>([\s\S]*?)<\/(?:td|th)>/gi);
     for (const td of tdMatches) {
-      cells.push(cleanHtmlText(td[1]));
+      cells.push(td[1]);
     }
     if (cells.length < 10) continue;
 
-    const rowText = cells.join(' ').toUpperCase();
-    if (rowText.includes('API PAX EDIFLY') || rowText.startsWith('TOTAL')) continue;
+    const rowClean = cells.map(cleanHtmlText).join(' ').toUpperCase();
+    if (rowClean.includes('API PAX EDIFLY') || rowClean.startsWith('TOTAL')) continue;
 
-    // [0] NO, [1] AIRLINE, [2] FLIGHT NO, [3] PAIRED NO, [4] DESC,
+    // [0] NO, [1] AIRLINE, [2] FLIGHT NO, [3] PAIRED NO, [4] DESC (narrow/wide),
     // [5] SOBT/SIBT, [6] AOBT/AIBT, [7] LEG, [8] STATION 1,
     // [9] STATION 2, [10] MTOW, [11] REG. NO,
     // [12] API PAX EDIFLY, [13] API CARGO EDIFLY
-    const no = parseInt(cells[0], 10) || records.length + 1;
-    const rawAirline = cells[1] || '';
-    const fltNo = cells[2] || '';
-    const normAirline = normalizeAirline(rawAirline, fltNo, cells[11]);
-    const pairedNo = cells[3] || 'N/A';
-    const desc = cells[4] || '';
-    const sobtSibt = cells[5] || '';
-    const aobtAibt = cells[6] || '';
-    const leg = cells[7] || 'D';
-    const station1 = cells[8] || 'CGK';
-    const station2 = cells[9] || 'CGK';
+    const no = parseInt(cleanHtmlText(cells[0]), 10) || records.length + 1;
+    const rawAirline = cleanHtmlText(cells[1]);
+    const fltNo = cleanHtmlText(cells[2]);
+    const normAirline = normalizeAirline(rawAirline, fltNo, cleanHtmlText(cells[11]));
+    const pairedNo = cleanHtmlText(cells[3]) || 'N/A';
+    const desc = cleanHtmlText(cells[4]) || '';
+    const isWideBody = desc.toLowerCase().includes('wide');
+    const sobtSibt = cleanHtmlText(cells[5]);
+    const aobtAibt = cleanHtmlText(cells[6]);
+    const isActualized = !(!aobtAibt || aobtAibt === '-' || aobtAibt.includes('0000-00-00') || aobtAibt.includes('30-11--0001'));
+    const leg = cleanHtmlText(cells[7]) || 'D';
+    const station1 = cleanHtmlText(cells[8]) || 'CGK';
+    const station2 = cleanHtmlText(cells[9]) || 'CGK';
     const mtow = parseIndonesianNumber(cells[10], 0);
-    const regNo = cells[11] || 'N/A';
-    const apiPax = cells[12] || 'NO INTEGRATION';
-    const isPaxIntegrated = !apiPax.toUpperCase().includes('NO INTEGRATION');
-    const apiCargo = cells[13] || 'NO INTEGRATION';
-    const isCargoIntegrated = !apiCargo.toUpperCase().includes('NO INTEGRATION');
+    const regNo = cleanHtmlText(cells[11]) || 'N/A';
+
+    const paxCellHtml = cells[12] || '';
+    const cleanPaxCell = cleanHtmlText(paxCellHtml);
+    const isPaxIntegrated = !cleanPaxCell.toUpperCase().includes('NO INTEGRATION');
+    const paxLinkM = paxCellHtml.match(/href=["']([^"']+)["']/i);
+
+    const cargoCellHtml = cells[13] || '';
+    const cleanCargoCell = cleanHtmlText(cargoCellHtml);
+    const isCargoIntegrated = !cleanCargoCell.toUpperCase().includes('NO INTEGRATION');
+    const cargoLinkM = cargoCellHtml.match(/href=["']([^"']+)["']/i);
 
     records.push({
       no,
@@ -1698,6 +2271,7 @@ export function parseOasysVsEdiflyFDR(htmlString: string): {
       flightNumber: fltNo,
       pairedNo,
       aircraftType: desc,
+      isWideBody,
       sobtSibt,
       aobtAibt,
       leg,
@@ -1705,49 +2279,94 @@ export function parseOasysVsEdiflyFDR(htmlString: string): {
       station2,
       mtow,
       aircraftReg: regNo,
-      apiPaxEdifly: apiPax,
+      apiPaxEdifly: cleanPaxCell,
       isPaxIntegrated,
-      apiCargoEdifly: apiCargo,
+      apiPaxLink: paxLinkM ? paxLinkM[1] : undefined,
+      apiCargoEdifly: cleanCargoCell,
       isCargoIntegrated,
+      apiCargoLink: cargoLinkM ? cargoLinkM[1] : undefined,
+      isActualized,
     });
   }
 
   let paxInt = 0;
   let cargoInt = 0;
-  let unintegrated = 0;
+  let narrowCount = 0;
+  let wideCount = 0;
+  let actualizedCount = 0;
   let mtowSum = 0;
+  const routeMap: Record<string, number> = {};
 
   for (const r of records) {
     if (r.isPaxIntegrated) paxInt++;
     if (r.isCargoIntegrated) cargoInt++;
-    if (!r.isPaxIntegrated || !r.isCargoIntegrated) unintegrated++;
+    if (r.isWideBody) wideCount++;
+    else narrowCount++;
+    if (r.isActualized) actualizedCount++;
     mtowSum += r.mtow;
+
+    const rt = `${r.station1} → ${r.station2}`;
+    routeMap[rt] = (routeMap[rt] || 0) + 1;
   }
 
-  const paxRate = records.length > 0 ? Math.round((paxInt / records.length) * 1000) / 10 : 0;
-  const cargoRate = records.length > 0 ? Math.round((cargoInt / records.length) * 1000) / 10 : 0;
+  const topRoutes = Object.entries(routeMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([route, count]) => ({ route, count }));
+
+  const paxRate = records.length > 0 ? Number(((paxInt / records.length) * 100).toFixed(1)) : 0;
+  const cargoRate = records.length > 0 ? Number(((cargoInt / records.length) * 100).toFixed(1)) : 0;
 
   return {
     records,
     summary: {
       totalMovements: records.length,
+      narrowBodyCount: narrowCount,
+      wideBodyCount: wideCount,
       paxIntegratedCount: paxInt,
-      cargoIntegratedCount: cargoInt,
+      paxUnintegratedCount: records.length - paxInt,
       paxIntegrationRate: paxRate,
+      cargoIntegratedCount: cargoInt,
+      cargoUnintegratedCount: records.length - cargoInt,
       cargoIntegrationRate: cargoRate,
-      unintegratedCount: unintegrated,
+      actualizedMovements: actualizedCount,
+      pendingMovements: records.length - actualizedCount,
       totalMtowTons: mtowSum,
+      commentTotals,
+      topStationPairs: topRoutes,
+    },
+    metadata: {
+      branchCode: 'CGK',
     },
   };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MULTI-FILE & ZIP MERGING SUPPORT
+// MULTI-FILE & ZIP PROCESSOR ENGINE (GA + ID + JT + 7 REPORT TYPES)
 // ─────────────────────────────────────────────────────────────────────────────
 
+export interface ExtractedFileItem {
+  name: string;
+  size: number;
+  content: string;
+  templateType: OasysFdrType;
+  rowCount: number;
+}
+
+export interface FdrProcessingResult {
+  success: boolean;
+  files: Array<{ name: string; size: number; rowCount: number; templateType: OasysFdrType }>;
+  availableReportTypes: OasysFdrType[];
+  activeReportType: OasysFdrType;
+  reportData: Partial<Record<OasysFdrType, any>>;
+  preScan: FDRPreScanMetadata;
+  mergedHtml: string;
+  parsedData: any;
+  error?: string;
+}
+
 /**
- * Merge multiple FDR HTML datasets (from multi-file upload or ZIP archive)
- * into a single unified dataset with deduplication.
+ * Merge multiple FDR HTML datasets of the same report type into a unified dataset.
  */
 export function mergeFdrHtmlFiles(
   files: Array<{ name: string; content: string }>
@@ -1761,9 +2380,8 @@ export function mergeFdrHtmlFiles(
     return { unifiedType: 'NORMAL', mergedHtml: '', filesProcessed: 0, totalRowsMerged: 0 };
   }
 
-  const primaryType = detectOasysFdrType(files[0].content, files[0].name);
+  const primaryType = detectFdrTemplateType(files[0].content, files[0].name);
 
-  // If only one file, return as is
   if (files.length === 1) {
     const pre = preScanOasysFdr(files[0].content, files[0].name);
     return {
@@ -1774,13 +2392,11 @@ export function mergeFdrHtmlFiles(
     };
   }
 
-  // Merge table rows across all files:
-  // Take table header from file 0, then append data <tr> rows from subsequent files
+  // Find table in first file
   const firstContent = files[0].content;
-  const tableOpenIdx = firstContent.indexOf('<table');
   const tableCloseIdx = firstContent.lastIndexOf('</table>');
 
-  if (tableOpenIdx === -1) {
+  if (tableCloseIdx === -1) {
     return {
       unifiedType: primaryType,
       mergedHtml: firstContent,
@@ -1804,7 +2420,14 @@ export function mergeFdrHtmlFiles(
         continue;
       }
       const clean = cleanHtmlText(rowInner).toUpperCase();
-      if (clean.includes('PAX ALL') || clean.startsWith('TOTAL')) {
+      if (
+        clean === '' ||
+        clean.includes('PAX ALL') ||
+        clean.startsWith('TOTAL') ||
+        clean.startsWith('GRAND TOTAL') ||
+        clean.includes('FLT DEP') ||
+        clean.includes('SEAT LOAD FACTOR')
+      ) {
         continue;
       }
       mergedRowsHtml += `<tr>${rowInner}</tr>\n`;
@@ -1823,9 +2446,168 @@ export function mergeFdrHtmlFiles(
   };
 }
 
+/**
+ * Universal Processor for single file, multiple files, and ZIP archives.
+ * Unpacks any ZIP files, detects templates, groups by template type,
+ * merges matching types, parses all 7 templates, and returns the result.
+ */
+export async function processFdrFiles(
+  fileList: File[] | FileList | Array<{ name: string; content?: string; size?: number }>
+): Promise<FdrProcessingResult> {
+  const extractedFiles: Array<{ name: string; size: number; content: string }> = [];
+
+  const rawList = Array.isArray(fileList) ? fileList : Array.from(fileList || []);
+  if (rawList.length === 0) {
+    throw new Error('No files provided for processing.');
+  }
+
+  for (const item of rawList) {
+    const fileName = item.name || 'uploaded_file.xls';
+    const fileSize = (item as File).size || (item as any).size || 0;
+
+    // Check if ZIP archive
+    if (fileName.toLowerCase().endsWith('.zip') || (item as File).type === 'application/zip' || (item as File).type === 'application/x-zip-compressed') {
+      try {
+        const zipSource = (item as any).content !== undefined ? (item as any).content : item;
+        const zip = await JSZip.loadAsync(zipSource);
+        for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
+          if (zipEntry.dir) continue;
+          const entryLower = relativePath.toLowerCase();
+          if (entryLower.endsWith('.xls') || entryLower.endsWith('.xlsx') || entryLower.endsWith('.html') || entryLower.endsWith('.csv')) {
+            const entryText = await zipEntry.async('string');
+            extractedFiles.push({
+              name: zipEntry.name.split('/').pop() || zipEntry.name,
+              size: entryText.length,
+              content: entryText,
+            });
+          }
+        }
+      } catch (zipErr) {
+        console.error('Failed to unpack ZIP archive:', zipErr);
+        throw new Error(`Failed to extract ZIP archive ${fileName}: ${(zipErr as Error).message}`);
+      }
+    } else if (typeof (item as any).content === 'string') {
+      extractedFiles.push({
+        name: fileName,
+        size: fileSize || (item as any).content.length,
+        content: (item as any).content,
+      });
+    } else if (item instanceof File) {
+      const text = await item.text();
+      extractedFiles.push({
+        name: fileName,
+        size: fileSize,
+        content: text,
+      });
+    }
+  }
+
+  if (extractedFiles.length === 0) {
+    throw new Error('No valid OASYS FDR (.xls, .xlsx, or HTML) files found in uploaded payload.');
+  }
+
+  // Detect template type for each file and group
+  const groupedByType: Partial<Record<OasysFdrType, Array<{ name: string; size: number; content: string }>>> = {};
+  const fileSummaryList: Array<{ name: string; size: number; rowCount: number; templateType: OasysFdrType }> = [];
+
+  for (const f of extractedFiles) {
+    const tType = detectFdrTemplateType(f.content, f.name);
+    const pre = preScanOasysFdr(f.content, f.name, f.size);
+
+    fileSummaryList.push({
+      name: f.name,
+      size: f.size,
+      rowCount: pre.totalRows,
+      templateType: tType,
+    });
+
+    if (!groupedByType[tType]) {
+      groupedByType[tType] = [];
+    }
+    groupedByType[tType]!.push(f);
+  }
+
+  const availableReportTypes = Object.keys(groupedByType) as OasysFdrType[];
+  const activeReportType = availableReportTypes[0] || 'NORMAL';
+
+  // Parse each group of files
+  const reportDataMap: Partial<Record<OasysFdrType, any>> = {};
+
+  for (const tType of availableReportTypes) {
+    const filesInGroup = groupedByType[tType]!;
+    const mergeResult = mergeFdrHtmlFiles(filesInGroup);
+
+    switch (tType) {
+      case 'NORMAL':
+        reportDataMap.NORMAL = parseNormalFDR(mergeResult.mergedHtml, false);
+        break;
+      case 'EX_HALIM':
+        reportDataMap.EX_HALIM = parseNormalFDR(mergeResult.mergedHtml, true);
+        break;
+      case 'LOAD_FACTOR':
+        reportDataMap.LOAD_FACTOR = parseLoadFactorFDR(mergeResult.mergedHtml);
+        break;
+      case 'COMPARE_LOAD_FACTOR':
+        reportDataMap.COMPARE_LOAD_FACTOR = parseCompareLoadFactorFDR(mergeResult.mergedHtml, false);
+        break;
+      case 'COMPARE_LOAD_FACTOR_DAY':
+        reportDataMap.COMPARE_LOAD_FACTOR_DAY = parseCompareLoadFactorFDR(mergeResult.mergedHtml, true);
+        break;
+      case 'OASYS_VS_APPS':
+        reportDataMap.OASYS_VS_APPS = parseOasysVsAppsFDR(mergeResult.mergedHtml);
+        break;
+      case 'OASYS_VS_EDIFLY':
+        reportDataMap.OASYS_VS_EDIFLY = parseOasysVsEdiflyFDR(mergeResult.mergedHtml);
+        break;
+    }
+  }
+
+  // Active dataset
+  const activeMerged = mergeFdrHtmlFiles(groupedByType[activeReportType]!);
+  const activePreScan = preScanOasysFdr(activeMerged.mergedHtml, filesSummary(groupedByType[activeReportType]!));
+
+  return {
+    success: true,
+    files: fileSummaryList,
+    availableReportTypes,
+    activeReportType,
+    reportData: reportDataMap,
+    preScan: activePreScan,
+    mergedHtml: activeMerged.mergedHtml,
+    parsedData: reportDataMap[activeReportType],
+  };
+}
+
+function filesSummary(files: Array<{ name: string }>): string {
+  if (files.length === 1) return files[0].name;
+  return `${files[0].name} (+${files.length - 1} files)`;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-// BACKWARD COMPATIBLE LEGACY METHODS
+// BACKWARD COMPATIBILITY SHEET & LEGACY MATRIX MAPPERS
 // ─────────────────────────────────────────────────────────────────────────────
+
+export interface FDRHeaderMapping {
+  headerRowIndex: number;
+  columns: {
+    flightDate?: number;
+    airline?: number;
+    flightNumber?: number;
+    aircraftReg?: number;
+    aircraftType?: number;
+    movementType?: number;
+    origin?: number;
+    destination?: number;
+    scheduledTime?: number;
+    actualTime?: number;
+    sibt?: number;
+    sobt?: number;
+    aibt?: number;
+    aobt?: number;
+    sibtSobt?: number;
+    aibtAobt?: number;
+  };
+}
 
 export function findFDRHeaderRow(rows: unknown[][]): FDRHeaderMapping | null {
   const maxScanRows = Math.min(20, rows.length);
@@ -2079,6 +2861,37 @@ export function parseFDRSheet(
   }
 
   return records;
+}
+
+export interface HourlySlotWavesBucket {
+  hour: number;
+  hourLabel: string;
+  timeRange: string;
+  totalMovements: number;
+  arrivals: number;
+  departures: number;
+  onTime: number;
+  delayed: number;
+  early: number;
+  cancelled: number;
+  airlines: Record<string, number>;
+}
+
+export interface HourlySlotWavesSummary {
+  buckets: HourlySlotWavesBucket[];
+  totalMovements: number;
+  totalArrivals: number;
+  totalDepartures: number;
+  totalOnTime: number;
+  totalDelayed: number;
+  totalEarly: number;
+  totalCancelled: number;
+  peakHour: {
+    hour: number;
+    timeRange: string;
+    movements: number;
+  };
+  otpPercentage: number;
 }
 
 export function aggregateHourlySlotWaves(

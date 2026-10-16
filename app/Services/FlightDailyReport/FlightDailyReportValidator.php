@@ -126,6 +126,37 @@ class FlightDailyReportValidator
             $detectedFormat = $parsed['detected_format'] ?? 'OASYS HTML XLS';
 
             if (empty($records)) {
+                $fname = $originalFilename ?: basename($filePath);
+                $isExHalim = (
+                    stripos($fname, 'EX HALIM') !== false ||
+                    stripos($fname, 'HLP') !== false ||
+                    ($detectedFormat === 'OASYS HTML XLS' && (!empty($meta['airport']) || !empty($meta['source_summary']) || !empty($meta['operator'])))
+                );
+
+                if ($isExHalim) {
+                    return [
+                        'valid'            => true,
+                        'records_count'    => 0,
+                        'detected_format'  => $detectedFormat,
+                        'file_name'        => $fname,
+                        'meta'             => $meta,
+                        'airport'          => $meta['airport'] ?? 'CGK',
+                        'operator'         => $meta['operator'] ?? 'ALL AIRLINE',
+                        'period_label'     => $meta['period_label'] ?? '',
+                        'date_start'       => $meta['date_start'] ?? ($meta['period_start'] ?? ''),
+                        'date_end'         => $meta['date_end'] ?? ($meta['period_end'] ?? ''),
+                        'direction'        => $meta['direction'] ?? 'ALL',
+                        'leg'              => $meta['leg'] ?? ($meta['direction'] ?? 'ALL'),
+                        'route_type'       => $meta['route_type'] ?? 'ALL',
+                        'realization'      => $meta['realization'] ?? 'YES',
+                        'sample'           => [],
+                        'summary'          => $parsed['summary'] ?? [],
+                        'errors'           => [],
+                        'zero_state'       => true,
+                        'zero_state_title' => 'Zero Ex-Halim Movements Verified',
+                    ];
+                }
+
                 return [
                     'valid'          => false,
                     'category'       => 'NO_RECORDS',

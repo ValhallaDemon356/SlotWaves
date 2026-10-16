@@ -20,8 +20,8 @@
         </div>
     </div>
 
-    {{-- 5 INTEGRATION KPI CARDS --}}
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+    {{-- 6 INTEGRATION & COMMENT-EXTRACTED KPI CARDS --}}
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         
         {{-- 1. Total Movements --}}
         <div class="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-2xs flex flex-col justify-between">
@@ -34,8 +34,8 @@
             <div class="mt-2">
                 <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Movements</div>
                 <div class="text-xl font-black text-slate-900 tracking-tight" x-text="getEdiflyTotalMovements().toLocaleString()">0</div>
-                <div class="text-[10px] font-semibold text-slate-500 mt-0.5">
-                    Evaluated Flights
+                <div class="text-[10px] font-semibold text-slate-500 mt-0.5 truncate">
+                    <span x-text="getEdiflyNarrowCount() + ' Narrow • ' + getEdiflyWideCount() + ' Wide'"></span>
                 </div>
             </div>
         </div>
@@ -51,10 +51,10 @@
                       x-text="getEdiflyPaxIntegrationRate() + '%'">0%</span>
             </div>
             <div class="mt-2">
-                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">PAX Integration Rate</div>
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">PAX API Status</div>
                 <div class="text-xl font-black text-slate-900 tracking-tight" x-text="getEdiflyPaxIntegrationRate() + '%'">0.0%</div>
                 <div class="text-[10px] font-semibold text-slate-500 mt-0.5 truncate">
-                    Active Pax API Streams
+                    <span class="text-emerald-700 font-bold" x-text="getEdiflyPaxIntegratedCount()">0</span> Int • <span class="text-rose-600 font-bold" x-text="getEdiflyPaxNoIntegrationCount()">0</span> Gap
                 </div>
             </div>
         </div>
@@ -70,44 +70,61 @@
                       x-text="getEdiflyCargoIntegrationRate() + '%'">0%</span>
             </div>
             <div class="mt-2">
-                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">CARGO Integration Rate</div>
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">CARGO API Status</div>
                 <div class="text-xl font-black text-slate-900 tracking-tight" x-text="getEdiflyCargoIntegrationRate() + '%'">0.0%</div>
                 <div class="text-[10px] font-semibold text-slate-500 mt-0.5 truncate">
-                    Active Cargo API Streams
+                    <span class="text-sky-700 font-bold" x-text="getEdiflyCargoIntegratedCount()">0</span> Int • <span class="text-rose-600 font-bold" x-text="getEdiflyCargoNoIntegrationCount()">0</span> Gap
                 </div>
             </div>
         </div>
 
-        {{-- 4. Unintegrated Flights --}}
+        {{-- 4. Actualized vs Pending Movements --}}
         <div class="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-2xs flex flex-col justify-between">
             <div class="flex items-center justify-between">
-                <div class="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
-                    <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
+                <div class="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
+                    <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
                 </div>
-                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">NO INTEGRATION</span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-teal-100 text-teal-800">Actualized</span>
             </div>
             <div class="mt-2">
-                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Unintegrated Flights</div>
-                <div class="text-xl font-black text-rose-600 tracking-tight" x-text="getEdiflyUnintegratedCount().toLocaleString()">0</div>
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Actualized Flights</div>
+                <div class="text-xl font-black text-slate-900 tracking-tight" x-text="getEdiflyActualizedCount().toLocaleString()">0</div>
                 <div class="text-[10px] font-semibold text-slate-500 mt-0.5 truncate">
-                    Requires API Gateway Linking
+                    Valid AOBT/AIBT • <span class="text-amber-600 font-bold" x-text="getEdiflyPendingCount()">0</span> Pending
                 </div>
             </div>
         </div>
 
-        {{-- 5. Total MTOW (Tons) --}}
-        <div class="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-2xs flex flex-col justify-between">
+        {{-- 5. Total Passengers & Crew (Comment Extracted) --}}
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-2xs flex flex-col justify-between" title="Aggregate extracted from OASYS HTML comment footer">
+            <div class="flex items-center justify-between">
+                <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                    <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>
+                </div>
+                <span class="text-[9px] font-bold text-indigo-600 uppercase">Comment Total</span>
+            </div>
+            <div class="mt-2">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pax All (Comment)</div>
+                <div class="text-xl font-black text-slate-900 tracking-tight" x-text="Number(getEdiflyCommentTotals().paxAll || 0).toLocaleString()">0</div>
+                <div class="text-[10px] font-semibold text-slate-500 mt-0.5 truncate" :title="'Adult: ' + (getEdiflyCommentTotals().adult || 0) + ' • Crew: ' + (getEdiflyCommentTotals().crew || 0)">
+                    Adl: <span x-text="Number(getEdiflyCommentTotals().adult || 0).toLocaleString()"></span> • Crw: <span x-text="Number(getEdiflyCommentTotals().crew || 0).toLocaleString()"></span>
+                </div>
+            </div>
+        </div>
+
+        {{-- 6. Total Cargo, Baggage & MTOW --}}
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-2xs flex flex-col justify-between" title="Aggregate extracted from OASYS HTML comment footer + row MTOW">
             <div class="flex items-center justify-between">
                 <div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
                     <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"/></svg>
                 </div>
-                <span class="text-[10px] font-bold text-purple-600 uppercase">Tonnage</span>
+                <span class="text-[9px] font-bold text-purple-600 uppercase">Payload Total</span>
             </div>
             <div class="mt-2">
-                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total MTOW (Tons)</div>
-                <div class="text-xl font-black text-slate-900 tracking-tight" x-text="getEdiflyTotalMtow().toLocaleString()">0</div>
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cargo &amp; Payload</div>
+                <div class="text-xl font-black text-slate-900 tracking-tight" x-text="((Number(getEdiflyCommentTotals().cargoKg || 0))/1000).toFixed(0).toLocaleString() + ' Ton'">0 Ton</div>
                 <div class="text-[10px] font-semibold text-slate-500 mt-0.5 truncate">
-                    Fleet Payload Capacity
+                    Bagg: <span x-text="((Number(getEdiflyCommentTotals().baggageKg || 0))/1000).toFixed(0) + 't'"></span> • MTOW: <span x-text="getEdiflyTotalMtow().toLocaleString() + 't'"></span>
                 </div>
             </div>
         </div>
@@ -184,9 +201,9 @@
                         <tr class="hover:bg-blue-50/40 transition">
                             <td class="py-2 px-3 text-slate-400 font-sans" x-text="((pagination.current_page - 1) * pagination.per_page) + idx + 1"></td>
                             <td class="py-2 px-3 font-sans font-bold text-slate-800" x-text="r.airline || r.air_line"></td>
-                            <td class="py-2 px-3 font-bold text-blue-600" x-text="r.flightNo || r.flight_no"></td>
+                            <td class="py-2 px-3 font-bold text-blue-600" x-text="r.flightNo || r.flight_no || r.flightNumber"></td>
                             <td class="py-2 px-3 text-slate-600" x-text="r.pairedNo || r.paired_no || '-'"></td>
-                            <td class="py-2 px-3 font-sans text-slate-600" x-text="r.desc || '-'"></td>
+                            <td class="py-2 px-3 font-sans text-slate-600" x-text="r.desc || r.aircraftType || '-'"></td>
                             <td class="py-2 px-3 text-slate-600" x-text="r.sobtSibt || r.sobt || r.sibt"></td>
                             <td class="py-2 px-3 font-bold text-slate-900" x-text="r.aobtAibt || r.aobt || r.aibt || '-'"></td>
                             <td class="py-2 px-3 text-center font-sans">
@@ -197,17 +214,23 @@
                             <td class="py-2 px-3 font-sans font-semibold text-slate-700" x-text="r.station1 || r.city_1"></td>
                             <td class="py-2 px-3 font-sans font-semibold text-slate-700" x-text="r.station2 || r.city_2"></td>
                             <td class="py-2 px-3 text-right text-slate-800" x-text="Number(r.mtow || 0).toLocaleString()"></td>
-                            <td class="py-2 px-3 text-slate-700" x-text="r.regNo || r.reg_no"></td>
-                            {{-- Status Pills --}}
+                            <td class="py-2 px-3 text-slate-700" x-text="r.regNo || r.reg_no || r.aircraftReg"></td>
+                            {{-- Status Pills + Action Links --}}
                             <td class="py-2 px-3 text-center font-sans">
                                 <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider"
-                                      :class="r.paxIntegrated ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'"
-                                      x-text="r.paxIntegrated ? 'INTEGRATED ✓' : 'NO INTEGRATION ✕'"></span>
+                                      :class="(r.paxIntegrated ?? r.isPaxIntegrated) ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'"
+                                      x-text="(r.paxIntegrated ?? r.isPaxIntegrated) ? 'INTEGRATED ✓' : 'NO INTEGRATION ✕'"></span>
+                                <template x-if="r.paxCompareUrl || r.apiPaxLink">
+                                    <a :href="r.paxCompareUrl || r.apiPaxLink" target="_blank" rel="noopener noreferrer" class="text-[9px] text-blue-600 hover:underline block mt-0.5 font-bold">compare pax &rarr;</a>
+                                </template>
                             </td>
                             <td class="py-2 px-3 text-center font-sans">
                                 <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider"
-                                      :class="r.cargoIntegrated ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'"
-                                      x-text="r.cargoIntegrated ? 'INTEGRATED ✓' : 'NO INTEGRATION ✕'"></span>
+                                      :class="(r.cargoIntegrated ?? r.isCargoIntegrated) ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'"
+                                      x-text="(r.cargoIntegrated ?? r.isCargoIntegrated) ? 'INTEGRATED ✓' : 'NO INTEGRATION ✕'"></span>
+                                <template x-if="r.cargoCompareUrl || r.apiCargoLink">
+                                    <a :href="r.cargoCompareUrl || r.apiCargoLink" target="_blank" rel="noopener noreferrer" class="text-[9px] text-blue-600 hover:underline block mt-0.5 font-bold">compare cargo &rarr;</a>
+                                </template>
                             </td>
                         </tr>
                     </template>

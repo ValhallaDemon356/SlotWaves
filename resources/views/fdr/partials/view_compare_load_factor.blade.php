@@ -20,8 +20,8 @@
         </div>
     </div>
 
-    {{-- 5 YoY COMPARISON KPI CARDS --}}
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+    {{-- 5-6 YoY COMPARISON KPI CARDS --}}
+    <div :class="activeReportType === 'COMPARE_LOAD_FACTOR_DAY' ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3' : 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3'">
         
         {{-- 1. Flight Movement YoY --}}
         <div class="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-2xs flex flex-col justify-between">
@@ -114,6 +114,24 @@
                 <div class="text-xl font-black text-slate-900 tracking-tight" x-text="getYoyKpi('slfCurrRatio') + '%'">0.0%</div>
                 <div class="text-[10px] font-semibold text-slate-500 mt-0.5">
                     Prev: <span x-text="getYoyKpi('slfPrevRatio') + '%'">0.0%</span> • Curr: <span x-text="getYoyKpi('slfCurrRatio') + '%'">0.0%</span>
+                </div>
+            </div>
+        </div>
+
+        {{-- 6. Peak Daily Traffic (Shown for Daily YoY Evolution) --}}
+        <div x-show="activeReportType === 'COMPARE_LOAD_FACTOR_DAY'"
+             class="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-2xs flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+                <div class="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
+                    <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg>
+                </div>
+                <span class="text-[9px] font-bold text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded uppercase">Peak Date</span>
+            </div>
+            <div class="mt-2">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Peak Daily Traffic</div>
+                <div class="text-xs font-black text-slate-900 font-mono tracking-tight truncate" x-text="getYoyPeakDate()">-</div>
+                <div class="text-[10px] font-semibold text-slate-500 mt-0.5 truncate" x-text="getYoyPeakPax()">
+                    Busiest Day
                 </div>
             </div>
         </div>
@@ -217,47 +235,47 @@
                                 </template>
                             </td>
                             {{-- Flight --}}
-                            <td class="py-2 px-2 text-right text-slate-600" x-text="Number(r.flightPrev || 0).toLocaleString()"></td>
-                            <td class="py-2 px-2 text-right font-bold text-slate-900" x-text="Number(r.flightCurr || 0).toLocaleString()"></td>
+                            <td class="py-2 px-2 text-right text-slate-600" x-text="Number(r.flightPrevYear || r.flightPrev || 0).toLocaleString()"></td>
+                            <td class="py-2 px-2 text-right font-bold text-slate-900" x-text="Number(r.flightCurrYear || r.flightCurr || 0).toLocaleString()"></td>
                             <td class="py-2 px-2 text-center border-r border-slate-100">
                                 <span class="px-1.5 py-0.5 rounded text-[10px] font-bold"
                                       :class="parseFloat(r.flightRatio || 0) >= 100 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'"
                                       x-text="(typeof r.flightRatio === 'string' && r.flightRatio.includes('%')) ? r.flightRatio : (r.flightRatio + '%')"></span>
                             </td>
                             {{-- Pax --}}
-                            <td class="py-2 px-2 text-right text-slate-600" x-text="Number(r.paxPrev || 0).toLocaleString()"></td>
-                            <td class="py-2 px-2 text-right font-bold text-slate-900" x-text="Number(r.paxCurr || 0).toLocaleString()"></td>
+                            <td class="py-2 px-2 text-right text-slate-600" x-text="Number(r.paxPrevYear || r.paxPrev || 0).toLocaleString()"></td>
+                            <td class="py-2 px-2 text-right font-bold text-slate-900" x-text="Number(r.paxCurrYear || r.paxCurr || 0).toLocaleString()"></td>
                             <td class="py-2 px-2 text-center border-r border-slate-100">
                                 <span class="px-1.5 py-0.5 rounded text-[10px] font-bold"
                                       :class="parseFloat(r.paxRatio || 0) >= 100 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'"
                                       x-text="(typeof r.paxRatio === 'string' && r.paxRatio.includes('%')) ? r.paxRatio : (r.paxRatio + '%')"></span>
                             </td>
                             {{-- Cargo --}}
-                            <td class="py-2 px-2 text-right text-slate-600" x-text="Number(r.cargoPrev || 0).toLocaleString()"></td>
-                            <td class="py-2 px-2 text-right font-bold text-slate-900" x-text="Number(r.cargoCurr || 0).toLocaleString()"></td>
+                            <td class="py-2 px-2 text-right text-slate-600" x-text="Number(r.cargoPrevYear || r.cargoPrev || 0).toLocaleString()"></td>
+                            <td class="py-2 px-2 text-right font-bold text-slate-900" x-text="Number(r.cargoCurrYear || r.cargoCurr || 0).toLocaleString()"></td>
                             <td class="py-2 px-2 text-center border-r border-slate-100">
                                 <span class="px-1.5 py-0.5 rounded text-[10px] font-bold"
                                       :class="parseFloat(r.cargoRatio || 0) >= 100 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'"
                                       x-text="(typeof r.cargoRatio === 'string' && r.cargoRatio.includes('%')) ? r.cargoRatio : (r.cargoRatio + '%')"></span>
                             </td>
                             {{-- Seat Cap --}}
-                            <td class="py-2 px-2 text-right text-slate-600" x-text="Number(r.seatcapPrev || 0).toLocaleString()"></td>
-                            <td class="py-2 px-2 text-right font-bold text-slate-900" x-text="Number(r.seatcapCurr || 0).toLocaleString()"></td>
+                            <td class="py-2 px-2 text-right text-slate-600" x-text="Number(r.seatCapPrevYear || r.seatcapPrev || 0).toLocaleString()"></td>
+                            <td class="py-2 px-2 text-right font-bold text-slate-900" x-text="Number(r.seatCapCurrYear || r.seatcapCurr || 0).toLocaleString()"></td>
                             <td class="py-2 px-2 text-center border-r border-slate-100">
                                 <span class="px-1.5 py-0.5 rounded text-[10px] font-bold"
-                                      :class="parseFloat(r.seatcapRatio || 0) >= 100 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'"
-                                      x-text="(typeof r.seatcapRatio === 'string' && r.seatcapRatio.includes('%')) ? r.seatcapRatio : (r.seatcapRatio + '%')"></span>
+                                      :class="parseFloat(r.seatCapRatio || r.seatcapRatio || 0) >= 100 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'"
+                                      x-text="(typeof (r.seatCapRatio || r.seatcapRatio) === 'string' && (r.seatCapRatio || r.seatcapRatio).includes('%')) ? (r.seatCapRatio || r.seatcapRatio) : ((r.seatCapRatio || r.seatcapRatio) + '%')"></span>
                             </td>
                             {{-- SLF Prev --}}
-                            <td class="py-2 px-2 text-right text-slate-500 text-[10px]" x-text="Number(r.slfPrevSeatcap || 0).toLocaleString()"></td>
-                            <td class="py-2 px-2 text-right text-slate-500 text-[10px]" x-text="Number(r.slfPrevPax || 0).toLocaleString()"></td>
-                            <td class="py-2 px-2 text-center font-bold text-slate-700 border-r border-slate-100" x-text="(typeof r.slfPrevRatio === 'string' && r.slfPrevRatio.includes('%')) ? r.slfPrevRatio : (r.slfPrevRatio + '%')"></td>
+                            <td class="py-2 px-2 text-right text-slate-500 text-[10px]" x-text="Number(r.seatCap2025 || r.slfPrevSeatcap || 0).toLocaleString()"></td>
+                            <td class="py-2 px-2 text-right text-slate-500 text-[10px]" x-text="Number(r.pax2025 || r.slfPrevPax || 0).toLocaleString()"></td>
+                            <td class="py-2 px-2 text-center font-bold text-slate-700 border-r border-slate-100" x-text="(typeof (r.slf2025Ratio || r.slfPrevRatio) === 'string' && (r.slf2025Ratio || r.slfPrevRatio).includes('%')) ? (r.slf2025Ratio || r.slfPrevRatio) : ((r.slf2025Ratio || r.slfPrevRatio) + '%')"></td>
                             {{-- SLF Curr --}}
-                            <td class="py-2 px-2 text-right text-slate-700 text-[10px]" x-text="Number(r.slfCurrSeatcap || 0).toLocaleString()"></td>
-                            <td class="py-2 px-2 text-right text-slate-700 text-[10px]" x-text="Number(r.slfCurrPax || 0).toLocaleString()"></td>
+                            <td class="py-2 px-2 text-right text-slate-700 text-[10px]" x-text="Number(r.seatCap2026 || r.slfCurrSeatcap || 0).toLocaleString()"></td>
+                            <td class="py-2 px-2 text-right text-slate-700 text-[10px]" x-text="Number(r.pax2026 || r.slfCurrPax || 0).toLocaleString()"></td>
                             <td class="py-2 px-2 text-center font-black"
-                                :class="parseFloat(r.slfCurrRatio || 0) >= parseFloat(r.slfPrevRatio || 0) ? 'text-emerald-700' : 'text-rose-600'"
-                                x-text="(typeof r.slfCurrRatio === 'string' && r.slfCurrRatio.includes('%')) ? r.slfCurrRatio : (r.slfCurrRatio + '%')"></td>
+                                :class="parseFloat(r.slf2026Ratio || r.slfCurrRatio || 0) >= parseFloat(r.slf2025Ratio || r.slfPrevRatio || 0) ? 'text-emerald-700' : 'text-rose-600'"
+                                x-text="(typeof (r.slf2026Ratio || r.slfCurrRatio) === 'string' && (r.slf2026Ratio || r.slfCurrRatio).includes('%')) ? (r.slf2026Ratio || r.slfCurrRatio) : ((r.slf2026Ratio || r.slfCurrRatio) + '%')"></td>
                         </tr>
                     </template>
                 </tbody>

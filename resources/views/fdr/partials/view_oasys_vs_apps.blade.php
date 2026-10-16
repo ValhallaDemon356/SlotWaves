@@ -20,8 +20,8 @@
         </div>
     </div>
 
-    {{-- 5 AUDIT KPI CARDS --}}
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+    {{-- 6 AUDIT KPI CARDS --}}
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         
         {{-- 1. OASYS Flight Departure --}}
         <div class="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-2xs flex flex-col justify-between">
@@ -29,13 +29,13 @@
                 <div class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                     <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"/></svg>
                 </div>
-                <span class="text-[10px] font-bold text-blue-600 uppercase">OASYS DEP</span>
+                <span class="text-[10px] font-bold text-blue-600 uppercase">FLT DEP</span>
             </div>
             <div class="mt-2">
                 <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">OASYS Flight Departure</div>
                 <div class="text-xl font-black text-slate-900 tracking-tight" x-text="getAppsFltDep().toLocaleString()">0</div>
-                <div class="text-[10px] font-semibold text-slate-500 mt-0.5">
-                    FLT DEP Manifest
+                <div class="text-[10px] font-semibold text-slate-500 mt-0.5 truncate">
+                    Dom: <span class="font-bold text-slate-700" x-text="getAppsMatrixVal('normalDom', 'fltDep')">0</span> • Int: <span class="font-bold text-slate-700" x-text="getAppsMatrixVal('normalInt', 'fltDep')">0</span>
                 </div>
             </div>
         </div>
@@ -46,13 +46,13 @@
                 <div class="w-8 h-8 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center">
                     <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
                 </div>
-                <span class="text-[10px] font-bold text-cyan-600 uppercase">APPS SYSTEM</span>
+                <span class="text-[10px] font-bold text-cyan-600 uppercase">APPS SYNC</span>
             </div>
             <div class="mt-2">
-                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">APPS Recorded</div>
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">APPS Synced Departures</div>
                 <div class="text-xl font-black text-slate-900 tracking-tight" x-text="getAppsRecorded().toLocaleString()">0</div>
-                <div class="text-[10px] font-semibold text-slate-500 mt-0.5">
-                    APPS Ingested
+                <div class="text-[10px] font-semibold text-slate-500 mt-0.5 truncate">
+                    Dom: <span class="font-bold text-slate-700" x-text="getAppsMatrixVal('normalDom', 'apps')">0</span> • Int: <span class="font-bold text-slate-700" x-text="getAppsMatrixVal('normalInt', 'apps')">0</span>
                 </div>
             </div>
         </div>
@@ -70,17 +70,34 @@
                       x-text="getAppsDeviation() === 0 ? 'MATCH' : 'MISMATCH'"></span>
             </div>
             <div class="mt-2">
-                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Deviation (DEV)</div>
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Flight Deviation (DEV)</div>
                 <div class="text-xl font-black tracking-tight"
                      :class="getAppsDeviation() === 0 ? 'text-emerald-700' : 'text-rose-600'"
                      x-text="getAppsDeviation()">0</div>
                 <div class="text-[10px] font-semibold mt-0.5"
                      :class="getAppsDeviation() === 0 ? 'text-emerald-600' : 'text-rose-500'"
-                     x-text="getAppsDeviation() === 0 ? 'Zero Variance' : getAppsDeviation() + ' Flights Dev'"></div>
+                     x-text="getAppsDeviation() === 0 ? 'Zero Deviation (Balanced)' : getAppsDeviation() + ' Flights Dev'"></div>
             </div>
         </div>
 
-        {{-- 4. Total Departure Pax --}}
+        {{-- 4. APPS Sync Accuracy (%) --}}
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-2xs flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+                <div class="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
+                    <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                </div>
+                <span class="text-[10px] font-bold text-teal-700 uppercase">SYNC RATE</span>
+            </div>
+            <div class="mt-2">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">APPS Sync Accuracy</div>
+                <div class="text-xl font-black text-slate-900 tracking-tight" x-text="getAppsSyncAccuracy() + '%'">100.0%</div>
+                <div class="text-[10px] font-semibold text-slate-500 mt-0.5 truncate">
+                    APPS / FLT DEP Rate
+                </div>
+            </div>
+        </div>
+
+        {{-- 5. Total Departure Pax --}}
         <div class="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-2xs flex flex-col justify-between">
             <div class="flex items-center justify-between">
                 <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
@@ -92,16 +109,16 @@
                 <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Departure Pax</div>
                 <div class="text-xl font-black text-slate-900 tracking-tight" x-text="getAppsTotalPax().toLocaleString()">0</div>
                 <div class="text-[10px] font-semibold text-slate-500 mt-0.5 truncate">
-                    Commercial Dep Volume
+                    Adl+Chd+Inf+Trs+Trf
                 </div>
             </div>
         </div>
 
-        {{-- 5. Operating + Extra Crew --}}
+        {{-- 6. Operating + Extra Crew --}}
         <div class="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-2xs flex flex-col justify-between">
             <div class="flex items-center justify-between">
                 <div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-                    <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
+                    <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>
                 </div>
                 <span class="text-[10px] font-bold text-purple-600 uppercase">CREW</span>
             </div>
@@ -284,7 +301,17 @@
                     <template x-for="(r, idx) in getPaginatedAppsRecords()" :key="idx">
                         <tr class="hover:bg-cyan-50/30 transition">
                             <td class="py-2 px-3 text-slate-400 font-sans" x-text="((pagination.current_page - 1) * pagination.per_page) + idx + 1"></td>
-                            <td class="py-2 px-3 font-sans font-bold text-blue-600" x-text="r.airline || r.air_line"></td>
+                            <td class="py-2 px-3 font-sans font-bold">
+                                <template x-if="r.linkHref">
+                                    <a :href="r.linkHref" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1" title="View OASYS APPS Pax Manifest">
+                                        <span x-text="(r.airline || '') + (r.flightNo ? ' ' + r.flightNo : '')"></span>
+                                        <svg class="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                    </a>
+                                </template>
+                                <template x-if="!r.linkHref">
+                                    <span class="text-blue-600" x-text="(r.airline || r.air_line || '') + (r.flightNo ? ' ' + r.flightNo : '')"></span>
+                                </template>
+                            </td>
                             <td class="py-2 px-3 text-slate-600" x-text="r.stad || r.sobt"></td>
                             <td class="py-2 px-3 font-bold text-slate-900" x-text="r.offBlockTime || r.aobt"></td>
                             <td class="py-2 px-3 text-center font-sans">

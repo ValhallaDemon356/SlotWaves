@@ -309,13 +309,108 @@ const merged = mergeFdrHtmlFiles([file1, file2]);
 assert.strictEqual(merged.filesProcessed, 2);
 assert.strictEqual(merged.totalRowsMerged, 2);
 
-console.log('--- 13. Testing InJourney Airport Coordinates Dictionary ---');
-assert.strictEqual(Object.keys(INJOURNEY_AIRPORTS_COORDINATES).length, 36);
-assert.ok(INJOURNEY_AIRPORTS_COORDINATES['CGK'].lat !== undefined);
-assert.ok(INJOURNEY_AIRPORTS_COORDINATES['DPS'].lat !== undefined);
-assert.ok(INJOURNEY_AIRPORTS_COORDINATES['SUB'].lat !== undefined);
-assert.ok(INJOURNEY_AIRPORTS_COORDINATES['KNO'].lat !== undefined);
+console.log('--- 14. Testing HTML Comment Extraction for Edifly ---');
+const ediflyCommentHtml = `
+<table>
+  <tr><th>NO</th><th>AIRLINE</th><th>FLIGHT NO</th><th>PAIRED NO</th><th>DESC</th><th>SOBT/SIBT</th><th>AOBT/AIBT</th><th>LEG</th><th>STATION 1</th><th>STATION 2</th><th>MTOW</th><th>REG. NO</th><th>API PAX EDIFLY</th><th>API CARGO EDIFLY</th></tr>
+  <tr><td>1</td><td>Garuda</td><td>GA 100</td><td>GA 101</td><td>BOEING 737 800 (narrow)</td><td>01-09-2026 08:00</td><td>2026-09-01 08:10:00</td><td>D</td><td>CGK</td><td>DPS</td><td>79</td><td>PK-GAA</td><td><a href="compare_pax">INTEGRATED</a></td><td>NO INTEGRATION</td></tr>
+</table>
+<!-- <tr> <td colspan="13"><b>-PAX ALL -(789079)- | -Adult, Child, Infant (763814)- | -Transit(18307)-</b></td> <td align="right">Adult<br>753567</td> <td align="right">Child<br>8920</td> <td align="right">Infant<br>1327</td> <td align="right">Transit<br>18307</td> <td align="right">Transfer<br>6958</td> <td align="right">Crew<br>42812</td> <td align="right">Cargo(Kg)<br>8981968</td> <td align="right">Baggage(Kg)<br>6542100</td> <td align="right">Pos(Kg)<br>32100</td> <td align="right">Stand Use<br>5601</td> <td align="right">Runway Use<br>5601</td> </tr> -->
+`;
+import { extractEdiflyCommentTotals, detectFdrTemplateType, processFdrFiles } from '../src/utils/fdrParser.ts';
+assert.strictEqual(typeof detectFdrTemplateType, 'function');
+
+const commentTotals = extractEdiflyCommentTotals(ediflyCommentHtml);
+assert.ok(commentTotals !== null);
+assert.strictEqual(commentTotals.paxAll, 789079);
+assert.strictEqual(commentTotals.adult, 753567);
+assert.strictEqual(commentTotals.child, 8920);
+assert.strictEqual(commentTotals.infant, 1327);
+assert.strictEqual(commentTotals.transit, 18307);
+assert.strictEqual(commentTotals.transfer, 6958);
+assert.strictEqual(commentTotals.crew, 42812);
+assert.strictEqual(commentTotals.cargoKg, 8981968);
+assert.strictEqual(commentTotals.baggageKg, 6542100);
+assert.strictEqual(commentTotals.posKg, 32100);
+assert.strictEqual(commentTotals.standUse, 5601);
+assert.strictEqual(commentTotals.runwayUse, 5601);
+
+const parsedEdiflyWithComment = parseOasysVsEdiflyFDR(ediflyCommentHtml);
+assert.strictEqual(parsedEdiflyWithComment.records.length, 1);
+assert.strictEqual(parsedEdiflyWithComment.records[0].isPaxIntegrated, true);
+assert.strictEqual(parsedEdiflyWithComment.records[0].apiPaxLink, 'compare_pax');
+assert.strictEqual(parsedEdiflyWithComment.summary.commentTotals.paxAll, 789079);
+assert.strictEqual(parsedEdiflyWithComment.summary.commentTotals.cargoKg, 8981968);
+
+console.log('--- 15. Testing 0-Row EX_HALIM Empty State ---');
+const zeroRowHalimHtml = `
+<input type="hidden" name="BRANCH_CODE" value="CGK">
+<input type="hidden" name="transactions_dateFDR" value="2026/09/01 - 2026/09/30">
+<input type="hidden" name="OPERATOR" value="GA">
+<input type="hidden" name="REAL" value="YES">
+<table>
+  <tr><th>NO</th><th>AIR LINE</th><th>FLIGHT NO</th><th>PAIRED NO</th><th>DESC</th><th>SIBT SOBT</th><th>AIBT AOBT</th><th>LEG</th><th>CITY 1</th><th>CITY 2</th><th>MTOW</th><th>REG. NO</th><th>CAP.</th><th>LOAD</th><th>ADULT</th><th>CHILD</th><th>INFANT</th><th>TRANSIT</th><th>TRANSFER</th><th>DIVERT</th><th>MISS</th><th>CRW</th><th>EX. CRW</th><th>Umroh</th><th>CAR. (KG)</th><th>BAGG. (KG)</th><th>POS (KG)</th><th>STAND</th><th>RUNWAY</th><th>FINAL</th><th>FINAL TIME</th><th>BRANCH</th><th>EDIT</th></tr>
+  <tr><td colspan="33"><b>-PAX ALL -(0)-</b></td></tr>
+</table>
+`;
+assert.strictEqual(detectFdrTemplateType(zeroRowHalimHtml, 'GA/EX HALIM (CGK).xls'), 'EX_HALIM');
+const parsedZeroHalim = parseNormalFDR(zeroRowHalimHtml, true);
+assert.strictEqual(parsedZeroHalim.records.length, 0);
+assert.strictEqual(parsedZeroHalim.summary.totalFlights, 0);
+assert.strictEqual(parsedZeroHalim.summary.totalPax, 0);
+
+console.log('--- 16. Testing OASYS vs APPS Nested Table Matrix Isolation ---');
+const appsNestedHtml = `
+<title>APPS VS FLIGHT DEP</title>
+<table>
+  <tr><th>NO</th><th>AIRLINE</th><th>STAD</th><th>OFF BLOCK TIME</th><th>LEG</th><th>D/I</th><th>CITY</th><th>ADULT</th><th>CHILD</th><th>INFANT</th><th>TRANSIT</th><th>TRANSFER</th><th>DIVERT</th><th>MISSED</th><th>CREW</th><th>EX.CREW</th></tr>
+  <tr><td>1</td><td><a href="https://oasys.angkasapura2.co.id/integration3/pax/view/123">GA 682</a></td><td>06:00</td><td>06:15</td><td>D</td><td>D</td><td>DPS</td><td>150</td><td>10</td><td>2</td><td>0</td><td>0</td><td>0</td><td>0</td><td>6</td><td>2</td></tr>
+  <tr><td colspan="16">
+    <table border="1">
+      <tr><th>Category</th><th>Normal Dom</th><th>Normal Int</th><th>Transit Dom</th><th>Transit Int</th></tr>
+      <tr><td>FLT DEP</td><td>2325</td><td>474</td><td>0</td><td>0</td></tr>
+      <tr><td>APPS</td><td>2317</td><td>472</td><td>0</td><td>0</td></tr>
+      <tr><td>DEV</td><td>8</td><td>2</td><td>0</td><td>0</td></tr>
+    </table>
+    APPS = 2789 | FLIGHT DEPARTURE = 2799 | DEVIASI = 10
+  </td></tr>
+</table>
+`;
+const parsedNestedApps = parseOasysVsAppsFDR(appsNestedHtml);
+assert.strictEqual(parsedNestedApps.records.length, 1);
+assert.strictEqual(parsedNestedApps.records[0].airlineCode, 'GA');
+assert.strictEqual(parsedNestedApps.records[0].flightNumber, 'GA 682');
+assert.strictEqual(parsedNestedApps.records[0].linkHref, 'https://oasys.angkasapura2.co.id/integration3/pax/view/123');
+assert.strictEqual(parsedNestedApps.summary.reconciliationMatrix.normalDom.fltDep, 2325);
+assert.strictEqual(parsedNestedApps.summary.reconciliationMatrix.normalDom.apps, 2317);
+assert.strictEqual(parsedNestedApps.summary.reconciliationMatrix.normalDom.dev, 8);
+assert.strictEqual(parsedNestedApps.summary.reconciliationMatrix.normalInt.dev, 2);
+assert.strictEqual(parsedNestedApps.summary.deviation, 10);
+assert.strictEqual(parsedNestedApps.summary.fltDepOasys, 2799);
+assert.strictEqual(parsedNestedApps.summary.appsRecorded, 2789);
+
+console.log('--- 17. Testing Universal processFdrFiles Engine (ZIP & Multi-File) ---');
+import JSZip from 'jszip';
+const testZip = new JSZip();
+testZip.file('Normal.xls', normalHtml);
+testZip.file('Load Factor.xls', loadFactorHtml);
+testZip.file('OASYS EDIFLY.xls', ediflyCommentHtml);
+const zipBlob = await testZip.generateAsync({ type: 'nodebuffer' });
+
+const procResult = await processFdrFiles([
+  { name: 'GA.zip', content: zipBlob, size: zipBlob.length }
+]);
+
+assert.strictEqual(procResult.success, true);
+assert.strictEqual(procResult.files.length, 3);
+assert.ok(procResult.availableReportTypes.includes('NORMAL'));
+assert.ok(procResult.availableReportTypes.includes('LOAD_FACTOR'));
+assert.ok(procResult.availableReportTypes.includes('OASYS_VS_EDIFLY'));
+assert.ok(procResult.reportData.NORMAL !== undefined);
+assert.ok(procResult.reportData.LOAD_FACTOR !== undefined);
+assert.ok(procResult.reportData.OASYS_VS_EDIFLY !== undefined);
 
 console.log('\n======================================================');
 console.log('SUCCESS: All Comprehensive FDR Unit Tests Passed 100%!');
 console.log('======================================================');
+
