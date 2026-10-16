@@ -86,11 +86,11 @@
                             <span class="w-5 h-5 rounded-md bg-blue-100 text-blue-800 font-bold text-[10px] flex items-center justify-center font-sans" x-text="idx + 1"></span>
                             <div>
                                 <div class="font-black text-slate-800 font-mono" x-text="r.route"></div>
-                                <div class="text-[9.5px] text-slate-400 font-sans" x-text="(r.pax || 0).toLocaleString() + ' Pax • LF ' + (r.avg_load_factor || '0%')"></div>
+                                <div class="text-[9.5px] text-slate-400 font-sans" x-text="(r.pax != null ? r.pax : (r.passengers || r.totalPax || 0)).toLocaleString() + ' Pax • LF ' + (r.avg_load_factor || (r.avgLf != null ? r.avgLf + '%' : (r.lf != null ? r.lf + '%' : '0%')))"></div>
                             </div>
                         </div>
                         <div class="text-right">
-                            <span class="font-black font-mono text-blue-700" x-text="r.count + ' flights'"></span>
+                            <span class="font-black font-mono text-blue-700" x-text="(r.count || r.flights || r.movements || r.total_flights || 0) + ' flights'"></span>
                         </div>
                     </div>
                 </template>
@@ -114,11 +114,11 @@
                             <span class="w-5 h-5 rounded-md bg-rose-100 text-rose-800 font-bold text-[10px] flex items-center justify-center font-sans" x-text="idx + 1"></span>
                             <div>
                                 <div class="font-black text-slate-800 font-mono" x-text="r.route"></div>
-                                <div class="text-[9.5px] text-slate-400 font-sans" x-text="r.delayed_flights + ' delayed of ' + r.total_flights + ' flights'"></div>
+                                <div class="text-[9.5px] text-slate-400 font-sans" x-text="(r.delayed_flights != null ? r.delayed_flights : (r.delayedFlights || 0)) + ' delayed of ' + (r.total_flights || r.flights || r.count || 0) + ' flights' + ((r.delay_rate != null || r.delayRate != null) ? ' (' + (r.delay_rate != null ? r.delay_rate : r.delayRate) + '%)' : '')"></div>
                             </div>
                         </div>
                         <div class="text-right">
-                            <span class="font-black font-mono text-rose-700" x-text="'+' + r.avg_delay + ' min'"></span>
+                            <span class="font-black font-mono text-rose-700" x-text="'+' + (r.avg_delay != null ? r.avg_delay : (r.avgDelay != null ? r.avgDelay : (r.avg_delay_min || 0))) + ' min'"></span>
                         </div>
                     </div>
                 </template>
@@ -142,11 +142,11 @@
                             <span class="w-5 h-5 rounded-md bg-emerald-100 text-emerald-800 font-bold text-[10px] flex items-center justify-center font-sans" x-text="idx + 1"></span>
                             <div>
                                 <div class="font-black text-slate-800 font-mono" x-text="r.route"></div>
-                                <div class="text-[9.5px] text-slate-400 font-sans" x-text="(r.pax || 0).toLocaleString() + ' / ' + (r.capacity || 0).toLocaleString() + ' seats'"></div>
+                                <div class="text-[9.5px] text-slate-400 font-sans" x-text="(r.pax != null ? r.pax : (r.passengers || r.totalPax || 0)).toLocaleString() + ' / ' + (r.capacity || r.totalCapacity || 0).toLocaleString() + ' seats'"></div>
                             </div>
                         </div>
                         <div class="text-right">
-                            <span class="font-black font-mono text-emerald-700" x-text="(typeof r.slf === 'string' && r.slf.includes('%')) ? r.slf : (r.slf + '%')"></span>
+                            <span class="font-black font-mono text-emerald-700" x-text="(typeof r.slf === 'string' && r.slf.includes('%')) ? r.slf : ((r.avg_load_factor || (r.avgLf != null ? r.avgLf + '%' : (r.slf != null ? r.slf + '%' : '0%'))))"></span>
                         </div>
                     </div>
                 </template>

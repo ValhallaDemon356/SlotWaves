@@ -1335,7 +1335,7 @@
                     </div>
                 </div>
 
-                <div class="h-60 w-full relative">
+                <div class="h-64 min-h-[260px] w-full relative">
                     <canvas id="fdrFlightMovementChart"></canvas>
                 </div>
             </div>
@@ -1363,7 +1363,7 @@
                             </template>
                         </div>
                     </div>
-                    <div class="h-48 w-full relative">
+                    <div class="h-52 min-h-[210px] w-full relative">
                         <canvas id="fdrPaxTrendChart"></canvas>
                     </div>
                 </div>
@@ -1388,7 +1388,7 @@
                             </template>
                         </div>
                     </div>
-                    <div class="h-48 w-full relative">
+                    <div class="h-52 min-h-[210px] w-full relative">
                         <canvas id="fdrCargoTrendChart"></canvas>
                     </div>
                 </div>
@@ -1504,45 +1504,43 @@
                         </template>
 
                         {{-- 4. Normal Flight Rows --}}
-                        <template x-if="!isFiltering && !filterError">
-                            <template x-for="(r, idx) in flightRecords" :key="r.index || idx">
-                                <tr @click="openFlightDetails(r)" class="hover:bg-blue-50/40 transition cursor-pointer">
-                                    <td class="py-2.5 px-3 text-slate-400 font-sans" x-text="((pagination.current_page - 1) * pagination.per_page) + idx + 1"></td>
-                                    <td class="py-2.5 px-3 font-sans font-bold text-slate-800" x-text="r.air_line"></td>
-                                    <td class="py-2.5 px-3 font-bold text-blue-600 hover:underline" x-text="r.flight_no"></td>
-                                    <td class="py-2.5 px-3 font-sans">
-                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold"
-                                              :class="r.direction === 'ARRIVAL' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'"
-                                              x-text="r.leg || (r.direction === 'ARRIVAL' ? (r.sched_type === 'UNSCHED' ? 'A UNSCHED' : 'A SCHED') : (r.sched_type === 'UNSCHED' ? 'D UNSCHED' : 'D SCHED'))"></span>
-                                    </td>
-                                    <td class="py-2.5 px-3 font-sans text-slate-700" x-text="r.route"></td>
-                                    <td class="py-2.5 px-3 text-slate-500 font-mono" x-text="r.sched_display || (r.direction === 'ARRIVAL' ? r.sibt : r.sobt)"></td>
-                                    <td class="py-2.5 px-3 font-bold font-mono"
-                                        :class="r.actual_display && r.actual_display !== 'N/A' ? 'text-slate-900' : 'text-slate-400'"
-                                        x-text="r.actual_display || (r.direction === 'ARRIVAL' ? r.aibt : r.aobt)"></td>
-                                    <td class="py-2.5 px-3 font-bold text-slate-700" x-text="r.reg_no"></td>
-                                    <td class="py-2.5 px-3 text-right text-slate-600" x-text="r.cap"></td>
-                                    <td class="py-2.5 px-3 text-right text-slate-600" x-text="r.load"></td>
-                                    <td class="py-2.5 px-3 text-right font-bold"
-                                        :class="r.load_factor >= 85 ? 'text-emerald-600' : (r.load_factor >= 70 ? 'text-blue-600' : 'text-amber-600')"
-                                        x-text="r.load_factor !== 'N/A' ? r.load_factor + '%' : 'N/A'"></td>
-                                    <td class="py-2.5 px-3 text-right font-sans text-slate-800 font-semibold" x-text="(Number(r.adult || 0) + Number(r.child || 0) + Number(r.infant || 0)).toLocaleString()"></td>
-                                    <td class="py-2.5 px-3 text-right text-slate-600" x-text="r.cargo_kg ? Number(r.cargo_kg).toLocaleString() : '0'"></td>
-                                    <td class="py-2.5 px-3 text-right text-slate-600" x-text="r.baggage_kg ? Number(r.baggage_kg).toLocaleString() : '0'"></td>
-                                    <td class="py-2.5 px-3 font-sans text-slate-700 font-semibold" x-text="r.stand"></td>
-                                    <td class="py-2.5 px-3 font-mono text-slate-600" x-text="r.runway"></td>
-                                    <td class="py-2.5 px-3 text-center font-sans">
-                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold"
-                                              :class="{
-                                                  'bg-sky-100 text-sky-700': r.delay_minutes < -15,
-                                                  'bg-emerald-100 text-emerald-700': r.delay_minutes >= -15 && r.delay_minutes <= 15,
-                                                  'bg-rose-100 text-rose-700': r.delay_minutes > 15,
-                                                  'bg-slate-100 text-slate-600': r.delay_minutes === null || r.delay_minutes === undefined
-                                              }"
-                                              x-text="r.delay_minutes < -15 ? 'EARLY' : (r.delay_minutes <= 15 ? 'ON TIME' : 'DELAYED')"></span>
-                                    </td>
-                                </tr>
-                            </template>
+                        <template x-for="(r, idx) in (!isFiltering && !filterError ? (flightRecords || []) : [])" :key="r.id ? ('id-' + r.id) : (r.flight_no ? (r.flight_no + '-' + idx) : ('row-' + idx))">
+                            <tr @click="openFlightDetails(r)" class="hover:bg-blue-50/40 transition cursor-pointer">
+                                <td class="py-2.5 px-3 text-slate-400 font-sans" x-text="((pagination.current_page - 1) * pagination.per_page) + idx + 1"></td>
+                                <td class="py-2.5 px-3 font-sans font-bold text-slate-800" x-text="r.air_line || r.airline || 'N/A'"></td>
+                                <td class="py-2.5 px-3 font-bold text-blue-600 hover:underline" x-text="r.flight_no || r.flightNumber || 'N/A'"></td>
+                                <td class="py-2.5 px-3 font-sans">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold"
+                                          :class="(r.direction === 'ARRIVAL' || r.movementType === 'Arrival') ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'"
+                                          x-text="r.leg || r.legRaw || ((r.direction === 'ARRIVAL' || r.movementType === 'Arrival') ? (r.sched_type === 'UNSCHED' || r.legSubtype === 'UNSCHED' ? 'A UNSCHED' : 'A SCHED') : (r.sched_type === 'UNSCHED' || r.legSubtype === 'UNSCHED' ? 'D UNSCHED' : 'D SCHED'))"></span>
+                                </td>
+                                <td class="py-2.5 px-3 font-sans text-slate-700" x-text="r.route || (r.origin && r.destination ? (r.origin + ' → ' + r.destination) : 'N/A')"></td>
+                                <td class="py-2.5 px-3 text-slate-500 font-mono" x-text="r.sched_display || r.scheduledTime || ((r.direction === 'ARRIVAL' || r.movementType === 'Arrival') ? r.sibt : r.sobt) || '00:00'"></td>
+                                <td class="py-2.5 px-3 font-bold font-mono"
+                                    :class="(r.actual_display && r.actual_display !== 'N/A') || (r.actualTime && r.actualTime !== '') ? 'text-slate-900' : 'text-slate-400'"
+                                    x-text="r.actual_display || r.actualTime || ((r.direction === 'ARRIVAL' || r.movementType === 'Arrival') ? r.aibt : r.aobt) || 'N/A'"></td>
+                                <td class="py-2.5 px-3 font-bold text-slate-700" x-text="r.reg_no || r.aircraftReg || 'N/A'"></td>
+                                <td class="py-2.5 px-3 text-right text-slate-600" x-text="r.cap != null ? r.cap : (r.capacity != null ? r.capacity : 0)"></td>
+                                <td class="py-2.5 px-3 text-right text-slate-600" x-text="r.load != null ? r.load : (r.paxLoad != null ? r.paxLoad : 0)"></td>
+                                <td class="py-2.5 px-3 text-right font-bold"
+                                    :class="(r.load_factor >= 85 || r.loadFactorPercent >= 85) ? 'text-emerald-600' : ((r.load_factor >= 70 || r.loadFactorPercent >= 70) ? 'text-blue-600' : 'text-amber-600')"
+                                    x-text="(r.load_factor != null && r.load_factor !== 'N/A') ? (r.load_factor + '%') : (r.loadFactorPercent != null ? (r.loadFactorPercent + '%') : '0%')"></td>
+                                <td class="py-2.5 px-3 text-right font-sans text-slate-800 font-semibold" x-text="(Number(r.adult || 0) + Number(r.child || 0) + Number(r.infant || 0)).toLocaleString()"></td>
+                                <td class="py-2.5 px-3 text-right text-slate-600" x-text="(r.cargo_kg != null ? Number(r.cargo_kg) : (r.cargoKg != null ? Number(r.cargoKg) : 0)).toLocaleString()"></td>
+                                <td class="py-2.5 px-3 text-right text-slate-600" x-text="(r.baggage_kg != null ? Number(r.baggage_kg) : (r.baggageKg != null ? Number(r.baggageKg) : 0)).toLocaleString()"></td>
+                                <td class="py-2.5 px-3 font-sans text-slate-700 font-semibold" x-text="r.stand || 'N/A'"></td>
+                                <td class="py-2.5 px-3 font-mono text-slate-600" x-text="r.runway || 'N/A'"></td>
+                                <td class="py-2.5 px-3 text-center font-sans">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold"
+                                          :class="{
+                                              'bg-sky-100 text-sky-700': (r.delay_minutes != null ? r.delay_minutes : r.delayMinutes) < -15,
+                                              'bg-emerald-100 text-emerald-700': (r.delay_minutes != null ? r.delay_minutes : r.delayMinutes) >= -15 && (r.delay_minutes != null ? r.delay_minutes : r.delayMinutes) <= 15,
+                                              'bg-rose-100 text-rose-700': (r.delay_minutes != null ? r.delay_minutes : r.delayMinutes) > 15,
+                                              'bg-slate-100 text-slate-600': (r.delay_minutes === null || r.delay_minutes === undefined) && (r.delayMinutes === null || r.delayMinutes === undefined)
+                                          }"
+                                          x-text="(r.delay_minutes != null ? r.delay_minutes : r.delayMinutes) < -15 ? 'EARLY' : ((r.delay_minutes != null ? r.delay_minutes : r.delayMinutes) <= 15 ? 'ON TIME' : 'DELAYED')"></span>
+                                </td>
+                            </tr>
                         </template>
                     </tbody>
                 </table>
@@ -1701,6 +1699,74 @@ const _fdrCharts = {
     ediflyGap: null,
 };
 
+// Static coordinate dictionary for 35 InJourney Airports + common domestic & international destinations
+const INJOURNEY_AIRPORTS_STATIC = {
+    // 35 InJourney Airports
+    CGK: { code: 'CGK', name: 'Soekarno-Hatta', city: 'Jakarta', lat: -6.1256, lon: 106.6558 },
+    BDO: { code: 'BDO', name: 'Husein Sastranegara', city: 'Bandung', lat: -6.9006, lon: 107.5761 },
+    BKS: { code: 'BKS', name: 'Fatmawati Soekarno', city: 'Bengkulu', lat: -3.8644, lon: 102.3394 },
+    BTJ: { code: 'BTJ', name: 'Sultan Iskandar Muda', city: 'Banda Aceh', lat: 5.5244, lon: 95.4208 },
+    BWX: { code: 'BWX', name: 'Banyuwangi', city: 'Banyuwangi', lat: -8.3094, lon: 114.3397 },
+    DJB: { code: 'DJB', name: 'Sultan Thaha', city: 'Jambi', lat: -1.6378, lon: 103.6444 },
+    DTB: { code: 'DTB', name: 'Raja Sisingamangaraja XII', city: 'Siborong-Borong', lat: 2.2594, lon: 98.9933 },
+    HLP: { code: 'HLP', name: 'Halim Perdanakusuma', city: 'Jakarta', lat: -6.2667, lon: 106.8908 },
+    KJT: { code: 'KJT', name: 'Kertajati', city: 'Majalengka', lat: -6.6572, lon: 108.1883 },
+    KNO: { code: 'KNO', name: 'Kualanamu', city: 'Medan', lat: 3.6422, lon: 98.8853 },
+    PCB: { code: 'PCB', name: 'Pondok Cabe', city: 'Tangerang Selatan', lat: -6.3489, lon: 106.7644 },
+    PDG: { code: 'PDG', name: 'Minangkabau', city: 'Padang', lat: -0.7869, lon: 100.2808 },
+    PGK: { code: 'PGK', name: 'Depati Amir', city: 'Pangkal Pinang', lat: -2.1625, lon: 106.1389 },
+    PKU: { code: 'PKU', name: 'Sultan Syarif Kasim II', city: 'Pekanbaru', lat: 0.4608, lon: 101.4447 },
+    PKY: { code: 'PKY', name: 'Tjilik Riwut', city: 'Palangkaraya', lat: -2.2253, lon: 113.9436 },
+    PLM: { code: 'PLM', name: 'Sultan Mahmud Badaruddin II', city: 'Palembang', lat: -2.8986, lon: 104.7003 },
+    PNK: { code: 'PNK', name: 'Supadio', city: 'Pontianak', lat: -0.1506, lon: 109.4039 },
+    PWL: { code: 'PWL', name: 'Jenderal Besar Soedirman', city: 'Purbalingga', lat: -7.4583, lon: 109.4194 },
+    TJQ: { code: 'TJQ', name: 'H.A.S. Hanandjoeddin', city: 'Tanjung Pandan', lat: -2.7608, lon: 107.7547 },
+    TKG: { code: 'TKG', name: 'Radin Inten II', city: 'Bandar Lampung', lat: -5.2425, lon: 105.1789 },
+    TNJ: { code: 'TNJ', name: 'Raja Haji Fisabilillah', city: 'Tanjung Pinang', lat: 0.9239, lon: 104.5317 },
+    BTH: { code: 'BTH', name: 'Hang Nadim', city: 'Batam', lat: 1.1211, lon: 104.1189 },
+    AMQ: { code: 'AMQ', name: 'Pattimura', city: 'Ambon', lat: -3.7103, lon: 128.0892 },
+    BDJ: { code: 'BDJ', name: 'Syamsudin Noor', city: 'Banjarmasin', lat: -3.4422, lon: 114.7578 },
+    BIK: { code: 'BIK', name: 'Frans Kaisiepo', city: 'Biak', lat: -1.1906, lon: 136.1089 },
+    BPN: { code: 'BPN', name: 'Sultan Aji Muhammad Sulaiman Sepinggan', city: 'Balikpapan', lat: -1.2683, lon: 116.8947 },
+    DJJ: { code: 'DJJ', name: 'Sentani', city: 'Jayapura', lat: -2.5769, lon: 140.5161 },
+    DPS: { code: 'DPS', name: 'I Gusti Ngurah Rai', city: 'Denpasar', lat: -8.7481, lon: 115.1672 },
+    JOG: { code: 'JOG', name: 'Adisutjipto', city: 'Yogyakarta', lat: -7.7881, lon: 110.4319 },
+    KOE: { code: 'KOE', name: 'El Tari', city: 'Kupang', lat: -10.1714, lon: 123.6711 },
+    LOP: { code: 'LOP', name: 'Zainuddin Abdul Madjid', city: 'Lombok', lat: -8.7589, lon: 116.2753 },
+    MDC: { code: 'MDC', name: 'Sam Ratulangi', city: 'Manado', lat: 1.5497, lon: 124.9264 },
+    SRG: { code: 'SRG', name: 'Jenderal Ahmad Yani', city: 'Semarang', lat: -6.9742, lon: 110.3753 },
+    SUB: { code: 'SUB', name: 'Juanda', city: 'Surabaya', lat: -7.3797, lon: 112.7875 },
+    UPG: { code: 'UPG', name: 'Sultan Hasanuddin', city: 'Makassar', lat: -5.0617, lon: 119.5542 },
+    YIA: { code: 'YIA', name: 'Yogyakarta International', city: 'Kulon Progo', lat: -7.9069, lon: 110.0578 },
+
+    // Additional Domestic & International Destinations
+    SOQ: { code: 'SOQ', name: 'Domine Eduard Osok', city: 'Sorong', lat: -0.9256, lon: 131.2872 },
+    PLW: { code: 'PLW', name: 'Mutiara SIS Al-Jufrie', city: 'Palu', lat: -0.9183, lon: 119.9103 },
+    TIM: { code: 'TIM', name: 'Mozes Kilangin', city: 'Timika', lat: -4.5286, lon: 136.8869 },
+    MKQ: { code: 'MKQ', name: 'Mopah', city: 'Merauke', lat: -8.5203, lon: 140.4181 },
+    KDI: { code: 'KDI', name: 'Haluoleo', city: 'Kendari', lat: -4.0819, lon: 122.4172 },
+    GTO: { code: 'GTO', name: 'Djalaluddin', city: 'Gorontalo', lat: 0.6372, lon: 122.8519 },
+    LUW: { code: 'LUW', name: 'Syukuran Aminuddin Amir', city: 'Luwuk', lat: -1.0375, lon: 122.7719 },
+    TTE: { code: 'TTE', name: 'Sultan Babullah', city: 'Ternate', lat: 0.8319, lon: 127.3803 },
+    LBJ: { code: 'LBJ', name: 'Komodo', city: 'Labuan Bajo', lat: -8.4878, lon: 119.8886 },
+    BMU: { code: 'BMU', name: 'Sultan Muhammad Salahuddin', city: 'Bima', lat: -8.5394, lon: 118.6872 },
+    SIN: { code: 'SIN', name: 'Singapore Changi', city: 'Singapore', lat: 1.3644, lon: 103.9915 },
+    KUL: { code: 'KUL', name: 'Kuala Lumpur Intl', city: 'Kuala Lumpur', lat: 2.7456, lon: 101.7099 },
+    HND: { code: 'HND', name: 'Tokyo Haneda', city: 'Tokyo', lat: 35.5494, lon: 139.7798 },
+    NRT: { code: 'NRT', name: 'Tokyo Narita', city: 'Tokyo', lat: 35.7647, lon: 140.3863 },
+    ICN: { code: 'ICN', name: 'Seoul Incheon', city: 'Seoul', lat: 37.4602, lon: 126.4407 },
+    PVG: { code: 'PVG', name: 'Shanghai Pudong', city: 'Shanghai', lat: 31.1443, lon: 121.8083 },
+    CAN: { code: 'CAN', name: 'Guangzhou Baiyun', city: 'Guangzhou', lat: 23.3924, lon: 113.2988 },
+    SYD: { code: 'SYD', name: 'Sydney Kingsford Smith', city: 'Sydney', lat: -33.9399, lon: 151.1753 },
+    MEL: { code: 'MEL', name: 'Melbourne Tullamarine', city: 'Melbourne', lat: -37.6690, lon: 144.8410 },
+    PER: { code: 'PER', name: 'Perth Airport', city: 'Perth', lat: -31.9403, lon: 115.9668 },
+    JED: { code: 'JED', name: 'King Abdulaziz Intl', city: 'Jeddah', lat: 21.6796, lon: 39.1565 },
+    MED: { code: 'MED', name: 'Prince Mohammad bin Abdulaziz', city: 'Medina', lat: 24.5534, lon: 39.7051 },
+    DOH: { code: 'DOH', name: 'Hamad Intl', city: 'Doha', lat: 25.2731, lon: 51.6081 },
+    BKK: { code: 'BKK', name: 'Bangkok Suvarnabhumi', city: 'Bangkok', lat: 13.6900, lon: 100.7501 },
+    HKG: { code: 'HKG', name: 'Hong Kong Intl', city: 'Hong Kong', lat: 22.3080, lon: 113.9185 },
+};
+
 function fdrDashboardController() {
     return {
         uploadId: {{ $upload->id }},
@@ -1708,6 +1774,7 @@ function fdrDashboardController() {
         isExHalim: {{ ($reportType ?? '') === 'EX_HALIM' ? 'true' : 'false' }},
         availableReportTypes: ['{{ $reportType ?? 'NORMAL' }}'],
         allParsedByType: {},
+        allClientRecords: [],
         currentStage: 'dashboard',
         showStagingCard: false,
         isDragging: false,
@@ -2393,7 +2460,7 @@ function fdrDashboardController() {
             if (leg !== 'DEP' && leg !== 'DEPARTURE') {
                 datasets.push({
                     label: 'Arrival Cargo',
-                    data: trend.arr_cargo_kg || [],
+                    data: trend.arr_cargo_kg || trend.arr_cargo || [],
                     borderColor: '#14B8A6',
                     backgroundColor: 'rgba(20, 184, 166, 0.12)',
                     borderWidth: 2,
@@ -2410,7 +2477,7 @@ function fdrDashboardController() {
             if (leg !== 'ARR' && leg !== 'ARRIVAL') {
                 datasets.push({
                     label: 'Departure Cargo',
-                    data: trend.dep_cargo_kg || [],
+                    data: trend.dep_cargo_kg || trend.dep_cargo || [],
                     borderColor: '#059669',
                     backgroundColor: 'rgba(5, 150, 105, 0.12)',
                     borderWidth: 2,
@@ -2637,6 +2704,54 @@ function fdrDashboardController() {
         triggerFilter(page = 1) {
             this.isFiltering = true;
             this.filterError = null;
+
+            // Client-side filtering when allClientRecords is available (e.g. staged upload or client parsed data)
+            if (this.allClientRecords && this.allClientRecords.length > 0 && (this.activeReportType === 'NORMAL' || this.activeReportType === 'EX_HALIM')) {
+                let filtered = [...this.allClientRecords];
+                const leg = (this.filters.leg || 'ALL').toUpperCase();
+                if (leg === 'ARR' || leg === 'ARRIVAL') {
+                    filtered = filtered.filter(r => (r.leg || r.direction || r.movementType || '').toUpperCase().startsWith('A'));
+                } else if (leg === 'DEP' || leg === 'DEPARTURE') {
+                    filtered = filtered.filter(r => (r.leg || r.direction || r.movementType || '').toUpperCase().startsWith('D'));
+                }
+
+                const op = (this.filters.operator || 'ALL').toUpperCase();
+                if (op !== 'ALL' && op !== '') {
+                    filtered = filtered.filter(r => (r.airline || r.airlineCode || r.operator || '').toUpperCase() === op || (r.flight_no || r.flightNumber || '').toUpperCase().startsWith(op));
+                }
+
+                const trf = (this.filters.traffic || 'ALL').toUpperCase();
+                if (trf === 'DOM' || trf === 'DOMESTIC') {
+                    filtered = filtered.filter(r => (r.traffic || r.dom_int || '').toUpperCase().includes('DOM') || (!r.traffic && !r.dom_int));
+                } else if (trf === 'INTL' || trf === 'INTERNATIONAL' || trf === 'INT') {
+                    filtered = filtered.filter(r => (r.traffic || r.dom_int || '').toUpperCase().includes('INT'));
+                }
+
+                const search = (this.filters.search || '').trim().toLowerCase();
+                if (search) {
+                    filtered = filtered.filter(r => 
+                        (r.flight_no || r.flightNumber || '').toLowerCase().includes(search) ||
+                        (r.paired_no || r.pairedNo || '').toLowerCase().includes(search) ||
+                        (r.route || '').toLowerCase().includes(search) ||
+                        (r.reg_no || r.aircraftReg || '').toLowerCase().includes(search) ||
+                        (r.desc || r.aircraftType || '').toLowerCase().includes(search)
+                    );
+                }
+
+                this.totalRecords = filtered.length;
+                this.pagination.total = filtered.length;
+                this.pagination.total_pages = Math.max(1, Math.ceil(filtered.length / this.pagination.per_page));
+                this.pagination.current_page = Math.min(page, this.pagination.total_pages || 1);
+                const start = (this.pagination.current_page - 1) * this.pagination.per_page;
+                this.flightRecords = filtered.slice(start, start + this.pagination.per_page);
+                this.isFiltering = false;
+                this.lastUpdatedTime = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                this.$nextTick(() => {
+                    this.initAllCharts();
+                });
+                return;
+            }
+
             const reqId = ++this.activeRequestId;
             this.filters.v = Date.now();
 
@@ -2822,9 +2937,64 @@ function fdrDashboardController() {
             this.preScanData = null;
             this.mergedHtml = '';
             this.clientParsedData = null;
+            this.allClientRecords = [];
             this.availableReportTypes = ['{{ $reportType ?? 'NORMAL' }}'];
             this.allParsedByType = {};
             this.scanError = null;
+        },
+
+        hydrateClientDataForType(rtype) {
+            const data = (this.allParsedByType && this.allParsedByType[rtype]) || this.clientParsedData;
+            if (!data) return;
+
+            if (rtype === 'NORMAL' || rtype === 'EX_HALIM') {
+                this.allClientRecords = data.records || [];
+                this.totalRecords = this.allClientRecords.length;
+                this.pagination.total = this.allClientRecords.length;
+                this.pagination.total_pages = Math.max(1, Math.ceil(this.pagination.total / this.pagination.per_page));
+                this.pagination.current_page = 1;
+                this.flightRecords = this.allClientRecords.slice(0, this.pagination.per_page);
+
+                if (data.kpis) {
+                    this.kpis = Object.assign({}, this.kpis, data.kpis);
+                }
+                if (data.hourlyDistribution) {
+                    this.hourlyDistribution = data.hourlyDistribution;
+                }
+                if (data.combinedTrend) {
+                    this.combinedTrend = data.combinedTrend;
+                }
+                if (data.airlineRoute || data.airline_route || data.top_busiest_routes) {
+                    const ar = data.airlineRoute || data.airline_route || {};
+                    this.airlineRoute = {
+                        top_busiest_routes: data.top_busiest_routes || ar.top_busiest_routes || ar.top_routes || [],
+                        top_delayed_routes: data.top_delayed_routes || ar.top_delayed_routes || ar.most_delayed_routes || [],
+                        top_slf_routes: data.top_slf_routes || ar.top_slf_routes || ar.highest_slf_routes || [],
+                        leg_subtypes: data.leg_subtypes || ar.leg_subtypes || { SCHED: 0, UNSCHED: 0, CARGO: 0 },
+                        suffix_distribution: data.suffix_distribution || ar.suffix_distribution || ar.suffix_breakdown || [],
+                    };
+                }
+                if (data.summary) {
+                    this.sourceSummary = Object.assign({}, this.sourceSummary, {
+                        total_rows: data.summary.totalRows || this.totalRecords,
+                        period_label: data.summary.period_label || this.sourceSummary.period_label,
+                        days_available: data.summary.days_available || this.sourceSummary.days_available,
+                        source_type: data.summary.source_type || this.sourceSummary.source_type,
+                    });
+                }
+            } else if (rtype === 'LOAD_FACTOR') {
+                this.allClientRecords = data.records || [];
+                this.totalRecords = this.allClientRecords.length;
+                this.pagination.total = this.allClientRecords.length;
+                this.pagination.total_pages = Math.max(1, Math.ceil(this.pagination.total / this.pagination.per_page));
+                this.pagination.current_page = 1;
+            } else if (rtype === 'COMPARE_LOAD_FACTOR' || rtype === 'COMPARE_LOAD_FACTOR_DAY') {
+                this.allClientRecords = data.records || [];
+                this.totalRecords = this.allClientRecords.length;
+            } else if (rtype === 'OASYS_VS_APPS' || rtype === 'OASYS_VS_EDIFLY') {
+                this.allClientRecords = data.records || [];
+                this.totalRecords = this.allClientRecords.length;
+            }
         },
 
         generateDashboardFromStaged() {
@@ -2834,13 +3004,7 @@ function fdrDashboardController() {
             this.currentStage = 'dashboard';
             this.showStagingCard = false;
 
-            if (this.clientParsedData) {
-                if (targetType === 'LOAD_FACTOR') {
-                    this.pagination.total = this.clientParsedData.records ? this.clientParsedData.records.length : 0;
-                    this.pagination.total_pages = Math.max(1, Math.ceil(this.pagination.total / this.pagination.per_page));
-                    this.pagination.current_page = 1;
-                }
-            }
+            this.hydrateClientDataForType(targetType);
 
             this.$nextTick(() => {
                 this.initAllCharts();
@@ -2853,12 +3017,9 @@ function fdrDashboardController() {
             this.isExHalim = (rtype === 'EX_HALIM');
             if (this.allParsedByType && this.allParsedByType[rtype]) {
                 this.clientParsedData = this.allParsedByType[rtype];
-                if (rtype === 'LOAD_FACTOR') {
-                    this.pagination.total = this.clientParsedData.records ? this.clientParsedData.records.length : 0;
-                    this.pagination.total_pages = Math.max(1, Math.ceil(this.pagination.total / this.pagination.per_page));
-                    this.pagination.current_page = 1;
-                }
             }
+            this.hydrateClientDataForType(rtype);
+
             // Clear existing polymorphic charts
             Object.keys(_fdrCharts).forEach(k => {
                 if (_fdrCharts[k]) {
@@ -3623,12 +3784,16 @@ function fdrDashboardController() {
         // ── Normal View: Route Analytics, Suffixes & Network Map ──────────────────
         getSpecialSuffixTotalCount() {
             const dist = this.getSuffixDistribution();
-            return dist.reduce((acc, d) => acc + d.count, 0);
+            return dist.reduce((acc, d) => acc + (d.count || 0), 0);
         },
 
         getSuffixDistribution() {
-            if (this.airlineRoute && this.airlineRoute.suffix_distribution) {
-                return this.airlineRoute.suffix_distribution;
+            if (this.airlineRoute) {
+                if (this.airlineRoute.suffix_distribution && this.airlineRoute.suffix_distribution.length > 0) return this.airlineRoute.suffix_distribution;
+                if (this.airlineRoute.suffix_breakdown && Array.isArray(this.airlineRoute.suffix_breakdown) && this.airlineRoute.suffix_breakdown.length > 0) return this.airlineRoute.suffix_breakdown;
+            }
+            if (this.clientParsedData) {
+                if (this.clientParsedData.suffix_distribution && this.clientParsedData.suffix_distribution.length > 0) return this.clientParsedData.suffix_distribution;
             }
             return [];
         },
@@ -3637,38 +3802,68 @@ function fdrDashboardController() {
             if (this.airlineRoute && this.airlineRoute.leg_subtypes && this.airlineRoute.leg_subtypes[type] != null) {
                 return this.airlineRoute.leg_subtypes[type];
             }
+            if (this.clientParsedData && this.clientParsedData.leg_subtypes && this.clientParsedData.leg_subtypes[type] != null) {
+                return this.clientParsedData.leg_subtypes[type];
+            }
             return 0;
         },
 
         getLegSubtypePct(type) {
-            const total = (this.kpis ? this.kpis.total_flights : 0) || this.totalRecords || 1;
+            const total = (this.kpis && this.kpis.total_flights) || this.totalRecords || (this.allClientRecords ? this.allClientRecords.length : 0) || 1;
             const cnt = this.getLegSubtypeCount(type);
             return ((cnt / total) * 100).toFixed(1) + '%';
         },
 
         getBusiestRoutes() {
-            if (this.airlineRoute && this.airlineRoute.top_busiest_routes) {
-                return this.airlineRoute.top_busiest_routes;
+            if (this.airlineRoute) {
+                if (this.airlineRoute.top_busiest_routes && this.airlineRoute.top_busiest_routes.length > 0) return this.airlineRoute.top_busiest_routes;
+                if (this.airlineRoute.busiest_routes && this.airlineRoute.busiest_routes.length > 0) return this.airlineRoute.busiest_routes;
+                if (this.airlineRoute.top_routes && this.airlineRoute.top_routes.length > 0) return this.airlineRoute.top_routes.slice(0, 10);
             }
-            return (this.airlineRoute && this.airlineRoute.top_routes) ? this.airlineRoute.top_routes.slice(0, 10) : [];
+            if (this.clientParsedData) {
+                if (this.clientParsedData.top_busiest_routes && this.clientParsedData.top_busiest_routes.length > 0) return this.clientParsedData.top_busiest_routes;
+                if (this.clientParsedData.busiest_routes && this.clientParsedData.busiest_routes.length > 0) return this.clientParsedData.busiest_routes;
+                if (this.clientParsedData.top_routes && this.clientParsedData.top_routes.length > 0) return this.clientParsedData.top_routes.slice(0, 10);
+            }
+            return [];
         },
 
         getMostDelayedRoutes() {
-            if (this.airlineRoute && this.airlineRoute.top_delayed_routes) {
-                return this.airlineRoute.top_delayed_routes;
+            if (this.airlineRoute) {
+                if (this.airlineRoute.top_delayed_routes && this.airlineRoute.top_delayed_routes.length > 0) return this.airlineRoute.top_delayed_routes;
+                if (this.airlineRoute.most_delayed_routes && this.airlineRoute.most_delayed_routes.length > 0) return this.airlineRoute.most_delayed_routes;
+            }
+            if (this.clientParsedData) {
+                if (this.clientParsedData.top_delayed_routes && this.clientParsedData.top_delayed_routes.length > 0) return this.clientParsedData.top_delayed_routes;
+                if (this.clientParsedData.most_delayed_routes && this.clientParsedData.most_delayed_routes.length > 0) return this.clientParsedData.most_delayed_routes;
             }
             return [];
         },
 
         getHighestSlfRoutes() {
-            if (this.airlineRoute && this.airlineRoute.top_slf_routes) {
-                return this.airlineRoute.top_slf_routes;
+            if (this.airlineRoute) {
+                if (this.airlineRoute.top_slf_routes && this.airlineRoute.top_slf_routes.length > 0) return this.airlineRoute.top_slf_routes;
+                if (this.airlineRoute.highest_slf_routes && this.airlineRoute.highest_slf_routes.length > 0) return this.airlineRoute.highest_slf_routes;
+            }
+            if (this.clientParsedData) {
+                if (this.clientParsedData.top_slf_routes && this.clientParsedData.top_slf_routes.length > 0) return this.clientParsedData.top_slf_routes;
+                if (this.clientParsedData.highest_slf_routes && this.clientParsedData.highest_slf_routes.length > 0) return this.clientParsedData.highest_slf_routes;
             }
             return [];
         },
 
+        projectGeo(lon, lat) {
+            let x = ((lon - 95.0) / (141.0 - 95.0)) * 760 + 80;
+            let y = ((6.0 - lat) / (6.0 - -11.0)) * 240 + 60;
+            if (x < 30) x = 30 + Math.max(0, (lon / 100) * 20);
+            if (x > 890) x = 890;
+            if (y < 25) y = 25;
+            if (y > 335) y = 335;
+            return { x: Math.round(x), y: Math.round(y) };
+        },
+
         getNetworkAirportNodes() {
-            const dict = (window.fdrEngine && window.fdrEngine.INJOURNEY_AIRPORTS) || {};
+            const dict = Object.assign({}, INJOURNEY_AIRPORTS_STATIC, (window.fdrEngine && window.fdrEngine.INJOURNEY_AIRPORTS) || {});
             const hub = this.filters.airport || this.lockedAirport || 'CGK';
             const connectedAirports = new Set();
             this.getBusiestRoutes().forEach(r => {
@@ -3681,15 +3876,14 @@ function fdrDashboardController() {
 
             return Object.keys(dict).map(code => {
                 const info = dict[code];
-                const x = Math.round(((info.lon - 94.0) / (141.0 - 94.0)) * 820 + 50);
-                const y = Math.round(((6.0 - info.lat) / (6.0 - -11.0)) * 280 + 40);
+                const pt = this.projectGeo(info.lon, info.lat);
                 const isActive = code === hub || connectedAirports.has(code);
                 return {
                     code,
                     name: info.name,
                     city: info.city,
-                    x,
-                    y,
+                    x: pt.x,
+                    y: pt.y,
                     isActive,
                     flightsCount: code === hub ? (this.kpis.total_flights || 0) : 0,
                 };
@@ -3697,7 +3891,7 @@ function fdrDashboardController() {
         },
 
         getNetworkRouteLines() {
-            const dict = (window.fdrEngine && window.fdrEngine.INJOURNEY_AIRPORTS) || {};
+            const dict = Object.assign({}, INJOURNEY_AIRPORTS_STATIC, (window.fdrEngine && window.fdrEngine.INJOURNEY_AIRPORTS) || {});
             const routes = this.getBusiestRoutes();
             const hub = this.filters.airport || this.lockedAirport || 'CGK';
             const lines = [];
@@ -3712,20 +3906,22 @@ function fdrDashboardController() {
                 const a2 = dict[c2];
                 if (!a1 || !a2) return;
 
-                const x1 = Math.round(((a1.lon - 94.0) / (141.0 - 94.0)) * 820 + 50);
-                const y1 = Math.round(((6.0 - a1.lat) / (6.0 - -11.0)) * 280 + 40);
-                const x2 = Math.round(((a2.lon - 94.0) / (141.0 - 94.0)) * 820 + 50);
-                const y2 = Math.round(((6.0 - a2.lat) / (6.0 - -11.0)) * 280 + 40);
+                const p1 = this.projectGeo(a1.lon, a1.lat);
+                const p2 = this.projectGeo(a2.lon, a2.lat);
 
-                const mx = (x1 + x2) / 2;
-                const my = Math.min(y1, y2) - Math.abs(x2 - x1) * 0.15;
-                const pathD = `M ${x1} ${y1} Q ${mx} ${my} ${x2} ${y2}`;
-                const strokeWidth = Math.max(1, Math.min(4, Math.round((r.count || 1) / 10)));
+                const mx = (p1.x + p2.x) / 2;
+                const my = Math.min(p1.y, p2.y) - Math.abs(p2.x - p1.x) * 0.15;
+                const pathD = `M ${p1.x} ${p1.y} Q ${mx} ${my} ${p2.x} ${p2.y}`;
+                const flightCount = r.count || r.flights || r.movements || r.total_flights || 1;
+                const strokeWidth = Math.max(1.5, Math.min(5, Math.round(flightCount / 20)));
+
+                const paxCount = r.pax != null ? r.pax : (r.passengers || r.totalPax || 0);
+                const lfStr = r.avg_load_factor || (r.avgLf != null ? r.avgLf + '%' : (r.lf != null ? r.lf + '%' : 'N/A'));
 
                 lines.push({
                     pathD,
                     strokeWidth,
-                    title: `${c1} → ${c2}: ${r.count || 0} flights`,
+                    title: `${c1} → ${c2}: ${flightCount} flights • ${paxCount.toLocaleString()} Pax • LF ${lfStr}`,
                 });
             });
 

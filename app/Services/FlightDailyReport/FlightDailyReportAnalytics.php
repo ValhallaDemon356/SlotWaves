@@ -912,6 +912,22 @@ class FlightDailyReportAnalytics
             }
         }
 
+        // Compute Leg Subtypes
+        $schedCount = 0;
+        $unschedCount = 0;
+        $cargoCount = 0;
+        foreach ($records as $r) {
+            $legVal = strtoupper(trim($r['leg'] ?? ($r['leg_raw'] ?? '')));
+            if (str_contains($legVal, 'UNSCHED')) $unschedCount++;
+            elseif (str_contains($legVal, 'CARGO')) $cargoCount++;
+            else $schedCount++;
+        }
+        $legSubtypes = [
+            'SCHED'   => $schedCount,
+            'UNSCHED' => $unschedCount,
+            'CARGO'   => $cargoCount,
+        ];
+
         // Compute Load Factors and sort airlines by flight volume desc
         foreach ($airlines as &$a) {
             $a['avg_load_factor'] = ($a['capacity'] > 0) ? round(($a['load'] / $a['capacity']) * 100, 1) . '%' : 'N/A';
@@ -921,11 +937,32 @@ class FlightDailyReportAnalytics
         unset($a);
         usort($airlines, fn($x, $y) => $y['flights'] <=> $x['flights']);
 
-        // Finalize route metrics
+        // Finalize route metrics with all aliases
         foreach ($routes as &$rt) {
-            $rt['avg_load_factor'] = ($rt['capacity'] > 0) ? round(($rt['load'] / $rt['capacity']) * 100, 1) . '%' : 'N/A';
-            $rt['lf_num'] = ($rt['capacity'] > 0) ? round(($rt['load'] / $rt['capacity']) * 100, 1) : 0;
-            $rt['avg_delay_min'] = ($rt['delay_count'] > 0) ? round($rt['delay_sum'] / $rt['delay_count'], 1) : 0.0;
+            $lfNum = ($rt['capacity'] > 0) ? round(($rt['load'] / $rt['capacity']) * 100, 1) : 0.0;
+            $rt['avg_load_factor'] = ($rt['capacity'] > 0) ? $lfNum . '%' : '0.0%';
+            $rt['lf_num'] = $lfNum;
+            $rt['avgLf'] = $lfNum;
+            $rt['lf'] = $lfNum;
+            $rt['slf'] = $rt['avg_load_factor'];
+
+            $rt['count'] = $rt['flights'];
+            $rt['movements'] = $rt['flights'];
+            $rt['total_flights'] = $rt['flights'];
+
+            $rt['pax'] = $rt['passengers'];
+            $rt['totalPax'] = $rt['passengers'];
+            $rt['totalCapacity'] = $rt['capacity'];
+
+            $avgDel = ($rt['delay_count'] > 0) ? round($rt['delay_sum'] / $rt['delay_count'], 1) : 0.0;
+            $rt['avg_delay_min'] = $avgDel;
+            $rt['avg_delay'] = $avgDel;
+            $rt['avgDelay'] = $avgDel;
+
+            $rt['delayed_flights'] = $rt['delay_count'];
+            $rt['delayedFlights'] = $rt['delay_count'];
+            $rt['delay_rate'] = ($rt['flights'] > 0) ? round(($rt['delay_count'] / $rt['flights']) * 100, 1) : 0.0;
+            $rt['delayRate'] = $rt['delay_rate'];
         }
         unset($rt);
 
@@ -935,24 +972,58 @@ class FlightDailyReportAnalytics
         $busiestRoutes = $allRoutes;
         usort($busiestRoutes, fn($x, $y) => $y['flights'] <=> $x['flights']);
 
-        // Most Delayed Routes: sorted by avg_delay_min desc (min 2 flights)
-        $delayedRoutes = array_filter($allRoutes, fn($r) => $r['flights'] >= 2 && $r['delay_count'] > 0);
-        usort($delayedRoutes, fn($x, $y) => $y['avg_delay_min'] <=> $x['avg_delay_min']);
+        // Most Delayed Routes: sorted by delayed_flights / avg_delay_min desc (min 1 flight)
+        $delayedRoutes = array_filter($allRoutes, fn($r) => $r['flights'] >= 1);
+        usort($delayedRoutes, function($x, $y) {
+            $cmpDel = ($y['delayed_flights'] ?? 0) <=> ($x['delayed_flights'] ?? 0);
+            if ($cmpDel !== 0) return $cmpDel;
+            return ($y['avg_delay_min'] ?? 0) <=> ($x['avg_delay_min'] ?? 0);
+        });
 
         // Highest SLF Routes: sorted by lf_num desc (min capacity > 0)
         $highestSlfRoutes = array_filter($allRoutes, fn($r) => $r['capacity'] > 0);
         usort($highestSlfRoutes, fn($x, $y) => $y['lf_num'] <=> $x['lf_num']);
 
         // Suffix breakdown sorted by count desc
+        $suffixColors = [
+            'X' => 'bg-blue-100 text-blue-700 border-blue-200',
+            'R' => 'bg-rose-100 text-rose-700 border-rose-200',
+            'I' => 'bg-emerald-100 text-emerald-700 border-emerald-200',
+            'D' => 'bg-amber-100 text-amber-700 border-amber-200',
+            'A' => 'bg-indigo-100 text-indigo-700 border-indigo-200',
+            'F' => 'bg-teal-100 text-teal-700 border-teal-200',
+            'H' => 'bg-purple-100 text-purple-700 border-purple-200',
+            'O' => 'bg-cyan-100 text-cyan-700 border-cyan-200',
+            'L' => 'bg-slate-100 text-slate-700 border-slate-200',
+            '&' => 'bg-slate-100 text-slate-700 border-slate-200',
+            'G' => 'bg-slate-100 text-slate-700 border-slate-200',
+            'V' => 'bg-purple-100 text-purple-700 border-purple-200',
+            'M' => 'bg-rose-100 text-rose-700 border-rose-200',
+            'N' => 'bg-amber-100 text-amber-700 border-amber-200',
+            'Z' => 'bg-sky-100 text-sky-700 border-sky-200',
+            'S' => 'bg-orange-100 text-orange-700 border-orange-200',
+            'T' => 'bg-orange-100 text-orange-700 border-orange-200',
+            'K' => 'bg-orange-100 text-orange-700 border-orange-200',
+        ];
+
+        foreach ($suffixCounts as &$sfxItem) {
+            $sfxItem['colorClass'] = $suffixColors[$sfxItem['suffix']] ?? 'bg-slate-100 text-slate-700 border-slate-200';
+        }
+        unset($sfxItem);
         usort($suffixCounts, fn($x, $y) => $y['count'] <=> $x['count']);
 
         return [
             'ranked_airlines'     => array_values($airlines),
             'top_routes'          => array_slice($busiestRoutes, 0, 15),
             'busiest_routes'      => array_slice($busiestRoutes, 0, 10),
+            'top_busiest_routes'  => array_slice($busiestRoutes, 0, 10),
             'most_delayed_routes' => array_slice(array_values($delayedRoutes), 0, 10),
+            'top_delayed_routes'  => array_slice(array_values($delayedRoutes), 0, 10),
             'highest_slf_routes'  => array_slice(array_values($highestSlfRoutes), 0, 10),
+            'top_slf_routes'      => array_slice(array_values($highestSlfRoutes), 0, 10),
             'suffix_breakdown'    => array_values($suffixCounts),
+            'suffix_distribution'=> array_values($suffixCounts),
+            'leg_subtypes'        => $legSubtypes,
             'airport_coordinates' => self::INJOURNEY_AIRPORTS_COORDINATES,
         ];
     }

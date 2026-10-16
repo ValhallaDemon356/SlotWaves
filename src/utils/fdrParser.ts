@@ -154,6 +154,32 @@ export const INJOURNEY_AIRPORTS_COORDINATES: Record<
   DJJ: { name: 'Sentani International Airport', city: 'Jayapura', lat: -2.5769, lng: 140.5164, lon: 140.5164 },
   PWL: { name: 'Tunggul Wulung Airport', city: 'Cilacap / Purwokerto', lat: -7.6436, lng: 109.0208, lon: 109.0208 },
   PCB: { name: 'Pondok Cabe Airport', city: 'Tangerang Selatan', lat: -6.3386, lng: 106.7533, lon: 106.7533 },
+  // Common Domestic & International Stations (GA, ID, JT Network)
+  SOQ: { name: 'Domine Eduard Osok Airport', city: 'Sorong', lat: -0.8906, lng: 131.2872, lon: 131.2872 },
+  PLW: { name: 'Mutiara SIS Al-Jufrie Airport', city: 'Palu', lat: -0.9178, lng: 119.9097, lon: 119.9097 },
+  TIM: { name: 'Mozes Kilangin Airport', city: 'Timika', lat: -4.5283, lng: 136.8867, lon: 136.8867 },
+  MKQ: { name: 'Mopah Airport', city: 'Merauke', lat: -8.5203, lng: 140.4181, lon: 140.4181 },
+  KDI: { name: 'Haluoleo Airport', city: 'Kendari', lat: -4.0817, lng: 122.4178, lon: 122.4178 },
+  GTO: { name: 'Djalaluddin Airport', city: 'Gorontalo', lat: 0.6372, lng: 122.8517, lon: 122.8517 },
+  LUW: { name: 'Syukuran Aminuddin Amir Airport', city: 'Luwuk', lat: -1.0378, lng: 122.7758, lon: 122.7758 },
+  TTE: { name: 'Sultan Babullah Airport', city: 'Ternate', lat: 0.8317, lng: 127.3806, lon: 127.3806 },
+  LBJ: { name: 'Komodo Airport', city: 'Labuan Bajo', lat: -8.4878, lng: 119.8872, lon: 119.8872 },
+  BMU: { name: 'Sultan Muhammad Salahuddin Airport', city: 'Bima', lat: -8.5397, lng: 118.6903, lon: 118.6903 },
+  SIN: { name: 'Singapore Changi Airport', city: 'Singapore', lat: 1.3644, lng: 103.9915, lon: 103.9915 },
+  KUL: { name: 'Kuala Lumpur International Airport', city: 'Kuala Lumpur', lat: 2.7456, lng: 101.7072, lon: 101.7072 },
+  HND: { name: 'Tokyo Haneda Airport', city: 'Tokyo', lat: 35.5494, lng: 139.7798, lon: 139.7798 },
+  NRT: { name: 'Narita International Airport', city: 'Tokyo Narita', lat: 35.7720, lng: 140.3929, lon: 140.3929 },
+  ICN: { name: 'Incheon International Airport', city: 'Seoul', lat: 37.4602, lng: 126.4407, lon: 126.4407 },
+  PVG: { name: 'Shanghai Pudong International Airport', city: 'Shanghai', lat: 31.1443, lng: 121.8083, lon: 121.8083 },
+  CAN: { name: 'Guangzhou Baiyun International Airport', city: 'Guangzhou', lat: 23.3924, lng: 113.2988, lon: 113.2988 },
+  SYD: { name: 'Sydney Kingsford Smith Airport', city: 'Sydney', lat: -33.9399, lng: 151.1753, lon: 151.1753 },
+  MEL: { name: 'Melbourne Airport', city: 'Melbourne', lat: -37.6690, lng: 144.8410, lon: 144.8410 },
+  PER: { name: 'Perth Airport', city: 'Perth', lat: -31.9385, lng: 115.9672, lon: 115.9672 },
+  JED: { name: 'King Abdulaziz International Airport', city: 'Jeddah', lat: 21.6796, lng: 39.1565, lon: 39.1565 },
+  MED: { name: 'Prince Mohammad Bin Abdulaziz Airport', city: 'Medina', lat: 24.5534, lng: 39.7051, lon: 39.7051 },
+  DOH: { name: 'Hamad International Airport', city: 'Doha', lat: 25.2731, lng: 51.6081, lon: 51.6081 },
+  BKK: { name: 'Suvarnabhumi Airport', city: 'Bangkok', lat: 13.6900, lng: 100.7501, lon: 100.7501 },
+  HKG: { name: 'Hong Kong International Airport', city: 'Hong Kong', lat: 22.3080, lng: 113.9185, lon: 113.9185 },
 };
 
 export const INJOURNEY_AIRPORTS = INJOURNEY_AIRPORTS_COORDINATES;
@@ -343,23 +369,23 @@ export function resolveMovementType(
   sobt?: string,
   baseAirport = 'CGK'
 ): 'Arrival' | 'Departure' {
+  // 1. Leg column check (A / D / ARR / DEP) has highest authority in OASYS
+  if (legValue) {
+    const legUpper = legValue.toUpperCase().trim();
+    if (legUpper.startsWith('A') || legUpper.includes('ARR')) return 'Arrival';
+    if (legUpper.startsWith('D') || legUpper.includes('DEP')) return 'Departure';
+  }
+
   const normBase = baseAirport.toUpperCase().trim();
   const normOrig = origin.toUpperCase().trim();
   const normDest = destination.toUpperCase().trim();
 
-  // 1. Direct airport relative check
+  // 2. Direct airport relative check
   if (normDest === normBase && normOrig !== normBase) {
     return 'Arrival';
   }
   if (normOrig === normBase && normDest !== normBase) {
     return 'Departure';
-  }
-
-  // 2. Leg column check (A / D / ARR / DEP)
-  if (legValue) {
-    const legUpper = legValue.toUpperCase().trim();
-    if (legUpper.startsWith('A') || legUpper.includes('ARR')) return 'Arrival';
-    if (legUpper.startsWith('D') || legUpper.includes('DEP')) return 'Departure';
   }
 
   // 3. SIBT vs SOBT presence
@@ -372,13 +398,14 @@ export function resolveMovementType(
 /**
  * Extract trailing suffix from flight number using regex ^([A-Z0-9]*?)(\d+)([A-Z<$&^])?$.
  */
-export function extractFlightSuffix(flightNo: string): {
+export function extractFlightSuffix(flightNo: string, pairedNo = ''): {
   base: string;
   suffix: string;
   suffixInfo: (typeof OASYS_SUFFIX_DICTIONARY)[string] | null;
 } {
-  const clean = cleanHtmlText(String(flightNo || '')).toUpperCase();
-  const match = clean.match(/^([A-Z0-9]*?)(\d+)([A-Z<$&^])?$/);
+  const clean = cleanHtmlText(String(flightNo || '')).toUpperCase().trim();
+  const stripped = clean.replace(/\s+/g, '');
+  const match = stripped.match(/^([A-Z0-9]*?)(\d+)([A-Z<$&^])?$/);
   if (match && match[3]) {
     const base = `${match[1] || ''}${match[2]}`;
     const suffix = match[3];
@@ -393,6 +420,28 @@ export function extractFlightSuffix(flightNo: string): {
       },
     };
   }
+
+  // Check paired flight number if provided
+  if (pairedNo) {
+    const cleanPaired = cleanHtmlText(String(pairedNo || '')).toUpperCase().trim();
+    const strippedPaired = cleanPaired.replace(/\s+/g, '');
+    const pairedMatch = strippedPaired.match(/^([A-Z0-9]*?)(\d+)([A-Z<$&^])?$/);
+    if (pairedMatch && pairedMatch[3]) {
+      const base = `${pairedMatch[1] || ''}${pairedMatch[2]}`;
+      const suffix = pairedMatch[3];
+      return {
+        base,
+        suffix,
+        suffixInfo: OASYS_SUFFIX_DICTIONARY[suffix] || {
+          code: suffix,
+          label: `Suffix ${suffix}`,
+          description: 'Special Flight Suffix',
+          category: 'Custom',
+        },
+      };
+    }
+  }
+
   return { base: clean, suffix: '', suffixInfo: null };
 }
 
@@ -527,67 +576,69 @@ export function detectFdrTemplateType(htmlString: string, fileName = ''): OasysF
   const lower = content.toLowerCase();
   const fnLower = String(fileName || '').toLowerCase();
 
-  // 1. OASYS_VS_APPS (16 Columns)
+  // ── PRIORITY 1: COMPARE_LOAD_FACTOR_DAY & COMPARE_LOAD_FACTOR (20 Columns <td> table, NO <th>) ──
+  // Detection: Raw HTML or <title> contains DAU OASYS or DATA LALU LINTAS ANGKUTAN UDARA,
+  // OR table Row 0/1 contains SEAT LOAD FACTOR and RATIO / PREVYEAR
   if (
-    lower.includes('apps vs flight dep') ||
-    lower.includes('oasys departure vs apps data') ||
-    (lower.includes('off block time') && lower.includes('stad'))
-  ) {
-    return 'OASYS_VS_APPS';
-  }
-
-  // 2. OASYS_VS_EDIFLY (14 Columns)
-  if (
-    lower.includes('api pax edifly') ||
-    lower.includes('api cargo edifly') ||
-    (lower.includes('station 1') && lower.includes('station 2') && lower.includes('edifly'))
-  ) {
-    return 'OASYS_VS_EDIFLY';
-  }
-
-  // 3. COMPARE_LOAD_FACTOR & COMPARE_LOAD_FACTOR_DAY (20 Columns <td> table)
-  if (
+    lower.includes('dau oasys') ||
+    lower.includes('data lalu lintas angkutan udara') ||
+    (lower.includes('seat load factor') && (lower.includes('ratio') || lower.includes('prevyear') || lower.includes('2025') || lower.includes('2026'))) ||
     lower.includes('seat load factor 202') ||
-    (lower.includes('dau oasys') && lower.includes('seat load factor')) ||
-    (lower.includes('load factor') &&
-      (lower.includes('prevyear') || (lower.includes('2025') && lower.includes('2026'))))
+    fnLower.includes('compare_load_factor') ||
+    fnLower.includes('compare load factor')
   ) {
-    // Check if column [1] contains date pattern YYYY-MM-DD
+    // Distinguish COMPARE_LOAD_FACTOR_DAY vs COMPARE_LOAD_FACTOR:
+    // COMPARE_LOAD_FACTOR_DAY has dates (YYYY-MM-DD or DD-MM-YYYY) in column 1/row cells OR 'day' in filename/title
     if (
       content.match(/<td[^>]*>[A-Z]{3}\s*(<br\s*\/?>)?\s*\d{4}-\d{2}-\d{2}/i) ||
       content.match(/[A-Z]{3}\s*(<br\s*\/?>)?\s*\d{4}-\d{2}-\d{2}/i) ||
+      content.match(/<td[^>]*>\s*\d{4}-\d{2}-\d{2}/i) ||
+      content.match(/\d{4}-\d{2}-\d{2}/) ||
       fnLower.includes('day') ||
-      lower.includes('day by day')
+      lower.includes('day by day') ||
+      lower.includes('compare load factor day')
     ) {
       return 'COMPARE_LOAD_FACTOR_DAY';
     }
     return 'COMPARE_LOAD_FACTOR';
   }
 
-  // 4. LOAD_FACTOR (13 Columns <th> table)
+  // ── PRIORITY 2: OASYS_VS_APPS (16 Columns) ──
   if (
-    lower.includes('type of aircraft') &&
-    (lower.includes('arrival route') || lower.includes('departure route')) &&
-    (lower.includes('slf') || lower.includes('extra_crew'))
+    lower.includes('apps vs flight dep') ||
+    lower.includes('oasys departure vs apps data') ||
+    (lower.includes('off block time') && lower.includes('stad')) ||
+    fnLower.includes('apps')
+  ) {
+    return 'OASYS_VS_APPS';
+  }
+
+  // ── PRIORITY 3: OASYS_VS_EDIFLY (14 Columns) ──
+  if (
+    lower.includes('api pax edifly') ||
+    lower.includes('api cargo edifly') ||
+    (lower.includes('station 1') && lower.includes('station 2') && lower.includes('edifly')) ||
+    fnLower.includes('edifly')
+  ) {
+    return 'OASYS_VS_EDIFLY';
+  }
+
+  // ── PRIORITY 4: LOAD_FACTOR (13 Columns <th> table) ──
+  if (
+    (lower.includes('type of aircraft') && (lower.includes('arrival route') || lower.includes('departure route')) && (lower.includes('slf') || lower.includes('extra_crew') || lower.includes('seat capacity'))) ||
+    fnLower.includes('load_factor') ||
+    fnLower.includes('load factor')
   ) {
     return 'LOAD_FACTOR';
   }
 
-  // 5. NORMAL & EX_HALIM (33 Columns)
-  if (
-    lower.includes('paired no') ||
-    lower.includes('sibt sobt') ||
-    lower.includes('aibt aobt') ||
-    lower.includes('umroh') ||
-    (lower.includes('stand') && lower.includes('runway') && lower.includes('mtow'))
-  ) {
-    if (fnLower.includes('halim') || fnLower.includes('hlp')) {
-      return 'EX_HALIM';
-    }
+  // ── PRIORITY 5: EX_HALIM (33 Columns with Halim indicator or 0-movement empty state) ──
+  if (fnLower.includes('halim') || fnLower.includes('hlp')) {
+    return 'EX_HALIM';
+  }
 
-    // Check if 0-row table (empty state as in GA/ID/JT Sep 2026 EX HALIM)
-    // Only has header row and summary row "-PAX ALL -(0)-"
-    const hasZeroMovementSummary = content.match(/-PAX\s*ALL\s*-\s*\(\s*0\s*\)\s*-/i);
+  const hasZeroMovementSummary = content.match(/-PAX\s*ALL\s*-\s*\(\s*0\s*\)\s*-/i);
+  if (hasZeroMovementSummary) {
     const trMatches = content.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) || [];
     let nonHeaderRows = 0;
     for (const tr of trMatches) {
@@ -596,20 +647,12 @@ export function detectFdrTemplateType(htmlString: string, fileName = ''): OasysF
       if (clean === '' || clean.includes('PAX ALL') || clean.startsWith('TOTAL')) continue;
       nonHeaderRows++;
     }
-
-    if (nonHeaderRows === 0 && hasZeroMovementSummary) {
+    if (nonHeaderRows === 0) {
       return 'EX_HALIM';
     }
-
-    return 'NORMAL';
   }
 
-  // Filename heuristics fallback
-  if (fnLower.includes('halim') || fnLower.includes('hlp')) return 'EX_HALIM';
-  if (fnLower.includes('load_factor') || fnLower.includes('load factor') || fnLower.includes('slf')) return 'LOAD_FACTOR';
-  if (fnLower.includes('apps')) return 'OASYS_VS_APPS';
-  if (fnLower.includes('edifly')) return 'OASYS_VS_EDIFLY';
-
+  // ── PRIORITY 6: NORMAL (33 Columns Operational Daily Report) ──
   return 'NORMAL';
 }
 
@@ -936,17 +979,18 @@ export function parseNormalFDR(
     const branch = (cells[31] || detectedBranch).toUpperCase();
 
     // Suffix & Airline normalizer
-    const suffixRes = extractFlightSuffix(rawFlt);
+    const suffixRes = extractFlightSuffix(rawFlt, pairedNo);
     const normAirline = normalizeAirline(rawAirline, rawFlt, regNo);
 
     // Movement direction
     const movementType = resolveMovementType(city1, city2, rawLeg, undefined, undefined, branch);
 
-    // Leg Subtype
+    // Leg Subtype: SCHED, UNSCHED, CARGO
     let legSubtype: NormalizedFDRRecord['legSubtype'] = 'SCHED';
     const legUpper = rawLeg.toUpperCase();
     if (legUpper.includes('UNSCHED')) legSubtype = 'UNSCHED';
     else if (legUpper.includes('CARGO')) legSubtype = 'CARGO';
+    else legSubtype = 'SCHED';
 
     // Parse times
     const schedParsed = parseExcelTime(rawSchedTime);
@@ -1208,6 +1252,323 @@ export function parseNormalFDR(
   const avgMtowPerFlight = records.length > 0 ? Math.round((totalMtowTons / records.length) * 10) / 10 : 0;
   const otpPercentage = realizedCount > 0 ? Math.round((onTimeCount / realizedCount) * 1000) / 10 : 0;
 
+  // ── Route & Airline Aggregations ──
+  const INT_AIRPORTS_SET = new Set([
+    'SIN', 'KUL', 'HND', 'NRT', 'ICN', 'PVG', 'CAN', 'SYD', 'MEL', 'PER',
+    'JED', 'MED', 'DOH', 'BKK', 'HKG', 'DXB', 'AUH', 'KTM', 'DMK', 'MNL',
+    'TPE', 'PEN', 'JHB', 'BKI', 'KCH', 'LGK', 'CNX', 'HKT', 'REP', 'PNH',
+    'SGN', 'HAN', 'BNE', 'ADL', 'AKL', 'LHR', 'AMS', 'FRA', 'CDG', 'IST',
+  ]);
+
+  const routesMap: Record<string, any> = {};
+  const airlinesMap: Record<string, any> = {};
+  let schedCount = 0;
+  let unschedCount = 0;
+  let cargoCount = 0;
+  let arrivalCount = 0;
+  let departureCount = 0;
+  let totalCap = 0;
+
+  // Hourly buckets 00..23
+  const hourlyLabels = [
+    '00:00', '01:00', '02:00', '03:00', '04:00', '05:00',
+    '06:00', '07:00', '08:00', '09:00', '10:00', '11:00',
+    '12:00', '13:00', '14:00', '15:00', '16:00', '17:00',
+    '18:00', '19:00', '20:00', '21:00', '22:00', '23:00',
+  ];
+  const hourlyRanges = hourlyLabels.map((l, i) => `${l} - ${String(i).padStart(2, '0')}:59`);
+  const arrDom = new Array(24).fill(0);
+  const arrInt = new Array(24).fill(0);
+  const depDom = new Array(24).fill(0);
+  const depInt = new Array(24).fill(0);
+
+  const arrPax = new Array(24).fill(0);
+  const depPax = new Array(24).fill(0);
+  const arrDomPax = new Array(24).fill(0);
+  const arrIntPax = new Array(24).fill(0);
+  const depDomPax = new Array(24).fill(0);
+  const depIntPax = new Array(24).fill(0);
+
+  const arrCargo = new Array(24).fill(0);
+  const depCargo = new Array(24).fill(0);
+  const arrDomCargo = new Array(24).fill(0);
+  const arrIntCargo = new Array(24).fill(0);
+  const depDomCargo = new Array(24).fill(0);
+  const depIntCargo = new Array(24).fill(0);
+
+  for (const r of records) {
+    if (r.movementType === 'Arrival') arrivalCount++;
+    else departureCount++;
+    totalCap += r.capacity;
+
+    if (r.legSubtype === 'UNSCHED') unschedCount++;
+    else if (r.legSubtype === 'CARGO') cargoCount++;
+    else schedCount++;
+
+    // Route aggregation
+    const rtKey = `${r.origin} → ${r.destination}`;
+    if (!routesMap[rtKey]) {
+      routesMap[rtKey] = {
+        route: rtKey,
+        origin: r.origin,
+        destination: r.destination,
+        dest: r.destination,
+        flights: 0,
+        movements: 0,
+        count: 0,
+        total_flights: 0,
+        pax: 0,
+        passengers: 0,
+        totalPax: 0,
+        capacity: 0,
+        totalCapacity: 0,
+        load: 0,
+        delayedFlights: 0,
+        delayed_flights: 0,
+        delaySum: 0,
+        delayCount: 0,
+        maxDelay: 0,
+        avgLf: 0,
+        lf: 0,
+        avg_load_factor: '0.0%',
+        slf: '0.0%',
+        delayRate: 0,
+        delay_rate: 0,
+        avgDelay: 0,
+        avg_delay: 0,
+        avg_delay_min: 0,
+      };
+    }
+    const rt = routesMap[rtKey];
+    rt.flights++;
+    rt.movements++;
+    rt.count++;
+    rt.total_flights++;
+    const fltPax = r.adult + r.child + r.infant + r.transit + r.transfer;
+    rt.pax += fltPax;
+    rt.passengers += fltPax;
+    rt.totalPax += fltPax;
+    rt.capacity += r.capacity;
+    rt.totalCapacity += r.capacity;
+    rt.load += r.paxLoad;
+    if (r.delayMinutes > 15) {
+      rt.delayedFlights++;
+      rt.delayed_flights++;
+    }
+    if (r.realized && r.delayMinutes !== 0) {
+      rt.delaySum += r.delayMinutes;
+      rt.delayCount++;
+      if (r.delayMinutes > rt.maxDelay) rt.maxDelay = r.delayMinutes;
+    }
+
+    // Airline aggregation
+    const alName = r.airline || 'Unknown';
+    if (!airlinesMap[alName]) {
+      airlinesMap[alName] = {
+        airline: alName,
+        code: r.airlineCode || alName.slice(0, 3).toUpperCase(),
+        flights: 0,
+        passengers: 0,
+        capacity: 0,
+        cargo_kg: 0,
+      };
+    }
+    airlinesMap[alName].flights++;
+    airlinesMap[alName].passengers += fltPax;
+    airlinesMap[alName].capacity += r.capacity;
+    airlinesMap[alName].cargo_kg += r.cargoKg;
+
+    // Hourly buckets
+    const h = (r.actualHour >= 0 && r.actualHour < 24)
+      ? r.actualHour
+      : ((r.scheduledHour >= 0 && r.scheduledHour < 24) ? r.scheduledHour : 0);
+    const isArr = r.movementType === 'Arrival';
+    const isInt = INT_AIRPORTS_SET.has(r.origin) || INT_AIRPORTS_SET.has(r.destination);
+
+    if (isArr) {
+      if (isInt) {
+        arrInt[h]++;
+        arrIntPax[h] += r.paxLoad;
+        arrIntCargo[h] += r.cargoKg;
+      } else {
+        arrDom[h]++;
+        arrDomPax[h] += r.paxLoad;
+        arrDomCargo[h] += r.cargoKg;
+      }
+      arrPax[h] += r.paxLoad;
+      arrCargo[h] += r.cargoKg;
+    } else {
+      if (isInt) {
+        depInt[h]++;
+        depIntPax[h] += r.paxLoad;
+        depIntCargo[h] += r.cargoKg;
+      } else {
+        depDom[h]++;
+        depDomPax[h] += r.paxLoad;
+        depDomCargo[h] += r.cargoKg;
+      }
+      depPax[h] += r.paxLoad;
+      depCargo[h] += r.cargoKg;
+    }
+  }
+
+  // Finalize route metrics
+  const allRoutes = Object.values(routesMap);
+  for (const rObj of allRoutes) {
+    const lfVal = rObj.totalCapacity > 0 ? Math.round((rObj.totalPax / rObj.totalCapacity) * 1000) / 10 : 0;
+    rObj.avgLf = lfVal;
+    rObj.lf = lfVal;
+    rObj.avg_load_factor = `${lfVal.toFixed(1)}%`;
+    rObj.slf = `${lfVal.toFixed(1)}%`;
+
+    const dRate = rObj.flights > 0 ? Math.round((rObj.delayedFlights / rObj.flights) * 1000) / 10 : 0;
+    rObj.delayRate = dRate;
+    rObj.delay_rate = dRate;
+
+    const avgDel = rObj.delayCount > 0 ? Math.round((rObj.delaySum / rObj.delayCount) * 10) / 10 : 0;
+    rObj.avgDelay = avgDel;
+    rObj.avg_delay = avgDel;
+    rObj.avg_delay_min = avgDel;
+  }
+
+  const busiestRoutes = [...allRoutes].sort((a, b) => b.flights - a.flights).slice(0, 10);
+  const delayedRoutes = [...allRoutes]
+    .filter(r => r.flights >= 1)
+    .sort((a, b) => (b.delayedFlights - a.delayedFlights) || (b.avgDelay - a.avgDelay) || (b.maxDelay - a.maxDelay))
+    .slice(0, 10);
+  const highestSlfRoutes = [...allRoutes]
+    .filter(r => r.capacity > 0)
+    .sort((a, b) => b.avgLf - a.avgLf)
+    .slice(0, 10);
+
+  const suffixColors: Record<string, string> = {
+    X: 'bg-blue-100 text-blue-700 border-blue-200',
+    R: 'bg-rose-100 text-rose-700 border-rose-200',
+    I: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+    D: 'bg-amber-100 text-amber-700 border-amber-200',
+    A: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+    F: 'bg-teal-100 text-teal-700 border-teal-200',
+    H: 'bg-purple-100 text-purple-700 border-purple-200',
+    O: 'bg-cyan-100 text-cyan-700 border-cyan-200',
+    L: 'bg-slate-100 text-slate-700 border-slate-200',
+    '&': 'bg-slate-100 text-slate-700 border-slate-200',
+    G: 'bg-slate-100 text-slate-700 border-slate-200',
+    V: 'bg-purple-100 text-purple-700 border-purple-200',
+    M: 'bg-rose-100 text-rose-700 border-rose-200',
+    N: 'bg-amber-100 text-amber-700 border-amber-200',
+    Z: 'bg-sky-100 text-sky-700 border-sky-200',
+    S: 'bg-orange-100 text-orange-700 border-orange-200',
+    T: 'bg-orange-100 text-orange-700 border-orange-200',
+    K: 'bg-orange-100 text-orange-700 border-orange-200',
+  };
+
+  const suffixDistribution = Object.entries(suffixBreakdown)
+    .sort((a, b) => b[1] - a[1])
+    .map(([sfx, count]) => {
+      const dictEntry = OASYS_SUFFIX_DICTIONARY[sfx];
+      return {
+        suffix: sfx,
+        count,
+        label: dictEntry ? dictEntry.label : `Suffix ${sfx}`,
+        desc: dictEntry ? dictEntry.description : 'Special Suffix',
+        category: dictEntry ? dictEntry.category : 'Special',
+        colorClass: suffixColors[sfx] || 'bg-slate-100 text-slate-700 border-slate-200',
+      };
+    });
+
+  let peakHourIdx = 0;
+  let peakHourMov = 0;
+  for (let h = 0; h < 24; h++) {
+    const totalH = arrDom[h] + arrInt[h] + depDom[h] + depInt[h];
+    if (totalH > peakHourMov) {
+      peakHourMov = totalH;
+      peakHourIdx = h;
+    }
+  }
+
+  const hourlyDistribution = {
+    labels: hourlyLabels,
+    arr_dom: arrDom,
+    arr_int: arrInt,
+    dep_dom: depDom,
+    dep_int: depInt,
+    period_label: pre.transactionsDateFdr || '01-09-2026 -> 30-09-2026',
+    time_basis: 'actual',
+    peak_hour: {
+      hour: peakHourIdx,
+      time_range: `${String(peakHourIdx).padStart(2, '0')}:00-${String(peakHourIdx).padStart(2, '0')}:59`,
+      movements: peakHourMov,
+      average_per_day: `${peakHourMov} mov`,
+    },
+  };
+
+  const combinedTrend = {
+    labels: hourlyLabels,
+    time_ranges: hourlyRanges,
+    arr_passengers: arrPax,
+    dep_passengers: depPax,
+    arr_dom_passengers: arrDomPax,
+    arr_int_passengers: arrIntPax,
+    dep_dom_passengers: depDomPax,
+    dep_int_passengers: depIntPax,
+    arr_cargo: arrCargo,
+    dep_cargo: depCargo,
+    arr_cargo_kg: arrCargo,
+    dep_cargo_kg: depCargo,
+    arr_dom_cargo_kg: arrDomCargo,
+    arr_int_cargo_kg: arrIntCargo,
+    dep_dom_cargo_kg: depDomCargo,
+    dep_int_cargo_kg: depIntCargo,
+  };
+
+  const legSubtypes = {
+    SCHED: schedCount,
+    UNSCHED: unschedCount,
+    CARGO: cargoCount,
+  };
+
+  const airlineRoute = {
+    ranked_airlines: Object.values(airlinesMap).sort((a: any, b: any) => b.flights - a.flights),
+    top_routes: busiestRoutes,
+    busiest_routes: busiestRoutes,
+    top_busiest_routes: busiestRoutes,
+    most_delayed_routes: delayedRoutes,
+    top_delayed_routes: delayedRoutes,
+    highest_slf_routes: highestSlfRoutes,
+    top_slf_routes: highestSlfRoutes,
+    suffix_breakdown: suffixDistribution,
+    suffix_distribution: suffixDistribution,
+    leg_subtypes: legSubtypes,
+    airport_coordinates: INJOURNEY_AIRPORTS_COORDINATES,
+  };
+
+  const kpis = {
+    total_flights: records.length,
+    scheduled_flights: records.length,
+    actual_flights: realizedCount,
+    realized_flights: realizedCount,
+    cancelled_hold_flights: cancelledHoldCount,
+    arrivals: arrivalCount,
+    departures: departureCount,
+    total_pax: totalPax,
+    passengers: totalPax,
+    adult_pax: adultPax,
+    child_pax: childPax,
+    infant_pax: infantPax,
+    transit_pax: transitPax,
+    transfer_pax: transferPax,
+    umroh_pax: umrohPax,
+    cargo_kg: totalCargoKg,
+    baggage_kg: totalBaggageKg,
+    pos_kg: totalPosKg,
+    total_payload_kg: totalCargoKg + totalBaggageKg + totalPosKg,
+    avg_delay: avgDelayMinutes,
+    avg_delay_minutes: avgDelayMinutes,
+    otp_percentage: otpPercentage,
+    avg_load_factor: totalCap > 0 ? `${((totalPax / totalCap) * 100).toFixed(1)}%` : '0.0%',
+    leg_subtypes: legSubtypes,
+  };
+
   return {
     records,
     summary: {
@@ -1258,6 +1619,13 @@ export function parseNormalFDR(
       realization: pre.realization || 'YES',
       isExHalim,
     },
+    kpis,
+    airlineRoute,
+    airline_route: airlineRoute,
+    hourlyDistribution,
+    hourly_distribution: hourlyDistribution,
+    combinedTrend,
+    combined_trend: combinedTrend,
   };
 }
 

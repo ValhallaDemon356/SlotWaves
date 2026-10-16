@@ -1590,6 +1590,27 @@ function unifiedReportPortal() {
                         }
                     }
                 }
+
+                // Leverage fdrEngine deterministic detection & pre-scan for all 7 OASYS templates
+                if (window.fdrEngine && window.fdrEngine.preScanOasysFdr) {
+                    try {
+                        const pre = window.fdrEngine.preScanOasysFdr(fullText, fileName, file.size);
+                        if (pre) {
+                            if (pre.totalRows > 0 && rowCount === 0) {
+                                rowCount = pre.totalRows;
+                            }
+                            if (pre.branchCode && !metaMap['BRANCH_CODE']) detectedAirportCode = pre.branchCode;
+                            if (pre.operator && pre.operator !== 'ALL' && !operatorFromMeta) operatorFromMeta = pre.operator;
+                            if (pre.transactionsDateFdr && !metaMap['TRANSACTIONS_DATEFDR']) detectedDateRange = pre.transactionsDateFdr;
+                            if (pre.reportType === 'EX_HALIM') {
+                                // 0-movement is completely valid for Ex Halim
+                                detectedLeg = 'ALL';
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('FDR pre-scan fallback warning:', e);
+                    }
+                }
             } else if (window.XLSX) {
                 // Binary BIFF8 (.xls) or OpenXML (.xlsx) using SheetJS
                 const arrayBuffer = await file.arrayBuffer();
@@ -1631,7 +1652,8 @@ function unifiedReportPortal() {
                 rowCount = Math.max(1, lines.length - 5);
             }
 
-            if (rowCount === 0) {
+            const isExHalim = /halim|hlp/i.test(fileName) || (fullText && fullText.match(/-PAX\s*ALL\s*-\s*\(\s*0\s*\)\s*-/i));
+            if (rowCount === 0 && !isExHalim) {
                 return {
                     valid: false,
                     category: 'NO_VALID_FLIGHT_MOVEMENT_ROWS',
