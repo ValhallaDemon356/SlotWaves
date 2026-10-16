@@ -198,38 +198,57 @@
 
             {{-- Ex Halim Zero-State Verification Card --}}
             <div x-show="activeReportType === 'EX_HALIM' && (totalRecords === 0 || !kpis.total_flights)"
-                 class="bg-white rounded-2xl border-2 border-dashed border-amber-300 p-8 text-center space-y-4 shadow-xs">
+                 class="bg-white rounded-2xl border-2 border-dashed border-amber-300 p-8 text-center space-y-5 shadow-xs">
                 <div class="w-14 h-14 mx-auto rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
                     <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
                     </svg>
                 </div>
-                <div class="max-w-md mx-auto space-y-1">
+                <div class="max-w-lg mx-auto space-y-1.5">
                     <h3 class="text-base font-extrabold text-slate-900 tracking-tight">Zero Ex-Halim Movements Verified</h3>
                     <p class="text-xs text-slate-500">
-                        The OASYS Flight Daily Report for <span class="font-bold text-slate-800" x-text="filters.operator !== 'ALL' ? filters.operator : (sourceSummary.operator || 'selected airline')"></span> was successfully verified (<code class="bg-slate-100 text-slate-700 px-1 py-0.5 rounded text-[11px]">REAL = YES</code>, <code class="bg-slate-100 text-slate-700 px-1 py-0.5 rounded text-[11px]">-PAX ALL -(0)-</code>).
+                        The OASYS Flight Daily Report for <span class="font-bold text-slate-800" x-text="filters.operator !== 'ALL' ? filters.operator : (sourceSummary.operator || 'selected airline')"></span> has been verified with 0 commercial movements operating via Halim Perdanakusuma (HLP) in CGK operations.
                     </p>
-                </div>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-xl mx-auto pt-2">
-                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 text-center">
-                        <div class="text-[9px] uppercase font-bold text-slate-400">Ex-Halim Flights</div>
-                        <div class="text-lg font-black text-slate-900 font-mono mt-0.5">0</div>
-                    </div>
-                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 text-center">
-                        <div class="text-[9px] uppercase font-bold text-slate-400">Total Pax</div>
-                        <div class="text-lg font-black text-slate-900 font-mono mt-0.5">0</div>
-                    </div>
-                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 text-center">
-                        <div class="text-[9px] uppercase font-bold text-slate-400">Stand Allocation</div>
-                        <div class="text-lg font-black text-slate-900 font-mono mt-0.5">0</div>
-                    </div>
-                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 text-center">
-                        <div class="text-[9px] uppercase font-bold text-slate-400">Runway Usage</div>
-                        <div class="text-lg font-black text-slate-900 font-mono mt-0.5">0</div>
+                    {{-- Parsed Form Metadata Badges --}}
+                    <div class="flex flex-wrap items-center justify-center gap-2 text-[11px] font-mono pt-1 text-slate-600">
+                        <span class="bg-slate-100 px-2 py-0.5 rounded border border-slate-200">Branch: <strong class="text-slate-800">CGK</strong></span>
+                        <span class="bg-slate-100 px-2 py-0.5 rounded border border-slate-200">Operator: <strong class="text-slate-800" x-text="filters.operator !== 'ALL' ? filters.operator : (sourceSummary.operator || 'ALL AIRLINE')"></strong></span>
+                        <span class="bg-slate-100 px-2 py-0.5 rounded border border-slate-200">Period: <strong class="text-slate-800" x-text="sourceSummary.period_label || '01-09-2026 s/d 30-09-2026'"></strong></span>
+                        <span class="bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200">Realization: <strong>YES</strong></span>
+                        <span class="bg-blue-50 text-blue-800 px-2 py-0.5 rounded border border-blue-200">Payload: <strong>-PAX ALL -(0)-</strong></span>
                     </div>
                 </div>
+
+                {{-- 4 Ex-Halim KPI Summary Cards --}}
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl mx-auto pt-2">
+                    {{-- 1. Total Pergerakan Pesawat Ex-Halim --}}
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/70 text-center">
+                        <div class="text-[9px] uppercase font-bold text-slate-400">Total Pergerakan (CGK)</div>
+                        <div class="text-xl font-black text-slate-900 font-mono mt-0.5" x-text="(Number(kpis.total_flights || 0)) + ' Movements'">0 Movements</div>
+                        <div class="text-[9px] text-slate-500 font-medium mt-0.5">Arrival &amp; Departure</div>
+                    </div>
+                    {{-- 2. Total Penumpang & Kargo Ex-Halim --}}
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/70 text-center">
+                        <div class="text-[9px] uppercase font-bold text-slate-400">Total Penumpang &amp; Kargo</div>
+                        <div class="text-xl font-black text-slate-900 font-mono mt-0.5" x-text="Number(kpis.total_passengers || 0).toLocaleString() + ' Pax'">0 Pax</div>
+                        <div class="text-[9px] text-slate-500 font-medium mt-0.5" x-text="Number(kpis.cargo_kg || 0).toLocaleString() + ' kg Cargo'">0 kg Cargo</div>
+                    </div>
+                    {{-- 3. Kontribusi Terhadap Total Trafik CGK (%) --}}
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/70 text-center">
+                        <div class="text-[9px] uppercase font-bold text-slate-400">Kontribusi Trafik CGK</div>
+                        <div class="text-xl font-black text-emerald-700 font-mono mt-0.5">0.0%</div>
+                        <div class="text-[9px] text-slate-500 font-medium mt-0.5">Verified HLP Share</div>
+                    </div>
+                    {{-- 4. Rata-rata Load Factor Ex-Halim (%) --}}
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/70 text-center">
+                        <div class="text-[9px] uppercase font-bold text-slate-400">Rata-rata Load Factor</div>
+                        <div class="text-xl font-black text-purple-700 font-mono mt-0.5" x-text="kpis.avg_load_factor || '0.0%'">0.0%</div>
+                        <div class="text-[9px] text-slate-500 font-medium mt-0.5">Ex-Halim Routes SLF</div>
+                    </div>
+                </div>
+
                 <div class="text-[11px] text-slate-400 font-medium">
-                    Audit Status: <strong>0 movements recorded</strong> in this monthly operational reporting cycle.
+                    Audit Status: <strong>0 movements recorded</strong> in this monthly operational reporting cycle. Form metadata parsed successfully.
                 </div>
             </div>
 
@@ -1335,7 +1354,7 @@
                     </div>
                 </div>
 
-                <div class="h-64 min-h-[260px] w-full relative">
+                <div class="h-[300px] w-full relative">
                     <canvas id="fdrFlightMovementChart"></canvas>
                 </div>
             </div>
@@ -1363,7 +1382,7 @@
                             </template>
                         </div>
                     </div>
-                    <div class="h-52 min-h-[210px] w-full relative">
+                    <div class="h-[240px] w-full relative">
                         <canvas id="fdrPaxTrendChart"></canvas>
                     </div>
                 </div>
@@ -1388,7 +1407,7 @@
                             </template>
                         </div>
                     </div>
-                    <div class="h-52 min-h-[210px] w-full relative">
+                    <div class="h-[240px] w-full relative">
                         <canvas id="fdrCargoTrendChart"></canvas>
                     </div>
                 </div>
@@ -1861,21 +1880,18 @@ function fdrDashboardController() {
             if (!window.Chart) return;
             const type = this.activeReportType;
             if (type === 'LOAD_FACTOR') {
-                this.buildSlfHistChart();
-                this.buildSlfRouteChart();
-                this.buildSlfAircraftChart();
-                this.buildSlfHourlyChart();
+                this.buildSlfRankChart();
+                this.buildSlfComboChart();
             } else if (type === 'COMPARE_LOAD_FACTOR' || type === 'COMPARE_LOAD_FACTOR_DAY') {
                 this.buildYoyBarChart();
-                if (type === 'COMPARE_LOAD_FACTOR_DAY') {
-                    this.buildYoyTrendChart();
-                }
+                this.buildYoyTrendChart();
             } else if (type === 'OASYS_VS_APPS') {
-                this.buildAppsVarianceChart();
-                this.buildAppsDestChart();
+                this.buildAppsCompBarChart();
+                this.buildAppsDiscrepancyChart();
+                this.buildAppsStatusDonutChart();
             } else if (type === 'OASYS_VS_EDIFLY') {
-                this.buildEdiflyDonutChart();
-                this.buildEdiflyGapChart();
+                this.buildEdiflyDailySyncChart();
+                this.buildEdiflyBreakdownChart();
             } else {
                 this.buildDelayHistChart();
                 this.buildPaxCompDonutChart();
@@ -2746,6 +2762,7 @@ function fdrDashboardController() {
                 this.flightRecords = filtered.slice(start, start + this.pagination.per_page);
                 this.isFiltering = false;
                 this.lastUpdatedTime = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                this.computeClientHourlyAndTrends(filtered);
                 this.$nextTick(() => {
                     this.initAllCharts();
                 });
@@ -2840,6 +2857,120 @@ function fdrDashboardController() {
         changePerPage() {
             this.pagination.current_page = 1;
             this.triggerFilter(1);
+        },
+
+        computeClientHourlyAndTrends(filteredRecords) {
+            if (!filteredRecords || !Array.isArray(filteredRecords)) return;
+            const hourlyLabels = [
+                '00:00', '01:00', '02:00', '03:00', '04:00', '05:00',
+                '06:00', '07:00', '08:00', '09:00', '10:00', '11:00',
+                '12:00', '13:00', '14:00', '15:00', '16:00', '17:00',
+                '18:00', '19:00', '20:00', '21:00', '22:00', '23:00',
+            ];
+            const hourlyRanges = hourlyLabels.map((l, i) => `${l} - ${String(i).padStart(2, '0')}:59`);
+            const arrDom = new Array(24).fill(0);
+            const arrInt = new Array(24).fill(0);
+            const depDom = new Array(24).fill(0);
+            const depInt = new Array(24).fill(0);
+
+            const arrPax = new Array(24).fill(0);
+            const depPax = new Array(24).fill(0);
+            const arrDomPax = new Array(24).fill(0);
+            const arrIntPax = new Array(24).fill(0);
+            const depDomPax = new Array(24).fill(0);
+            const depIntPax = new Array(24).fill(0);
+
+            const arrCargo = new Array(24).fill(0);
+            const depCargo = new Array(24).fill(0);
+            const arrDomCargo = new Array(24).fill(0);
+            const arrIntCargo = new Array(24).fill(0);
+            const depDomCargo = new Array(24).fill(0);
+            const depIntCargo = new Array(24).fill(0);
+
+            const INT_SET = new Set([
+                'SIN', 'KUL', 'HND', 'NRT', 'ICN', 'PVG', 'CAN', 'SYD', 'MEL', 'PER',
+                'JED', 'MED', 'DOH', 'BKK', 'HKG', 'DXB', 'AUH', 'KTM', 'DMK', 'MNL',
+                'TPE', 'PEN', 'JHB', 'BKI', 'KCH', 'LGK', 'CNX', 'HKT', 'REP', 'PNH',
+                'SGN', 'HAN', 'BNE', 'ADL', 'AKL', 'LHR', 'AMS', 'FRA', 'CDG', 'IST',
+            ]);
+
+            const useSched = (this.filters.time_basis || '').toUpperCase() === 'SCHEDULED';
+
+            filteredRecords.forEach(r => {
+                let h = 0;
+                if (useSched) {
+                    h = (r.scheduledHour != null && r.scheduledHour >= 0 && r.scheduledHour < 24)
+                        ? r.scheduledHour
+                        : (r.actualHour != null && r.actualHour >= 0 && r.actualHour < 24 ? r.actualHour : 0);
+                } else {
+                    h = (r.actualHour != null && r.actualHour >= 0 && r.actualHour < 24)
+                        ? r.actualHour
+                        : (r.scheduledHour != null && r.scheduledHour >= 0 && r.scheduledHour < 24 ? r.scheduledHour : 0);
+                }
+
+                const legVal = (r.leg || r.direction || r.movementType || '').toUpperCase();
+                const isArr = legVal.startsWith('A') || legVal.includes('ARR');
+                const orig = (r.origin || r.city_1 || '').toUpperCase();
+                const dest = (r.destination || r.city_2 || '').toUpperCase();
+                const isInt = INT_SET.has(orig) || INT_SET.has(dest) || (r.traffic && r.traffic.toUpperCase().includes('INT'));
+
+                const pax = (r.paxLoad != null ? r.paxLoad : ((r.adult || 0) + (r.child || 0) + (r.infant || 0)));
+                const cargo = (r.cargoKg != null ? r.cargoKg : (r.cargo_kg || 0));
+
+                if (isArr) {
+                    if (isInt) {
+                        arrInt[h]++;
+                        arrIntPax[h] += pax;
+                        arrIntCargo[h] += cargo;
+                    } else {
+                        arrDom[h]++;
+                        arrDomPax[h] += pax;
+                        arrDomCargo[h] += cargo;
+                    }
+                    arrPax[h] += pax;
+                    arrCargo[h] += cargo;
+                } else {
+                    if (isInt) {
+                        depInt[h]++;
+                        depIntPax[h] += pax;
+                        depIntCargo[h] += cargo;
+                    } else {
+                        depDom[h]++;
+                        depDomPax[h] += pax;
+                        depDomCargo[h] += cargo;
+                    }
+                    depPax[h] += pax;
+                    depCargo[h] += cargo;
+                }
+            });
+
+            this.hourlyDistribution = {
+                labels: hourlyLabels,
+                arr_dom: arrDom,
+                arr_int: arrInt,
+                dep_dom: depDom,
+                dep_int: depInt,
+                time_basis: useSched ? 'scheduled' : 'actual',
+            };
+
+            this.combinedTrend = {
+                labels: hourlyLabels,
+                time_ranges: hourlyRanges,
+                arr_passengers: arrPax,
+                dep_passengers: depPax,
+                arr_dom_passengers: arrDomPax,
+                arr_int_passengers: arrIntPax,
+                dep_dom_passengers: depDomPax,
+                dep_int_passengers: depIntPax,
+                arr_cargo: arrCargo,
+                dep_cargo: depCargo,
+                arr_cargo_kg: arrCargo,
+                dep_cargo_kg: depCargo,
+                arr_dom_cargo_kg: arrDomCargo,
+                arr_int_cargo_kg: arrIntCargo,
+                dep_dom_cargo_kg: depDomCargo,
+                dep_int_cargo_kg: depIntCargo,
+            };
         },
 
         removeChip(key) {
@@ -3166,67 +3297,164 @@ function fdrDashboardController() {
             return ((pax / cap) * 100).toFixed(1);
         },
 
-        getLfHighSlfCount() {
-            return this.getLfRecords().filter(r => parseFloat(r.slf || r.load_factor || 0) >= 80).length;
-        },
-
-        getLfLowSlfCount() {
-            return this.getLfRecords().filter(r => parseFloat(r.slf || r.load_factor || 0) < 50).length;
-        },
-
-        buildSlfHistChart() {
-            const ctx = document.getElementById('fdrSlfHistChart');
-            if (!ctx) return;
-            if (_fdrCharts.slfHist) {
-                _fdrCharts.slfHist.destroy();
-                _fdrCharts.slfHist = null;
-            }
+        getLfSimpleAvgSlf() {
             const recs = this.getLfRecords();
-            const buckets = [
-                { label: '<40%', min: -999, max: 40, count: 0, color: '#EF4444' },
-                { label: '40-59%', min: 40, max: 60, count: 0, color: '#F59E0B' },
-                { label: '60-79%', min: 60, max: 80, count: 0, color: '#3B82F6' },
-                { label: '80-89%', min: 80, max: 90, count: 0, color: '#10B981' },
-                { label: '90-100%', min: 90, max: 100.001, count: 0, color: '#059669' },
-                { label: '>100%', min: 100.001, max: 9999, count: 0, color: '#6366F1' },
-            ];
+            if (!recs.length) return '0.0';
+            const sum = recs.reduce((acc, r) => acc + (parseFloat(r.slfPercent || r.slf || r.load_factor || 0) || 0), 0);
+            return (sum / recs.length).toFixed(1);
+        },
+
+        getLfEmptySeats() {
+            const cap = this.getLfTotalSeatCap();
+            const pax = this.getLfTotalPax();
+            return Math.max(0, cap - pax);
+        },
+
+        getLfEmptySeatsRatio() {
+            const cap = this.getLfTotalSeatCap();
+            const empty = this.getLfEmptySeats();
+            if (cap === 0) return '0.0';
+            return ((empty / cap) * 100).toFixed(1);
+        },
+
+        getLfTopRoute() {
+            const recs = this.getLfRecords();
+            if (!recs.length) return { route: 'N/A', slf: '0%' };
+            const routeMap = {};
             recs.forEach(r => {
-                const slf = parseFloat(r.slf || r.load_factor || 0);
-                for (const b of buckets) {
-                    if (slf >= b.min && slf < b.max) {
-                        b.count++;
-                        break;
+                const rt = (r.arrivalRoute && r.departureRoute) ? `${r.arrivalRoute} → ${r.departureRoute}` : (r.route || 'ROUTE');
+                if (!routeMap[rt]) routeMap[rt] = { cap: 0, pax: 0 };
+                routeMap[rt].cap += Number(r.seatCapacity || r.cap) || 0;
+                routeMap[rt].pax += Number(r.pax || r.load) || 0;
+            });
+            let top = null, maxSlf = -1;
+            Object.entries(routeMap).forEach(([rt, d]) => {
+                if (d.cap > 0) {
+                    const slf = (d.pax / d.cap) * 100;
+                    if (slf > maxSlf) {
+                        maxSlf = slf;
+                        top = { route: rt, slf: slf.toFixed(1) + '%' };
                     }
                 }
             });
-            _fdrCharts.slfHist = new Chart(ctx, {
+            return top || { route: 'N/A', slf: '0%' };
+        },
+
+        getLfLowRoute() {
+            const recs = this.getLfRecords();
+            if (!recs.length) return { route: 'N/A', slf: '0%' };
+            const routeMap = {};
+            recs.forEach(r => {
+                const rt = (r.arrivalRoute && r.departureRoute) ? `${r.arrivalRoute} → ${r.departureRoute}` : (r.route || 'ROUTE');
+                if (!routeMap[rt]) routeMap[rt] = { cap: 0, pax: 0 };
+                routeMap[rt].cap += Number(r.seatCapacity || r.cap) || 0;
+                routeMap[rt].pax += Number(r.pax || r.load) || 0;
+            });
+            let low = null, minSlf = 999999;
+            Object.entries(routeMap).forEach(([rt, d]) => {
+                if (d.cap > 0) {
+                    const slf = (d.pax / d.cap) * 100;
+                    if (slf < minSlf) {
+                        minSlf = slf;
+                        low = { route: rt, slf: slf.toFixed(1) + '%' };
+                    }
+                }
+            });
+            return low || { route: 'N/A', slf: '0%' };
+        },
+
+        getLfFleetAnalysis() {
+            const recs = this.getLfRecords();
+            if (!recs.length) return [];
+            const fleetMap = {};
+            recs.forEach(r => {
+                const ac = (r.typeOfAircraft || r.aircraft_type || r.aircraftType || r.desc || 'OTHER').toUpperCase().trim();
+                if (!fleetMap[ac]) fleetMap[ac] = { type: ac, flights: 0, seats: 0, pax: 0 };
+                fleetMap[ac].flights++;
+                fleetMap[ac].seats += Number(r.seatCapacity || r.cap) || 0;
+                fleetMap[ac].pax += Number(r.pax || r.load) || 0;
+            });
+            return Object.values(fleetMap).map(f => ({
+                ...f,
+                slf: f.seats > 0 ? ((f.pax / f.seats) * 100).toFixed(1) : '0.0'
+            })).sort((a,b) => b.flights - a.flights);
+        },
+
+        buildSlfRankChart() {
+            const ctx = document.getElementById('fdrSlfRankChart');
+            if (!ctx) return;
+            if (_fdrCharts.slfRank) {
+                _fdrCharts.slfRank.destroy();
+                _fdrCharts.slfRank = null;
+            }
+            const recs = this.getLfRecords();
+            const routeMap = {};
+            recs.forEach(r => {
+                const rt = (r.arrivalRoute && r.departureRoute) ? `${r.arrivalRoute} → ${r.departureRoute}` : (r.route || 'ROUTE');
+                if (!routeMap[rt]) routeMap[rt] = { cap: 0, pax: 0, count: 0 };
+                routeMap[rt].cap += Number(r.seatCapacity || r.cap) || 0;
+                routeMap[rt].pax += Number(r.pax || r.load) || 0;
+                routeMap[rt].count++;
+            });
+            const ranked = Object.entries(routeMap).map(([rt, d]) => ({
+                route: rt,
+                slf: d.cap > 0 ? Number(((d.pax / d.cap) * 100).toFixed(1)) : 0
+            })).sort((a,b) => b.slf - a.slf).slice(0, 8);
+
+            const targetLinePlugin = {
+                id: 'targetLine',
+                afterDraw(chart) {
+                    const xScale = chart.scales.x;
+                    const yScale = chart.scales.y;
+                    if (!xScale || !yScale) return;
+                    const xPos = xScale.getPixelForValue(75);
+                    const c = chart.ctx;
+                    c.save();
+                    c.beginPath();
+                    c.setLineDash([5, 5]);
+                    c.moveTo(xPos, yScale.top);
+                    c.lineTo(xPos, yScale.bottom);
+                    c.lineWidth = 2;
+                    c.strokeStyle = '#10B981';
+                    c.stroke();
+                    c.restore();
+                }
+            };
+
+            _fdrCharts.slfRank = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: buckets.map(b => b.label),
+                    labels: ranked.map(r => r.route),
                     datasets: [{
-                        data: buckets.map(b => b.count),
-                        backgroundColor: buckets.map(b => b.color),
-                        borderRadius: 6,
+                        label: 'Load Factor (%)',
+                        data: ranked.map(r => r.slf),
+                        backgroundColor: ranked.map(r => r.slf >= 75 ? '#10B981' : (r.slf >= 50 ? '#F59E0B' : '#EF4444')),
+                        borderRadius: 6
                     }]
                 },
                 options: {
+                    indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: (c) => `SLF: ${c.raw}% (Target 75%)` } }
+                    },
                     scales: {
-                        x: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold' } } },
-                        y: { beginAtZero: true, grid: { color: '#F1F5F9' }, ticks: { precision: 0 } }
+                        x: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } },
+                        y: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold' } } }
                     }
-                }
+                },
+                plugins: [targetLinePlugin]
             });
         },
 
-        buildSlfRouteChart() {
-            const ctx = document.getElementById('fdrSlfRouteChart');
+        buildSlfComboChart() {
+            const ctx = document.getElementById('fdrSlfComboChart');
             if (!ctx) return;
-            if (_fdrCharts.slfRoute) {
-                _fdrCharts.slfRoute.destroy();
-                _fdrCharts.slfRoute = null;
+            if (_fdrCharts.slfCombo) {
+                _fdrCharts.slfCombo.destroy();
+                _fdrCharts.slfCombo = null;
             }
             const recs = this.getLfRecords();
             const routeMap = {};
@@ -3238,110 +3466,36 @@ function fdrDashboardController() {
                 routeMap[rt].count++;
             });
             const topRoutes = Object.entries(routeMap).sort((a,b) => b[1].count - a[1].count).slice(0, 7);
-            _fdrCharts.slfRoute = new Chart(ctx, {
-                type: 'bar',
+            _fdrCharts.slfCombo = new Chart(ctx, {
                 data: {
                     labels: topRoutes.map(t => t[0]),
                     datasets: [
-                        { label: 'Seat Capacity', data: topRoutes.map(t => t[1].cap), backgroundColor: '#93C5FD', borderRadius: 4 },
-                        { label: 'Commercial Pax', data: topRoutes.map(t => t[1].pax), backgroundColor: '#10B981', borderRadius: 4 },
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 10, weight: 'bold' } } } },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { font: { size: 9, weight: 'bold' } } },
-                        y: { beginAtZero: true, grid: { color: '#F1F5F9' } }
-                    }
-                }
-            });
-        },
-
-        buildSlfAircraftChart() {
-            const ctx = document.getElementById('fdrSlfAircraftChart');
-            if (!ctx) return;
-            if (_fdrCharts.slfAircraft) {
-                _fdrCharts.slfAircraft.destroy();
-                _fdrCharts.slfAircraft = null;
-            }
-            const recs = this.getLfRecords();
-            const acMap = {};
-            recs.forEach(r => {
-                const ac = r.typeOfAircraft || r.aircraft_type || r.desc || 'OTHER';
-                if (!acMap[ac]) acMap[ac] = { cap: 0, pax: 0 };
-                acMap[ac].cap += Number(r.seatCapacity || r.cap) || 0;
-                acMap[ac].pax += Number(r.pax || r.load) || 0;
-            });
-            const topAc = Object.entries(acMap).slice(0, 6);
-            _fdrCharts.slfAircraft = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: topAc.map(a => a[0]),
-                    datasets: [{
-                        label: 'Average SLF (%)',
-                        data: topAc.map(a => a[1].cap > 0 ? ((a[1].pax / a[1].cap) * 100).toFixed(1) : 0),
-                        backgroundColor: '#6366F1',
-                        borderRadius: 6,
-                    }]
-                },
-                options: {
-                    indexAxis: 'y',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } },
-                        y: { grid: { display: false } }
-                    }
-                }
-            });
-        },
-
-        buildSlfHourlyChart() {
-            const ctx = document.getElementById('fdrSlfHourlyChart');
-            if (!ctx) return;
-            if (_fdrCharts.slfHourly) {
-                _fdrCharts.slfHourly.destroy();
-                _fdrCharts.slfHourly = null;
-            }
-            const recs = this.getLfRecords();
-            const seatHours = Array(24).fill(0);
-            const paxHours = Array(24).fill(0);
-            recs.forEach(r => {
-                const timeStr = r.scheduledTime || r.sibt || r.sobt || '';
-                const m = timeStr.match(/(\d{1,2}):(\d{2})/);
-                if (m) {
-                    const h = parseInt(m[1], 10);
-                    if (h >= 0 && h < 24) {
-                        seatHours[h] += (Number(r.seatCapacity || r.cap) || 0);
-                        paxHours[h] += (Number(r.pax || r.load) || 0);
-                    }
-                }
-            });
-            _fdrCharts.slfHourly = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: Array.from({length: 24}, (_, i) => `${String(i).padStart(2,'0')}:00`),
-                    datasets: [
                         {
-                            label: 'Seats Offered',
-                            data: seatHours,
-                            borderColor: '#3B82F6',
-                            backgroundColor: 'rgba(59, 130, 246, 0.08)',
-                            fill: true,
-                            tension: 0.3,
-                            pointRadius: 2,
+                            type: 'bar',
+                            label: 'Seat Capacity',
+                            data: topRoutes.map(t => t[1].cap),
+                            backgroundColor: '#93C5FD',
+                            borderRadius: 4,
+                            yAxisID: 'y'
                         },
                         {
-                            label: 'Commercial Pax Realized',
-                            data: paxHours,
+                            type: 'bar',
+                            label: 'Actual Pax',
+                            data: topRoutes.map(t => t[1].pax),
+                            backgroundColor: '#3B82F6',
+                            borderRadius: 4,
+                            yAxisID: 'y'
+                        },
+                        {
+                            type: 'line',
+                            label: 'Load Factor (%)',
+                            data: topRoutes.map(t => t[1].cap > 0 ? Number(((t[1].pax / t[1].cap) * 100).toFixed(1)) : 0),
                             borderColor: '#10B981',
-                            backgroundColor: 'rgba(16, 185, 129, 0.08)',
-                            fill: true,
-                            tension: 0.3,
-                            pointRadius: 2,
+                            backgroundColor: '#10B981',
+                            borderWidth: 2.5,
+                            tension: 0.2,
+                            pointRadius: 4,
+                            yAxisID: 'y1'
                         }
                     ]
                 },
@@ -3349,14 +3503,28 @@ function fdrDashboardController() {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: { boxWidth: 12, font: { size: 10, weight: 'bold' } }
-                        }
+                        legend: { position: 'top', labels: { boxWidth: 12, font: { size: 10, weight: 'bold' } } }
                     },
                     scales: {
-                        x: { grid: { display: false }, ticks: { maxTicksLimit: 12, font: { size: 9 } } },
-                        y: { beginAtZero: true, grid: { color: '#F1F5F9' } }
+                        x: { grid: { display: false }, ticks: { font: { size: 9, weight: 'bold' } } },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            beginAtZero: true,
+                            grid: { color: '#F1F5F9' },
+                            title: { display: true, text: 'Volume' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            beginAtZero: true,
+                            max: 100,
+                            grid: { drawOnChartArea: false },
+                            ticks: { callback: v => v + '%' },
+                            title: { display: true, text: 'LF (%)' }
+                        }
                     }
                 }
             });
@@ -3398,6 +3566,13 @@ function fdrDashboardController() {
             }
         },
 
+        getDayName(dateStr) {
+            if (!dateStr) return '-';
+            const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const d = new Date(dateStr);
+            return isNaN(d.getTime()) ? '-' : days[d.getDay()];
+        },
+
         getYoyPeakDate() {
             const recs = this.getYoyRecords().filter(r => r.date);
             if (!recs.length) return 'N/A';
@@ -3407,7 +3582,7 @@ function fdrDashboardController() {
                     peak = r;
                 }
             });
-            return peak.date || peak.airport || 'N/A';
+            return peak.date ? `${peak.date} (${this.getDayName(peak.date)})` : (peak.airport || 'N/A');
         },
 
         getYoyPeakPax() {
@@ -3418,7 +3593,87 @@ function fdrDashboardController() {
                 const p = Number(r.paxCurrYear) || 0;
                 if (p > max) max = p;
             });
-            return max.toLocaleString() + ' Pax (Curr)';
+            return max.toLocaleString() + ' Pax (Peak Day)';
+        },
+
+        getYoyLowDate() {
+            const recs = this.getYoyRecords().filter(r => r.date);
+            if (!recs.length) return 'N/A';
+            let low = recs[0], minSlf = 999999;
+            recs.forEach(r => {
+                const cap = Number(r.seatCapCurrYear || r.seatCap2026 || 0);
+                const pax = Number(r.paxCurrYear || r.pax2026 || 0);
+                const slf = cap > 0 ? (pax / cap) * 100 : 0;
+                if (slf < minSlf && cap > 0) {
+                    minSlf = slf;
+                    low = r;
+                }
+            });
+            return low.date ? `${low.date} (${this.getDayName(low.date)})` : 'N/A';
+        },
+
+        getYoyLowPax() {
+            const recs = this.getYoyRecords().filter(r => r.date);
+            if (!recs.length) return '0 Pax';
+            let minSlf = 999999, minPax = 0;
+            recs.forEach(r => {
+                const cap = Number(r.seatCapCurrYear || r.seatCap2026 || 0);
+                const pax = Number(r.paxCurrYear || r.pax2026 || 0);
+                const slf = cap > 0 ? (pax / cap) * 100 : 0;
+                if (slf < minSlf && cap > 0) {
+                    minSlf = slf;
+                    minPax = pax;
+                }
+            });
+            return minPax.toLocaleString() + ' Pax (Low Day)';
+        },
+
+        getYoyWeekdayWeekendLF() {
+            const recs = this.getYoyRecords().filter(r => r.date);
+            if (!recs.length) return { weekday2026: '0.0%', weekend2026: '0.0%', weekday2025: '0.0%', weekend2025: '0.0%' };
+            let wdPax26 = 0, wdCap26 = 0, wePax26 = 0, weCap26 = 0;
+            let wdPax25 = 0, wdCap25 = 0, wePax25 = 0, weCap25 = 0;
+            recs.forEach(r => {
+                const d = new Date(r.date);
+                const day = d.getDay();
+                const isWeekend = (day === 0 || day === 5 || day === 6);
+                const p26 = Number(r.paxCurrYear || r.pax2026 || 0);
+                const c26 = Number(r.seatCapCurrYear || r.seatCap2026 || 0);
+                const p25 = Number(r.paxPrevYear || r.pax2025 || 0);
+                const c25 = Number(r.seatCapPrevYear || r.seatCap2025 || 0);
+                if (isWeekend) {
+                    wePax26 += p26; weCap26 += c26;
+                    wePax25 += p25; weCap25 += c25;
+                } else {
+                    wdPax26 += p26; wdCap26 += c26;
+                    wdPax25 += p25; wdCap25 += c25;
+                }
+            });
+            return {
+                weekday2026: wdCap26 > 0 ? ((wdPax26 / wdCap26) * 100).toFixed(1) + '%' : '0.0%',
+                weekend2026: weCap26 > 0 ? ((wePax26 / weCap26) * 100).toFixed(1) + '%' : '0.0%',
+                weekday2025: wdCap25 > 0 ? ((wdPax25 / wdCap25) * 100).toFixed(1) + '%' : '0.0%',
+                weekend2025: weCap25 > 0 ? ((wePax25 / weCap25) * 100).toFixed(1) + '%' : '0.0%',
+            };
+        },
+
+        getYoyCalendarDays() {
+            const recs = this.getYoyRecords().filter(r => r.date).sort((a,b) => (a.date || '').localeCompare(b.date || ''));
+            const daysIndo = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            return recs.map(r => {
+                const d = new Date(r.date);
+                const dayName = isNaN(d.getTime()) ? '-' : daysIndo[d.getDay()];
+                const slf = parseFloat(r.slf2026Ratio || r.slfCurrRatio || (r.seatCapCurrYear > 0 ? ((r.paxCurrYear / r.seatCapCurrYear)*100) : 0)) || 0;
+                return {
+                    date: r.date,
+                    dayName,
+                    dayNum: (r.date || '').split('-').pop(),
+                    slf: slf.toFixed(1),
+                    pax: Number(r.paxCurrYear || 0),
+                    cap: Number(r.seatCapCurrYear || 0),
+                    flights: Number(r.flightCurrYear || 0)
+                };
+            });
         },
 
         buildYoyBarChart() {
@@ -3428,14 +3683,18 @@ function fdrDashboardController() {
                 _fdrCharts.yoyBar.destroy();
                 _fdrCharts.yoyBar = null;
             }
-            const recs = this.getYoyRecords().slice(0, 10);
+            const isDaily = this.activeReportType === 'COMPARE_LOAD_FACTOR_DAY';
+            const recs = isDaily
+                ? this.getYoyRecords().filter(r => r.date).sort((a,b) => (a.date || '').localeCompare(b.date || ''))
+                : this.getYoyRecords().slice(0, 10);
+
             _fdrCharts.yoyBar = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: recs.map(r => r.airport),
+                    labels: recs.map(r => isDaily ? (r.date || '').split('-').slice(1).join('-') : (r.airport || 'AIRPORT')),
                     datasets: [
-                        { label: 'Prev Year Pax', data: recs.map(r => r.paxPrevYear), backgroundColor: '#94A3B8', borderRadius: 4 },
-                        { label: 'Curr Year Pax', data: recs.map(r => r.paxCurrYear), backgroundColor: '#3B82F6', borderRadius: 4 },
+                        { label: '2025 Pax', data: recs.map(r => Number(r.paxPrevYear || r.pax2025 || 0)), backgroundColor: '#94A3B8', borderRadius: 4 },
+                        { label: '2026 Pax', data: recs.map(r => Number(r.paxCurrYear || r.pax2026 || 0)), backgroundColor: '#3B82F6', borderRadius: 4 },
                     ]
                 },
                 options: {
@@ -3443,7 +3702,7 @@ function fdrDashboardController() {
                     maintainAspectRatio: false,
                     plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 10, weight: 'bold' } } } },
                     scales: {
-                        x: { grid: { display: false } },
+                        x: { grid: { display: false }, ticks: { font: { size: 9 } } },
                         y: { beginAtZero: true, grid: { color: '#F1F5F9' } }
                     }
                 }
@@ -3457,26 +3716,70 @@ function fdrDashboardController() {
                 _fdrCharts.yoyTrend.destroy();
                 _fdrCharts.yoyTrend = null;
             }
-            const recs = this.getYoyRecords().filter(r => r.date).sort((a,b) => (a.date || '').localeCompare(b.date || ''));
-            _fdrCharts.yoyTrend = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: recs.map(r => r.date),
-                    datasets: [
-                        { label: 'Prev Year Pax', data: recs.map(r => r.paxPrevYear), borderColor: '#94A3B8', tension: 0.2 },
-                        { label: 'Curr Year Pax', data: recs.map(r => r.paxCurrYear), borderColor: '#3B82F6', tension: 0.2 },
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'top' } },
-                    scales: {
-                        x: { grid: { display: false } },
-                        y: { beginAtZero: true, grid: { color: '#F1F5F9' } }
+            const isDaily = this.activeReportType === 'COMPARE_LOAD_FACTOR_DAY';
+            if (isDaily) {
+                const recs = this.getYoyRecords().filter(r => r.date).sort((a,b) => (a.date || '').localeCompare(b.date || ''));
+                _fdrCharts.yoyTrend = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: recs.map(r => (r.date || '').split('-').slice(1).join('-')),
+                        datasets: [
+                            {
+                                label: 'SLF 2025 (%)',
+                                data: recs.map(r => parseFloat(r.slf2025Ratio || r.slfPrevRatio || 0)),
+                                borderColor: '#94A3B8',
+                                backgroundColor: '#94A3B8',
+                                tension: 0.25,
+                                pointRadius: 3
+                            },
+                            {
+                                label: 'SLF 2026 (%)',
+                                data: recs.map(r => parseFloat(r.slf2026Ratio || r.slfCurrRatio || 0)),
+                                borderColor: '#8B5CF6',
+                                backgroundColor: '#8B5CF6',
+                                tension: 0.25,
+                                pointRadius: 3
+                            },
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 10, weight: 'bold' } } } },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+                            y: { beginAtZero: false, min: 40, max: 100, grid: { color: '#F1F5F9' }, ticks: { callback: v => v + '%' } }
+                        }
                     }
-                }
-            });
+                });
+            } else {
+                // Aggregate: Delta / Variance Ratio Chart
+                const recs = this.getYoyRecords().slice(0, 10);
+                _fdrCharts.yoyTrend = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: recs.map(r => r.airport || 'AIRPORT'),
+                        datasets: [{
+                            label: 'Pax Growth Ratio (% RATIO)',
+                            data: recs.map(r => parseFloat(r.paxRatio || 100) - 100),
+                            backgroundColor: recs.map(r => parseFloat(r.paxRatio || 100) >= 100 ? '#10B981' : '#EF4444'),
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { callbacks: { label: (c) => `Growth Δ: ${c.raw > 0 ? '+' : ''}${c.raw.toFixed(1)}%` } }
+                        },
+                        scales: {
+                            x: { grid: { display: false } },
+                            y: { grid: { color: '#F1F5F9' }, ticks: { callback: v => (v > 0 ? '+' : '') + v + '%' } }
+                        }
+                    }
+                });
+            }
         },
 
         // ── OASYS vs APPS Getters & Chart Builders ────────────────────────────────
@@ -3487,10 +3790,63 @@ function fdrDashboardController() {
             return [];
         },
 
-        getPaginatedAppsRecords() {
+        getFilteredAppsRecords(discrepancyOnly) {
             const recs = this.getAppsRecords();
+            if (!discrepancyOnly) return recs;
+            return recs.filter(r => {
+                const adult = Number(r.adult || 0);
+                const missingOffBlock = !r.offBlockTime || r.offBlockTime.trim() === '' || r.offBlockTime.includes('-0001');
+                return adult === 0 || missingOffBlock;
+            });
+        },
+
+        getPaginatedAppsRecords(discrepancyOnly) {
+            const recs = this.getFilteredAppsRecords(discrepancyOnly);
             const start = (this.pagination.current_page - 1) * this.pagination.per_page;
             return recs.slice(start, start + this.pagination.per_page);
+        },
+
+        getAppsDiscrepancyCount() {
+            const recs = this.getAppsRecords();
+            return recs.filter(r => {
+                const adult = Number(r.adult || 0);
+                const missingOffBlock = !r.offBlockTime || r.offBlockTime.trim() === '' || r.offBlockTime.includes('-0001');
+                return adult === 0 || missingOffBlock;
+            }).length;
+        },
+
+        getAppsDelayMinutes(r) {
+            if (!r.stad || !r.offBlockTime) return 0;
+            const parseMin = (s) => {
+                const m = (s || '').match(/(\d{1,2}):(\d{2})/);
+                return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : 0;
+            };
+            let diff = parseMin(r.offBlockTime) - parseMin(r.stad);
+            if (diff < -720) diff += 1440;
+            return diff;
+        },
+
+        getAppsDelayDisplay(r) {
+            if (!r.offBlockTime || r.offBlockTime.trim() === '' || r.offBlockTime.includes('-0001')) return '-';
+            const d = this.getAppsDelayMinutes(r);
+            if (d === 0) return '0 min';
+            return d > 0 ? `+${d} min` : `${d} min`;
+        },
+
+        getAppsValidationStatus(r) {
+            const adult = Number(r.adult || 0);
+            const missingOffBlock = !r.offBlockTime || r.offBlockTime.trim() === '' || r.offBlockTime.includes('-0001');
+            if (missingOffBlock && adult === 0) return 'MISSING DATA';
+            if (missingOffBlock) return 'NO OFF BLOCK';
+            if (adult === 0) return 'ZERO PAX';
+            return 'VALIDATED';
+        },
+
+        getAppsValidationBadgeClass(r) {
+            const s = this.getAppsValidationStatus(r);
+            if (s === 'VALIDATED') return 'bg-emerald-100 text-emerald-800 border border-emerald-300';
+            if (s === 'ZERO PAX') return 'bg-amber-100 text-amber-800 border border-amber-300';
+            return 'bg-rose-100 text-rose-800 border border-rose-300';
         },
 
         getAppsMatrixVal(category, metric) {
@@ -3536,75 +3892,80 @@ function fdrDashboardController() {
         },
 
         getAppsTotalPax() {
-            return this.getAppsRecords().reduce((acc, r) => acc + (Number(r.adult || 0) + Number(r.child || 0) + Number(r.infant || 0)), 0);
+            return this.getAppsRecords().reduce((acc, r) => acc + (Number(r.adult || 0) + Number(r.child || 0) + Number(r.infant || 0) + Number(r.transit || 0) + Number(r.transfer || 0)), 0);
         },
 
         getAppsTotalCrew() {
             return this.getAppsRecords().reduce((acc, r) => acc + (Number(r.crew || 0) + Number(r.exCrew || 0)), 0);
         },
 
-        buildAppsVarianceChart() {
-            const ctx = document.getElementById('fdrAppsVarianceChart');
+        buildAppsCompBarChart() {
+            const ctx = document.getElementById('fdrAppsCompBarChart');
             if (!ctx) return;
-            if (_fdrCharts.appsVariance) {
-                _fdrCharts.appsVariance.destroy();
-                _fdrCharts.appsVariance = null;
+            if (_fdrCharts.appsCompBar) {
+                _fdrCharts.appsCompBar.destroy();
+                _fdrCharts.appsCompBar = null;
             }
-            const recs = this.getAppsRecords();
-            let onTime = 0, early = 0, late = 0;
-            recs.forEach(r => {
-                if (!r.stad || !r.offBlockTime) return;
-                const parseMin = (s) => {
-                    const m = s.match(/(\d{1,2}):(\d{2})/);
-                    return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : 0;
-                };
-                const diff = parseMin(r.offBlockTime) - parseMin(r.stad);
-                if (Math.abs(diff) <= 15) onTime++;
-                else if (diff < -15) early++;
-                else late++;
-            });
-            _fdrCharts.appsVariance = new Chart(ctx, {
-                type: 'doughnut',
+            const categories = [
+                { label: 'Normal Dom', key: 'normalDom' },
+                { label: 'Normal Int', key: 'normalInt' },
+                { label: 'Transit Dom', key: 'transitDom' },
+                { label: 'Transit Int', key: 'transitInt' }
+            ];
+            _fdrCharts.appsCompBar = new Chart(ctx, {
+                type: 'bar',
                 data: {
-                    labels: ['On-Time (±15m)', 'Early (>15m)', 'Late (>15m)'],
-                    datasets: [{
-                        data: [onTime, early, late],
-                        backgroundColor: ['#10B981', '#3B82F6', '#EF4444'],
-                        borderWidth: 2,
-                    }]
+                    labels: categories.map(c => c.label),
+                    datasets: [
+                        {
+                            label: 'OASYS FLT DEP',
+                            data: categories.map(c => this.getAppsMatrixVal(c.key, 'fltDep')),
+                            backgroundColor: '#0284C7',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'APPS RECORDED',
+                            data: categories.map(c => this.getAppsMatrixVal(c.key, 'apps')),
+                            backgroundColor: '#10B981',
+                            borderRadius: 4
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } }
+                    plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 10, weight: 'bold' } } } },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { beginAtZero: true, grid: { color: '#F1F5F9' } }
+                    }
                 }
             });
         },
 
-        buildAppsDestChart() {
-            const ctx = document.getElementById('fdrAppsDestChart');
+        buildAppsDiscrepancyChart() {
+            const ctx = document.getElementById('fdrAppsDiscrepancyChart');
             if (!ctx) return;
-            if (_fdrCharts.appsDest) {
-                _fdrCharts.appsDest.destroy();
-                _fdrCharts.appsDest = null;
+            if (_fdrCharts.appsDiscrepancy) {
+                _fdrCharts.appsDiscrepancy.destroy();
+                _fdrCharts.appsDiscrepancy = null;
             }
-            const recs = this.getAppsRecords();
-            const cityMap = {};
-            recs.forEach(r => {
-                const c = r.city || 'UNKNOWN';
-                const p = (Number(r.adult || 0) + Number(r.child || 0));
-                cityMap[c] = (cityMap[c] || 0) + p;
-            });
-            const topCities = Object.entries(cityMap).sort((a,b) => b[1] - a[1]).slice(0, 6);
-            _fdrCharts.appsDest = new Chart(ctx, {
+            const categories = [
+                { label: 'Normal Dom', key: 'normalDom' },
+                { label: 'Normal Int', key: 'normalInt' },
+                { label: 'Transit Dom', key: 'transitDom' },
+                { label: 'Transit Int', key: 'transitInt' }
+            ];
+            const devs = categories.map(c => this.getAppsMatrixVal(c.key, 'dev'));
+            _fdrCharts.appsDiscrepancy = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: topCities.map(c => c[0]),
+                    labels: categories.map(c => c.label),
                     datasets: [{
-                        label: 'Departure Pax',
-                        data: topCities.map(c => c[1]),
-                        backgroundColor: '#0D9488',
-                        borderRadius: 6,
+                        label: 'Deviation (DEV)',
+                        data: devs,
+                        backgroundColor: devs.map(d => d === 0 ? '#10B981' : '#F43F5E'),
+                        borderRadius: 6
                     }]
                 },
                 options: {
@@ -3613,8 +3974,36 @@ function fdrDashboardController() {
                     plugins: { legend: { display: false } },
                     scales: {
                         x: { grid: { display: false } },
-                        y: { beginAtZero: true, grid: { color: '#F1F5F9' } }
+                        y: { beginAtZero: true, grid: { color: '#F1F5F9' }, ticks: { precision: 0 } }
                     }
+                }
+            });
+        },
+
+        buildAppsStatusDonutChart() {
+            const ctx = document.getElementById('fdrAppsStatusDonutChart');
+            if (!ctx) return;
+            if (_fdrCharts.appsStatusDonut) {
+                _fdrCharts.appsStatusDonut.destroy();
+                _fdrCharts.appsStatusDonut = null;
+            }
+            const total = this.getAppsRecords().length;
+            const anomalyCount = this.getAppsDiscrepancyCount();
+            const matchedCount = Math.max(0, total - anomalyCount);
+            _fdrCharts.appsStatusDonut = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Matched (Sesuai)', 'Anomali / Variance'],
+                    datasets: [{
+                        data: [matchedCount, anomalyCount],
+                        backgroundColor: ['#10B981', '#F43F5E'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10, weight: 'bold' } } } }
                 }
             });
         },
@@ -3640,20 +4029,24 @@ function fdrDashboardController() {
         getEdiflyPaxIntegrationRate() {
             const recs = this.getEdiflyRecords();
             if (!recs.length) return '0.0';
-            const integrated = recs.filter(r => !/NO INTEGRATION/i.test(r.apiPaxEdifly || '')).length;
+            const integrated = recs.filter(r => (r.paxIntegrated ?? r.isPaxIntegrated ?? !/NO INTEGRATION/i.test(r.apiPaxEdifly || ''))).length;
             return ((integrated / recs.length) * 100).toFixed(1);
         },
 
         getEdiflyCargoIntegrationRate() {
             const recs = this.getEdiflyRecords();
             if (!recs.length) return '0.0';
-            const integrated = recs.filter(r => !/NO INTEGRATION/i.test(r.apiCargoEdifly || '')).length;
+            const integrated = recs.filter(r => (r.cargoIntegrated ?? r.isCargoIntegrated ?? !/NO INTEGRATION/i.test(r.apiCargoEdifly || ''))).length;
             return ((integrated / recs.length) * 100).toFixed(1);
         },
 
         getEdiflyUnintegratedCount() {
             const recs = this.getEdiflyRecords();
-            return recs.filter(r => /NO INTEGRATION/i.test(r.apiPaxEdifly || '') || /NO INTEGRATION/i.test(r.apiCargoEdifly || '')).length;
+            return recs.filter(r => {
+                const p = (r.paxIntegrated ?? r.isPaxIntegrated ?? !/NO INTEGRATION/i.test(r.apiPaxEdifly || ''));
+                const c = (r.cargoIntegrated ?? r.isCargoIntegrated ?? !/NO INTEGRATION/i.test(r.apiCargoEdifly || ''));
+                return !p || !c;
+            }).length;
         },
 
         getEdiflyTotalMtow() {
@@ -3688,8 +4081,35 @@ function fdrDashboardController() {
             return this.getEdiflyRecords().filter(r => (r.isActualized ?? (r.aobtAibt && r.aobtAibt.trim() !== '' && !r.aobtAibt.includes('-0001')))).length;
         },
 
+        getEdiflyActualizedRate() {
+            const recs = this.getEdiflyRecords();
+            if (!recs.length) return '0.0';
+            const act = this.getEdiflyActualizedCount();
+            return ((act / recs.length) * 100).toFixed(1);
+        },
+
         getEdiflyPendingCount() {
             return this.getEdiflyRecords().length - this.getEdiflyActualizedCount();
+        },
+
+        getEdiflyTimeDiffMinutes(r) {
+            const sched = r.sobtSibt || r.sobt || r.sibt;
+            const actual = r.aobtAibt || r.aobt || r.aibt;
+            if (!sched || !actual || actual.includes('-0001')) return 0;
+            const parseMin = (s) => {
+                const m = (s || '').match(/(\d{1,2}):(\d{2})/);
+                return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : 0;
+            };
+            let diff = parseMin(actual) - parseMin(sched);
+            if (diff < -720) diff += 1440;
+            return diff;
+        },
+
+        getEdiflyTimeDiffDisplay(r) {
+            const actual = r.aobtAibt || r.aobt || r.aibt;
+            if (!actual || actual.includes('-0001') || actual.trim() === '') return 'Pending';
+            const d = this.getEdiflyTimeDiffMinutes(r);
+            return d > 0 ? `+${d} min` : `${d} min`;
         },
 
         getEdiflyCommentTotals() {
@@ -3715,58 +4135,74 @@ function fdrDashboardController() {
             };
         },
 
-        buildEdiflyDonutChart() {
-            const ctx = document.getElementById('fdrEdiflyDonutChart');
+        buildEdiflyDailySyncChart() {
+            const ctx = document.getElementById('fdrEdiflyDailySyncChart');
             if (!ctx) return;
-            if (_fdrCharts.ediflyDonut) {
-                _fdrCharts.ediflyDonut.destroy();
-                _fdrCharts.ediflyDonut = null;
+            if (_fdrCharts.ediflyDailySync) {
+                _fdrCharts.ediflyDailySync.destroy();
+                _fdrCharts.ediflyDailySync = null;
             }
             const recs = this.getEdiflyRecords();
-            const paxInt = recs.filter(r => !/NO INTEGRATION/i.test(r.apiPaxEdifly || '')).length;
-            const paxNo = recs.length - paxInt;
-            _fdrCharts.ediflyDonut = new Chart(ctx, {
-                type: 'doughnut',
+            // Aggregate by date (from SOBT/SIBT)
+            const dateMap = {};
+            recs.forEach(r => {
+                const timeStr = r.sobtSibt || r.sobt || r.sibt || '';
+                const m = timeStr.match(/(\d{2})-(\d{2})-(\d{4})/);
+                const dKey = m ? `${m[1]}/${m[2]}` : 'Flight';
+                if (!dateMap[dKey]) dateMap[dKey] = { sched: 0, act: 0, edifly: 0 };
+                dateMap[dKey].sched++;
+                if (r.aobtAibt && r.aobtAibt.trim() !== '' && !r.aobtAibt.includes('-0001')) dateMap[dKey].act++;
+                if (r.paxIntegrated ?? r.isPaxIntegrated ?? !/NO INTEGRATION/i.test(r.apiPaxEdifly || '')) dateMap[dKey].edifly++;
+            });
+            const labels = Object.keys(dateMap).slice(0, 15);
+            _fdrCharts.ediflyDailySync = new Chart(ctx, {
+                type: 'line',
                 data: {
-                    labels: ['Integrated', 'NO INTEGRATION'],
-                    datasets: [{
-                        data: [paxInt, paxNo],
-                        backgroundColor: ['#0284C7', '#EF4444'],
-                        borderWidth: 2,
-                    }]
+                    labels,
+                    datasets: [
+                        { label: 'Scheduled (OASYS)', data: labels.map(l => dateMap[l].sched), borderColor: '#94A3B8', tension: 0.2 },
+                        { label: 'Actualized (AOBT/AIBT)', data: labels.map(l => dateMap[l].act), borderColor: '#0284C7', tension: 0.2 },
+                        { label: 'Edifly-Integrated', data: labels.map(l => dateMap[l].edifly), borderColor: '#10B981', tension: 0.2 },
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } }
+                    plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 10, weight: 'bold' } } } },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { beginAtZero: true, grid: { color: '#F1F5F9' } }
+                    }
                 }
             });
         },
 
-        buildEdiflyGapChart() {
-            const ctx = document.getElementById('fdrEdiflyGapChart');
+        buildEdiflyBreakdownChart() {
+            const ctx = document.getElementById('fdrEdiflyBreakdownChart');
             if (!ctx) return;
-            if (_fdrCharts.ediflyGap) {
-                _fdrCharts.ediflyGap.destroy();
-                _fdrCharts.ediflyGap = null;
+            if (_fdrCharts.ediflyBreakdown) {
+                _fdrCharts.ediflyBreakdown.destroy();
+                _fdrCharts.ediflyBreakdown = null;
             }
             const recs = this.getEdiflyRecords();
-            const airlineGaps = {};
+            const routeMap = {};
             recs.forEach(r => {
-                const al = r.airline || 'UNKNOWN';
-                const isGap = /NO INTEGRATION/i.test(r.apiPaxEdifly || '') || /NO INTEGRATION/i.test(r.apiCargoEdifly || '');
-                if (isGap) airlineGaps[al] = (airlineGaps[al] || 0) + 1;
+                const rt = (r.station1 && r.station2) ? `${r.station1} → ${r.station2}` : 'ROUTE';
+                const isGap = (r.paxIntegrated === false || /NO INTEGRATION/i.test(r.apiPaxEdifly || ''));
+                if (isGap) {
+                    routeMap[rt] = (routeMap[rt] || 0) + 1;
+                }
             });
-            const topGaps = Object.entries(airlineGaps).sort((a,b) => b[1] - a[1]).slice(0, 5);
-            _fdrCharts.ediflyGap = new Chart(ctx, {
+            const topGaps = Object.entries(routeMap).sort((a,b) => b[1] - a[1]).slice(0, 6);
+            _fdrCharts.ediflyBreakdown = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: topGaps.map(g => g[0]),
+                    labels: topGaps.length ? topGaps.map(g => g[0]) : ['All Routes Synced'],
                     datasets: [{
                         label: 'Unintegrated Flights',
-                        data: topGaps.map(g => g[1]),
+                        data: topGaps.length ? topGaps.map(g => g[1]) : [0],
                         backgroundColor: '#F43F5E',
-                        borderRadius: 6,
+                        borderRadius: 6
                     }]
                 },
                 options: {
@@ -3774,7 +4210,7 @@ function fdrDashboardController() {
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        x: { grid: { display: false } },
+                        x: { grid: { display: false }, ticks: { font: { size: 9, weight: 'bold' } } },
                         y: { beginAtZero: true, grid: { color: '#F1F5F9' }, ticks: { precision: 0 } }
                     }
                 }
@@ -3852,13 +4288,41 @@ function fdrDashboardController() {
             return [];
         },
 
-        projectGeo(lon, lat) {
-            let x = ((lon - 95.0) / (141.0 - 95.0)) * 760 + 80;
-            let y = ((6.0 - lat) / (6.0 - -11.0)) * 240 + 60;
-            if (x < 30) x = 30 + Math.max(0, (lon / 100) * 20);
-            if (x > 890) x = 890;
-            if (y < 25) y = 25;
-            if (y > 335) y = 335;
+        projectGeo(lon, lat, code) {
+            // Geographic pin overrides for international & distant border stations to prevent canvas clipping
+            const overrides = {
+                'AMS': { x: 55, y: 70 },
+                'JED': { x: 75, y: 195 },
+                'MED': { x: 75, y: 155 },
+                'DOH': { x: 110, y: 220 },
+                'BKK': { x: 260, y: 80 },
+                'SIN': { x: 245, y: 155 },
+                'KUL': { x: 215, y: 125 },
+                'HKG': { x: 470, y: 75 },
+                'CAN': { x: 510, y: 75 },
+                'TPE': { x: 575, y: 70 },
+                'PEK': { x: 620, y: 45 },
+                'PVG': { x: 670, y: 65 },
+                'ICN': { x: 720, y: 50 },
+                'HND': { x: 790, y: 50 },
+                'NRT': { x: 830, y: 55 },
+                'PER': { x: 530, y: 380 },
+                'MEL': { x: 810, y: 385 },
+                'SYD': { x: 910, y: 375 },
+            };
+            if (code && overrides[code]) {
+                return overrides[code];
+            }
+
+            // Indonesian archipelago bounds: Lon 95..141 -> x 170..860, Lat 6..-11 -> y 100..340
+            let x = 170 + ((lon - 95.0) / 46.0) * 690;
+            let y = 100 + ((6.0 - lat) / 17.0) * 240;
+
+            if (x < 40) x = 40;
+            if (x > 960) x = 960;
+            if (y < 35) y = 35;
+            if (y > 390) y = 390;
+
             return { x: Math.round(x), y: Math.round(y) };
         },
 
@@ -3876,16 +4340,18 @@ function fdrDashboardController() {
 
             return Object.keys(dict).map(code => {
                 const info = dict[code];
-                const pt = this.projectGeo(info.lon, info.lat);
-                const isActive = code === hub || connectedAirports.has(code);
+                const pt = this.projectGeo(info.lon, info.lat, code);
+                const isHub = code === hub;
+                const isActive = isHub || connectedAirports.has(code);
                 return {
                     code,
                     name: info.name,
                     city: info.city,
                     x: pt.x,
                     y: pt.y,
+                    isHub,
                     isActive,
-                    flightsCount: code === hub ? (this.kpis.total_flights || 0) : 0,
+                    flightsCount: isHub ? (this.kpis.total_flights || 0) : 0,
                 };
             });
         },
@@ -3906,22 +4372,33 @@ function fdrDashboardController() {
                 const a2 = dict[c2];
                 if (!a1 || !a2) return;
 
-                const p1 = this.projectGeo(a1.lon, a1.lat);
-                const p2 = this.projectGeo(a2.lon, a2.lat);
+                const p1 = this.projectGeo(a1.lon, a1.lat, c1);
+                const p2 = this.projectGeo(a2.lon, a2.lat, c2);
 
                 const mx = (p1.x + p2.x) / 2;
-                const my = Math.min(p1.y, p2.y) - Math.abs(p2.x - p1.x) * 0.15;
+                const dx = p2.x - p1.x;
+                const dy = p2.y - p1.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const curveHeight = Math.max(25, Math.min(80, dist * 0.2));
+                const my = Math.min(p1.y, p2.y) - curveHeight;
+
                 const pathD = `M ${p1.x} ${p1.y} Q ${mx} ${my} ${p2.x} ${p2.y}`;
                 const flightCount = r.count || r.flights || r.movements || r.total_flights || 1;
-                const strokeWidth = Math.max(1.5, Math.min(5, Math.round(flightCount / 20)));
+                const strokeWidth = Math.max(1.5, Math.min(4.5, (flightCount / 30) + 1.2));
 
                 const paxCount = r.pax != null ? r.pax : (r.passengers || r.totalPax || 0);
                 const lfStr = r.avg_load_factor || (r.avgLf != null ? r.avgLf + '%' : (r.lf != null ? r.lf + '%' : 'N/A'));
+                const avgDel = r.avg_delay != null ? r.avg_delay : (r.avgDelay != null ? r.avgDelay : (r.avg_delay_min || 0));
 
                 lines.push({
+                    route: `${c1} → ${c2}`,
                     pathD,
                     strokeWidth,
-                    title: `${c1} → ${c2}: ${flightCount} flights • ${paxCount.toLocaleString()} Pax • LF ${lfStr}`,
+                    flights: flightCount,
+                    pax: paxCount,
+                    slf: lfStr,
+                    avgDelay: avgDel,
+                    title: `${c1} → ${c2}: ${flightCount} flights • ${paxCount.toLocaleString()} Pax • LF ${lfStr} • Delay +${avgDel}m`,
                 });
             });
 

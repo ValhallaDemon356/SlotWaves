@@ -43,6 +43,34 @@ class FlightDailyReportAnalytics
         'DJJ' => ['lat' => -2.5769, 'lng' => 140.5164, 'name' => 'Sentani (Jayapura)'],
         'PWL' => ['lat' => -7.4586, 'lng' => 109.0208, 'name' => 'Purwokerto / Wirasaba'],
         'PCB' => ['lat' => -6.3475, 'lng' => 106.7497, 'name' => 'Pondok Cabe'],
+        'SOQ' => ['lat' => -0.8906, 'lng' => 131.2872, 'name' => 'Domine Eduard Osok (Sorong)'],
+        'PLW' => ['lat' => -0.9178, 'lng' => 119.9097, 'name' => 'Mutiara SIS Al-Jufrie (Palu)'],
+        'TIM' => ['lat' => -4.5283, 'lng' => 136.8867, 'name' => 'Mozes Kilangin (Timika)'],
+        'MKQ' => ['lat' => -8.5203, 'lng' => 140.4181, 'name' => 'Mopah (Merauke)'],
+        'KDI' => ['lat' => -4.0817, 'lng' => 122.4178, 'name' => 'Haluoleo (Kendari)'],
+        'GTO' => ['lat' => 0.6372, 'lng' => 122.8517, 'name' => 'Djalaluddin (Gorontalo)'],
+        'LUW' => ['lat' => -1.0378, 'lng' => 122.7758, 'name' => 'Syukuran Aminuddin Amir (Luwuk)'],
+        'TTE' => ['lat' => 0.8317, 'lng' => 127.3806, 'name' => 'Sultan Babullah (Ternate)'],
+        'LBJ' => ['lat' => -8.4878, 'lng' => 119.8872, 'name' => 'Komodo (Labuan Bajo)'],
+        'BMU' => ['lat' => -8.5397, 'lng' => 118.6903, 'name' => 'Sultan Muhammad Salahuddin (Bima)'],
+        'SIN' => ['lat' => 1.3644, 'lng' => 103.9915, 'name' => 'Singapore Changi'],
+        'KUL' => ['lat' => 2.7456, 'lng' => 101.7072, 'name' => 'Kuala Lumpur'],
+        'BKK' => ['lat' => 13.6900, 'lng' => 100.7501, 'name' => 'Bangkok Suvarnabhumi'],
+        'HKG' => ['lat' => 22.3080, 'lng' => 113.9185, 'name' => 'Hong Kong'],
+        'HND' => ['lat' => 35.5494, 'lng' => 139.7798, 'name' => 'Tokyo Haneda'],
+        'NRT' => ['lat' => 35.7720, 'lng' => 140.3929, 'name' => 'Tokyo Narita'],
+        'ICN' => ['lat' => 37.4602, 'lng' => 126.4407, 'name' => 'Seoul Incheon'],
+        'PVG' => ['lat' => 31.1443, 'lng' => 121.8083, 'name' => 'Shanghai Pudong'],
+        'CAN' => ['lat' => 23.3924, 'lng' => 113.2988, 'name' => 'Guangzhou Baiyun'],
+        'PEK' => ['lat' => 40.0799, 'lng' => 116.6031, 'name' => 'Beijing Capital'],
+        'TPE' => ['lat' => 25.0797, 'lng' => 121.2342, 'name' => 'Taipei Taoyuan'],
+        'SYD' => ['lat' => -33.9399, 'lng' => 151.1753, 'name' => 'Sydney Kingsford Smith'],
+        'MEL' => ['lat' => -37.6690, 'lng' => 144.8410, 'name' => 'Melbourne'],
+        'PER' => ['lat' => -31.9385, 'lng' => 115.9672, 'name' => 'Perth'],
+        'JED' => ['lat' => 21.6796, 'lng' => 39.1565, 'name' => 'Jeddah King Abdulaziz'],
+        'MED' => ['lat' => 24.5534, 'lng' => 39.7051, 'name' => 'Medina Prince Mohammad'],
+        'DOH' => ['lat' => 25.2731, 'lng' => 51.6081, 'name' => 'Doha Hamad'],
+        'AMS' => ['lat' => 52.3105, 'lng' => 4.7683, 'name' => 'Amsterdam Schiphol'],
     ];
 
     protected HourlyChartService $hourlyChartService;
@@ -895,8 +923,10 @@ class FlightDailyReportAnalytics
                         'passengers'  => 0,
                         'capacity'    => 0,
                         'load'        => 0,
-                        'delay_sum'   => 0,
-                        'delay_count' => 0,
+                        'delay_sum'       => 0,
+                        'delay_count'     => 0,
+                        'delayed_flights' => 0,
+                        'delayedFlights'  => 0,
                         'origin_coord'=> self::INJOURNEY_AIRPORTS_COORDINATES[$orig] ?? null,
                         'dest_coord'  => self::INJOURNEY_AIRPORTS_COORDINATES[$dest] ?? null,
                     ];
@@ -906,21 +936,35 @@ class FlightDailyReportAnalytics
                 $routes[$rt]['capacity'] += (int)($r['cap'] ?? 0);
                 $routes[$rt]['load'] += (int)($r['load'] ?? 0);
                 if (isset($r['delay_minutes']) && is_numeric($r['delay_minutes'])) {
-                    $routes[$rt]['delay_sum'] += (int)$r['delay_minutes'];
-                    $routes[$rt]['delay_count']++;
+                    $dMin = (int)$r['delay_minutes'];
+                    if ($dMin > 15) {
+                        $routes[$rt]['delay_sum'] += $dMin;
+                        $routes[$rt]['delay_count']++;
+                        $routes[$rt]['delayed_flights']++;
+                        $routes[$rt]['delayedFlights']++;
+                    }
                 }
             }
         }
 
-        // Compute Leg Subtypes
+        // Compute Leg Subtypes and Special Movements
         $schedCount = 0;
         $unschedCount = 0;
         $cargoCount = 0;
+        $specialMovementsCount = 0;
+        $specialSuffixLetters = ['X', 'R', 'I', 'D', 'A', 'F', 'H', 'V', 'G', 'M', 'O', 'L', '&', 'N', 'Z', 'S', 'T', 'K'];
         foreach ($records as $r) {
             $legVal = strtoupper(trim($r['leg'] ?? ($r['leg_raw'] ?? '')));
-            if (str_contains($legVal, 'UNSCHED')) $unschedCount++;
-            elseif (str_contains($legVal, 'CARGO')) $cargoCount++;
+            $isUnsched = str_contains($legVal, 'UNSCHED');
+            $isCargo = str_contains($legVal, 'CARGO');
+            if ($isUnsched) $unschedCount++;
+            elseif ($isCargo) $cargoCount++;
             else $schedCount++;
+
+            $sfx = strtoupper(trim($r['flight_suffix'] ?? ''));
+            if ($isUnsched || $isCargo || in_array($sfx, $specialSuffixLetters, true)) {
+                $specialMovementsCount++;
+            }
         }
         $legSubtypes = [
             'SCHED'   => $schedCount,
@@ -954,15 +998,15 @@ class FlightDailyReportAnalytics
             $rt['totalPax'] = $rt['passengers'];
             $rt['totalCapacity'] = $rt['capacity'];
 
-            $avgDel = ($rt['delay_count'] > 0) ? round($rt['delay_sum'] / $rt['delay_count'], 1) : 0.0;
+            $avgDel = ($rt['delayed_flights'] > 0) ? (int)round($rt['delay_sum'] / $rt['delayed_flights']) : 0;
             $rt['avg_delay_min'] = $avgDel;
             $rt['avg_delay'] = $avgDel;
             $rt['avgDelay'] = $avgDel;
 
-            $rt['delayed_flights'] = $rt['delay_count'];
-            $rt['delayedFlights'] = $rt['delay_count'];
-            $rt['delay_rate'] = ($rt['flights'] > 0) ? round(($rt['delay_count'] / $rt['flights']) * 100, 1) : 0.0;
-            $rt['delayRate'] = $rt['delay_rate'];
+            $dRate = ($rt['flights'] > 0) ? round(($rt['delayed_flights'] / $rt['flights']) * 100, 1) : 0.0;
+            $rt['delay_rate'] = $dRate;
+            $rt['delayRate'] = $dRate;
+            $rt['delayPct'] = $dRate;
         }
         unset($rt);
 
@@ -972,8 +1016,8 @@ class FlightDailyReportAnalytics
         $busiestRoutes = $allRoutes;
         usort($busiestRoutes, fn($x, $y) => $y['flights'] <=> $x['flights']);
 
-        // Most Delayed Routes: sorted by delayed_flights / avg_delay_min desc (min 1 flight)
-        $delayedRoutes = array_filter($allRoutes, fn($r) => $r['flights'] >= 1);
+        // Most Delayed Routes: sorted by delayed_flights / avg_delay_min desc (min 1 delayed flight)
+        $delayedRoutes = array_filter($allRoutes, fn($r) => ($r['delayed_flights'] ?? 0) > 0);
         usort($delayedRoutes, function($x, $y) {
             $cmpDel = ($y['delayed_flights'] ?? 0) <=> ($x['delayed_flights'] ?? 0);
             if ($cmpDel !== 0) return $cmpDel;
@@ -1024,6 +1068,7 @@ class FlightDailyReportAnalytics
             'suffix_breakdown'    => array_values($suffixCounts),
             'suffix_distribution'=> array_values($suffixCounts),
             'leg_subtypes'        => $legSubtypes,
+            'special_movements'   => $specialMovementsCount,
             'airport_coordinates' => self::INJOURNEY_AIRPORTS_COORDINATES,
         ];
     }

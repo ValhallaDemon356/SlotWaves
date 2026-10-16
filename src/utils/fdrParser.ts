@@ -172,6 +172,9 @@ export const INJOURNEY_AIRPORTS_COORDINATES: Record<
   ICN: { name: 'Incheon International Airport', city: 'Seoul', lat: 37.4602, lng: 126.4407, lon: 126.4407 },
   PVG: { name: 'Shanghai Pudong International Airport', city: 'Shanghai', lat: 31.1443, lng: 121.8083, lon: 121.8083 },
   CAN: { name: 'Guangzhou Baiyun International Airport', city: 'Guangzhou', lat: 23.3924, lng: 113.2988, lon: 113.2988 },
+  PEK: { name: 'Beijing Capital International Airport', city: 'Beijing', lat: 40.0799, lng: 116.6031, lon: 116.6031 },
+  TPE: { name: 'Taiwan Taoyuan International Airport', city: 'Taipei', lat: 25.0797, lng: 121.2342, lon: 121.2342 },
+  AMS: { name: 'Amsterdam Airport Schiphol', city: 'Amsterdam', lat: 52.3105, lng: 4.7683, lon: 4.7683 },
   SYD: { name: 'Sydney Kingsford Smith Airport', city: 'Sydney', lat: -33.9399, lng: 151.1753, lon: 151.1753 },
   MEL: { name: 'Melbourne Airport', city: 'Melbourne', lat: -37.6690, lng: 144.8410, lon: 144.8410 },
   PER: { name: 'Perth Airport', city: 'Perth', lat: -31.9385, lng: 115.9672, lon: 115.9672 },
@@ -331,6 +334,20 @@ export function parseExcelDate(val: unknown, fallbackDate?: string): string {
   }
 
   return fallbackDate || new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Safely parse Indonesian DD-MM-YYYY HH:mm strings into a valid JS Date object.
+ * Never use new Date("DD-MM-YYYY HH:mm") directly as JS treats it as MM-DD-YYYY and returns NaN for days 13..31!
+ */
+export function parseDateTimeDDMMYYYY(val: unknown): Date | null {
+  if (!val) return null;
+  const str = cleanHtmlText(String(val)).trim();
+  const m = str.match(/(\d{2})[-/](\d{2})[-/](\d{4})\s+(\d{2}):(\d{2})/);
+  if (!m) return null;
+  const [_, dd, mm, yyyy, hh, min] = m;
+  const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd), Number(hh), Number(min));
+  return isNaN(d.getTime()) ? null : d;
 }
 
 /**
@@ -1017,6 +1034,9 @@ export function parseNormalFDR(
     let rawDelayMinutes = 0;
     let status: NormalizedFDRRecord['status'] = 'ON_TIME';
 
+    const schedDate = parseDateTimeDDMMYYYY(rawSchedTime);
+    const actualDate = parseDateTimeDDMMYYYY(rawActTime);
+
     if (isHoldOrCancelled) {
       status = 'HOLD_OR_CANCELLED';
       delayMinutes = 0;
@@ -1026,17 +1046,27 @@ export function parseNormalFDR(
       delayMinutes = 0;
       rawDelayMinutes = 0;
     } else {
-      rawDelayMinutes = calculateDelayMinutes(scheduledTime, actualTime);
-      delayMinutes = rawDelayMinutes;
-
-      // Cross-Midnight Correction & Outlier Filter (> 1400m or < -360m)
-      if (crossMidnightCorrection) {
-        if (delayMinutes > 720) delayMinutes -= 1440;
-        else if (delayMinutes < -720) delayMinutes += 1440;
+      if (schedDate && actualDate) {
+        let diff = Math.round((actualDate.getTime() - schedDate.getTime()) / 60000);
+        if (crossMidnightCorrection) {
+          if (diff < -720) diff += 1440;
+          else if (diff > 1200) {
+            // handle rollover if same-day assumption was violated
+          }
+        }
+        rawDelayMinutes = diff;
+        delayMinutes = diff;
+      } else {
+        rawDelayMinutes = calculateDelayMinutes(scheduledTime, actualTime);
+        delayMinutes = rawDelayMinutes;
+        if (crossMidnightCorrection) {
+          if (delayMinutes > 720) delayMinutes -= 1440;
+          else if (delayMinutes < -720) delayMinutes += 1440;
+        }
       }
 
+      // Outlier Filter (> 1400m or < -360m)
       if (outlierFilterMinutes > 0 && Math.abs(delayMinutes) > outlierFilterMinutes) {
-        // Clamp or mark within bounds
         if (delayMinutes > 1400) delayMinutes -= 1440;
         else if (delayMinutes < -360) delayMinutes += 1440;
       }
@@ -1265,6 +1295,7 @@ export function parseNormalFDR(
   let schedCount = 0;
   let unschedCount = 0;
   let cargoCount = 0;
+  let specialMovementsCount = 0;
   let arrivalCount = 0;
   let departureCount = 0;
   let totalCap = 0;
@@ -1305,6 +1336,12 @@ export function parseNormalFDR(
     else if (r.legSubtype === 'CARGO') cargoCount++;
     else schedCount++;
 
+    const SPECIAL_SUFFIX_LETTERS = new Set(['X', 'R', 'I', 'D', 'A', 'F', 'H', 'V', 'G', 'M', 'O', 'L', '&', 'N', 'Z', 'S', 'T', 'K']);
+    const hasSpecialSuffix = r.flightSuffix && SPECIAL_SUFFIX_LETTERS.has(r.flightSuffix);
+    if (r.legSubtype === 'UNSCHED' || r.legSubtype === 'CARGO' || hasSpecialSuffix) {
+      specialMovementsCount++;
+    }
+
     // Route aggregation
     const rtKey = `${r.origin} → ${r.destination}`;
     if (!routesMap[rtKey]) {
@@ -1325,6 +1362,7 @@ export function parseNormalFDR(
         load: 0,
         delayedFlights: 0,
         delayed_flights: 0,
+        totalDelayMinutes: 0,
         delaySum: 0,
         delayCount: 0,
         maxDelay: 0,
@@ -1334,6 +1372,7 @@ export function parseNormalFDR(
         slf: '0.0%',
         delayRate: 0,
         delay_rate: 0,
+        delayPct: 0,
         avgDelay: 0,
         avg_delay: 0,
         avg_delay_min: 0,
@@ -1354,11 +1393,12 @@ export function parseNormalFDR(
     if (r.delayMinutes > 15) {
       rt.delayedFlights++;
       rt.delayed_flights++;
+      rt.totalDelayMinutes = (rt.totalDelayMinutes || 0) + r.delayMinutes;
+      rt.delaySum += r.delayMinutes;
+      if (r.delayMinutes > rt.maxDelay) rt.maxDelay = r.delayMinutes;
     }
     if (r.realized && r.delayMinutes !== 0) {
-      rt.delaySum += r.delayMinutes;
       rt.delayCount++;
-      if (r.delayMinutes > rt.maxDelay) rt.maxDelay = r.delayMinutes;
     }
 
     // Airline aggregation
@@ -1421,11 +1461,12 @@ export function parseNormalFDR(
     rObj.avg_load_factor = `${lfVal.toFixed(1)}%`;
     rObj.slf = `${lfVal.toFixed(1)}%`;
 
-    const dRate = rObj.flights > 0 ? Math.round((rObj.delayedFlights / rObj.flights) * 1000) / 10 : 0;
+    const dRate = rObj.flights > 0 ? Number(((rObj.delayedFlights / rObj.flights) * 100).toFixed(1)) : 0;
     rObj.delayRate = dRate;
     rObj.delay_rate = dRate;
+    rObj.delayPct = dRate;
 
-    const avgDel = rObj.delayCount > 0 ? Math.round((rObj.delaySum / rObj.delayCount) * 10) / 10 : 0;
+    const avgDel = rObj.delayedFlights > 0 ? Math.round(rObj.totalDelayMinutes / rObj.delayedFlights) : 0;
     rObj.avgDelay = avgDel;
     rObj.avg_delay = avgDel;
     rObj.avg_delay_min = avgDel;
@@ -1433,7 +1474,7 @@ export function parseNormalFDR(
 
   const busiestRoutes = [...allRoutes].sort((a, b) => b.flights - a.flights).slice(0, 10);
   const delayedRoutes = [...allRoutes]
-    .filter(r => r.flights >= 1)
+    .filter(r => r.delayedFlights > 0)
     .sort((a, b) => (b.delayedFlights - a.delayedFlights) || (b.avgDelay - a.avgDelay) || (b.maxDelay - a.maxDelay))
     .slice(0, 10);
   const highestSlfRoutes = [...allRoutes]
@@ -1539,6 +1580,7 @@ export function parseNormalFDR(
     suffix_breakdown: suffixDistribution,
     suffix_distribution: suffixDistribution,
     leg_subtypes: legSubtypes,
+    special_movements: specialMovementsCount,
     airport_coordinates: INJOURNEY_AIRPORTS_COORDINATES,
   };
 
@@ -1567,6 +1609,7 @@ export function parseNormalFDR(
     otp_percentage: otpPercentage,
     avg_load_factor: totalCap > 0 ? `${((totalPax / totalCap) * 100).toFixed(1)}%` : '0.0%',
     leg_subtypes: legSubtypes,
+    special_movements: specialMovementsCount,
   };
 
   return {
@@ -1601,6 +1644,8 @@ export function parseNormalFDR(
       finalizedCount,
       unfinalizedCount: records.length - finalizedCount,
       suffixBreakdown,
+      specialMovementsCount,
+      special_movements: specialMovementsCount,
       avgGroundTimeMinutes: avgGround,
       medianGroundTimeMinutes: medianGround,
       minGroundTimeMinutes: minGround,

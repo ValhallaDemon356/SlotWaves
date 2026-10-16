@@ -1,7 +1,7 @@
 {{-- ══ ROUTE ANALYTICS, SPECIAL SUFFIXES & INTERACTIVE NETWORK MAP ═════════ --}}
-<div class="space-y-5" id="fdr-route-network-section">
+<div class="space-y-5" id="fdr-route-network-section" x-data="{ hoveredRoute: null, hoveredAirport: null }">
 
-    {{-- ══ SPECIAL SUFFIX & IRREGULARITY BREAKDOWN ═════════════════════════════ --}}
+    {{-- ══ SPECIAL FLIGHT SUFFIX & IRREGULARITY CLASSIFICATION ═════════════════ --}}
     <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
             <div class="flex items-center gap-2">
@@ -20,48 +20,51 @@
             </div>
         </div>
 
-        {{-- Suffix Grid --}}
-        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
-            <template x-for="item in getSuffixDistribution()" :key="item.suffix">
-                <div class="p-2.5 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-slate-100/60 transition flex flex-col justify-between">
-                    <div class="flex items-center justify-between">
-                        <span class="w-6 h-6 rounded-lg font-black text-xs flex items-center justify-center"
-                              :class="item.colorClass"
-                              x-text="item.suffix"></span>
-                        <span class="text-[10px] font-mono font-bold text-slate-700" x-text="item.count + ' flt'"></span>
-                    </div>
-                    <div class="mt-2">
-                        <div class="text-[10px] font-black text-slate-800 truncate" x-text="item.label"></div>
-                        <div class="text-[9px] text-slate-400 truncate" x-text="item.category"></div>
-                    </div>
-                </div>
-            </template>
-        </div>
-
-        {{-- Leg Subtypes: SCHED / UNSCHED / CARGO --}}
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100 text-xs">
-            <div class="p-3 rounded-xl bg-blue-50/60 border border-blue-200 flex items-center justify-between">
+        {{-- Leg Subtypes: SCHED / UNSCHED / CARGO (3 Core Cards on Top) --}}
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div class="p-3.5 rounded-xl bg-blue-50/60 border border-blue-200 flex items-center justify-between">
                 <div>
                     <div class="text-[10px] font-bold uppercase text-blue-800">Scheduled Commercial (SCHED)</div>
-                    <div class="text-base font-black text-blue-900 mt-0.5" x-text="getLegSubtypeCount('SCHED').toLocaleString()">0</div>
+                    <div class="text-lg font-black text-blue-900 mt-0.5" x-text="getLegSubtypeCount('SCHED').toLocaleString()">0</div>
                 </div>
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-200/60 text-blue-800 font-mono" x-text="getLegSubtypePct('SCHED')">0%</span>
             </div>
 
-            <div class="p-3 rounded-xl bg-amber-50/60 border border-amber-200 flex items-center justify-between">
+            <div class="p-3.5 rounded-xl bg-amber-50/60 border border-amber-200 flex items-center justify-between">
                 <div>
                     <div class="text-[10px] font-bold uppercase text-amber-800">Unscheduled / Charter (UNSCHED)</div>
-                    <div class="text-base font-black text-amber-900 mt-0.5" x-text="getLegSubtypeCount('UNSCHED').toLocaleString()">0</div>
+                    <div class="text-lg font-black text-amber-900 mt-0.5" x-text="getLegSubtypeCount('UNSCHED').toLocaleString()">0</div>
                 </div>
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-200/60 text-amber-800 font-mono" x-text="getLegSubtypePct('UNSCHED')">0%</span>
             </div>
 
-            <div class="p-3 rounded-xl bg-purple-50/60 border border-purple-200 flex items-center justify-between">
+            <div class="p-3.5 rounded-xl bg-purple-50/60 border border-purple-200 flex items-center justify-between">
                 <div>
                     <div class="text-[10px] font-bold uppercase text-purple-800">Dedicated Cargo (CARGO)</div>
-                    <div class="text-base font-black text-purple-900 mt-0.5" x-text="getLegSubtypeCount('CARGO').toLocaleString()">0</div>
+                    <div class="text-lg font-black text-purple-900 mt-0.5" x-text="getLegSubtypeCount('CARGO').toLocaleString()">0</div>
                 </div>
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-200/60 text-purple-800 font-mono" x-text="getLegSubtypePct('CARGO')">0%</span>
+            </div>
+        </div>
+
+        {{-- Suffix Breakdown Pills Rendered Below When Present --}}
+        <div x-show="getSuffixDistribution().length > 0" class="pt-2 border-t border-slate-100 space-y-2">
+            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Flight Number Suffix Breakdown</div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+                <template x-for="item in getSuffixDistribution()" :key="item.suffix">
+                    <div class="p-2 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-slate-100/70 transition flex flex-col justify-between">
+                        <div class="flex items-center justify-between">
+                            <span class="w-5 h-5 rounded-md font-black text-[10px] flex items-center justify-center font-mono"
+                                  :class="item.colorClass"
+                                  x-text="item.suffix"></span>
+                            <span class="text-[10px] font-mono font-bold text-slate-700" x-text="item.count + ' flt'"></span>
+                        </div>
+                        <div class="mt-1.5">
+                            <div class="text-[9.5px] font-bold text-slate-800 truncate" x-text="item.label"></div>
+                            <div class="text-[8.5px] text-slate-400 truncate" x-text="item.category"></div>
+                        </div>
+                    </div>
+                </template>
             </div>
         </div>
     </div>
@@ -114,7 +117,7 @@
                             <span class="w-5 h-5 rounded-md bg-rose-100 text-rose-800 font-bold text-[10px] flex items-center justify-center font-sans" x-text="idx + 1"></span>
                             <div>
                                 <div class="font-black text-slate-800 font-mono" x-text="r.route"></div>
-                                <div class="text-[9.5px] text-slate-400 font-sans" x-text="(r.delayed_flights != null ? r.delayed_flights : (r.delayedFlights || 0)) + ' delayed of ' + (r.total_flights || r.flights || r.count || 0) + ' flights' + ((r.delay_rate != null || r.delayRate != null) ? ' (' + (r.delay_rate != null ? r.delay_rate : r.delayRate) + '%)' : '')"></div>
+                                <div class="text-[9.5px] text-slate-400 font-sans" x-text="(r.delayed_flights != null ? r.delayed_flights : (r.delayedFlights || 0)) + ' delayed of ' + (r.total_flights || r.flights || r.count || 0) + ' flights (' + ((r.delay_rate != null ? r.delay_rate : (r.delayRate != null ? r.delayRate : (r.delayPct || 0)))) + '%)'"></div>
                             </div>
                         </div>
                         <div class="text-right">
@@ -155,7 +158,7 @@
 
     </div>
 
-    {{-- ══ INTERACTIVE INJOURNEY ROUTE NETWORK MAP (SVG) ═══════════════════════ --}}
+    {{-- ══ INTERACTIVE INJOURNEY ROUTE NETWORK MAP (SVG 1000x420) ══════════════ --}}
     <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-3">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
             <div class="flex items-center gap-2">
@@ -166,45 +169,67 @@
                     <h3 class="text-xs font-black uppercase tracking-wider text-slate-900">
                         InJourney Airports Interactive Route Network
                     </h3>
-                    <p class="text-[10px] text-slate-400">Visual operational connection graph mapped against 35 Indonesian airports</p>
+                    <p class="text-[10px] text-slate-400">Directional quadratic Bezier trajectories &amp; airport nodes across 35 InJourney airports</p>
                 </div>
             </div>
             <div class="flex items-center gap-3 text-xs">
-                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span> Active Hub</span>
-                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-slate-300"></span> Regional Station</span>
-                <span class="flex items-center gap-1.5"><span class="w-4 h-0.5 bg-blue-500"></span> Route Trajectory</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span> Active Hub</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Connected Station</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-slate-600"></span> Regional Station</span>
+                <span class="flex items-center gap-1.5"><span class="w-4 h-0.5 bg-cyan-400"></span> Trajectory</span>
             </div>
         </div>
 
-        {{-- SVG Map Canvas --}}
-        <div class="w-full h-72 rounded-xl bg-slate-900 relative overflow-hidden flex items-center justify-center p-2 select-none shadow-inner" id="injourney-network-container">
-            <svg class="w-full h-full" viewBox="0 0 920 360" preserveAspectRatio="xMidYMid meet">
+        {{-- SVG Map Canvas (min-h-[380px] w-full) --}}
+        <div class="w-full min-h-[380px] h-[380px] rounded-2xl bg-slate-950 relative overflow-hidden flex items-center justify-center p-2 select-none shadow-2xl border border-slate-900" id="injourney-network-container">
+            <svg class="w-full h-full" viewBox="0 0 1000 420" preserveAspectRatio="xMidYMid meet">
                 <defs>
                     <linearGradient id="routeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.8" />
-                        <stop offset="100%" stop-color="#2563EB" stop-opacity="0.2" />
+                        <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.9" />
+                        <stop offset="100%" stop-color="#2563EB" stop-opacity="0.4" />
                     </linearGradient>
-                    <filter id="glow">
+                    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
                         <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
                         <feMerge>
                             <feMergeNode in="coloredBlur"/>
                             <feMergeNode in="SourceGraphic"/>
                         </feMerge>
                     </filter>
+                    <marker id="routeArrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#38BDF8" opacity="0.95"/>
+                    </marker>
                 </defs>
 
-                {{-- Archipelago background grid / faint coastline guide --}}
+                {{-- Archipelago background grid with coordinate labels --}}
                 <g opacity="0.08" stroke="#FFFFFF" stroke-width="0.5">
-                    <line x1="50" y1="90" x2="870" y2="90" />
-                    <line x1="50" y1="180" x2="870" y2="180" />
-                    <line x1="50" y1="270" x2="870" y2="270" />
-                    <line x1="200" y1="40" x2="200" y2="320" />
-                    <line x1="400" y1="40" x2="400" y2="320" />
-                    <line x1="600" y1="40" x2="600" y2="320" />
-                    <line x1="800" y1="40" x2="800" y2="320" />
+                    <line x1="30" y1="70" x2="970" y2="70" />
+                    <line x1="30" y1="140" x2="970" y2="140" />
+                    <line x1="30" y1="210" x2="970" y2="210" />
+                    <line x1="30" y1="280" x2="970" y2="280" />
+                    <line x1="30" y1="350" x2="970" y2="350" />
+                    <line x1="120" y1="30" x2="120" y2="390" />
+                    <line x1="280" y1="30" x2="280" y2="390" />
+                    <line x1="440" y1="30" x2="440" y2="390" />
+                    <line x1="600" y1="30" x2="600" y2="390" />
+                    <line x1="760" y1="30" x2="760" y2="390" />
+                    <line x1="920" y1="30" x2="920" y2="390" />
                 </g>
 
-                {{-- Flight Route Connection Curves --}}
+                {{-- Subtle coordinate text markers --}}
+                <g font-size="8" font-family="monospace" fill="#334155" opacity="0.6">
+                    <text x="35" y="66">20°N</text>
+                    <text x="35" y="136">10°N</text>
+                    <text x="35" y="206">0° (Equator)</text>
+                    <text x="35" y="276">10°S</text>
+                    <text x="35" y="346">20°S</text>
+                    <text x="282" y="405">100°E</text>
+                    <text x="442" y="405">110°E</text>
+                    <text x="602" y="405">120°E</text>
+                    <text x="762" y="405">130°E</text>
+                    <text x="922" y="405">140°E</text>
+                </g>
+
+                {{-- Flight Route Directional Curves (Origin -> Destination) --}}
                 <g>
                     <template x-for="(line, lidx) in getNetworkRouteLines()" :key="'line-' + lidx">
                         <path :d="line.pathD"
@@ -212,13 +237,18 @@
                               stroke="url(#routeGrad)"
                               :stroke-width="line.strokeWidth"
                               stroke-linecap="round"
-                              filter="url(#glow)">
+                              marker-end="url(#routeArrow)"
+                              filter="url(#glow)"
+                              class="cursor-pointer transition-all duration-200 hover:stroke-white hover:stroke-[3.5px] opacity-85 hover:opacity-100"
+                              @mouseenter="hoveredRoute = line"
+                              @mouseleave="hoveredRoute = null"
+                              @click="hoveredRoute = (hoveredRoute === line ? null : line)">
                             <title x-text="line.title"></title>
                         </path>
                     </template>
                 </g>
 
-                {{-- Airport Nodes (35 InJourney Stations) --}}
+                {{-- Airport Nodes (35 InJourney Stations + Active Destinations) --}}
                 <g>
                     <template x-for="(node, nidx) in getNetworkAirportNodes()" :key="'node-' + node.code">
                         <g :transform="'translate(' + node.x + ',' + node.y + ')'"
@@ -226,13 +256,16 @@
                            @mouseenter="hoveredAirport = node"
                            @mouseleave="hoveredAirport = null">
                             {{-- Outer Pulse circle for active hub --}}
-                            <circle r="6" fill="#3B82F6" opacity="0.3" class="animate-ping" x-show="node.isActive"></circle>
+                            <circle r="8" fill="#38BDF8" opacity="0.4" class="animate-ping" x-show="node.isHub"></circle>
                             {{-- Main Node circle --}}
-                            <circle r="4" :fill="node.isActive ? '#60A5FA' : '#64748B'" :stroke="node.isActive ? '#FFFFFF' : '#334155'" stroke-width="1.5"></circle>
+                            <circle :r="node.isHub ? 5 : (node.isActive ? 4 : 3)"
+                                    :fill="node.isHub ? '#38BDF8' : (node.isActive ? '#60A5FA' : '#475569')"
+                                    :stroke="node.isHub ? '#FFFFFF' : (node.isActive ? '#93C5FD' : '#1E293B')"
+                                    :stroke-width="node.isHub ? 2 : 1.5"></circle>
                             {{-- Airport Code Label --}}
-                            <text :y="node.y > 280 ? -8 : 12"
+                            <text :y="node.y > 360 ? -8 : 12"
                                   text-anchor="middle"
-                                  :fill="node.isActive ? '#FFFFFF' : '#94A3B8'"
+                                  :fill="node.isHub ? '#38BDF8' : (node.isActive ? '#F8FAFC' : '#64748B')"
                                   font-size="9"
                                   font-weight="bold"
                                   font-family="monospace"
@@ -243,14 +276,31 @@
                 </g>
             </svg>
 
-            {{-- Floating Tooltip on Hover --}}
-            <template x-if="hoveredAirport">
-                <div class="absolute bottom-3 left-4 bg-slate-800/90 backdrop-blur-md border border-slate-700 text-white rounded-xl px-3 py-2 text-xs shadow-xl pointer-events-none space-y-0.5">
-                    <div class="font-black flex items-center gap-1.5">
-                        <span class="w-2 h-2 rounded-full bg-blue-400"></span>
-                        <span x-text="hoveredAirport.code + ' — ' + hoveredAirport.name"></span>
+            {{-- Floating Interactive HUD Card for Routes --}}
+            <template x-if="hoveredRoute">
+                <div class="absolute bottom-3 left-4 bg-slate-900/95 backdrop-blur-md border border-cyan-500/40 text-white rounded-xl px-4 py-2.5 text-xs shadow-2xl pointer-events-none space-y-1 z-20">
+                    <div class="font-black flex items-center gap-2 text-cyan-400">
+                        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                        <span x-text="hoveredRoute.route"></span>
                     </div>
-                    <div class="text-[10px] text-slate-400" x-text="hoveredAirport.city + ' • ' + (hoveredAirport.flightsCount || 0) + ' Connected Flights'"></div>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[11px] font-mono pt-1 border-t border-slate-800">
+                        <div class="text-slate-400">Total Flights: <span class="text-white font-bold" x-text="(hoveredRoute.flights || 0) + ' flt'"></span></div>
+                        <div class="text-slate-400">Total Pax: <span class="text-white font-bold" x-text="(hoveredRoute.pax || 0).toLocaleString()"></span></div>
+                        <div class="text-slate-400">Avg SLF: <span class="text-emerald-400 font-bold" x-text="hoveredRoute.slf || '0.0%'"></span></div>
+                        <div class="text-slate-400">Avg Delay: <span class="text-amber-400 font-bold" x-text="'+' + (hoveredRoute.avgDelay || 0) + ' min'"></span></div>
+                    </div>
+                </div>
+            </template>
+
+            {{-- Floating Interactive HUD Card for Airport Nodes --}}
+            <template x-if="!hoveredRoute && hoveredAirport">
+                <div class="absolute bottom-3 left-4 bg-slate-900/95 backdrop-blur-md border border-blue-500/40 text-white rounded-xl px-4 py-2.5 text-xs shadow-2xl pointer-events-none space-y-0.5 z-20">
+                    <div class="font-black flex items-center gap-1.5 text-blue-400">
+                        <span class="w-2 h-2 rounded-full" :class="hoveredAirport.isHub ? 'bg-cyan-400' : 'bg-blue-400'"></span>
+                        <span x-text="hoveredAirport.code + ' — ' + hoveredAirport.name"></span>
+                        <span x-show="hoveredAirport.isHub" class="px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 text-[9px] uppercase font-bold">Active Hub</span>
+                    </div>
+                    <div class="text-[10px] text-slate-400" x-text="hoveredAirport.city + ' • ' + (hoveredAirport.flightsCount || 0) + ' Connected Movements'"></div>
                 </div>
             </template>
         </div>
