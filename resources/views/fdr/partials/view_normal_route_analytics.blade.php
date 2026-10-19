@@ -169,8 +169,19 @@
                     <h3 class="text-xs font-black uppercase tracking-wider text-slate-900">
                         InJourney Airports Interactive Route Network
                     </h3>
-                    <p class="text-[10px] text-slate-400">Directional quadratic Bezier trajectories &amp; airport nodes across 35 InJourney airports</p>
+                    <p class="text-[10px] text-slate-400">
+                        Actual Origin → Destination trajectories from the current uploaded FDR dataset.
+                        <span class="font-semibold text-slate-500" x-text="getNetworkRoutes().length + ' unique routes'">0 unique routes</span>
+                    </p>
                 </div>
+            </div>
+            <div class="flex items-center gap-2 text-[10px] font-semibold text-slate-500 mr-1">
+                <span class="px-2 py-1 rounded-lg bg-slate-50 border border-slate-200">
+                    Mapped <strong class="text-slate-800" x-text="getNetworkRouteLines().length"></strong>
+                </span>
+                <span class="px-2 py-1 rounded-lg bg-slate-50 border border-slate-200">
+                    Endpoints <strong class="text-slate-800" x-text="Object.keys((airlineRoute && airlineRoute.network_airports) || {}).length"></strong>
+                </span>
             </div>
             <div class="flex items-center gap-3 text-xs">
                 <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span> Active Hub</span>
