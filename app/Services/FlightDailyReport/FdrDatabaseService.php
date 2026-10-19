@@ -2,6 +2,7 @@
 
 namespace App\Services\FlightDailyReport;
 
+use App\Models\Airport;
 use App\Models\FdrFlight;
 use App\Models\Upload;
 use Illuminate\Support\Facades\DB;
@@ -647,10 +648,11 @@ class FdrDatabaseService
             ")
             ->groupBy('origin_airport', 'destination_airport')
             ->orderByDesc('flights')
-            ->take(25)
             ->get();
 
-        $topRoutes = [];
+        // Keep the full route aggregation for the interactive network map, while
+        // preserving the existing Top Routes card limit separately.
+        $allRouteAggregates = [];
         foreach ($routeRows as $r) {
             $cap = (int)$r->capacity;
             $ld  = (int)$r->load;
@@ -663,7 +665,7 @@ class FdrDatabaseService
             $avgDel = round((float)$r->avg_delay_minutes, 1);
             $maxDel = (int)$r->max_delay_minutes;
 
-            $topRoutes[] = [
+            $allRouteAggregates[] = [
                 'route'           => "{$r->origin_airport} → {$r->destination_airport}",
                 'origin'          => $r->origin_airport,
                 'dest'            => $r->destination_airport,
@@ -693,6 +695,59 @@ class FdrDatabaseService
                 'max_delay'       => $maxDel,
             ];
         }
+
+        $topRoutes = array_slice($allRouteAggregates, 0, 25);
+        $networkRoutes = $allRouteAggregates;
+
+        // Resolve route endpoint metadata from the airport master table. The route
+        // itself always comes from the uploaded FDR; coordinates are only used to
+        // project those actual endpoints onto the SVG network map.
+        $networkCodes = [];
+        foreach ($networkRoutes as $route) {
+            foreach (['origin', 'destination'] as $endpoint) {
+                $code = strtoupper(trim((string)($route[$endpoint] ?? '')));
+                if ($code !== '' && $code !== 'N/A') {
+                    $networkCodes[$code] = true;
+                }
+            }
+        }
+
+        $networkAirports = [];
+        if (!empty($networkCodes)) {
+            $airportRows = Airport::query()
+                ->whereIn('iata_code', array_keys($networkCodes))
+                ->get(['iata_code', 'name', 'city', 'country', 'latitude', 'longitude', 'management_type', 'is_active']);
+
+            foreach ($airportRows as $airport) {
+                $code = strtoupper(trim((string)$airport->iata_code));
+                $networkAirports[$code] = [
+                    'code'       => $code,
+                    'name'       => $airport->name ?: $code,
+                    'city'       => $airport->city ?: '',
+                    'country'    => $airport->country ?: '',
+                    'lat'        => is_numeric($airport->latitude) ? (float)$airport->latitude : null,
+                    'lon'        => is_numeric($airport->longitude) ? (float)$airport->longitude : null,
+                    'management' => $airport->management_type ?: null,
+                    'is_active'  => (bool)$airport->is_active,
+                ];
+            }
+        }
+
+        $mappedNetworkRoutes = 0;
+        foreach ($networkRoutes as $route) {
+            if (!empty($networkAirports[$route['origin']]['lat']) && !empty($networkAirports[$route['origin']]['lon'])
+                && !empty($networkAirports[$route['destination']]['lat']) && !empty($networkAirports[$route['destination']]['lon'])) {
+                $mappedNetworkRoutes++;
+            }
+        }
+
+        $networkSummary = [
+            'unique_routes'        => count($networkRoutes),
+            'unique_airports'      => count($networkCodes),
+            'airports_with_coords' => count(array_filter($networkAirports, fn($a) => $a['lat'] !== null && $a['lon'] !== null)),
+            'mapped_routes'        => $mappedNetworkRoutes,
+            'unmapped_routes'      => max(0, count($networkRoutes) - $mappedNetworkRoutes),
+        ];
 
         // Most Delayed Routes (Aggregated directly from real delay minutes > 15)
         $delayedRouteRows = (clone $base)
@@ -1109,6 +1164,9 @@ class FdrDatabaseService
                 'routes'              => $topRoutes,
                 'busiest_routes'      => array_slice($topRoutes, 0, 10),
                 'top_busiest_routes'  => array_slice($topRoutes, 0, 10),
+                'network_routes'      => $networkRoutes,
+                'network_airports'    => $networkAirports,
+                'network_summary'     => $networkSummary,
                 'most_delayed_routes' => $mostDelayedRoutes,
                 'top_delayed_routes'  => $mostDelayedRoutes,
                 'highest_slf_routes'  => array_slice($topSlfRoutes, 0, 10),
