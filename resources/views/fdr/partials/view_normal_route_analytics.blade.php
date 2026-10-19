@@ -171,13 +171,13 @@
                     </h3>
                     <p class="text-[10px] text-slate-400">
                         Actual Origin → Destination trajectories from the current uploaded FDR dataset.
-                        <span class="font-semibold text-slate-500" x-text="getNetworkRoutes().length + ' unique routes'">0 unique routes</span>
+                        <span class="font-semibold text-slate-500" x-text="getNetworkUniqueRouteCount() + ' unique routes'">0 unique routes</span>
                     </p>
                 </div>
             </div>
             <div class="flex items-center gap-2 text-[10px] font-semibold text-slate-500 mr-1">
                 <span class="px-2 py-1 rounded-lg bg-slate-50 border border-slate-200">
-                    Mapped <strong class="text-slate-800" x-text="getNetworkRouteLines().length"></strong>
+                    Mapped <strong class="text-slate-800" x-text="getNetworkMappedCount()"></strong>
                 </span>
                 <span class="px-2 py-1 rounded-lg bg-slate-50 border border-slate-200">
                     Endpoints <strong class="text-slate-800" x-text="getNetworkActiveEndpointCount()"></strong>
@@ -195,7 +195,14 @@
         <div class="w-full rounded-2xl relative overflow-hidden select-none shadow-sm border border-slate-200 bg-slate-100" id="injourney-network-container" style="height: 440px; min-height: 420px; width: 100%; position: relative;">
             <div id="injourney-network-map" class="w-full h-full" style="height: 100%; min-height: 420px; width: 100%; position: relative; z-index: 1;"></div>
 
-            {{-- Empty route data overlay (§14) --}}
+            {{-- Non-blocking basemap warning banner (§8, §21) --}}
+            <div x-show="basemapUnavailable"
+                 class="absolute top-2 right-2 bg-amber-500/90 text-slate-950 font-semibold px-3 py-1.5 rounded-lg text-[11px] shadow-md z-20 pointer-events-none flex items-center gap-1.5 backdrop-blur-xs">
+                <svg class="w-4 h-4 text-slate-950" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                <span>Basemap unavailable — route data remains available.</span>
+            </div>
+
+            {{-- Empty route data overlay (§20) --}}
             <div x-show="getNetworkRouteLines().length === 0"
                  class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/40 backdrop-blur-xs text-white z-10 pointer-events-none">
                 <div class="bg-slate-900/90 border border-slate-700/80 rounded-xl px-5 py-4 text-center shadow-xl space-y-1">

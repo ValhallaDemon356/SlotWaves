@@ -24,7 +24,9 @@
 }
 .leaflet-container {
     font-family: inherit;
-    background-color: #F8FAFC !important;
+    background-color: #AAD3DF !important; /* OpenStreetMap ocean water tone */
+    width: 100% !important;
+    height: 100% !important;
 }
 .injourney-hub-marker {
     display: flex;
@@ -1928,6 +1930,72 @@ const INJOURNEY_AIRPORTS_STATIC = {
     DOH: { code: 'DOH', name: 'Hamad Intl', city: 'Doha', lat: 25.2731, lon: 51.6081 },
     BKK: { code: 'BKK', name: 'Bangkok Suvarnabhumi', city: 'Bangkok', lat: 13.6900, lon: 100.7501 },
     HKG: { code: 'HKG', name: 'Hong Kong Intl', city: 'Hong Kong', lat: 22.3080, lon: 113.9185 },
+    AMS: { code: 'AMS', name: 'Amsterdam Airport Schiphol', city: 'Amsterdam', lat: 52.3105, lon: 4.7683 },
+    DXB: { code: 'DXB', name: 'Dubai International', city: 'Dubai', lat: 25.2532, lon: 55.3657 },
+    AUH: { code: 'AUH', name: 'Zayed International', city: 'Abu Dhabi', lat: 24.4330, lon: 54.6511 },
+    IST: { code: 'IST', name: 'Istanbul Airport', city: 'Istanbul', lat: 41.2753, lon: 28.7519 },
+    LHR: { code: 'LHR', name: 'London Heathrow', city: 'London', lat: 51.4700, lon: -0.4543 },
+    CDG: { code: 'CDG', name: 'Paris Charles de Gaulle', city: 'Paris', lat: 49.0097, lon: 2.5479 },
+    FRA: { code: 'FRA', name: 'Frankfurt Airport', city: 'Frankfurt', lat: 50.0379, lon: 8.5622 },
+    KIX: { code: 'KIX', name: 'Kansai International', city: 'Osaka', lat: 34.4320, lon: 135.2304 },
+    TPE: { code: 'TPE', name: 'Taiwan Taoyuan', city: 'Taipei', lat: 25.0797, lon: 121.2342 },
+    MNL: { code: 'MNL', name: 'Ninoy Aquino International', city: 'Manila', lat: 14.5086, lon: 121.0194 },
+    SGN: { code: 'SGN', name: 'Tan Son Nhat International', city: 'Ho Chi Minh City', lat: 10.8188, lon: 106.6519 },
+    HAN: { code: 'HAN', name: 'Noi Bai International', city: 'Hanoi', lat: 21.2212, lon: 105.8072 },
+    BNE: { code: 'BNE', name: 'Brisbane Airport', city: 'Brisbane', lat: -27.3842, lon: 153.1175 },
+    ADL: { code: 'ADL', name: 'Adelaide Airport', city: 'Adelaide', lat: -34.9450, lon: 138.5306 },
+    AKL: { code: 'AKL', name: 'Auckland Airport', city: 'Auckland', lat: -37.0082, lon: 174.7850 },
+    BWN: { code: 'BWN', name: 'Brunei International', city: 'Bandar Seri Begawan', lat: 4.9442, lon: 114.9283 },
+    RGN: { code: 'RGN', name: 'Yangon International', city: 'Yangon', lat: 16.9073, lon: 96.1332 },
+    PNH: { code: 'PNH', name: 'Phnom Penh International', city: 'Phnom Penh', lat: 11.5466, lon: 104.8441 },
+    CNX: { code: 'CNX', name: 'Chiang Mai International', city: 'Chiang Mai', lat: 18.7668, lon: 98.9626 },
+    HKT: { code: 'HKT', name: 'Phuket International', city: 'Phuket', lat: 8.1132, lon: 98.3065 },
+    DIL: { code: 'DIL', name: 'Presidente Nicolau Lobato', city: 'Dili', lat: -8.5465, lon: 125.5247 },
+    BOM: { code: 'BOM', name: 'Chhatrapati Shivaji Maharaj', city: 'Mumbai', lat: 19.0896, lon: 72.8656 },
+    DEL: { code: 'DEL', name: 'Indira Gandhi International', city: 'New Delhi', lat: 28.5562, lon: 77.1000 },
+    RUH: { code: 'RUH', name: 'King Khalid International', city: 'Riyadh', lat: 24.9576, lon: 46.6988 },
+    DMM: { code: 'DMM', name: 'King Fahd International', city: 'Dammam', lat: 26.4712, lon: 49.7979 },
+    MKW: { code: 'MKW', name: 'Rendani', city: 'Manokwari', lat: -0.8919, lon: 134.0506 },
+    FKQ: { code: 'FKQ', name: 'Fakfak', city: 'Fakfak', lat: -2.9167, lon: 132.3000 },
+    NBX: { code: 'NBX', name: 'Nabire', city: 'Nabire', lat: -3.3683, lon: 135.4967 },
+    WMX: { code: 'WMX', name: 'Wamena', city: 'Wamena', lat: -4.0983, lon: 138.9533 },
+    TLG: { code: 'TLG', name: 'Tolitoli', city: 'Tolitoli', lat: 1.0500, lon: 120.7833 },
+    PSJ: { code: 'PSJ', name: 'Kasiguncu', city: 'Poso', lat: -1.4167, lon: 120.6667 },
+    OTG: { code: 'OTG', name: 'Kabupaten Kepulauan Sangihe', city: 'Tahuna', lat: 3.6833, lon: 125.5333 },
+    LUV: { code: 'LUV', name: 'Dumatubun', city: 'Langgur', lat: -5.6667, lon: 132.7333 },
+    ARS: { code: 'ARS', name: 'Arso', city: 'Arso', lat: -2.9000, lon: 140.7500 },
+    BXD: { code: 'BXD', name: 'Bade', city: 'Bade', lat: -7.1667, lon: 139.5833 },
+    EWI: { code: 'EWI', name: 'Enarotali', city: 'Enarotali', lat: -3.9167, lon: 136.3667 },
+    KNG: { code: 'KNG', name: 'Kaimana', city: 'Kaimana', lat: -3.6453, lon: 133.7431 },
+    BXB: { code: 'BXB', name: 'Babo', city: 'Babo', lat: -2.5500, lon: 133.4333 },
+    VLS: { code: 'VLS', name: 'Valesdir', city: 'Valesdir', lat: -5.4000, lon: 138.5000 },
+    MOF: { code: 'MOF', name: 'Frans Seda', city: 'Maumere', lat: -8.6406, lon: 122.2389 },
+    ENE: { code: 'ENE', name: 'H. Hasan Aroeboesman', city: 'Ende', lat: -8.8489, lon: 121.6639 },
+    TMC: { code: 'TMC', name: 'Tambolaka', city: 'Waikabubak', lat: -9.4103, lon: 119.2447 },
+    RTG: { code: 'RTG', name: 'Frans Sales Lega', city: 'Ruteng', lat: -8.5983, lon: 120.4744 },
+    WGP: { code: 'WGP', name: 'Umbu Mehang Kunda', city: 'Waingapu', lat: -9.6678, lon: 120.3017 },
+    LWE: { code: 'LWE', name: 'Wunopito', city: 'Lewoleba', lat: -8.3667, lon: 123.4667 },
+    ALR: { code: 'ALR', name: 'Mali', city: 'Alor', lat: -8.2167, lon: 124.5667 },
+    ARD: { code: 'ARD', name: 'Alor Island', city: 'Alor', lat: -8.2917, lon: 124.5750 },
+    BJW: { code: 'BJW', name: 'Soa', city: 'Bajawa', lat: -8.7000, lon: 120.9667 },
+    TLI: { code: 'TLI', name: 'Sultan Bantilan', city: 'Toli-Toli', lat: 1.0500, lon: 120.7833 },
+    KBU: { code: 'KBU', name: 'Gusti Syamsir Alam', city: 'Kotabaru', lat: -3.2989, lon: 116.1622 },
+    BTW: { code: 'BTW', name: 'Batulicin', city: 'Batulicin', lat: -3.4500, lon: 116.0000 },
+    SMQ: { code: 'SMQ', name: 'Sampit', city: 'Sampit', lat: -2.5006, lon: 112.9739 },
+    MTW: { code: 'MTW', name: 'Muara Teweh', city: 'Muara Teweh', lat: -0.9500, lon: 114.8833 },
+    TJS: { code: 'TJS', name: 'Tanjung Harapan', city: 'Tanjung Selor', lat: 2.8333, lon: 117.3667 },
+    NPO: { code: 'NPO', name: 'Nanga Pinoh', city: 'Nanga Pinoh', lat: -0.3500, lon: 111.7500 },
+    SQG: { code: 'SQG', name: 'Susilo', city: 'Sintang', lat: 0.0667, lon: 111.5000 },
+    KTG: { code: 'KTG', name: 'Rahadi Oesman', city: 'Ketapang', lat: -1.8167, lon: 109.9667 },
+    TTR: { code: 'TTR', name: 'Tanah Grogot', city: 'Tana Paser', lat: -1.9000, lon: 116.2000 },
+    DUM: { code: 'DUM', name: 'Pinang Kampai', city: 'Dumai', lat: 1.6167, lon: 101.4500 },
+    RGT: { code: 'RGT', name: 'Japura', city: 'Rengat', lat: -0.3500, lon: 102.3167 },
+    GNS: { code: 'GNS', name: 'Binaka', city: 'Gunungsitoli', lat: 1.1667, lon: 97.7000 },
+    FLZ: { code: 'FLZ', name: 'Sibolga', city: 'Sibolga', lat: 1.5500, lon: 98.8833 },
+    MEQ: { code: 'MEQ', name: 'Cut Nyak Dien', city: 'Nagan Raya', lat: 4.0500, lon: 96.2500 },
+    LSW: { code: 'LSW', name: 'Malikus Saleh', city: 'Lhokseumawe', lat: 5.2333, lon: 97.0500 },
+    SBG: { code: 'SBG', name: 'Maimun Saleh', city: 'Sabang', lat: 5.8667, lon: 95.3333 },
+    SIW: { code: 'SIW', name: 'Sibisa', city: 'Ajibata', lat: 2.6000, lon: 99.0167 },
 };
 
 function fdrDashboardController() {
@@ -1953,6 +2021,9 @@ function fdrDashboardController() {
         _networkMap: null,
         _networkRouteLayer: null,
         _networkNodeLayer: null,
+        _networkMapResizeObserver: null,
+        basemapUnavailable: false,
+        tileLayerLoaded: false,
         lockedAirport: '{{ strtoupper(trim($meta['report_airport'] ?? ($meta['airport'] ?? ($airports[0] ?? 'CGK')))) }}',
         abortController: null,
         availableDates: @json($availableDates),
@@ -3355,6 +3426,7 @@ function fdrDashboardController() {
                     _fdrCharts[k] = null;
                 }
             });
+            this.destroyNetworkMap();
             this.$nextTick(() => {
                 this.initAllCharts();
                 this.renderNetworkMap();
@@ -4537,12 +4609,37 @@ function fdrDashboardController() {
             return this.getBusiestRoutes();
         },
 
+        getNetworkUniqueRouteCount() {
+            const routes = this.getNetworkRoutes();
+            const uniqueKeys = new Set();
+            routes.forEach(r => {
+                let c1 = r.origin ? r.origin.trim().toUpperCase() : null;
+                let c2 = r.destination ? r.destination.trim().toUpperCase() : null;
+                if ((!c1 || !c2) && r.route) {
+                    const parts = r.route.split(/[\s\-→]+/);
+                    if (parts.length >= 2) {
+                        c1 = parts[0].trim().toUpperCase();
+                        c2 = parts[1].trim().toUpperCase();
+                    }
+                }
+                if (c1 && c2) {
+                    uniqueKeys.add(`${c1}|${c2}`);
+                }
+            });
+            return uniqueKeys.size || routes.length;
+        },
+
+        getNetworkMappedCount() {
+            return this.getNetworkRouteLines().length;
+        },
+
         getNetworkAirportDictionary() {
             const dict = Object.assign({}, INJOURNEY_AIRPORTS_STATIC, (window.fdrEngine && window.fdrEngine.INJOURNEY_AIRPORTS) || {});
             const serverAirports = this.airlineRoute && this.airlineRoute.network_airports ? this.airlineRoute.network_airports : {};
 
-            Object.keys(serverAirports).forEach((code) => {
-                const item = serverAirports[code] || {};
+            Object.keys(serverAirports).forEach((rawCode) => {
+                const code = rawCode.trim().toUpperCase();
+                const item = serverAirports[rawCode] || {};
                 const lat = Number(item.lat);
                 const lon = Number(item.lon);
                 if (Number.isFinite(lat) && Number.isFinite(lon)) {
@@ -4559,57 +4656,12 @@ function fdrDashboardController() {
             return dict;
         },
 
-        getNetworkAirportNodes() {
-            const dict = this.getNetworkAirportDictionary();
-            const hub = this.filters.airport || this.lockedAirport || 'CGK';
-            const connectedAirports = new Set();
-            this.getNetworkRoutes().forEach(r => {
-                const c1 = r.origin ? r.origin.trim().toUpperCase() : null;
-                const c2 = r.destination ? r.destination.trim().toUpperCase() : null;
-                if (c1) connectedAirports.add(c1);
-                if (c2) connectedAirports.add(c2);
-                if ((!c1 || !c2) && r.route) {
-                    const parts = r.route.split(/[\s\-→]+/);
-                    parts.forEach(p => connectedAirports.add(p.trim().toUpperCase()));
-                }
-            });
-            connectedAirports.add(hub);
-
-            return Object.keys(dict).map(code => {
-                const info = dict[code];
-                const pt = this.projectGeo(info.lon, info.lat, code);
-                const isHub = code === hub;
-                const isActive = isHub || connectedAirports.has(code);
-                return {
-                    code,
-                    name: info.name,
-                    city: info.city,
-                    x: pt.x,
-                    y: pt.y,
-                    isHub,
-                    isActive,
-                    flightsCount: isHub ? (this.kpis ? this.kpis.total_flights || 0 : 0) : 0,
-                };
-            });
-        },
-
         getNetworkActiveEndpointCount() {
-            const routes = this.getNetworkRoutes();
+            const lines = this.getNetworkRouteLines();
             const set = new Set();
-            routes.forEach(r => {
-                let c1 = r.origin ? r.origin.trim().toUpperCase() : null;
-                let c2 = r.destination ? r.destination.trim().toUpperCase() : null;
-                if (!c1 || !c2) {
-                    if (r.route) {
-                        const parts = r.route.split(/[\s\-→]+/);
-                        if (parts.length >= 2) {
-                            c1 = parts[0].trim().toUpperCase();
-                            c2 = parts[1].trim().toUpperCase();
-                        }
-                    }
-                }
-                if (c1) set.add(c1);
-                if (c2) set.add(c2);
+            lines.forEach(l => {
+                if (l.origin) set.add(l.origin);
+                if (l.destination) set.add(l.destination);
             });
             return set.size;
         },
@@ -4638,6 +4690,7 @@ function fdrDashboardController() {
 
                 const fltCount = r.flights || r.count || r.movements || r.total_flights || 1;
                 const paxCount = r.pax != null ? r.pax : (r.passengers || r.totalPax || 0);
+                const cargoWeight = r.cargo != null ? r.cargo : (r.totalCargo || r.cargo_kg || 0);
                 const lfStr = r.avg_load_factor || (r.avgLf != null ? r.avgLf + '%' : (r.slf != null ? r.slf + '%' : 'N/A'));
                 const avgDel = r.avg_delay != null ? r.avg_delay : (r.avgDelay != null ? r.avgDelay : (r.avg_delay_min || 0));
 
@@ -4647,6 +4700,7 @@ function fdrDashboardController() {
                     destination: c2,
                     flights: fltCount,
                     pax: paxCount,
+                    cargo: cargoWeight,
                     slf: lfStr,
                     avgDelay: avgDel,
                     title: `${c1} → ${c2}: ${fltCount} flights • ${paxCount.toLocaleString()} Pax • LF ${lfStr} • Delay +${avgDel}m`,
@@ -4675,28 +4729,78 @@ function fdrDashboardController() {
                 L.Icon.Default.imagePath = '{{ asset("vendor/leaflet/images/") }}/';
             }
 
-            // Professional aviation basemap centered on Indonesian archipelago
+            // Basemap centered on Indonesian archipelago
             const map = L.map('injourney-network-map', {
                 center: [-2.5, 118.0],
                 zoom: 5,
                 minZoom: 2,
-                maxZoom: 14,
+                maxZoom: 18,
                 zoomControl: true,
                 attributionControl: true,
                 preferCanvas: true
             });
 
-            // OpenStreetMap tiles showing coastlines, geography, oceans, and territorial context
-            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            // Standard OpenStreetMap tiles (Prompt Item 2, 8)
+            const tileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 18,
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
-            }).addTo(map);
+            });
+
+            tileLayer.on('tileload', () => {
+                this.tileLayerLoaded = true;
+                this.basemapUnavailable = false;
+            });
+
+            tileLayer.on('tileerror', (error) => {
+                console.warn('[FDR Route Network] Basemap tile error:', error);
+                if (!this.tileLayerLoaded) {
+                    this.basemapUnavailable = true;
+                }
+            });
+
+            tileLayer.addTo(map);
 
             this._networkRouteLayer = L.layerGroup().addTo(map);
             this._networkNodeLayer = L.layerGroup().addTo(map);
             this._networkMap = map;
 
+            // Attach ResizeObserver to container (§5)
+            if (typeof ResizeObserver !== 'undefined' && !this._networkMapResizeObserver) {
+                this._networkMapResizeObserver = new ResizeObserver(() => {
+                    if (this._networkMap) {
+                        this._networkMap.invalidateSize(false);
+                    }
+                });
+                this._networkMapResizeObserver.observe(container);
+            }
+
+            // Window resize handler (§4)
+            window.addEventListener('resize', () => {
+                if (this._networkMap) {
+                    this._networkMap.invalidateSize(false);
+                }
+            });
+
             return map;
+        },
+
+        destroyNetworkMap() {
+            if (this._networkMapResizeObserver) {
+                try {
+                    this._networkMapResizeObserver.disconnect();
+                } catch (e) {}
+                this._networkMapResizeObserver = null;
+            }
+            if (this._networkMap) {
+                try {
+                    this._networkMap.remove();
+                } catch (e) {
+                    console.warn('[FDR Route Network] Error destroying map:', e);
+                }
+                this._networkMap = null;
+                this._networkRouteLayer = null;
+                this._networkNodeLayer = null;
+            }
         },
 
         calculateCurvedGeoPoints(lat1, lon1, lat2, lon2, curvature = 0.16) {
@@ -4749,7 +4853,7 @@ function fdrDashboardController() {
             if (!this._networkRouteLayer) this._networkRouteLayer = L.layerGroup().addTo(map);
             if (!this._networkNodeLayer) this._networkNodeLayer = L.layerGroup().addTo(map);
 
-            // Clear previous layers
+            // Clear previous layers (§18, §19)
             this._networkRouteLayer.clearLayers();
             this._networkNodeLayer.clearLayers();
 
@@ -4759,7 +4863,9 @@ function fdrDashboardController() {
 
             const activeAirportCodes = new Set();
             const airportMovementCounts = {};
+            const airportConnectedRoutes = {};
             const activeBoundsPoints = [];
+            const uniqueRouteKeys = new Set();
 
             const validLines = [];
             let mappedRoutesCount = 0;
@@ -4779,12 +4885,14 @@ function fdrDashboardController() {
                 }
                 if (!c1 || !c2) return;
 
+                const routeKey = `${c1}|${c2}`;
+                uniqueRouteKeys.add(routeKey);
+
                 const a1 = dict[c1];
                 const a2 = dict[c2];
 
                 if (!a1 || !a2 || !Number.isFinite(a1.lat) || !Number.isFinite(a1.lon) || !Number.isFinite(a2.lat) || !Number.isFinite(a2.lon)) {
                     unmappedRoutesCount++;
-                    console.warn(`[FDR Route Network] Unmapped route: ${c1} → ${c2} (Missing coordinates for ${!a1 ? c1 : c2})`);
                     return;
                 }
 
@@ -4796,7 +4904,11 @@ function fdrDashboardController() {
                 airportMovementCounts[c1] = (airportMovementCounts[c1] || 0) + fltCount;
                 airportMovementCounts[c2] = (airportMovementCounts[c2] || 0) + fltCount;
 
+                airportConnectedRoutes[c1] = (airportConnectedRoutes[c1] || 0) + 1;
+                airportConnectedRoutes[c2] = (airportConnectedRoutes[c2] || 0) + 1;
+
                 const paxCount = r.pax != null ? r.pax : (r.passengers || r.totalPax || 0);
+                const cargoWeight = r.cargo != null ? r.cargo : (r.totalCargo || r.cargo_kg || 0);
                 const lfStr = r.avg_load_factor || (r.avgLf != null ? r.avgLf + '%' : (r.slf != null ? r.slf + '%' : 'N/A'));
                 const avgDel = r.avg_delay != null ? r.avg_delay : (r.avgDelay != null ? r.avgDelay : (r.avg_delay_min || 0));
 
@@ -4806,6 +4918,7 @@ function fdrDashboardController() {
                     destination: c2,
                     flights: fltCount,
                     pax: paxCount,
+                    cargo: cargoWeight,
                     slf: lfStr,
                     avgDelay: avgDel,
                     a1,
@@ -4813,23 +4926,31 @@ function fdrDashboardController() {
                 });
             });
 
-            // Diagnostic data contract logging (§17)
-            console.log('[FDR Route Network]', {
-                upload_id: this.uploadId,
-                report_type: this.activeReportType,
-                filtered_records: this.totalRecords,
-                unique_routes: routes.length,
-                unique_airports: activeAirportCodes.size,
-                mapped_routes: mappedRoutesCount,
-                unmapped_routes: unmappedRoutesCount
-            });
+            const uniqueRoutesCount = uniqueRouteKeys.size || routes.length;
 
-            // 1. Draw Directional Curved Trajectories
+            // Diagnostic data contract logging (§25)
+            console.group("FDR ROUTE MAP");
+            console.log({
+                uploadId: this.uploadId,
+                uniqueRoutes: uniqueRoutesCount,
+                mappedRoutes: mappedRoutesCount,
+                endpoints: activeAirportCodes.size,
+                mapWidth: container.clientWidth,
+                mapHeight: container.clientHeight,
+                tileLayerLoaded: this.tileLayerLoaded,
+                routeLayerCount: validLines.length,
+                markerLayerCount: this._networkNodeLayer ? this._networkNodeLayer.getLayers().length : 0
+            });
+            console.groupEnd();
+
+            // 1. Draw Directional Curved Trajectories (§12, §13, §14)
             validLines.forEach((line) => {
                 const curvedPoints = this.calculateCurvedGeoPoints(line.a1.lat, line.a1.lon, line.a2.lat, line.a2.lon);
 
-                const strokeWidth = Math.max(2, Math.min(5.5, (line.flights / 35) + 1.8));
-                const strokeOpacity = Math.max(0.65, Math.min(0.92, (line.flights / 60) + 0.55));
+                // Line thickness according to flight volume (§14)
+                // Low (<15): 2px, Medium (15-50): 3px, High (>50): 4-6px
+                const strokeWidth = line.flights > 50 ? Math.min(6, 4 + Math.round(line.flights / 100)) : (line.flights > 15 ? 3 : 2);
+                const strokeOpacity = Math.max(0.70, Math.min(0.95, 0.65 + (line.flights / 80)));
 
                 const polyline = L.polyline(curvedPoints, {
                     color: '#0284C7',
@@ -4840,16 +4961,18 @@ function fdrDashboardController() {
                     smoothFactor: 1.0
                 });
 
+                // Tooltip for route (§16)
                 const tooltipContent = `
                     <div style="font-weight:800; font-size:12px; color:#38BDF8; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
                         <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#38BDF8;"></span>
-                        ${line.route}
+                        ${line.origin} → ${line.destination}
                     </div>
-                    <div style="font-family:monospace; font-size:11px; line-height:1.5;">
-                        <div>Total Flights: <strong style="color:#FFFFFF;">${line.flights} flt</strong></div>
-                        <div>Total Pax: <strong style="color:#FFFFFF;">${line.pax.toLocaleString()}</strong></div>
-                        <div>Avg SLF: <strong style="color:#34D399;">${line.slf}</strong></div>
-                        <div>Avg Delay: <strong style="color:#FBBF24;">+${line.avgDelay} min</strong></div>
+                    <div style="font-family:monospace; font-size:11px; line-height:1.6;">
+                        <div>Flights: <strong style="color:#FFFFFF;">${line.flights}</strong></div>
+                        <div>Passengers: <strong style="color:#FFFFFF;">${line.pax.toLocaleString()}</strong></div>
+                        <div>Cargo: <strong style="color:#FFFFFF;">${line.cargo > 0 ? line.cargo.toLocaleString() + ' kg' : 'N/A'}</strong></div>
+                        <div>Average Delay: <strong style="color:#FBBF24;">+${line.avgDelay} min</strong></div>
+                        <div>Average SLF: <strong style="color:#34D399;">${line.slf}</strong></div>
                     </div>
                 `;
                 polyline.bindTooltip(tooltipContent, {
@@ -4881,7 +5004,7 @@ function fdrDashboardController() {
 
                 polyline.addTo(this._networkRouteLayer);
 
-                // Add directional arrowhead marker at ~72% along trajectory
+                // Add directional arrowhead marker at ~72% along trajectory (§13)
                 if (curvedPoints.length >= 8) {
                     const idxArrow = Math.floor(curvedPoints.length * 0.72);
                     const pA = curvedPoints[idxArrow - 1];
@@ -4905,7 +5028,7 @@ function fdrDashboardController() {
                 }
             });
 
-            // 2. Draw Airport Nodes
+            // 2. Draw Airport Nodes (§15)
             Object.keys(dict).forEach((code) => {
                 const info = dict[code];
                 if (!info || !Number.isFinite(info.lat) || !Number.isFinite(info.lon)) return;
@@ -4960,13 +5083,18 @@ function fdrDashboardController() {
                     zIndexOffset: isHub ? 1000 : (isActive ? 500 : 10)
                 });
 
+                // Tooltip for airport (§17)
                 const airportTooltip = `
                     <div style="font-weight:800; font-size:12px; color:${isHub ? '#38BDF8' : '#60A5FA'}; margin-bottom:2px;">
-                        ${code} — ${info.name || code}
+                        Airport: <strong>${code}</strong>
                     </div>
-                    <div style="font-size:11px; color:#94A3B8;">${info.city || ''}</div>
-                    <div style="font-weight:700; font-size:11px; color:#34D399; margin-top:4px;">
-                        ${totalFlights.toLocaleString()} Connected Movements
+                    <div style="font-size:11px; color:#94A3B8;">Name: ${info.name || code}</div>
+                    <div style="font-size:11px; color:#94A3B8;">City: ${info.city || ''}</div>
+                    <div style="font-weight:700; font-size:11px; color:#34D399; margin-top:3px;">
+                        Connected Routes: ${airportConnectedRoutes[code] || 0}
+                    </div>
+                    <div style="font-weight:700; font-size:11px; color:#38BDF8;">
+                        Movements: ${totalFlights.toLocaleString()}
                     </div>
                 `;
                 marker.bindTooltip(airportTooltip, {
@@ -4995,9 +5123,9 @@ function fdrDashboardController() {
             // 3. Auto-Fit Bounds (§9)
             if (activeBoundsPoints.length >= 2) {
                 map.fitBounds(L.latLngBounds(activeBoundsPoints), {
-                    padding: [45, 45],
+                    padding: [30, 30],
                     maxZoom: 8,
-                    animate: true
+                    animate: false
                 });
             } else if (activeBoundsPoints.length === 1) {
                 map.setView(activeBoundsPoints[0], 6);
@@ -5005,13 +5133,14 @@ function fdrDashboardController() {
                 map.setView([-2.5, 118.0], 5);
             }
 
-            // Invalidate size to guarantee sharp tile alignment (§16)
+            // Invalidate size across lifecycle phases (§4)
+            map.invalidateSize(true);
             setTimeout(() => {
-                if (map) map.invalidateSize();
+                if (map) map.invalidateSize(true);
             }, 100);
             setTimeout(() => {
-                if (map) map.invalidateSize();
-            }, 350);
+                if (map) map.invalidateSize(true);
+            }, 300);
         },
 
         getExportUrl(type) {
