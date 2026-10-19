@@ -2828,6 +2828,7 @@ function fdrDashboardController() {
                 this.computeClientHourlyAndTrends(filtered);
                 this.$nextTick(() => {
                     this.initAllCharts();
+                    this.renderNetworkMap();
                 });
                 return;
             }
@@ -3224,6 +3225,7 @@ function fdrDashboardController() {
             });
             this.$nextTick(() => {
                 this.initAllCharts();
+                this.renderNetworkMap();
             });
         },
 
