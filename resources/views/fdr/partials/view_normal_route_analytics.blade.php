@@ -180,78 +180,29 @@
                     Mapped <strong class="text-slate-800" x-text="getNetworkRouteLines().length"></strong>
                 </span>
                 <span class="px-2 py-1 rounded-lg bg-slate-50 border border-slate-200">
-                    Endpoints <strong class="text-slate-800" x-text="Object.keys((airlineRoute && airlineRoute.network_airports) || {}).length"></strong>
+                    Endpoints <strong class="text-slate-800" x-text="getNetworkActiveEndpointCount()"></strong>
                 </span>
             </div>
             <div class="flex items-center gap-3 text-xs">
                 <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span> Active Hub</span>
                 <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Connected Station</span>
-                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-slate-600"></span> Regional Station</span>
-                <span class="flex items-center gap-1.5"><span class="w-4 h-0.5 bg-cyan-400"></span> Trajectory</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-slate-400"></span> Regional Station</span>
+                <span class="flex items-center gap-1.5"><span class="w-4 h-0.5 bg-sky-500"></span> Trajectory</span>
             </div>
         </div>
 
-        {{-- SVG Map Canvas (min-h-[380px] w-full) --}}
-        <div class="w-full min-h-[380px] h-[380px] rounded-2xl bg-slate-950 relative overflow-hidden flex items-center justify-center p-2 select-none shadow-2xl border border-slate-900" id="injourney-network-container">
-            <svg class="w-full h-full" viewBox="0 0 1000 420" preserveAspectRatio="xMidYMid meet">
-                <defs>
-                    <linearGradient id="routeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.9" />
-                        <stop offset="100%" stop-color="#2563EB" stop-opacity="0.4" />
-                    </linearGradient>
-                    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-                        <feMerge>
-                            <feMergeNode in="coloredBlur"/>
-                            <feMergeNode in="SourceGraphic"/>
-                        </feMerge>
-                    </filter>
-                    <marker id="routeArrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#38BDF8" opacity="0.95"/>
-                    </marker>
-                </defs>
+        {{-- Leaflet Geographic Map Canvas (explicit height 440px) --}}
+        <div class="w-full rounded-2xl relative overflow-hidden select-none shadow-sm border border-slate-200 bg-slate-100" id="injourney-network-container" style="height: 440px; min-height: 420px; width: 100%; position: relative;">
+            <div id="injourney-network-map" class="w-full h-full" style="height: 100%; min-height: 420px; width: 100%; position: relative; z-index: 1;"></div>
 
-                {{-- Archipelago background grid with coordinate labels --}}
-                <g opacity="0.08" stroke="#FFFFFF" stroke-width="0.5">
-                    <line x1="30" y1="70" x2="970" y2="70" />
-                    <line x1="30" y1="140" x2="970" y2="140" />
-                    <line x1="30" y1="210" x2="970" y2="210" />
-                    <line x1="30" y1="280" x2="970" y2="280" />
-                    <line x1="30" y1="350" x2="970" y2="350" />
-                    <line x1="120" y1="30" x2="120" y2="390" />
-                    <line x1="280" y1="30" x2="280" y2="390" />
-                    <line x1="440" y1="30" x2="440" y2="390" />
-                    <line x1="600" y1="30" x2="600" y2="390" />
-                    <line x1="760" y1="30" x2="760" y2="390" />
-                    <line x1="920" y1="30" x2="920" y2="390" />
-                </g>
-
-                {{-- Subtle coordinate text markers --}}
-                <g font-size="8" font-family="monospace" fill="#334155" opacity="0.6">
-                    <text x="35" y="66">20°N</text>
-                    <text x="35" y="136">10°N</text>
-                    <text x="35" y="206">0° (Equator)</text>
-                    <text x="35" y="276">10°S</text>
-                    <text x="35" y="346">20°S</text>
-                    <text x="282" y="405">100°E</text>
-                    <text x="442" y="405">110°E</text>
-                    <text x="602" y="405">120°E</text>
-                    <text x="762" y="405">130°E</text>
-                    <text x="922" y="405">140°E</text>
-                </g>
-
-                {{-- Flight Route Directional Curves (Origin -> Destination) --}}
-                <g id="network-route-layer"></g>
-
-                {{-- Airport Nodes (35 InJourney Stations + Active Destinations) --}}
-                <g id="network-node-layer"></g>
-            </svg>
-
-            {{-- Empty route data overlay (§12) --}}
+            {{-- Empty route data overlay (§14) --}}
             <div x-show="getNetworkRouteLines().length === 0"
-                 class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-xs text-slate-400 z-10 pointer-events-none">
-                <svg class="w-8 h-8 text-slate-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                <span class="text-xs font-semibold text-slate-400">No route data for current filter.</span>
+                 class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/40 backdrop-blur-xs text-white z-10 pointer-events-none">
+                <div class="bg-slate-900/90 border border-slate-700/80 rounded-xl px-5 py-4 text-center shadow-xl space-y-1">
+                    <svg class="w-7 h-7 text-sky-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    <div class="text-xs font-bold text-slate-100">No route data for current filter.</div>
+                    <div class="text-[10px] text-slate-400">Adjust active filter chips to inspect operational trajectories.</div>
+                </div>
             </div>
 
             {{-- Floating Interactive HUD Card for Routes --}}
