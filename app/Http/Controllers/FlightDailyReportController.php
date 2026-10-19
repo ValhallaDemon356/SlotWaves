@@ -512,8 +512,15 @@ class FlightDailyReportController extends Controller
 
             // Idempotency: If already completed, verify database rows exist before returning READY
             if ($job->status === 'READY') {
+                $isZeroStateOrAggregate = (
+                    ($job->report_type ?? '') === 'EX_HALIM' ||
+                    in_array(($job->report_type ?? ''), ['COMPARE_LOAD_FACTOR', 'COMPARE_LOAD_FACTOR_DAY']) ||
+                    !empty($job->diagnostics['zero_state']) ||
+                    !empty($job->diagnostics['aggregate_rows'])
+                );
+
                 $totalInDb = FdrFlight::where('upload_id', $job->upload_id)->count();
-                if ($totalInDb === 0) {
+                if ($totalInDb === 0 && !$isZeroStateOrAggregate) {
                     $job->update([
                         'status'        => 'FAILED',
                         'stage'         => 'FAILED',
@@ -670,7 +677,9 @@ class FlightDailyReportController extends Controller
                     ], 422);
                 }
 
+                $template = $validation['detected_template'] ?? ($validation['template'] ?? 'NORMAL');
                 $job->update([
+                    'report_type' => $template,
                     'status' => 'PARSING',
                     'stage' => 'PARSING',
                     'stage_label' => 'Reading OASYS Flight Daily Report...',
@@ -681,10 +690,208 @@ class FlightDailyReportController extends Controller
                             'detected_format' => $validation['detected_format'] ?? 'OASYS HTML XLS',
                             'source_file_size' => $actualSize,
                             'source_summary' => $validation['summary'] ?? [],
+                            'report_type' => $template,
+                            'template_type' => $template,
                         ]
                     ),
                     'file_size' => $actualSize,
                 ]);
+
+                // Dedicated handling for non-movement templates:
+                if ($template === 'EX_HALIM') {
+                    $parsed = $this->parser->parse($fullPath);
+                    $meta = array_merge($job->meta ?? [], $parsed['meta'] ?? [], [
+                        'zero_state' => true,
+                        'is_valid_zero_data' => true,
+                        'zero_state_title' => '0 Ex-Halim movements for selected period',
+                        'report_type' => 'EX_HALIM',
+                        'template_type' => 'EX_HALIM',
+                    ]);
+                    $upload = Upload::find($job->upload_id);
+                    if ($upload) {
+                        $upload->update([
+                            'status'             => 'completed',
+                            'report_type'        => 'fdr',
+                            'total_rows'         => 0,
+                            'valid_rows'         => 0,
+                            'invalid_rows'       => 0,
+                            'duplicate_rows'     => 0,
+                            'parsing_confidence' => 1.0,
+                            'validation_summary' => ['valid' => true, 'zero_state' => true],
+                            'report_data'        => [
+                                'meta'            => $meta,
+                                'records'         => [],
+                                'summary'         => $parsed['summary'] ?? [],
+                                'detected_format' => 'OASYS HTML XLS',
+                                'report_type'     => 'EX_HALIM',
+                                'template_type'   => 'EX_HALIM',
+                            ],
+                        ]);
+                        session(['fdr_active_upload_id' => $upload->id]);
+                    }
+                    if (isset($localTmpPath) && file_exists($localTmpPath)) {
+                        @unlink($localTmpPath);
+                    }
+                    $resultUrl = route('fdr.dashboard', ['upload' => $job->upload_id]);
+                    $job->update([
+                        'status'         => 'READY',
+                        'stage'          => 'READY',
+                        'stage_label'    => 'Ready (Valid Zero Movements)',
+                        'progress'       => 100,
+                        'processed_rows' => 0,
+                        'total_rows'     => 0,
+                        'report_type'    => 'EX_HALIM',
+                        'diagnostics'    => [
+                            'source_exists' => true,
+                            'movement_rows' => 0,
+                            'database_rows' => 0,
+                            'summary_rows'  => 1,
+                            'zero_state'    => true,
+                            'template'      => 'EX_HALIM',
+                        ],
+                        'result_url'     => $resultUrl,
+                        'completed_at'   => now(),
+                    ]);
+                    return response()->json([
+                        'success'        => true,
+                        'status'         => 'READY',
+                        'stage'          => 'READY',
+                        'progress'       => 100,
+                        'stage_label'    => 'Ready (Valid Zero Movements)',
+                        'movement_rows'  => 0,
+                        'processed_rows' => 0,
+                        'summary_rows'   => 1,
+                        'result_url'     => $resultUrl,
+                    ]);
+                }
+
+                if ($template === 'COMPARE_LOAD_FACTOR' || $template === 'COMPARE_LOAD_FACTOR_DAY') {
+                    $parsed = $this->parser->parse($fullPath);
+                    $compRows = $parsed['comparison_rows'] ?? ($parsed['records'] ?? []);
+                    $meta = array_merge($job->meta ?? [], $parsed['meta'] ?? [], [
+                        'report_type' => $template,
+                        'template_type' => $template,
+                    ]);
+                    $upload = Upload::find($job->upload_id);
+                    if ($upload) {
+                        $upload->update([
+                            'status'             => 'completed',
+                            'report_type'        => 'fdr',
+                            'total_rows'         => count($compRows),
+                            'valid_rows'         => count($compRows),
+                            'invalid_rows'       => 0,
+                            'duplicate_rows'     => 0,
+                            'parsing_confidence' => 1.0,
+                            'validation_summary' => ['valid' => true],
+                            'report_data'        => [
+                                'meta'            => $meta,
+                                'records'         => $compRows,
+                                'comparison_rows' => $compRows,
+                                'summary'         => $parsed['summary'] ?? [],
+                                'detected_format' => 'OASYS HTML XLS',
+                                'report_type'     => $template,
+                                'template_type'   => $template,
+                            ],
+                        ]);
+                        session(['fdr_active_upload_id' => $upload->id]);
+                    }
+                    if (isset($localTmpPath) && file_exists($localTmpPath)) {
+                        @unlink($localTmpPath);
+                    }
+                    $resultUrl = route('fdr.dashboard', ['upload' => $job->upload_id]);
+                    $job->update([
+                        'status'         => 'READY',
+                        'stage'          => 'READY',
+                        'stage_label'    => 'Ready',
+                        'progress'       => 100,
+                        'processed_rows' => count($compRows),
+                        'total_rows'     => count($compRows),
+                        'report_type'    => $template,
+                        'diagnostics'    => [
+                            'source_exists'  => true,
+                            'aggregate_rows' => count($compRows),
+                            'template'       => $template,
+                        ],
+                        'result_url'     => $resultUrl,
+                        'completed_at'   => now(),
+                    ]);
+                    return response()->json([
+                        'success'        => true,
+                        'status'         => 'READY',
+                        'stage'          => 'READY',
+                        'progress'       => 100,
+                        'stage_label'    => 'Ready',
+                        'movement_rows'  => count($compRows),
+                        'processed_rows' => count($compRows),
+                        'result_url'     => $resultUrl,
+                    ]);
+                }
+
+                if ($template === 'LOAD_FACTOR' || $template === 'DEPARTURE_VS_APPS' || $template === 'OASYS_VS_EDIFLY') {
+                    $parsed = $this->parser->parse($fullPath);
+                    $records = $parsed['records'] ?? [];
+                    $meta = array_merge($job->meta ?? [], $parsed['meta'] ?? [], [
+                        'report_type' => $template,
+                        'template_type' => $template,
+                    ]);
+                    $upload = Upload::find($job->upload_id);
+                    $totalInserted = 0;
+                    if ($upload) {
+                        $totalInserted = $this->fdrDbService->syncUploadToDatabase($upload, $records, $meta);
+                        $upload->update([
+                            'status'             => 'completed',
+                            'report_type'        => 'fdr',
+                            'total_rows'         => $totalInserted,
+                            'valid_rows'         => $totalInserted,
+                            'invalid_rows'       => 0,
+                            'duplicate_rows'     => 0,
+                            'parsing_confidence' => 1.0,
+                            'validation_summary' => ['valid' => true],
+                            'report_data'        => [
+                                'meta'                  => $meta,
+                                'records'               => $records,
+                                'reconciliationMatrix'  => $parsed['reconciliationMatrix'] ?? null,
+                                'commentTotals'         => $parsed['commentTotals'] ?? null,
+                                'summary'               => $parsed['summary'] ?? [],
+                                'detected_format'       => 'OASYS HTML XLS',
+                                'report_type'           => $template,
+                                'template_type'         => $template,
+                            ],
+                        ]);
+                        session(['fdr_active_upload_id' => $upload->id]);
+                    }
+                    if (isset($localTmpPath) && file_exists($localTmpPath)) {
+                        @unlink($localTmpPath);
+                    }
+                    $resultUrl = route('fdr.dashboard', ['upload' => $job->upload_id, 'date_scope' => 'ALL_PERIOD']);
+                    $job->update([
+                        'status'         => 'READY',
+                        'stage'          => 'READY',
+                        'stage_label'    => 'Ready',
+                        'progress'       => 100,
+                        'processed_rows' => $totalInserted,
+                        'total_rows'     => $totalInserted,
+                        'report_type'    => $template,
+                        'diagnostics'    => [
+                            'source_exists'          => true,
+                            'movement_rows'          => $totalInserted,
+                            'database_rows'          => $totalInserted,
+                            'template'               => $template,
+                        ],
+                        'result_url'     => $resultUrl,
+                        'completed_at'   => now(),
+                    ]);
+                    return response()->json([
+                        'success'        => true,
+                        'status'         => 'READY',
+                        'stage'          => 'READY',
+                        'progress'       => 100,
+                        'stage_label'    => 'Ready',
+                        'movement_rows'  => $totalInserted,
+                        'processed_rows' => $totalInserted,
+                        'result_url'     => $resultUrl,
+                    ]);
+                }
             }
 
             // ── 2. Incremental Batch Processing Loop (Prompt Section 13 & 14) ──
@@ -1092,6 +1299,207 @@ class FlightDailyReportController extends Controller
         $data = $upload->report_data ?: [];
         $meta = $data['meta'] ?? [];
         $defaultAirport = strtoupper(trim($meta['report_airport'] ?? ($meta['airport'] ?? 'CGK')));
+        $reportType = $request->query('report_type', $data['report_type'] ?? ($meta['report_type'] ?? ($data['template_type'] ?? 'NORMAL')));
+
+        // Dedicated polymorphic dashboard for EX_HALIM (Valid zero data)
+        if ($reportType === 'EX_HALIM') {
+            $sourceSummary = [
+                'source_type'    => 'DAILY',
+                'period_start'   => $meta['period_start'] ?? date('Y-m-d'),
+                'period_end'     => $meta['period_end'] ?? date('Y-m-d'),
+                'period_label'   => $meta['period_label'] ?? 'Selected Period',
+                'days_available' => '1 Day',
+                'total_flights'  => 0,
+            ];
+            $scope = $this->resolveAnalysisScope($request, $sourceSummary, []);
+            $filters = [
+                'date_scope'     => 'ALL_PERIOD',
+                'analysis_level' => 'ALL_PERIOD',
+                'analysis_date'  => null,
+                'analysis_month' => null,
+                'analysis_year'  => null,
+                'airport'        => $defaultAirport ?: 'CGK',
+                'leg'            => 'ALL',
+                'operator'       => 'ALL',
+                'traffic'        => 'ALL',
+                'data_type'      => 'OPERATIONAL DATA',
+                'realization'    => 'ALL',
+                'flight_no'      => '',
+                'suffix'         => '',
+                'start_date'     => '',
+                'end_date'       => '',
+                'report_mode'    => 1,
+                'time_basis'     => 'actual',
+                'otp_tolerance'  => 15,
+                'search'         => '',
+                'v'              => time(),
+            ];
+            $filterResult = [
+                'source_count'   => 0,
+                'filtered_count' => 0,
+                'excluded_count' => 0,
+                'active_chips'   => [],
+                'reconciliation' => [
+                    'source_count'      => 0,
+                    'filtered_count'    => 0,
+                    'excluded_count'    => 0,
+                    'exclusion_reasons' => [],
+                ],
+            ];
+            $analytics = [
+                'kpis' => [
+                    'total_flights'            => 0,
+                    'scheduled_flights'        => 0,
+                    'actual_flights'           => 0,
+                    'arrivals'                 => 0,
+                    'total_arrivals'           => 0,
+                    'departures'               => 0,
+                    'total_departures'         => 0,
+                    'total_passengers'         => 0,
+                    'passenger_movement'       => 0,
+                    'direct_passengers'        => 0,
+                    'total_capacity'           => 0,
+                    'total_load'               => 0,
+                    'avg_load_factor'          => '0.0%',
+                    'load_factor_avg'          => 0,
+                    'avg_load_factor_num'      => 0,
+                    'weighted_load_factor_num' => 0,
+                    'passenger_utilization_num'=> 0,
+                    'total_cargo_kg'           => 0,
+                    'cargo_kg'                 => 0,
+                    'total_baggage_kg'         => 0,
+                    'baggage_kg'               => 0,
+                    'operating_crew'           => 0,
+                    'crew'                     => 0,
+                    'extra_crew'               => 0,
+                    'delayed_flights'          => 0,
+                    'irregular_flights'        => 0,
+                    'otp_percent'              => 0,
+                ],
+                'schedule_vs_realization' => [
+                    'histogram' => [],
+                    'hist_bins' => [],
+                ],
+                'passenger_analytics' => [],
+                'airline_route' => [
+                    'top_routes'          => [],
+                    'most_delayed_routes' => [],
+                    'highest_slf_routes'  => [],
+                    'suffix_distribution'=> [],
+                    'leg_subtypes'        => ['SCHED' => 0, 'UNSCHED' => 0, 'CARGO' => 0],
+                ],
+                'fleet_performance' => [],
+                'ground_operations' => [],
+            ];
+            $clientParsedData = [
+                'records'    => [],
+                'zero_state' => true,
+                'metadata'   => $meta,
+            ];
+
+            return view('fdr.dashboard', [
+                'upload'           => $upload,
+                'meta'             => $meta,
+                'reportType'       => 'EX_HALIM',
+                'filters'          => $filters,
+                'filterResult'     => $filterResult,
+                'analytics'        => $analytics,
+                'records'          => [],
+                'totalRecords'     => 0,
+                'airlines'         => [$meta['operator'] ?? 'GA'],
+                'airports'         => [$defaultAirport ?: 'CGK'],
+                'rawRecordsCount'  => 0,
+                'dateScope'        => 'ALL_PERIOD',
+                'analysisLevel'    => 'ALL_PERIOD',
+                'analysisDate'     => null,
+                'analysisMonth'    => null,
+                'analysisYear'     => null,
+                'sourceType'       => 'DAILY',
+                'availableDates'   => [],
+                'sourceSummary'    => $sourceSummary,
+                'timeBasis'        => 'actual',
+                'otpTolerance'     => 15,
+                'clientParsedData' => $clientParsedData,
+            ]);
+        }
+
+        // Dedicated polymorphic dashboard for COMPARE_LOAD_FACTOR & COMPARE_LOAD_FACTOR_DAY
+        if ($reportType === 'COMPARE_LOAD_FACTOR' || $reportType === 'COMPARE_LOAD_FACTOR_DAY') {
+            $compRows = $data['comparison_rows'] ?? ($data['records'] ?? []);
+            $sourceSummary = [
+                'source_type'    => 'AGGREGATE_COMPARISON',
+                'period_start'   => $meta['period_start'] ?? date('Y-m-d'),
+                'period_end'     => $meta['period_end'] ?? date('Y-m-d'),
+                'period_label'   => $meta['period_label'] ?? 'YoY Comparison',
+                'days_available' => count($compRows) . ' Rows',
+                'total_flights'  => count($compRows),
+            ];
+            $scope = $this->resolveAnalysisScope($request, $sourceSummary, []);
+            $filters = [
+                'date_scope'     => 'ALL_PERIOD',
+                'analysis_level' => 'ALL_PERIOD',
+                'analysis_date'  => null,
+                'analysis_month' => null,
+                'analysis_year'  => null,
+                'airport'        => $defaultAirport ?: 'CGK',
+                'leg'            => 'ALL',
+                'operator'       => 'ALL',
+                'traffic'        => 'ALL',
+                'data_type'      => 'OPERATIONAL DATA',
+                'realization'    => 'ALL',
+                'flight_no'      => '',
+                'suffix'         => '',
+                'start_date'     => '',
+                'end_date'       => '',
+                'report_mode'    => 1,
+                'time_basis'     => 'actual',
+                'otp_tolerance'  => 15,
+                'search'         => '',
+                'v'              => time(),
+            ];
+            $filterResult = [
+                'source_count'   => count($compRows),
+                'filtered_count' => count($compRows),
+                'excluded_count' => 0,
+                'active_chips'   => [],
+                'reconciliation' => [
+                    'source_count'      => count($compRows),
+                    'filtered_count'    => count($compRows),
+                    'excluded_count'    => 0,
+                    'exclusion_reasons' => [],
+                ],
+            ];
+            $clientParsedData = [
+                'records'         => $compRows,
+                'comparison_rows' => $compRows,
+                'metadata'        => $meta,
+            ];
+
+            return view('fdr.dashboard', [
+                'upload'           => $upload,
+                'meta'             => $meta,
+                'reportType'       => $reportType,
+                'filters'          => $filters,
+                'filterResult'     => $filterResult,
+                'analytics'        => ['kpis' => ['total_flights' => count($compRows)]],
+                'records'          => $compRows,
+                'totalRecords'     => count($compRows),
+                'airlines'         => [$meta['operator'] ?? 'GA'],
+                'airports'         => [$defaultAirport ?: 'CGK'],
+                'rawRecordsCount'  => count($compRows),
+                'dateScope'        => 'ALL_PERIOD',
+                'analysisLevel'    => 'ALL_PERIOD',
+                'analysisDate'     => null,
+                'analysisMonth'    => null,
+                'analysisYear'     => null,
+                'sourceType'       => 'AGGREGATE_COMPARISON',
+                'availableDates'   => [],
+                'sourceSummary'    => $sourceSummary,
+                'timeBasis'        => 'actual',
+                'otpTolerance'     => 15,
+                'clientParsedData' => $clientParsedData,
+            ]);
+        }
 
         $hasDb = $this->fdrDbService->hasDatabaseRecords($upload);
 
@@ -1227,28 +1635,46 @@ class FlightDailyReportController extends Controller
 
             $reportType = $request->query('report_type', $meta['report_type'] ?? ($upload->report_data['meta']['report_type'] ?? 'NORMAL'));
 
+            $clientParsedData = [
+                'records'              => $records,
+                'top_delayed_routes'   => $analytics['airline_route']['most_delayed_routes'] ?? [],
+                'most_delayed_routes'  => $analytics['airline_route']['most_delayed_routes'] ?? [],
+                'top_slf_routes'       => $analytics['airline_route']['highest_slf_routes'] ?? [],
+                'highest_slf_routes'   => $analytics['airline_route']['highest_slf_routes'] ?? [],
+                'suffix_distribution' => $analytics['airline_route']['suffix_distribution'] ?? [],
+                'leg_subtypes'         => $analytics['airline_route']['leg_subtypes'] ?? [],
+                'reconciliationMatrix' => $data['reconciliationMatrix'] ?? ($upload->report_data['reconciliationMatrix'] ?? null),
+                'commentTotals'        => $data['commentTotals'] ?? ($upload->report_data['commentTotals'] ?? null),
+                'metadata'             => array_merge($meta, [
+                    'totalSeatCapacity' => $analytics['kpis']['total_capacity'] ?? 0,
+                    'totalPax'          => $analytics['kpis']['total_passengers'] ?? 0,
+                    'avgSlf'            => $analytics['kpis']['load_factor_avg'] ?? 0,
+                ]),
+            ];
+
             return view('fdr.dashboard', [
-                'upload'          => $upload,
-                'meta'            => $meta,
-                'reportType'      => $reportType,
-                'filters'         => $filters,
-                'filterResult'    => $filterResult,
-                'analytics'       => $analytics,
-                'records'         => $records,
-                'totalRecords'    => $totalRecords,
-                'airlines'        => $airlines,
-                'airports'        => $airports,
-                'rawRecordsCount' => (int)$minMax->total_flights,
-                'dateScope'       => $scope['date_scope'],
-                'analysisLevel'   => $scope['analysis_level'],
-                'analysisDate'    => $scope['analysis_date'],
-                'analysisMonth'   => $scope['analysis_month'],
-                'analysisYear'    => $scope['analysis_year'],
-                'sourceType'      => $scope['source_type'],
-                'availableDates'  => $availableDates,
-                'sourceSummary'   => $sourceSummary,
-                'timeBasis'       => $filters['time_basis'],
-                'otpTolerance'    => $filters['otp_tolerance'],
+                'upload'           => $upload,
+                'meta'             => $meta,
+                'reportType'       => $reportType,
+                'filters'          => $filters,
+                'filterResult'     => $filterResult,
+                'analytics'        => $analytics,
+                'records'          => $records,
+                'totalRecords'     => $totalRecords,
+                'airlines'         => $airlines,
+                'airports'         => $airports,
+                'rawRecordsCount'  => (int)$minMax->total_flights,
+                'dateScope'        => $scope['date_scope'],
+                'analysisLevel'    => $scope['analysis_level'],
+                'analysisDate'     => $scope['analysis_date'],
+                'analysisMonth'    => $scope['analysis_month'],
+                'analysisYear'     => $scope['analysis_year'],
+                'sourceType'       => $scope['source_type'],
+                'availableDates'   => $availableDates,
+                'sourceSummary'    => $sourceSummary,
+                'timeBasis'        => $filters['time_basis'],
+                'otpTolerance'     => $filters['otp_tolerance'],
+                'clientParsedData' => $clientParsedData,
             ]);
         }
 
@@ -1329,28 +1755,47 @@ class FlightDailyReportController extends Controller
 
         $reportType = $request->query('report_type', $meta['report_type'] ?? ($upload->report_data['meta']['report_type'] ?? 'NORMAL'));
 
+        $clientParsedData = [
+            'records'              => array_slice($filteredRecords, 0, 50),
+            'kpis'                 => $analytics['kpis'] ?? [],
+            'totalRecords'         => count($filteredRecords),
+            'hourlyDistribution'   => $analytics['hourly_distribution'] ?? null,
+            'combinedTrend'        => $analytics['combined_trend'] ?? null,
+            'airlineRoute'         => $analytics['airline_route'] ?? null,
+            'airline_route'        => $analytics['airline_route'] ?? null,
+            'top_busiest_routes'   => $analytics['airline_route']['top_routes'] ?? ($analytics['airline_route']['top_busiest_routes'] ?? []),
+            'top_delayed_routes'   => $analytics['airline_route']['most_delayed_routes'] ?? [],
+            'most_delayed_routes'  => $analytics['airline_route']['most_delayed_routes'] ?? [],
+            'top_slf_routes'       => $analytics['airline_route']['highest_slf_routes'] ?? [],
+            'highest_slf_routes'   => $analytics['airline_route']['highest_slf_routes'] ?? [],
+            'suffix_distribution' => $analytics['airline_route']['suffix_distribution'] ?? [],
+            'leg_subtypes'         => $analytics['airline_route']['leg_subtypes'] ?? [],
+            'metadata'             => $meta,
+        ];
+
         return view('fdr.dashboard', [
-            'upload'          => $upload,
-            'meta'            => $meta,
-            'reportType'      => $reportType,
-            'filters'         => $filters,
-            'filterResult'    => $filterResult,
-            'analytics'       => $analytics,
-            'records'         => array_slice($filteredRecords, 0, 50),
-            'totalRecords'    => count($filteredRecords),
-            'airlines'        => array_keys($airlines),
-            'airports'        => $airports,
-            'rawRecordsCount' => count($rawRecords),
-            'dateScope'       => $scope['date_scope'],
-            'analysisLevel'   => $scope['analysis_level'],
-            'analysisDate'    => $scope['analysis_date'],
-            'analysisMonth'   => $scope['analysis_month'],
-            'analysisYear'    => $scope['analysis_year'],
-            'sourceType'      => $scope['source_type'],
-            'availableDates'  => $availableDates,
-            'sourceSummary'   => $sourceSummary,
-            'timeBasis'       => $filters['time_basis'],
-            'otpTolerance'    => $filters['otp_tolerance'],
+            'upload'           => $upload,
+            'meta'             => $meta,
+            'reportType'       => $reportType,
+            'filters'          => $filters,
+            'filterResult'     => $filterResult,
+            'analytics'        => $analytics,
+            'records'          => array_slice($filteredRecords, 0, 50),
+            'totalRecords'     => count($filteredRecords),
+            'airlines'         => array_keys($airlines),
+            'airports'         => $airports,
+            'rawRecordsCount'  => count($rawRecords),
+            'dateScope'        => $scope['date_scope'],
+            'analysisLevel'    => $scope['analysis_level'],
+            'analysisDate'     => $scope['analysis_date'],
+            'analysisMonth'    => $scope['analysis_month'],
+            'analysisYear'     => $scope['analysis_year'],
+            'sourceType'       => $scope['source_type'],
+            'availableDates'   => $availableDates,
+            'sourceSummary'    => $sourceSummary,
+            'timeBasis'        => $filters['time_basis'],
+            'otpTolerance'     => $filters['otp_tolerance'],
+            'clientParsedData' => $clientParsedData,
         ]);
     }
 

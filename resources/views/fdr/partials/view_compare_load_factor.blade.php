@@ -296,7 +296,7 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 font-mono text-[11px]">
-                    <template x-for="(r, idx) in getYoyRecords()" :key="idx">
+                    <template x-for="(r, idx) in getYoyRecords()" :key="r.airport ? (uploadId + '-yoy-' + r.airport + '-' + idx) : (uploadId + '-yoy-' + idx)">
                         <tr class="hover:bg-purple-50/30 transition">
                             <td class="py-2 px-3 text-slate-400 font-sans border-r border-slate-100" x-text="idx + 1"></td>
                             <td class="py-2 px-3 font-sans font-bold text-slate-800 border-r border-slate-100">

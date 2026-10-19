@@ -180,7 +180,7 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 font-mono text-[11px]">
-                    <template x-for="(r, idx) in getPaginatedEdiflyRecords()" :key="idx">
+                    <template x-for="(r, idx) in getPaginatedEdiflyRecords()" :key="r.id ? (uploadId + '-id-' + r.id) : (r.source_row_number ? (uploadId + '-srn-' + r.source_row_number) : (uploadId + '-edi-' + idx))">
                         <tr class="hover:bg-blue-50/40 transition">
                             <td class="py-2 px-3 text-slate-400 font-sans" x-text="((pagination.current_page - 1) * pagination.per_page) + idx + 1"></td>
                             <td class="py-2 px-3 font-sans font-bold text-slate-800" x-text="r.airline || r.air_line"></td>

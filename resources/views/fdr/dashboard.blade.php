@@ -160,13 +160,13 @@
             @include('fdr.partials.view_compare_load_factor')
         </template>
 
-        {{-- Case 4: OASYS_VS_APPS (16 Columns) --}}
-        <template x-if="activeReportType === 'OASYS_VS_APPS'">
+        {{-- Case 4: OASYS_VS_APPS / DEPARTURE_VS_APPS (16 Columns) --}}
+        <template x-if="activeReportType === 'OASYS_VS_APPS' || activeReportType === 'DEPARTURE_VS_APPS'">
             @include('fdr.partials.view_oasys_vs_apps')
         </template>
 
-        {{-- Case 5: OASYS_VS_EDIFLY (14 Columns) --}}
-        <template x-if="activeReportType === 'OASYS_VS_EDIFLY'">
+        {{-- Case 5: OASYS_VS_EDIFLY / OASYS_EDIFLY (14 Columns) --}}
+        <template x-if="activeReportType === 'OASYS_VS_EDIFLY' || activeReportType === 'OASYS_EDIFLY'">
             @include('fdr.partials.view_oasys_vs_edifly')
         </template>
 
@@ -1523,7 +1523,7 @@
                         </template>
 
                         {{-- 4. Normal Flight Rows --}}
-                        <template x-for="(r, idx) in (!isFiltering && !filterError ? (flightRecords || []) : [])" :key="r.id ? ('id-' + r.id) : (r.flight_no ? (r.flight_no + '-' + idx) : ('row-' + idx))">
+                        <template x-for="(r, idx) in (!isFiltering && !filterError ? (flightRecords || []) : [])" :key="r.id ? (uploadId + '-id-' + r.id) : (r.source_row_number ? (uploadId + '-srn-' + r.source_row_number) : (r.flight_no ? (uploadId + '-' + r.flight_no + '-' + idx) : (uploadId + '-row-' + idx)))">
                             <tr @click="openFlightDetails(r)" class="hover:bg-blue-50/40 transition cursor-pointer">
                                 <td class="py-2.5 px-3 text-slate-400 font-sans" x-text="((pagination.current_page - 1) * pagination.per_page) + idx + 1"></td>
                                 <td class="py-2.5 px-3 font-sans font-bold text-slate-800" x-text="r.air_line || r.airline || 'N/A'"></td>
@@ -1802,7 +1802,7 @@ function fdrDashboardController() {
         stagedFiles: [],
         preScanData: null,
         mergedHtml: '',
-        clientParsedData: null,
+        clientParsedData: @json($clientParsedData ?? null),
         filterOutliers: true,
         hoveredAirport: null,
         lockedAirport: '{{ strtoupper(trim($meta['report_airport'] ?? ($meta['airport'] ?? ($airports[0] ?? 'CGK')))) }}',
@@ -1850,6 +1850,10 @@ function fdrDashboardController() {
         lastUpdatedTime: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
 
         init() {
+            if (this.clientParsedData) {
+                if (!this.allParsedByType) this.allParsedByType = {};
+                this.allParsedByType[this.activeReportType] = this.clientParsedData;
+            }
             this.$nextTick(() => {
                 this.initAllCharts();
                 this.logReconciliation('INIT');
@@ -1885,11 +1889,11 @@ function fdrDashboardController() {
             } else if (type === 'COMPARE_LOAD_FACTOR' || type === 'COMPARE_LOAD_FACTOR_DAY') {
                 this.buildYoyBarChart();
                 this.buildYoyTrendChart();
-            } else if (type === 'OASYS_VS_APPS') {
+            } else if (type === 'OASYS_VS_APPS' || type === 'DEPARTURE_VS_APPS') {
                 this.buildAppsCompBarChart();
                 this.buildAppsDiscrepancyChart();
                 this.buildAppsStatusDonutChart();
-            } else if (type === 'OASYS_VS_EDIFLY') {
+            } else if (type === 'OASYS_VS_EDIFLY' || type === 'OASYS_EDIFLY') {
                 this.buildEdiflyDailySyncChart();
                 this.buildEdiflyBreakdownChart();
             } else {
@@ -3122,7 +3126,7 @@ function fdrDashboardController() {
             } else if (rtype === 'COMPARE_LOAD_FACTOR' || rtype === 'COMPARE_LOAD_FACTOR_DAY') {
                 this.allClientRecords = data.records || [];
                 this.totalRecords = this.allClientRecords.length;
-            } else if (rtype === 'OASYS_VS_APPS' || rtype === 'OASYS_VS_EDIFLY') {
+            } else if (rtype === 'OASYS_VS_APPS' || rtype === 'DEPARTURE_VS_APPS' || rtype === 'OASYS_VS_EDIFLY' || rtype === 'OASYS_EDIFLY') {
                 this.allClientRecords = data.records || [];
                 this.totalRecords = this.allClientRecords.length;
             }
@@ -3170,8 +3174,10 @@ function fdrDashboardController() {
                 'LOAD_FACTOR': 'Load Factor',
                 'COMPARE_LOAD_FACTOR': 'Compare LF (YoY)',
                 'COMPARE_LOAD_FACTOR_DAY': 'Compare LF (Daily)',
+                'DEPARTURE_VS_APPS': 'Departure vs APPS',
                 'OASYS_VS_APPS': 'Departure vs APPS',
                 'OASYS_VS_EDIFLY': 'OASYS vs Edifly',
+                'OASYS_EDIFLY': 'OASYS vs Edifly',
             };
             return map[rtype] || rtype;
         },
@@ -3207,7 +3213,9 @@ function fdrDashboardController() {
                 case 'LOAD_FACTOR': return 'bg-emerald-100 text-emerald-800 border border-emerald-300';
                 case 'COMPARE_LOAD_FACTOR': return 'bg-indigo-100 text-indigo-800 border border-indigo-300';
                 case 'COMPARE_LOAD_FACTOR_DAY': return 'bg-purple-100 text-purple-800 border border-purple-300';
+                case 'DEPARTURE_VS_APPS':
                 case 'OASYS_VS_APPS': return 'bg-teal-100 text-teal-800 border border-teal-300';
+                case 'OASYS_EDIFLY':
                 case 'OASYS_VS_EDIFLY': return 'bg-sky-100 text-sky-800 border border-sky-300';
                 default: return 'bg-blue-100 text-blue-800 border border-blue-300';
             }
@@ -3224,7 +3232,9 @@ function fdrDashboardController() {
                 case 'LOAD_FACTOR': return 'bg-emerald-600 text-white';
                 case 'COMPARE_LOAD_FACTOR': return 'bg-indigo-600 text-white';
                 case 'COMPARE_LOAD_FACTOR_DAY': return 'bg-purple-600 text-white';
+                case 'DEPARTURE_VS_APPS':
                 case 'OASYS_VS_APPS': return 'bg-teal-600 text-white';
+                case 'OASYS_EDIFLY':
                 case 'OASYS_VS_EDIFLY': return 'bg-sky-600 text-white';
                 default: return 'bg-blue-600 text-white';
             }

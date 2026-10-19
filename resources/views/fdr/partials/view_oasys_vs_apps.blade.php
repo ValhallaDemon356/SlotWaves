@@ -306,7 +306,7 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 font-mono text-[11px]">
-                    <template x-for="(r, idx) in getPaginatedAppsRecords(appsDiscrepancyOnly)" :key="idx">
+                    <template x-for="(r, idx) in getPaginatedAppsRecords(appsDiscrepancyOnly)" :key="r.id ? (uploadId + '-id-' + r.id) : (r.source_row_number ? (uploadId + '-srn-' + r.source_row_number) : (uploadId + '-apps-' + idx))">
                         <tr class="hover:bg-cyan-50/30 transition"
                             :class="(Number(r.adult || 0) === 0 || !r.offBlockTime || r.offBlockTime.trim() === '') ? 'bg-rose-50/40' : ''">
                             <td class="py-2 px-3 text-slate-400 font-sans" x-text="((pagination.current_page - 1) * pagination.per_page) + idx + 1"></td>

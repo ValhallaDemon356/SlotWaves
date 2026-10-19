@@ -205,11 +205,17 @@ class FdrDatabaseService
             $status = 'IRREGULAR';
         }
 
+        $cap = (int)($r['cap'] ?? ($r['capacity'] ?? ($r['seat_capacity'] ?? 0)));
+
         $paxLoad = 0;
         if (isset($r['load']) && is_numeric($r['load']) && !str_contains((string)$r['load'], '%')) {
             $paxLoad = (int)$r['load'];
         } elseif (isset($r['passenger_load']) && is_numeric($r['passenger_load'])) {
             $paxLoad = (int)$r['passenger_load'];
+        } elseif (isset($r['passengers']) && is_numeric($r['passengers'])) {
+            $paxLoad = (int)$r['passengers'];
+        } elseif (isset($r['pax']) && is_numeric($r['pax'])) {
+            $paxLoad = (int)$r['pax'];
         } elseif (isset($r['pax_total']) && is_numeric($r['pax_total'])) {
             $paxLoad = (int)$r['pax_total'];
         } else {
@@ -219,12 +225,29 @@ class FdrDatabaseService
         $loadFactor = null;
         if (isset($r['load_factor']) && is_numeric($r['load_factor'])) {
             $loadFactor = (float)$r['load_factor'];
-        } elseif ((int)($r['cap'] ?? 0) > 0 && $paxLoad > 0) {
-            $loadFactor = round(($paxLoad / (int)$r['cap']) * 100.0, 2);
+        } elseif (isset($r['slf']) && is_numeric($r['slf'])) {
+            $loadFactor = (float)$r['slf'];
+        } elseif ($cap > 0 && $paxLoad > 0) {
+            $loadFactor = round(($paxLoad / $cap) * 100.0, 2);
         }
 
         $schedTimeStr = $r['sched_display'] ?? ($direction === 'ARRIVAL' ? ($r['sibt'] ?? null) : ($r['sobt'] ?? null));
         $actTimeStr = $r['actual_display'] ?? ($direction === 'ARRIVAL' ? ($r['aibt'] ?? null) : ($r['aobt'] ?? null));
+
+        $originAirport = $r['city_1'] ?? ($r['arrival_route'] ?? ($r['station_1'] ?? null));
+        $destAirport = $r['city_2'] ?? ($r['departure_route'] ?? ($r['station_2'] ?? null));
+
+        $isSched = !empty($r['is_scheduled']);
+        if (!isset($r['is_scheduled'])) {
+            $legStr = strtoupper(trim((string)($r['leg'] ?? '')));
+            if (str_contains($legStr, 'UNSCHED')) {
+                $isSched = false;
+            } elseif (str_contains($legStr, 'SCHED')) {
+                $isSched = true;
+            } else {
+                $isSched = true;
+            }
+        }
 
         return [
             'upload_id'            => $uploadId,
@@ -234,13 +257,13 @@ class FdrDatabaseService
             'flight_suffix'        => $r['flight_suffix'] ?? null,
             'airline_code'         => $airline,
             'paired_flight_number' => $r['paired_no'] ?? null,
-            'aircraft_type'        => $r['desc'] ?? null,
-            'registration_number'  => $r['reg_no'] ?? null,
+            'aircraft_type'        => $r['desc'] ?? ($r['aircraft_type'] ?? null),
+            'registration_number'  => $r['reg_no'] ?? ($r['registration'] ?? null),
             'leg'                  => $r['leg'] ?? null,
             'direction'            => $direction,
-            'movement_type'        => !empty($r['is_scheduled']) ? 'SCHEDULED' : 'UNSCHEDULED',
-            'origin_airport'       => $r['city_1'] ?? null,
-            'destination_airport'  => $r['city_2'] ?? null,
+            'movement_type'        => $isSched ? 'SCHEDULED' : 'UNSCHEDULED',
+            'origin_airport'       => $originAirport,
+            'destination_airport'  => $destAirport,
             'report_airport'       => $repAirport,
             'traffic_type'         => $traffic,
             'scheduled_time'       => $schedDt ? substr($schedDt, 11, 8) : null,
@@ -256,7 +279,7 @@ class FdrDatabaseService
             'status'               => $status,
             'is_realized'          => $isRealized ? 'true' : 'false',
             'is_irregular'         => (!empty($r['is_irregular'])) ? 'true' : 'false',
-            'passenger_capacity'   => (int)($r['cap'] ?? 0),
+            'passenger_capacity'   => $cap,
             'passenger_load'       => $paxLoad,
             'load_factor'          => $loadFactor,
             'pax_adult'            => (int)($r['adult'] ?? 0),
@@ -264,6 +287,8 @@ class FdrDatabaseService
             'pax_infant'           => (int)($r['infant'] ?? 0),
             'pax_transit'          => (int)($r['transit'] ?? 0),
             'pax_transfer'         => (int)($r['transfer'] ?? 0),
+            'operating_crew'       => (int)($r['operating_crew'] ?? ($r['crw'] ?? 0)),
+            'extra_crew'           => (int)($r['extra_crew'] ?? ($r['ex_crw'] ?? 0)),
             'cargo_kg'             => (float)($r['cargo_kg'] ?? 0),
             'baggage_kg'           => (float)($r['baggage_kg'] ?? 0),
             'pos_kg'               => (float)($r['pos_kg'] ?? 0),
@@ -307,6 +332,7 @@ class FdrDatabaseService
             COUNT(CASE WHEN direction = 'DEPARTURE' AND traffic_type = 'DOMESTIC' THEN 1 END) as departures_dom,
             COUNT(CASE WHEN direction = 'DEPARTURE' AND traffic_type = 'INTERNATIONAL' THEN 1 END) as departures_int,
             COUNT(CASE WHEN movement_type = 'SCHEDULED' THEN 1 END) as scheduled_flights,
+            COUNT(CASE WHEN movement_type = 'UNSCHEDULED' THEN 1 END) as unscheduled_flights,
             COUNT(CASE WHEN is_realized = true THEN 1 END) as realized_flights,
             COUNT(CASE WHEN is_realized = false THEN 1 END) as planned_unrealized,
             COUNT(CASE WHEN is_realized = true AND delay_minutes < -15 THEN 1 END) as early_flights,
@@ -318,6 +344,8 @@ class FdrDatabaseService
             COALESCE(MAX(CASE WHEN is_realized = true THEN delay_minutes END), 0) as max_delay_minutes,
             COALESCE(SUM(passenger_capacity), 0) as total_capacity,
             COALESCE(SUM(passenger_load), 0) as total_load,
+            COALESCE(SUM(operating_crew), 0) as total_operating_crew,
+            COALESCE(SUM(extra_crew), 0) as total_extra_crew,
             COALESCE(SUM(pax_adult), 0) as total_adult,
             COALESCE(SUM(pax_child), 0) as total_child,
             COALESCE(SUM(pax_infant), 0) as total_infant,
@@ -602,7 +630,7 @@ class FdrDatabaseService
             $airlinesMap[$ab->airline_code] = $item;
         }
 
-        // Top Routes
+        // Top Routes (Busiest)
         $routeRows = (clone $base)
             ->whereNotNull('origin_airport')->where('origin_airport', '!=', '')->where('origin_airport', '!=', 'N/A')
             ->whereNotNull('destination_airport')->where('destination_airport', '!=', '')->where('destination_airport', '!=', 'N/A')
@@ -612,11 +640,14 @@ class FdrDatabaseService
                 COUNT(*) as flights,
                 COALESCE(SUM(passenger_capacity), 0) as capacity,
                 COALESCE(SUM(passenger_load), 0) as load,
-                COALESCE(SUM(pax_adult + pax_child + pax_infant), 0) as passengers
+                COALESCE(SUM(pax_adult + pax_child + pax_infant), 0) as passengers,
+                COUNT(CASE WHEN is_realized = true AND delay_minutes > 15 THEN 1 END) as delayed_flights,
+                COALESCE(AVG(CASE WHEN is_realized = true AND delay_minutes > 15 THEN delay_minutes END), 0) as avg_delay_minutes,
+                COALESCE(MAX(CASE WHEN is_realized = true THEN delay_minutes END), 0) as max_delay_minutes
             ")
             ->groupBy('origin_airport', 'destination_airport')
             ->orderByDesc('flights')
-            ->take(15)
+            ->take(25)
             ->get();
 
         $topRoutes = [];
@@ -626,15 +657,21 @@ class FdrDatabaseService
             $pax = (int)$r->passengers;
             if ($pax === 0 && $ld > 0) $pax = $ld;
             $lfNum = $cap > 0 ? round(($ld / $cap) * 100, 1) : 0.0;
+            $delCnt = (int)$r->delayed_flights;
+            $fltCnt = (int)$r->flights;
+            $delRate = $fltCnt > 0 ? round(($delCnt / $fltCnt) * 100, 1) : 0.0;
+            $avgDel = round((float)$r->avg_delay_minutes, 1);
+            $maxDel = (int)$r->max_delay_minutes;
+
             $topRoutes[] = [
                 'route'           => "{$r->origin_airport} → {$r->destination_airport}",
                 'origin'          => $r->origin_airport,
                 'dest'            => $r->destination_airport,
                 'destination'     => $r->destination_airport,
-                'flights'         => (int)$r->flights,
-                'count'           => (int)$r->flights,
-                'movements'       => (int)$r->flights,
-                'total_flights'   => (int)$r->flights,
+                'flights'         => $fltCnt,
+                'count'           => $fltCnt,
+                'movements'       => $fltCnt,
+                'total_flights'   => $fltCnt,
                 'passengers'      => $pax,
                 'pax'             => $pax,
                 'totalPax'        => $pax,
@@ -646,13 +683,90 @@ class FdrDatabaseService
                 'avgLf'           => $lfNum,
                 'lf'              => $lfNum,
                 'slf'             => $cap > 0 ? "{$lfNum}%" : '0.0%',
-                'delayed_flights' => 0,
-                'delayedFlights'  => 0,
-                'delay_rate'      => 0,
-                'delayRate'       => 0,
-                'avg_delay'       => 0,
-                'avgDelay'        => 0,
-                'avg_delay_min'   => 0,
+                'delayed_flights' => $delCnt,
+                'delayedFlights'  => $delCnt,
+                'delay_rate'      => $delRate,
+                'delayRate'       => $delRate,
+                'avg_delay'       => $avgDel,
+                'avgDelay'        => $avgDel,
+                'avg_delay_min'   => $avgDel,
+                'max_delay'       => $maxDel,
+            ];
+        }
+
+        // Most Delayed Routes (Aggregated directly from real delay minutes > 15)
+        $delayedRouteRows = (clone $base)
+            ->whereNotNull('origin_airport')->where('origin_airport', '!=', '')->where('origin_airport', '!=', 'N/A')
+            ->whereNotNull('destination_airport')->where('destination_airport', '!=', '')->where('destination_airport', '!=', 'N/A')
+            ->selectRaw("
+                origin_airport,
+                destination_airport,
+                COUNT(*) as flights,
+                COALESCE(SUM(passenger_capacity), 0) as capacity,
+                COALESCE(SUM(passenger_load), 0) as load,
+                COALESCE(SUM(pax_adult + pax_child + pax_infant), 0) as passengers,
+                COUNT(CASE WHEN is_realized = true AND delay_minutes > 15 THEN 1 END) as delayed_flights,
+                COALESCE(AVG(CASE WHEN is_realized = true AND delay_minutes > 15 THEN delay_minutes END), 0) as avg_delay_minutes,
+                COALESCE(MAX(CASE WHEN is_realized = true THEN delay_minutes END), 0) as max_delay_minutes
+            ")
+            ->groupBy('origin_airport', 'destination_airport')
+            ->havingRaw("COUNT(CASE WHEN is_realized = true AND delay_minutes > 15 THEN 1 END) > 0")
+            ->orderByDesc('delayed_flights')
+            ->orderByDesc('avg_delay_minutes')
+            ->take(15)
+            ->get();
+
+        $mostDelayedRoutes = [];
+        foreach ($delayedRouteRows as $dr) {
+            $delCnt = (int)$dr->delayed_flights;
+            $fltCnt = (int)$dr->flights;
+            $delRate = $fltCnt > 0 ? round(($delCnt / $fltCnt) * 100, 1) : 0.0;
+            $avgDel = round((float)$dr->avg_delay_minutes, 1);
+            $maxDel = (int)$dr->max_delay_minutes;
+            $cap = (int)$dr->capacity;
+            $ld = (int)$dr->load;
+            $lfNum = $cap > 0 ? round(($ld / $cap) * 100, 1) : 0.0;
+
+            $mostDelayedRoutes[] = [
+                'route'           => "{$dr->origin_airport} → {$dr->destination_airport}",
+                'origin'          => $dr->origin_airport,
+                'dest'            => $dr->destination_airport,
+                'destination'     => $dr->destination_airport,
+                'flights'         => $fltCnt,
+                'count'           => $fltCnt,
+                'total_flights'   => $fltCnt,
+                'delayed_flights' => $delCnt,
+                'delayedFlights'  => $delCnt,
+                'delay_rate'      => $delRate,
+                'delayRate'       => $delRate,
+                'avg_delay'       => $avgDel,
+                'avgDelay'        => $avgDel,
+                'avg_delay_min'   => $avgDel,
+                'max_delay'       => $maxDel,
+                'avg_load_factor' => "{$lfNum}%",
+                'lf_num'          => $lfNum,
+            ];
+        }
+
+        // Top SLF Routes
+        $topSlfRoutes = $topRoutes;
+        usort($topSlfRoutes, fn($a, $b) => ($b['lf_num'] <=> $a['lf_num']));
+        $topSlfRoutes = array_slice($topSlfRoutes, 0, 15);
+
+        // Suffix Distribution
+        $suffixRows = (clone $base)
+            ->whereNotNull('flight_suffix')
+            ->where('flight_suffix', '!=', '')
+            ->selectRaw("flight_suffix, COUNT(*) as count")
+            ->groupBy('flight_suffix')
+            ->orderByDesc('count')
+            ->get();
+
+        $suffixDist = [];
+        foreach ($suffixRows as $sr) {
+            $suffixDist[] = [
+                'suffix' => $sr->flight_suffix,
+                'count'  => (int)$sr->count,
             ];
         }
 
@@ -787,6 +901,11 @@ class FdrDatabaseService
             'baggage_per_flight_kg'    => $baggagePerFlightKg,
             'total_pos_kg'             => (float)$kpiRow->total_pos_kg,
             'pos_kg'                   => (float)$kpiRow->total_pos_kg,
+            'operating_crew'           => (int)$kpiRow->total_operating_crew,
+            'extra_crew'               => (int)$kpiRow->total_extra_crew,
+            'total_crew'               => (int)$kpiRow->total_operating_crew,
+            'crew'                     => (int)$kpiRow->total_operating_crew,
+            'unscheduled_flights'      => (int)$kpiRow->unscheduled_flights,
             'avg_delay_minutes'        => $avgDelMin,
             'irregular_rate'           => $irregularRate,
             'irregularities'           => [
@@ -844,7 +963,7 @@ class FdrDatabaseService
                 'infant'   => (int)$kpiRow->total_infant,
                 'transit'  => (int)$kpiRow->total_transit,
                 'transfer' => (int)$kpiRow->total_transfer,
-                'crew'     => 0,
+                'crew'     => (int)$kpiRow->total_operating_crew,
             ],
             'composition_arr'  => [
                 'adult'    => (int)$kpiRow->arr_adult,
@@ -852,7 +971,7 @@ class FdrDatabaseService
                 'infant'   => (int)$kpiRow->arr_infant,
                 'transit'  => (int)$kpiRow->arr_transit,
                 'transfer' => (int)$kpiRow->arr_transfer,
-                'crew'     => 0,
+                'crew'     => (int)$kpiRow->total_operating_crew,
             ],
             'composition_dep'  => [
                 'adult'    => (int)$kpiRow->dep_adult,
@@ -860,7 +979,7 @@ class FdrDatabaseService
                 'infant'   => (int)$kpiRow->dep_infant,
                 'transit'  => (int)$kpiRow->dep_transit,
                 'transfer' => (int)$kpiRow->dep_transfer,
-                'crew'     => 0,
+                'crew'     => (int)$kpiRow->total_operating_crew,
             ],
             'payload_arr'      => [
                 'cargo_kg'   => round((float)$kpiRow->arr_cargo_kg),
@@ -918,13 +1037,17 @@ class FdrDatabaseService
                 'routes'              => $topRoutes,
                 'busiest_routes'      => array_slice($topRoutes, 0, 10),
                 'top_busiest_routes'  => array_slice($topRoutes, 0, 10),
-                'most_delayed_routes' => array_slice($topRoutes, 0, 10),
-                'top_delayed_routes'  => array_slice($topRoutes, 0, 10),
-                'highest_slf_routes'  => array_slice($topRoutes, 0, 10),
-                'top_slf_routes'      => array_slice($topRoutes, 0, 10),
-                'suffix_breakdown'    => [],
-                'suffix_distribution'=> [],
-                'leg_subtypes'        => ['SCHED' => $totFlights, 'UNSCHED' => 0, 'CARGO' => 0],
+                'most_delayed_routes' => $mostDelayedRoutes,
+                'top_delayed_routes'  => $mostDelayedRoutes,
+                'highest_slf_routes'  => array_slice($topSlfRoutes, 0, 10),
+                'top_slf_routes'      => array_slice($topSlfRoutes, 0, 10),
+                'suffix_breakdown'    => $suffixDist,
+                'suffix_distribution'=> $suffixDist,
+                'leg_subtypes'        => [
+                    'SCHED'   => (int)$kpiRow->scheduled_flights,
+                    'UNSCHED' => (int)$kpiRow->unscheduled_flights,
+                    'CARGO'   => 0,
+                ],
             ],
             'fleet_performance'       => [
                 'fleet_mix'    => $fleetMix,

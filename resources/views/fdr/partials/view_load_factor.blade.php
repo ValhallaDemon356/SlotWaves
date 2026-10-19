@@ -208,7 +208,7 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 font-mono text-[11px]">
-                    <template x-for="(r, idx) in getPaginatedLfRecords()" :key="idx">
+                    <template x-for="(r, idx) in getPaginatedLfRecords()" :key="r.id ? (uploadId + '-id-' + r.id) : (r.source_row_number ? (uploadId + '-srn-' + r.source_row_number) : (uploadId + '-lf-' + idx))">
                         <tr class="hover:bg-slate-50/80 transition">
                             <td class="py-2 px-3 text-slate-400" x-text="r.no || (idx + 1)"></td>
                             <td class="py-2 px-3 font-bold text-slate-900 font-sans" x-text="(r.airline || '') + ' ' + (r.flightNumber || r.flight_no || 'N/A')"></td>
