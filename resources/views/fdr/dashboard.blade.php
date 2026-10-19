@@ -1856,16 +1856,31 @@ function fdrDashboardController() {
             }
             this.$nextTick(() => {
                 this.initAllCharts();
+                this.renderNetworkMap();
                 this.logReconciliation('INIT');
             });
         },
 
+        safeChartInit(chartKey, initFn) {
+            try {
+                if (typeof initFn === 'function') {
+                    initFn();
+                }
+            } catch (err) {
+                console.error(`[FDR SafeChartInit] Chart [${chartKey}] initialization failed:`, err);
+                if (!this._chartErrors) this._chartErrors = {};
+                this._chartErrors[chartKey] = err.message || String(err);
+            }
+        },
+
         logReconciliation(source = 'INIT') {
+            const summary = this.sourceSummary || {};
+            const meta = (this.clientParsedData && this.clientParsedData.metadata) || {};
             console.log(`[FDR Data Reconciliation - ${source}]`, {
-                source_rows: 1081,
-                movement_rows: 1080,
-                summary_rows: 1,
-                db_rows: 1080,
+                source_rows: summary.source_rows ?? (meta.source_rows ?? this.totalRecords),
+                movement_rows: summary.movement_rows ?? (meta.movement_rows ?? this.totalRecords),
+                summary_rows: summary.summary_rows ?? (meta.summary_rows ?? 0),
+                db_rows: summary.db_rows ?? this.totalRecords,
                 total_flights: this.kpis ? this.kpis.total_flights : null,
                 scheduled_flights: this.kpis ? this.kpis.scheduled_flights : null,
                 actual_flights: this.kpis ? this.kpis.actual_flights : null,
@@ -1882,28 +1897,50 @@ function fdrDashboardController() {
 
         initAllCharts() {
             if (!window.Chart) return;
+
+            // Runtime Diagnostic Contract (§43)
+            console.groupCollapsed(`[FDR Runtime Contract] uploadId=${this.uploadId} type=${this.activeReportType}`);
+            console.log({
+                uploadId: this.uploadId,
+                reportType: this.activeReportType,
+                filteredCount: this.totalRecords,
+                kpis: this.kpis,
+                hourlyDistribution: this.hourlyDistribution,
+                combinedTrend: this.combinedTrend,
+                airlineRoute: this.airlineRoute,
+            });
+            console.groupEnd();
+
             const type = this.activeReportType;
             if (type === 'LOAD_FACTOR') {
-                this.buildSlfRankChart();
-                this.buildSlfComboChart();
+                this.safeChartInit('slfRank', () => this.buildSlfRankChart());
+                this.safeChartInit('slfCombo', () => this.buildSlfComboChart());
             } else if (type === 'COMPARE_LOAD_FACTOR' || type === 'COMPARE_LOAD_FACTOR_DAY') {
-                this.buildYoyBarChart();
-                this.buildYoyTrendChart();
+                this.safeChartInit('yoyBar', () => this.buildYoyBarChart());
+                this.safeChartInit('yoyTrend', () => this.buildYoyTrendChart());
             } else if (type === 'OASYS_VS_APPS' || type === 'DEPARTURE_VS_APPS') {
-                this.buildAppsCompBarChart();
-                this.buildAppsDiscrepancyChart();
-                this.buildAppsStatusDonutChart();
+                this.safeChartInit('appsCompBar', () => this.buildAppsCompBarChart());
+                this.safeChartInit('appsDiscrepancy', () => this.buildAppsDiscrepancyChart());
+                this.safeChartInit('appsStatusDonut', () => this.buildAppsStatusDonutChart());
             } else if (type === 'OASYS_VS_EDIFLY' || type === 'OASYS_EDIFLY') {
-                this.buildEdiflyDailySyncChart();
-                this.buildEdiflyBreakdownChart();
+                this.safeChartInit('ediflyDailySync', () => this.buildEdiflyDailySyncChart());
+                this.safeChartInit('ediflyBreakdown', () => this.buildEdiflyBreakdownChart());
             } else {
-                this.buildDelayHistChart();
-                this.buildPaxCompDonutChart();
-                this.buildPayloadCompDonutChart();
-                this.buildFlightMovementChart();
-                this.buildPaxTrendChart();
-                this.buildCargoTrendChart();
+                this.safeChartInit('delay', () => this.buildDelayHistChart());
+                this.safeChartInit('pax', () => this.buildPaxDonutChart());
+                this.safeChartInit('payload', () => this.buildPayloadDonutChart());
+                this.safeChartInit('flight', () => this.buildFlightMovementChart());
+                this.safeChartInit('passenger', () => this.buildPaxTrendChart());
+                this.safeChartInit('cargo', () => this.buildCargoTrendChart());
             }
+        },
+
+        buildPaxCompDonutChart() {
+            return this.buildPaxDonutChart();
+        },
+
+        buildPayloadCompDonutChart() {
+            return this.buildPayloadDonutChart();
         },
 
         buildDelayHistChart() {
@@ -1914,15 +1951,21 @@ function fdrDashboardController() {
                 _fdrCharts.delayHist = null;
             }
 
-            const histData = (this.filterOutliers && this.schedVsReal.hist_bins_filtered)
+            const rawHist = (this.filterOutliers && this.schedVsReal && this.schedVsReal.hist_bins_filtered)
                 ? this.schedVsReal.hist_bins_filtered
-                : (this.schedVsReal.hist_bins && this.schedVsReal.hist_bins.length === 9)
+                : (this.schedVsReal && this.schedVsReal.hist_bins && Array.isArray(this.schedVsReal.hist_bins) && this.schedVsReal.hist_bins.length === 9)
                     ? this.schedVsReal.hist_bins
-                    : (this.schedVsReal.histogram || []);
+                    : ((this.schedVsReal && this.schedVsReal.histogram) || []);
 
-            const labels = histData.map(b => b.label);
-            const counts = histData.map(b => b.count);
-            const bgColors = histData.map(b => b.color || '#64748B');
+            const histData = Array.isArray(rawHist) ? rawHist : (rawHist && typeof rawHist === 'object' ? Object.values(rawHist) : []);
+            if (!histData.length) {
+                console.warn('[FDR DelayHistChart] No histogram bins available');
+                return;
+            }
+
+            const labels = histData.map(b => (b && b.label) || '');
+            const counts = histData.map(b => Number((b && b.count) || 0));
+            const bgColors = histData.map(b => (b && b.color) || '#64748B');
 
             _fdrCharts.delayHist = new Chart(ctx, {
                 type: 'bar',
@@ -2839,6 +2882,7 @@ function fdrDashboardController() {
 
                 this.$nextTick(() => {
                     this.initAllCharts();
+                    this.renderNetworkMap();
                     this.logReconciliation('FILTER_RESULT');
                 });
             })
@@ -4341,7 +4385,11 @@ function fdrDashboardController() {
             const hub = this.filters.airport || this.lockedAirport || 'CGK';
             const connectedAirports = new Set();
             this.getBusiestRoutes().forEach(r => {
-                if (r.route) {
+                const c1 = r.origin ? r.origin.trim().toUpperCase() : null;
+                const c2 = r.destination ? r.destination.trim().toUpperCase() : null;
+                if (c1) connectedAirports.add(c1);
+                if (c2) connectedAirports.add(c2);
+                if ((!c1 || !c2) && r.route) {
                     const parts = r.route.split(/[\s\-→]+/);
                     parts.forEach(p => connectedAirports.add(p.trim().toUpperCase()));
                 }
@@ -4361,7 +4409,7 @@ function fdrDashboardController() {
                     y: pt.y,
                     isHub,
                     isActive,
-                    flightsCount: isHub ? (this.kpis.total_flights || 0) : 0,
+                    flightsCount: isHub ? (this.kpis ? this.kpis.total_flights || 0 : 0) : 0,
                 };
             });
         },
@@ -4369,15 +4417,21 @@ function fdrDashboardController() {
         getNetworkRouteLines() {
             const dict = Object.assign({}, INJOURNEY_AIRPORTS_STATIC, (window.fdrEngine && window.fdrEngine.INJOURNEY_AIRPORTS) || {});
             const routes = this.getBusiestRoutes();
-            const hub = this.filters.airport || this.lockedAirport || 'CGK';
             const lines = [];
 
             routes.forEach((r) => {
-                if (!r.route) return;
-                const parts = r.route.split(/[\s\-→]+/);
-                if (parts.length < 2) return;
-                const c1 = parts[0].trim().toUpperCase();
-                const c2 = parts[1].trim().toUpperCase();
+                let c1 = r.origin ? r.origin.trim().toUpperCase() : null;
+                let c2 = r.destination ? r.destination.trim().toUpperCase() : null;
+                if (!c1 || !c2) {
+                    if (r.route) {
+                        const parts = r.route.split(/[\s\-→]+/);
+                        if (parts.length >= 2) {
+                            c1 = parts[0].trim().toUpperCase();
+                            c2 = parts[1].trim().toUpperCase();
+                        }
+                    }
+                }
+                if (!c1 || !c2) return;
                 const a1 = dict[c1];
                 const a2 = dict[c2];
                 if (!a1 || !a2) return;
@@ -4393,15 +4447,17 @@ function fdrDashboardController() {
                 const my = Math.min(p1.y, p2.y) - curveHeight;
 
                 const pathD = `M ${p1.x} ${p1.y} Q ${mx} ${my} ${p2.x} ${p2.y}`;
-                const flightCount = r.count || r.flights || r.movements || r.total_flights || 1;
+                const flightCount = r.flights || r.count || r.movements || r.total_flights || 1;
                 const strokeWidth = Math.max(1.5, Math.min(4.5, (flightCount / 30) + 1.2));
 
                 const paxCount = r.pax != null ? r.pax : (r.passengers || r.totalPax || 0);
-                const lfStr = r.avg_load_factor || (r.avgLf != null ? r.avgLf + '%' : (r.lf != null ? r.lf + '%' : 'N/A'));
+                const lfStr = r.avg_load_factor || (r.avgLf != null ? r.avgLf + '%' : (r.slf != null ? r.slf + '%' : 'N/A'));
                 const avgDel = r.avg_delay != null ? r.avg_delay : (r.avgDelay != null ? r.avgDelay : (r.avg_delay_min || 0));
 
                 lines.push({
-                    route: `${c1} → ${c2}`,
+                    route: r.route || `${c1} → ${c2}`,
+                    origin: c1,
+                    destination: c2,
                     pathD,
                     strokeWidth,
                     flights: flightCount,
@@ -4413,6 +4469,82 @@ function fdrDashboardController() {
             });
 
             return lines;
+        },
+
+        renderNetworkMap() {
+            const routeContainer = document.getElementById('network-route-layer');
+            const nodeContainer = document.getElementById('network-node-layer');
+            if (!routeContainer || !nodeContainer) return;
+
+            const lines = this.getNetworkRouteLines();
+            const nodes = this.getNetworkAirportNodes();
+
+            // Render route trajectories (Origin -> Destination)
+            let routeHtml = '';
+            lines.forEach((line, idx) => {
+                routeHtml += `
+                    <path d="${line.pathD}"
+                          fill="none"
+                          stroke="url(#routeGrad)"
+                          stroke-width="${line.strokeWidth}"
+                          stroke-linecap="round"
+                          marker-end="url(#routeArrow)"
+                          filter="url(#glow)"
+                          class="cursor-pointer transition-all duration-200 hover:stroke-white hover:stroke-[3.5px] opacity-85 hover:opacity-100"
+                          data-idx="${idx}">
+                        <title>${line.title}</title>
+                    </path>
+                `;
+            });
+            routeContainer.innerHTML = routeHtml;
+
+            // Render airport nodes & labels across 35 InJourney stations
+            let nodeHtml = '';
+            nodes.forEach((node) => {
+                const isHub = node.isHub;
+                const isActive = node.isActive;
+                const r = isHub ? 5 : (isActive ? 4 : 3);
+                const fill = isHub ? '#38BDF8' : (isActive ? '#60A5FA' : '#475569');
+                const stroke = isHub ? '#FFFFFF' : (isActive ? '#93C5FD' : '#1E293B');
+                const strokeWidth = isHub ? 2 : 1.5;
+                const textY = node.y > 360 ? (node.y - 8) : (node.y + 12);
+                const textFill = isHub ? '#38BDF8' : (isActive ? '#F8FAFC' : '#64748B');
+
+                if (isHub) {
+                    nodeHtml += `<circle cx="${node.x}" cy="${node.y}" r="8" fill="#38BDF8" opacity="0.4" class="animate-ping pointer-events-none"></circle>`;
+                }
+
+                nodeHtml += `
+                    <circle cx="${node.x}" cy="${node.y}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" class="cursor-pointer" data-code="${node.code}">
+                        <title>${node.code} - ${node.name}</title>
+                    </circle>
+                    <text x="${node.x}" y="${textY}" text-anchor="middle" fill="${textFill}" font-size="9" font-weight="bold" font-family="monospace" letter-spacing="0.5" class="pointer-events-none select-none">${node.code}</text>
+                `;
+            });
+            nodeContainer.innerHTML = nodeHtml;
+
+            // Interactive HUD mouse listeners
+            routeContainer.onmouseover = (e) => {
+                const target = e.target.closest('path[data-idx]');
+                if (target) {
+                    const idx = parseInt(target.getAttribute('data-idx'));
+                    this.hoveredRoute = lines[idx] || null;
+                }
+            };
+            routeContainer.onmouseout = () => {
+                this.hoveredRoute = null;
+            };
+
+            nodeContainer.onmouseover = (e) => {
+                const target = e.target.closest('circle[data-code]');
+                if (target) {
+                    const code = target.getAttribute('data-code');
+                    this.hoveredAirport = nodes.find(n => n.code === code) || null;
+                }
+            };
+            nodeContainer.onmouseout = () => {
+                this.hoveredAirport = null;
+            };
         },
 
         getExportUrl(type) {

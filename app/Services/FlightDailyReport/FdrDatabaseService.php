@@ -239,8 +239,8 @@ class FdrDatabaseService
 
         $isSched = !empty($r['is_scheduled']);
         if (!isset($r['is_scheduled'])) {
-            $legStr = strtoupper(trim((string)($r['leg'] ?? '')));
-            if (str_contains($legStr, 'UNSCHED')) {
+            $legStr = strtoupper(trim(preg_replace('/<br\s*\/?>/i', ' ', (string)($r['leg'] ?? ''))));
+            if (str_contains($legStr, 'UNSCHED') || str_contains($legStr, 'TIDAK')) {
                 $isSched = false;
             } elseif (str_contains($legStr, 'SCHED')) {
                 $isSched = true;
@@ -272,8 +272,8 @@ class FdrDatabaseService
             'actual_datetime'      => $actDt,
             'scheduled_time_str'   => $schedTimeStr,
             'actual_time_str'      => $actTimeStr,
-            'scheduled_hour'       => isset($r['scheduled_hour']) ? (int)$r['scheduled_hour'] : null,
-            'actual_hour'          => isset($r['actual_hour']) ? (int)$r['actual_hour'] : null,
+            'scheduled_hour'       => (isset($r['scheduled_hour']) && is_numeric($r['scheduled_hour'])) ? (int)$r['scheduled_hour'] : ($schedDt ? (int)substr($schedDt, 11, 2) : null),
+            'actual_hour'          => (isset($r['actual_hour']) && is_numeric($r['actual_hour'])) ? (int)$r['actual_hour'] : ($actDt ? (int)substr($actDt, 11, 2) : null),
             'operational_hour'     => (int)($r['operational_hour'] ?? ($r['hour'] ?? 0)),
             'delay_minutes'        => $delayMinutes,
             'status'               => $status,
@@ -998,20 +998,92 @@ class FdrDatabaseService
             'daily_trend'      => [],
         ];
 
+        // Real Ground Operations & Turnaround Calculation (§51)
+        $regMovements = (clone $base)
+            ->whereNotNull('registration_number')
+            ->where('registration_number', '!=', '')
+            ->where('registration_number', '!=', 'N/A')
+            ->whereNotNull('actual_datetime')
+            ->select('registration_number', 'direction', 'actual_datetime', 'stand', 'runway')
+            ->orderBy('registration_number')
+            ->orderBy('actual_datetime')
+            ->limit(500)
+            ->get();
+
+        $groundTimes = [];
+        $standChanges = 0;
+        $pairs = [];
+        $byReg = [];
+        foreach ($regMovements as $rm) {
+            $byReg[$rm->registration_number][] = $rm;
+        }
+
+        foreach ($byReg as $reg => $events) {
+            $arrQueue = [];
+            foreach ($events as $ev) {
+                if ($ev->direction === 'ARRIVAL') {
+                    $arrQueue[] = $ev;
+                } else {
+                    $matched = null;
+                    foreach ($arrQueue as $qi => $qa) {
+                        if ($qa->actual_datetime <= $ev->actual_datetime) {
+                            $matched = $qi;
+                            break;
+                        }
+                    }
+                    if ($matched !== null) {
+                        $arr = $arrQueue[$matched];
+                        array_splice($arrQueue, $matched, 1);
+                        $tArr = strtotime($arr->actual_datetime);
+                        $tDep = strtotime($ev->actual_datetime);
+                        if ($tArr && $tDep && $tDep >= $tArr) {
+                            $groundMin = (int)round(($tDep - $tArr) / 60);
+                            if ($groundMin >= 15 && $groundMin <= 1440) {
+                                $groundTimes[] = $groundMin;
+                                if ($arr->stand && $ev->stand && $arr->stand !== $ev->stand) {
+                                    $standChanges++;
+                                }
+                                $pairs[] = [
+                                    'reg_no'       => $reg,
+                                    'arr_time'     => (string)$arr->actual_datetime,
+                                    'dep_time'     => (string)$ev->actual_datetime,
+                                    'ground_min'   => $groundMin,
+                                    'stand_arr'    => $arr->stand,
+                                    'stand_dep'    => $ev->stand,
+                                    'stand_change' => ($arr->stand !== $ev->stand),
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        $gtCount = count($groundTimes);
+        $gtMean = $gtCount > 0 ? round(array_sum($groundTimes) / $gtCount, 1) : null;
+        $gtMin = $gtCount > 0 ? min($groundTimes) : null;
+        $gtMax = $gtCount > 0 ? max($groundTimes) : null;
+        $gtMedian = null;
+        if ($gtCount > 0) {
+            sort($groundTimes);
+            $mid = (int)floor($gtCount / 2);
+            $gtMedian = ($gtCount % 2 === 0) ? round(($groundTimes[$mid - 1] + $groundTimes[$mid]) / 2) : $groundTimes[$mid];
+        }
+
         $groundOps = [
             'stands'             => $standsMap,
             'runways'            => $runwaysMap,
             'stand_unique'       => count($standsMap),
             'stand_filled'       => $totFlights,
             'runway_filled'      => $totFlights,
-            'ground_time_mean'   => 110.3,
-            'ground_time_median' => 76,
-            'ground_time_min'    => 50,
-            'ground_time_max'    => 491,
-            'stand_changes'      => 1,
-            'turnaround_pairs'   => [],
-            'turnaround_count'   => 0,
-            'unpaired_flights'   => 0,
+            'ground_time_mean'   => $gtMean,
+            'ground_time_median' => $gtMedian,
+            'ground_time_min'    => $gtMin,
+            'ground_time_max'    => $gtMax,
+            'stand_changes'      => $standChanges,
+            'turnaround_pairs'   => array_slice($pairs, 0, 50),
+            'turnaround_count'   => $gtCount,
+            'unpaired_flights'   => max(0, $totFlights - ($gtCount * 2)),
         ];
 
         return [

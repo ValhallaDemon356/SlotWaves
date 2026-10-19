@@ -117,7 +117,7 @@
                             <span class="w-5 h-5 rounded-md bg-rose-100 text-rose-800 font-bold text-[10px] flex items-center justify-center font-sans" x-text="idx + 1"></span>
                             <div>
                                 <div class="font-black text-slate-800 font-mono" x-text="r.route"></div>
-                                <div class="text-[9.5px] text-slate-400 font-sans" x-text="(r.delayed_flights != null ? r.delayed_flights : (r.delayedFlights || 0)) + ' delayed of ' + (r.total_flights || r.flights || r.count || 0) + ' flights (' + ((r.delay_rate != null ? r.delay_rate : (r.delayRate != null ? r.delayRate : (r.delayPct || 0)))) + '%)'"></div>
+                                <div class="text-[9.5px] text-slate-400 font-sans" x-text="(r.delayed_flights != null ? r.delayed_flights : (r.delayedFlights || 0)) + ' delayed of ' + (r.total_flights || r.flights || r.count || 0) + ' flights (' + ((typeof r.delay_rate === 'string' && r.delay_rate.includes('%')) ? r.delay_rate : ((r.delay_rate != null ? r.delay_rate : (r.delayRate != null ? r.delayRate : (r.delayPct || 0))) + '%')) + ')'"></div>
                             </div>
                         </div>
                         <div class="text-right">
@@ -230,51 +230,18 @@
                 </g>
 
                 {{-- Flight Route Directional Curves (Origin -> Destination) --}}
-                <g>
-                    <template x-for="(line, lidx) in getNetworkRouteLines()" :key="'line-' + lidx">
-                        <path :d="line.pathD"
-                              fill="none"
-                              stroke="url(#routeGrad)"
-                              :stroke-width="line.strokeWidth"
-                              stroke-linecap="round"
-                              marker-end="url(#routeArrow)"
-                              filter="url(#glow)"
-                              class="cursor-pointer transition-all duration-200 hover:stroke-white hover:stroke-[3.5px] opacity-85 hover:opacity-100"
-                              @mouseenter="hoveredRoute = line"
-                              @mouseleave="hoveredRoute = null"
-                              @click="hoveredRoute = (hoveredRoute === line ? null : line)">
-                            <title x-text="line.title"></title>
-                        </path>
-                    </template>
-                </g>
+                <g id="network-route-layer"></g>
 
                 {{-- Airport Nodes (35 InJourney Stations + Active Destinations) --}}
-                <g>
-                    <template x-for="(node, nidx) in getNetworkAirportNodes()" :key="'node-' + node.code">
-                        <g :transform="'translate(' + node.x + ',' + node.y + ')'"
-                           class="cursor-pointer group"
-                           @mouseenter="hoveredAirport = node"
-                           @mouseleave="hoveredAirport = null">
-                            {{-- Outer Pulse circle for active hub --}}
-                            <circle r="8" fill="#38BDF8" opacity="0.4" class="animate-ping" x-show="node.isHub"></circle>
-                            {{-- Main Node circle --}}
-                            <circle :r="node.isHub ? 5 : (node.isActive ? 4 : 3)"
-                                    :fill="node.isHub ? '#38BDF8' : (node.isActive ? '#60A5FA' : '#475569')"
-                                    :stroke="node.isHub ? '#FFFFFF' : (node.isActive ? '#93C5FD' : '#1E293B')"
-                                    :stroke-width="node.isHub ? 2 : 1.5"></circle>
-                            {{-- Airport Code Label --}}
-                            <text :y="node.y > 360 ? -8 : 12"
-                                  text-anchor="middle"
-                                  :fill="node.isHub ? '#38BDF8' : (node.isActive ? '#F8FAFC' : '#64748B')"
-                                  font-size="9"
-                                  font-weight="bold"
-                                  font-family="monospace"
-                                  letter-spacing="0.5"
-                                  x-text="node.code"></text>
-                        </g>
-                    </template>
-                </g>
+                <g id="network-node-layer"></g>
             </svg>
+
+            {{-- Empty route data overlay (§12) --}}
+            <div x-show="getNetworkRouteLines().length === 0"
+                 class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-xs text-slate-400 z-10 pointer-events-none">
+                <svg class="w-8 h-8 text-slate-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                <span class="text-xs font-semibold text-slate-400">No route data for current filter.</span>
+            </div>
 
             {{-- Floating Interactive HUD Card for Routes --}}
             <template x-if="hoveredRoute">

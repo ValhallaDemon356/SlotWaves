@@ -1555,13 +1555,22 @@ class FlightDailyReportController extends Controller
             $pEnd = $minMax->max_date ? (is_string($minMax->max_date) ? substr($minMax->max_date, 0, 10) : $minMax->max_date->format('Y-m-d')) : ($meta['period_end'] ?? date('Y-m-d'));
             $daysCount = (int)($minMax->days_available ?? 1);
 
+            $totalDbRows = (int)$minMax->total_flights;
+            $sourceRows = (int)($meta['source_rows'] ?? ($meta['raw_rows'] ?? $totalDbRows));
+            $movementRows = (int)($meta['movement_rows'] ?? $totalDbRows);
+            $summaryRows = (int)($meta['summary_rows'] ?? ($sourceRows - $movementRows > 0 ? $sourceRows - $movementRows : 0));
+
             $sourceSummary = [
                 'source_type'    => $daysCount > 30 ? 'MONTHLY' : ($daysCount > 1 ? 'MULTI-DAY' : 'DAILY'),
                 'period_start'   => $pStart,
                 'period_end'     => $pEnd,
                 'period_label'   => date('d-m-Y', strtotime($pStart)) . ' → ' . date('d-m-Y', strtotime($pEnd)),
                 'days_available' => $daysCount . ' ' . ($daysCount === 1 ? 'Day' : 'Days'),
-                'total_flights'  => (int)$minMax->total_flights,
+                'total_flights'  => $totalDbRows,
+                'source_rows'    => $sourceRows,
+                'movement_rows'  => $movementRows,
+                'summary_rows'   => $summaryRows,
+                'db_rows'        => $totalDbRows,
             ];
 
             $scope = $this->resolveAnalysisScope($request, $sourceSummary, $availableDates);
@@ -1833,13 +1842,22 @@ class FlightDailyReportController extends Controller
             $pEnd = $minMax->max_date ? (is_string($minMax->max_date) ? substr($minMax->max_date, 0, 10) : $minMax->max_date->format('Y-m-d')) : ($meta['period_end'] ?? date('Y-m-d'));
             $daysCount = (int)($minMax->days_available ?? 1);
 
+            $totalDbRows = (int)$minMax->total_flights;
+            $sourceRows = (int)($meta['source_rows'] ?? ($meta['raw_rows'] ?? $totalDbRows));
+            $movementRows = (int)($meta['movement_rows'] ?? $totalDbRows);
+            $summaryRows = (int)($meta['summary_rows'] ?? ($sourceRows - $movementRows > 0 ? $sourceRows - $movementRows : 0));
+
             $sourceSummary = [
                 'source_type'    => $daysCount > 30 ? 'MONTHLY' : ($daysCount > 1 ? 'MULTI-DAY' : 'DAILY'),
                 'period_start'   => $pStart,
                 'period_end'     => $pEnd,
                 'period_label'   => date('d-m-Y', strtotime($pStart)) . ' → ' . date('d-m-Y', strtotime($pEnd)),
                 'days_available' => $daysCount . ' ' . ($daysCount === 1 ? 'Day' : 'Days'),
-                'total_flights'  => (int)$minMax->total_flights,
+                'total_flights'  => $totalDbRows,
+                'source_rows'    => $sourceRows,
+                'movement_rows'  => $movementRows,
+                'summary_rows'   => $summaryRows,
+                'db_rows'        => $totalDbRows,
             ];
 
             $scope = $this->resolveAnalysisScope($request, $sourceSummary, $availableDates);

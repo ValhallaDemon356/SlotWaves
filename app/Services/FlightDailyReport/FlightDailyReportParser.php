@@ -67,6 +67,7 @@ class FlightDailyReportParser
     public const OASYS_SUFFIX_DICTIONARY = [
         'X' => ['label' => 'Extra Flight', 'desc' => 'Additional unscheduled movement', 'category' => 'Additional'],
         'R' => ['label' => 'Return to Airport/Base (RTB/RTA)', 'desc' => 'Flight returned to departure station or base', 'category' => 'Irregular'],
+        'RTB' => ['label' => 'Return to Base', 'desc' => 'Flight returned to departure base', 'category' => 'Irregular'],
         'I' => ['label' => 'Haji Flight', 'desc' => 'Pilgrimage charter movement', 'category' => 'Special'],
         'D' => ['label' => 'Divert', 'desc' => 'Flight diverted to alternate station', 'category' => 'Irregular'],
         'A' => ['label' => 'Hanggar / Reschedule 4 Jam', 'desc' => 'Maintenance hangar movement or rescheduling >= 4h', 'category' => 'Technical'],
@@ -280,15 +281,15 @@ class FlightDailyReportParser
         $desc = '';
         $category = 'Regular';
 
-        if (preg_match('/^([A-Z0-9]*?\d+)([A-Z<$&^])?$/i', $cleanFlt, $m) && !empty($m[2])) {
+        if (preg_match('/^([A-Z0-9]*?\d+)\s*([A-Z]{1,4}|[<$&^])$/i', $cleanFlt, $m) && !empty($m[2])) {
             $base = $m[1];
             $suffix = strtoupper($m[2]);
-        } elseif (preg_match('/^([A-Z0-9]+?)([A-Z])$/i', $cleanFlt, $m) && preg_match('/\d/', $m[1])) {
+        } elseif (preg_match('/^([A-Z0-9]+?)([A-Z]{1,4})$/i', $cleanFlt, $m) && preg_match('/\d/', $m[1])) {
             $base = $m[1];
             $suffix = strtoupper($m[2]);
         }
 
-        // Prompt §6 & §65: Suffix belongs strictly to flight_no, not paired_no.
+        // Section 17: Extract suffix ONLY from actual FLIGHT NO. Do not use PAIRED NO. Preserve R, RTB, X, etc.
 
         if (!empty($suffix) && isset(self::OASYS_SUFFIX_DICTIONARY[$suffix])) {
             $dict = self::OASYS_SUFFIX_DICTIONARY[$suffix];
@@ -1700,7 +1701,8 @@ class FlightDailyReportParser
             $aibt      = $get('aibt', 'N/A');
             $aobt      = $get('aobt', 'N/A');
             $rawLeg    = $get('leg', 'N/A');
-            $legUpper  = strtoupper(trim($rawLeg));
+            $rawLegClean = preg_replace('/<br\s*\/?>/i', ' ', (string)$rawLeg);
+            $legUpper  = strtoupper(trim(preg_replace('/\s+/', ' ', $rawLegClean)));
             $city1     = strtoupper($get('city_1', 'N/A'));
             $city2     = strtoupper($get('city_2', 'N/A'));
             $mtow      = $get('mtow', 'N/A');
@@ -1780,10 +1782,12 @@ class FlightDailyReportParser
             $divert = $getNumeric('divert', 0);
             $miss   = $getNumeric('miss', 0);
 
-            // Crew - Operating Crew = CRW + EX. CRW
+            // Crew - Normal source uses: CRW -> operating_crew, EX. CRW -> extra_crew (§18)
             $crw           = $getNumeric('crw', 0);
             $exCrw         = $getNumeric('ex_crw', 0);
-            $operatingCrew = $crw + $exCrw;
+            $operatingCrew = $crw;
+            $extraCrew     = $exCrw;
+            $totalCrew     = $crw + $exCrw;
 
             // MTOW Tons
             $mtowTon = (float)str_replace(',', '.', preg_replace('/[^0-9\.,]/', '', $mtow));
@@ -1990,7 +1994,8 @@ class FlightDailyReportParser
                 'crw'                          => $crw,
                 'ex_crw'                       => $exCrw,
                 'operating_crew'               => $operatingCrew,
-                'total_crew'                   => $operatingCrew,
+                'extra_crew'                   => $extraCrew,
+                'total_crew'                   => $totalCrew,
                 'cargo_kg'                     => $cargoKg,
                 'baggage_kg'                   => $baggageKg,
                 'pos_kg'                       => $posKg,
