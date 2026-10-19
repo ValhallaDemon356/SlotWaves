@@ -1758,6 +1758,22 @@ const INJOURNEY_AIRPORTS_STATIC = {
     UPG: { code: 'UPG', name: 'Sultan Hasanuddin', city: 'Makassar', lat: -5.0617, lon: 119.5542 },
     YIA: { code: 'YIA', name: 'Yogyakarta International', city: 'Kulon Progo', lat: -7.9069, lon: 110.0578 },
 
+    // Actual upload route fallbacks not guaranteed to exist in every airport master snapshot.
+    // These are only coordinate fallbacks; route membership still comes exclusively from the uploaded FDR.
+    AAP: { code: 'AAP', name: 'Aji Pangeran Tumenggung Pranoto', city: 'Samarinda', lat: -0.3744, lon: 117.2500 },
+    DRW: { code: 'DRW', name: 'Darwin International', city: 'Darwin', lat: -12.4147, lon: 130.8766 },
+    SOC: { code: 'SOC', name: 'Adi Soemarmo', city: 'Surakarta', lat: -7.5161, lon: 110.7569 },
+    BEJ: { code: 'BEJ', name: 'Kalimarau', city: 'Berau', lat: 2.1555, lon: 117.4322 },
+    BUU: { code: 'BUU', name: 'Muara Bungo', city: 'Bungo', lat: -1.1277, lon: 102.1350 },
+    DMK: { code: 'DMK', name: 'Don Mueang International', city: 'Bangkok', lat: 13.9126, lon: 100.6068 },
+    LLJ: { code: 'LLJ', name: 'Silampari', city: 'Lubuklinggau', lat: -3.2933, lon: 102.9140 },
+    MLG: { code: 'MLG', name: 'Abdul Rachman Saleh', city: 'Malang', lat: -7.9266, lon: 112.7140 },
+    NNG: { code: 'NNG', name: 'Nanning Wuxu International', city: 'Nanning', lat: 22.6083, lon: 108.1722 },
+    PEN: { code: 'PEN', name: 'Penang International', city: 'Penang', lat: 5.2971, lon: 100.2769 },
+    PKN: { code: 'PKN', name: 'Iskandar', city: 'Pangkalan Bun', lat: -2.7052, lon: 111.6736 },
+    TRK: { code: 'TRK', name: 'Juwata', city: 'Tarakan', lat: 3.3267, lon: 117.5656 },
+    KOS: { code: 'KOS', name: 'Sihanoukville International', city: 'Sihanoukville', lat: 10.5797, lon: 103.6360 },
+
     // Additional Domestic & International Destinations
     SOQ: { code: 'SOQ', name: 'Domine Eduard Osok', city: 'Sorong', lat: -0.9256, lon: 131.2872 },
     PLW: { code: 'PLW', name: 'Mutiara SIS Al-Jufrie', city: 'Palu', lat: -0.9183, lon: 119.9103 },
@@ -4380,11 +4396,40 @@ function fdrDashboardController() {
             return { x: Math.round(x), y: Math.round(y) };
         },
 
-        getNetworkAirportNodes() {
+        getNetworkRoutes() {
+            if (this.airlineRoute && Array.isArray(this.airlineRoute.network_routes)) {
+                return this.airlineRoute.network_routes;
+            }
+            return this.getBusiestRoutes();
+        },
+
+        getNetworkAirportDictionary() {
             const dict = Object.assign({}, INJOURNEY_AIRPORTS_STATIC, (window.fdrEngine && window.fdrEngine.INJOURNEY_AIRPORTS) || {});
+            const serverAirports = this.airlineRoute && this.airlineRoute.network_airports ? this.airlineRoute.network_airports : {};
+
+            Object.keys(serverAirports).forEach((code) => {
+                const item = serverAirports[code] || {};
+                const lat = Number(item.lat);
+                const lon = Number(item.lon);
+                if (Number.isFinite(lat) && Number.isFinite(lon)) {
+                    dict[code] = Object.assign({}, dict[code] || {}, {
+                        code,
+                        name: item.name || code,
+                        city: item.city || '',
+                        lat,
+                        lon,
+                    });
+                }
+            });
+
+            return dict;
+        },
+
+        getNetworkAirportNodes() {
+            const dict = this.getNetworkAirportDictionary();
             const hub = this.filters.airport || this.lockedAirport || 'CGK';
             const connectedAirports = new Set();
-            this.getBusiestRoutes().forEach(r => {
+            this.getNetworkRoutes().forEach(r => {
                 const c1 = r.origin ? r.origin.trim().toUpperCase() : null;
                 const c2 = r.destination ? r.destination.trim().toUpperCase() : null;
                 if (c1) connectedAirports.add(c1);
@@ -4415,8 +4460,8 @@ function fdrDashboardController() {
         },
 
         getNetworkRouteLines() {
-            const dict = Object.assign({}, INJOURNEY_AIRPORTS_STATIC, (window.fdrEngine && window.fdrEngine.INJOURNEY_AIRPORTS) || {});
-            const routes = this.getBusiestRoutes();
+            const dict = this.getNetworkAirportDictionary();
+            const routes = this.getNetworkRoutes();
             const lines = [];
 
             routes.forEach((r) => {
