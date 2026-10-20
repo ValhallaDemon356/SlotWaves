@@ -182,6 +182,24 @@
                 <span class="px-2 py-1 rounded-lg bg-slate-50 border border-slate-200">
                     Endpoints <strong class="text-slate-800" x-text="getNetworkActiveEndpointCount()"></strong>
                 </span>
+                <template x-if="getNetworkUnmappedCount() > 0">
+                    <span class="px-2 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-800" :title="'Unmapped routes: ' + getNetworkUnmappedCount()">
+                        Unmapped <strong class="text-amber-900" x-text="getNetworkUnmappedCount()"></strong>
+                    </span>
+                </template>
+                <div class="h-4 w-px bg-slate-200 hidden sm:block"></div>
+                <div class="flex items-center gap-1">
+                    <button type="button" @click="fitNetworkMap('ALL')" title="Fit All Active Route Bounds" class="px-2 py-1 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 transition cursor-pointer text-[10px] font-bold">
+                        Fit All
+                    </button>
+                    <button type="button" @click="fitNetworkMap('DOM')" title="Focus Indonesia / Domestic" class="px-2 py-1 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 transition cursor-pointer text-[10px] font-bold">
+                        Indonesia
+                    </button>
+                    <button type="button" @click="fitNetworkMap('HUB')" title="Center on Active Hub" class="px-2 py-1 rounded-lg bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 text-cyan-800 transition cursor-pointer text-[10px] font-bold flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse"></span>
+                        Hub
+                    </button>
+                </div>
             </div>
             <div class="flex items-center gap-3 text-xs">
                 <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span> Active Hub</span>

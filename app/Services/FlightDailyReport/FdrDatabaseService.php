@@ -12,6 +12,108 @@ use Illuminate\Database\Eloquent\Builder;
 
 class FdrDatabaseService
 {
+    public const AIRPORT_COORDINATES_FALLBACK = [
+        // Domestic
+        'CGK' => ['name' => 'Soekarno-Hatta International', 'city' => 'Jakarta', 'country' => 'Indonesia', 'lat' => -6.1256, 'lon' => 106.6559],
+        'HLP' => ['name' => 'Halim Perdanakusuma', 'city' => 'Jakarta', 'country' => 'Indonesia', 'lat' => -6.2667, 'lon' => 106.8917],
+        'DPS' => ['name' => 'I Gusti Ngurah Rai', 'city' => 'Denpasar', 'country' => 'Indonesia', 'lat' => -8.7481, 'lon' => 115.1672],
+        'SUB' => ['name' => 'Juanda International', 'city' => 'Surabaya', 'country' => 'Indonesia', 'lat' => -7.3797, 'lon' => 112.7875],
+        'KNO' => ['name' => 'Kualanamu International', 'city' => 'Medan', 'country' => 'Indonesia', 'lat' => 3.6422, 'lon' => 98.8853],
+        'UPG' => ['name' => 'Sultan Hasanuddin', 'city' => 'Makassar', 'country' => 'Indonesia', 'lat' => -5.0617, 'lon' => 119.5542],
+        'BPN' => ['name' => 'Sultan Aji Muhammad Sulaiman Sepinggan', 'city' => 'Balikpapan', 'country' => 'Indonesia', 'lat' => -1.2683, 'lon' => 116.8947],
+        'YIA' => ['name' => 'Yogyakarta International', 'city' => 'Kulon Progo', 'country' => 'Indonesia', 'lat' => -7.9072, 'lon' => 110.0544],
+        'SRG' => ['name' => 'Jenderal Ahmad Yani', 'city' => 'Semarang', 'country' => 'Indonesia', 'lat' => -6.9742, 'lon' => 110.3756],
+        'SOC' => ['name' => 'Adi Soemarmo', 'city' => 'Surakarta', 'country' => 'Indonesia', 'lat' => -7.5161, 'lon' => 110.7569],
+        'BDJ' => ['name' => 'Syamsudin Noor', 'city' => 'Banjarmasin', 'country' => 'Indonesia', 'lat' => -3.4422, 'lon' => 114.7578],
+        'PLM' => ['name' => 'Sultan Mahmud Badaruddin II', 'city' => 'Palembang', 'country' => 'Indonesia', 'lat' => -2.8983, 'lon' => 104.7000],
+        'PKU' => ['name' => 'Sultan Syarif Kasim II', 'city' => 'Pekanbaru', 'country' => 'Indonesia', 'lat' => 0.4608, 'lon' => 101.4447],
+        'PDG' => ['name' => 'Minangkabau International', 'city' => 'Padang', 'country' => 'Indonesia', 'lat' => -0.7867, 'lon' => 100.2806],
+        'BTH' => ['name' => 'Hang Nadim', 'city' => 'Batam', 'country' => 'Indonesia', 'lat' => 1.1211, 'lon' => 104.1189],
+        'PNK' => ['name' => 'Supadio', 'city' => 'Pontianak', 'country' => 'Indonesia', 'lat' => -0.1506, 'lon' => 109.4039],
+        'MDC' => ['name' => 'Sam Ratulangi', 'city' => 'Manado', 'country' => 'Indonesia', 'lat' => 1.5492, 'lon' => 124.9258],
+        'LOP' => ['name' => 'Lombok International', 'city' => 'Praya', 'country' => 'Indonesia', 'lat' => -8.7578, 'lon' => 116.2764],
+        'KOE' => ['name' => 'El Tari', 'city' => 'Kupang', 'country' => 'Indonesia', 'lat' => -10.1714, 'lon' => 123.6653],
+        'AMQ' => ['name' => 'Pattimura', 'city' => 'Ambon', 'country' => 'Indonesia', 'lat' => -3.7092, 'lon' => 128.0894],
+        'DJJ' => ['name' => 'Sentani', 'city' => 'Jayapura', 'country' => 'Indonesia', 'lat' => -2.5769, 'lon' => 140.5164],
+        'TIM' => ['name' => 'Mozes Kilangin', 'city' => 'Timika', 'country' => 'Indonesia', 'lat' => -4.5283, 'lon' => 136.8867],
+        'SOQ' => ['name' => 'Domine Eduard Osok', 'city' => 'Sorong', 'country' => 'Indonesia', 'lat' => -0.8906, 'lon' => 131.2872],
+        'KJT' => ['name' => 'Kertajati International', 'city' => 'Majalengka', 'country' => 'Indonesia', 'lat' => -6.6475, 'lon' => 108.1883],
+        'BDO' => ['name' => 'Husein Sastranegara', 'city' => 'Bandung', 'country' => 'Indonesia', 'lat' => -6.9006, 'lon' => 107.5761],
+        'BTJ' => ['name' => 'Sultan Iskandar Muda', 'city' => 'Banda Aceh', 'country' => 'Indonesia', 'lat' => 5.5225, 'lon' => 95.4194],
+        'DTB' => ['name' => 'Sisingamangaraja XII', 'city' => 'Silangit', 'country' => 'Indonesia', 'lat' => 2.2575, 'lon' => 98.9839],
+        'TNJ' => ['name' => 'Raja Haji Fisabilillah', 'city' => 'Tanjung Pinang', 'country' => 'Indonesia', 'lat' => 0.9236, 'lon' => 104.5317],
+        'DJB' => ['name' => 'Sultan Thaha', 'city' => 'Jambi', 'country' => 'Indonesia', 'lat' => -1.6381, 'lon' => 103.6444],
+        'PGK' => ['name' => 'Depati Amir', 'city' => 'Pangkal Pinang', 'country' => 'Indonesia', 'lat' => -2.1625, 'lon' => 106.1394],
+        'TJQ' => ['name' => 'H.A.S. Hanandjoeddin', 'city' => 'Belitung', 'country' => 'Indonesia', 'lat' => -2.7608, 'lon' => 107.7547],
+        'BKS' => ['name' => 'Fatmawati Soekarno', 'city' => 'Bengkulu', 'country' => 'Indonesia', 'lat' => -3.8639, 'lon' => 102.3400],
+        'TKG' => ['name' => 'Radin Inten II', 'city' => 'Lampung', 'country' => 'Indonesia', 'lat' => -5.2425, 'lon' => 105.1786],
+        'PKY' => ['name' => 'Tjilik Riwut', 'city' => 'Palangkaraya', 'country' => 'Indonesia', 'lat' => -2.2253, 'lon' => 113.9436],
+        'PLW' => ['name' => 'Mutiara SIS Al-Jufrie', 'city' => 'Palu', 'country' => 'Indonesia', 'lat' => -0.9178, 'lon' => 119.9097],
+        'MKQ' => ['name' => 'Mopah', 'city' => 'Merauke', 'country' => 'Indonesia', 'lat' => -8.5203, 'lon' => 140.4181],
+        'KDI' => ['name' => 'Haluoleo', 'city' => 'Kendari', 'country' => 'Indonesia', 'lat' => -4.0817, 'lon' => 122.4178],
+        'GTO' => ['name' => 'Djalaluddin', 'city' => 'Gorontalo', 'country' => 'Indonesia', 'lat' => 0.6372, 'lon' => 122.8517],
+        'LUW' => ['name' => 'Syukuran Aminuddin Amir', 'city' => 'Luwuk', 'country' => 'Indonesia', 'lat' => -1.0378, 'lon' => 122.7758],
+        'TTE' => ['name' => 'Sultan Babullah', 'city' => 'Ternate', 'country' => 'Indonesia', 'lat' => 0.8317, 'lon' => 127.3806],
+        'LBJ' => ['name' => 'Komodo', 'city' => 'Labuan Bajo', 'country' => 'Indonesia', 'lat' => -8.4878, 'lon' => 119.8872],
+        'AAP' => ['name' => 'APT Pranoto', 'city' => 'Samarinda', 'country' => 'Indonesia', 'lat' => -0.3744, 'lon' => 117.2500],
+        'BEJ' => ['name' => 'Kalimarau', 'city' => 'Berau', 'country' => 'Indonesia', 'lat' => 2.1555, 'lon' => 117.4322],
+        'BUU' => ['name' => 'Muara Bungo', 'city' => 'Bungo', 'country' => 'Indonesia', 'lat' => -1.1277, 'lon' => 102.1350],
+        'LLJ' => ['name' => 'Silampari', 'city' => 'Lubuklinggau', 'country' => 'Indonesia', 'lat' => -3.2933, 'lon' => 102.9140],
+        'MLG' => ['name' => 'Abdul Rachman Saleh', 'city' => 'Malang', 'country' => 'Indonesia', 'lat' => -7.9266, 'lon' => 112.7140],
+        'PKN' => ['name' => 'Iskandar', 'city' => 'Pangkalan Bun', 'country' => 'Indonesia', 'lat' => -2.7052, 'lon' => 111.6736],
+        'TRK' => ['name' => 'Juwata', 'city' => 'Tarakan', 'country' => 'Indonesia', 'lat' => 3.3267, 'lon' => 117.5656],
+        'SMQ' => ['name' => 'Sampit', 'city' => 'Sampit', 'country' => 'Indonesia', 'lat' => -2.5006, 'lon' => 112.9739],
+        'MOH' => ['name' => 'Morowali Airport', 'city' => 'Morowali', 'country' => 'Indonesia', 'lat' => -1.8744, 'lon' => 121.9483],
+        'MWS' => ['name' => 'Muara Wahau Airport', 'city' => 'Muara Wahau', 'country' => 'Indonesia', 'lat' => 0.8167, 'lon' => 116.8833],
+        'WDB' => ['name' => 'Wedo Bay Airport', 'city' => 'Weda', 'country' => 'Indonesia', 'lat' => 0.4639, 'lon' => 127.9150],
+
+        // International
+        'SIN' => ['name' => 'Singapore Changi', 'city' => 'Singapore', 'country' => 'Singapore', 'lat' => 1.3644, 'lon' => 103.9915],
+        'KUL' => ['name' => 'Kuala Lumpur International', 'city' => 'Kuala Lumpur', 'country' => 'Malaysia', 'lat' => 2.7456, 'lon' => 101.7099],
+        'SZB' => ['name' => 'Sultan Abdul Aziz Shah', 'city' => 'Subang', 'country' => 'Malaysia', 'lat' => 3.1306, 'lon' => 101.5497],
+        'PEN' => ['name' => 'Penang International', 'city' => 'Penang', 'country' => 'Malaysia', 'lat' => 5.2971, 'lon' => 100.2769],
+        'BKK' => ['name' => 'Suvarnabhumi Airport', 'city' => 'Bangkok', 'country' => 'Thailand', 'lat' => 13.6900, 'lon' => 100.7501],
+        'DMK' => ['name' => 'Don Mueang International', 'city' => 'Bangkok', 'country' => 'Thailand', 'lat' => 13.9126, 'lon' => 100.6068],
+        'HKG' => ['name' => 'Hong Kong International', 'city' => 'Hong Kong', 'country' => 'Hong Kong', 'lat' => 22.3080, 'lon' => 113.9185],
+        'HND' => ['name' => 'Tokyo Haneda Airport', 'city' => 'Tokyo', 'country' => 'Japan', 'lat' => 35.5494, 'lon' => 139.7798],
+        'NRT' => ['name' => 'Tokyo Narita Airport', 'city' => 'Tokyo', 'country' => 'Japan', 'lat' => 35.7647, 'lon' => 140.3863],
+        'CTS' => ['name' => 'New Chitose Airport', 'city' => 'Sapporo', 'country' => 'Japan', 'lat' => 42.7752, 'lon' => 141.6923],
+        'KIX' => ['name' => 'Kansai International', 'city' => 'Osaka', 'country' => 'Japan', 'lat' => 34.4320, 'lon' => 135.2304],
+        'ICN' => ['name' => 'Seoul Incheon International', 'city' => 'Seoul', 'country' => 'South Korea', 'lat' => 37.4602, 'lon' => 126.4407],
+        'PVG' => ['name' => 'Shanghai Pudong International', 'city' => 'Shanghai', 'country' => 'China', 'lat' => 31.1443, 'lon' => 121.8083],
+        'CAN' => ['name' => 'Guangzhou Baiyun International', 'city' => 'Guangzhou', 'country' => 'China', 'lat' => 23.3924, 'lon' => 113.2988],
+        'CSX' => ['name' => 'Changsha Huanghua International', 'city' => 'Changsha', 'country' => 'China', 'lat' => 28.1892, 'lon' => 113.2197],
+        'DYG' => ['name' => 'Zhangjiajie Hehua', 'city' => 'Zhangjiajie', 'country' => 'China', 'lat' => 29.1028, 'lon' => 110.4439],
+        'HAK' => ['name' => 'Haikou Meilan International', 'city' => 'Haikou', 'country' => 'China', 'lat' => 19.9347, 'lon' => 110.4589],
+        'KMG' => ['name' => 'Kunming Changshui International', 'city' => 'Kunming', 'country' => 'China', 'lat' => 25.1019, 'lon' => 102.9292],
+        'NNG' => ['name' => 'Nanning Wuxu International', 'city' => 'Nanning', 'country' => 'China', 'lat' => 22.6083, 'lon' => 108.1722],
+        'TPE' => ['name' => 'Taiwan Taoyuan International', 'city' => 'Taipei', 'country' => 'Taiwan', 'lat' => 25.0797, 'lon' => 121.2342],
+        'MFM' => ['name' => 'Macau International', 'city' => 'Macau', 'country' => 'Macau', 'lat' => 22.1494, 'lon' => 113.5917],
+        'HAN' => ['name' => 'Noi Bai International', 'city' => 'Hanoi', 'country' => 'Vietnam', 'lat' => 21.2212, 'lon' => 105.8072],
+        'SGN' => ['name' => 'Tan Son Nhat International', 'city' => 'Ho Chi Minh City', 'country' => 'Vietnam', 'lat' => 10.8188, 'lon' => 106.6519],
+        'PNH' => ['name' => 'Phnom Penh International', 'city' => 'Phnom Penh', 'country' => 'Cambodia', 'lat' => 11.5466, 'lon' => 104.8441],
+        'KOS' => ['name' => 'Sihanoukville International', 'city' => 'Sihanoukville', 'country' => 'Cambodia', 'lat' => 10.5797, 'lon' => 103.6360],
+        'SYD' => ['name' => 'Sydney Kingsford Smith', 'city' => 'Sydney', 'country' => 'Australia', 'lat' => -33.9399, 'lon' => 151.1753],
+        'MEL' => ['name' => 'Melbourne Tullamarine', 'city' => 'Melbourne', 'country' => 'Australia', 'lat' => -37.6690, 'lon' => 144.8410],
+        'PER' => ['name' => 'Perth Airport', 'city' => 'Perth', 'country' => 'Australia', 'lat' => -31.9403, 'lon' => 115.9668],
+        'DRW' => ['name' => 'Darwin International', 'city' => 'Darwin', 'country' => 'Australia', 'lat' => -12.4147, 'lon' => 130.8766],
+        'BNE' => ['name' => 'Brisbane Airport', 'city' => 'Brisbane', 'country' => 'Australia', 'lat' => -27.3842, 'lon' => 153.1175],
+        'BLR' => ['name' => 'Kempegowda International', 'city' => 'Bengaluru', 'country' => 'India', 'lat' => 13.1986, 'lon' => 77.7066],
+        'HYD' => ['name' => 'Rajiv Gandhi International', 'city' => 'Hyderabad', 'country' => 'India', 'lat' => 17.2403, 'lon' => 78.4294],
+        'JED' => ['name' => 'King Abdulaziz International', 'city' => 'Jeddah', 'country' => 'Saudi Arabia', 'lat' => 21.6796, 'lon' => 39.1565],
+        'MED' => ['name' => 'Prince Mohammad bin Abdulaziz', 'city' => 'Medina', 'country' => 'Saudi Arabia', 'lat' => 24.5534, 'lon' => 39.7051],
+        'DOH' => ['name' => 'Hamad International', 'city' => 'Doha', 'country' => 'Qatar', 'lat' => 25.2731, 'lon' => 51.6081],
+        'DXB' => ['name' => 'Dubai International', 'city' => 'Dubai', 'country' => 'United Arab Emirates', 'lat' => 25.2532, 'lon' => 55.3657],
+        'AUH' => ['name' => 'Zayed International', 'city' => 'Abu Dhabi', 'country' => 'United Arab Emirates', 'lat' => 24.4330, 'lon' => 54.6511],
+        'IST' => ['name' => 'Istanbul Airport', 'city' => 'Istanbul', 'country' => 'Turkey', 'lat' => 41.2753, 'lon' => 28.7519],
+        'ISL' => ['name' => 'Ataturk Airport', 'city' => 'Istanbul', 'country' => 'Turkey', 'lat' => 40.9769, 'lon' => 28.8146],
+        'AMS' => ['name' => 'Amsterdam Airport Schiphol', 'city' => 'Amsterdam', 'country' => 'Netherlands', 'lat' => 52.3105, 'lon' => 4.7683],
+        'LHR' => ['name' => 'London Heathrow', 'city' => 'London', 'country' => 'United Kingdom', 'lat' => 51.4700, 'lon' => -0.4543],
+        'STN' => ['name' => 'London Stansted', 'city' => 'London', 'country' => 'United Kingdom', 'lat' => 51.8860, 'lon' => 0.2389],
+        'CDG' => ['name' => 'Paris Charles de Gaulle', 'city' => 'Paris', 'country' => 'France', 'lat' => 49.0097, 'lon' => 2.5479],
+        'FRA' => ['name' => 'Frankfurt Airport', 'city' => 'Frankfurt', 'country' => 'Germany', 'lat' => 50.0379, 'lon' => 8.5622],
+        'MAD' => ['name' => 'Adolfo Suarez Madrid-Barajas', 'city' => 'Madrid', 'country' => 'Spain', 'lat' => 40.4839, 'lon' => -3.5680],
+    ];
     /**
      * Check if an upload already has records in the fdr_flights database table.
      */
@@ -720,33 +822,77 @@ class FdrDatabaseService
 
             foreach ($airportRows as $airport) {
                 $code = strtoupper(trim((string)$airport->iata_code));
+                $lat = is_numeric($airport->latitude) ? (float)$airport->latitude : null;
+                $lon = is_numeric($airport->longitude) ? (float)$airport->longitude : null;
+                if ($lat !== null && ($lat < -90 || $lat > 90)) $lat = null;
+                if ($lon !== null && ($lon < -180 || $lon > 180)) $lon = null;
+
                 $networkAirports[$code] = [
                     'code'       => $code,
                     'name'       => $airport->name ?: $code,
                     'city'       => $airport->city ?: '',
                     'country'    => $airport->country ?: '',
-                    'lat'        => is_numeric($airport->latitude) ? (float)$airport->latitude : null,
-                    'lon'        => is_numeric($airport->longitude) ? (float)$airport->longitude : null,
+                    'lat'        => $lat,
+                    'lon'        => $lon,
                     'management' => $airport->management_type ?: null,
                     'is_active'  => (bool)$airport->is_active,
                 ];
             }
+
+            // Fallback dictionary for any airport code not found in DB or with missing coords
+            foreach ($networkCodes as $code => $_) {
+                if (!isset($networkAirports[$code]) || $networkAirports[$code]['lat'] === null || $networkAirports[$code]['lon'] === null) {
+                    if (isset(self::AIRPORT_COORDINATES_FALLBACK[$code])) {
+                        $fb = self::AIRPORT_COORDINATES_FALLBACK[$code];
+                        $networkAirports[$code] = [
+                            'code'       => $code,
+                            'name'       => $fb['name'] ?? $code,
+                            'city'       => $fb['city'] ?? '',
+                            'country'    => $fb['country'] ?? '',
+                            'lat'        => $fb['lat'],
+                            'lon'        => $fb['lon'],
+                            'management' => $networkAirports[$code]['management'] ?? 'OTHER',
+                            'is_active'  => true,
+                        ];
+                    }
+                }
+            }
         }
 
         $mappedNetworkRoutes = 0;
+        $unmappedRouteDetails = [];
         foreach ($networkRoutes as $route) {
-            if (!empty($networkAirports[$route['origin']]['lat']) && !empty($networkAirports[$route['origin']]['lon'])
-                && !empty($networkAirports[$route['destination']]['lat']) && !empty($networkAirports[$route['destination']]['lon'])) {
+            $orig = $route['origin'] ?? '';
+            $dest = $route['destination'] ?? ($route['dest'] ?? '');
+            $origAp = $networkAirports[$orig] ?? null;
+            $destAp = $networkAirports[$dest] ?? null;
+
+            $hasOrig = !empty($origAp['lat']) && !empty($origAp['lon']) && is_numeric($origAp['lat']) && is_numeric($origAp['lon']);
+            $hasDest = !empty($destAp['lat']) && !empty($destAp['lon']) && is_numeric($destAp['lat']) && is_numeric($destAp['lon']);
+
+            if ($hasOrig && $hasDest) {
                 $mappedNetworkRoutes++;
+            } else {
+                $reasons = [];
+                if (!$hasOrig) $reasons[] = "Missing coordinates for origin [{$orig}]";
+                if (!$hasDest) $reasons[] = "Missing coordinates for destination [{$dest}]";
+                $unmappedRouteDetails[] = [
+                    'route'   => "{$orig} → {$dest}",
+                    'origin'  => $orig,
+                    'dest'    => $dest,
+                    'flights' => $route['flights'] ?? 0,
+                    'reason'  => implode('; ', $reasons),
+                ];
             }
         }
 
         $networkSummary = [
-            'unique_routes'        => count($networkRoutes),
-            'unique_airports'      => count($networkCodes),
-            'airports_with_coords' => count(array_filter($networkAirports, fn($a) => $a['lat'] !== null && $a['lon'] !== null)),
-            'mapped_routes'        => $mappedNetworkRoutes,
-            'unmapped_routes'      => max(0, count($networkRoutes) - $mappedNetworkRoutes),
+            'unique_routes'          => count($networkRoutes),
+            'unique_airports'        => count($networkCodes),
+            'airports_with_coords'   => count(array_filter($networkAirports, fn($a) => $a['lat'] !== null && $a['lon'] !== null)),
+            'mapped_routes'          => $mappedNetworkRoutes,
+            'unmapped_routes'        => max(0, count($networkRoutes) - $mappedNetworkRoutes),
+            'unmapped_route_details' => $unmappedRouteDetails,
         ];
 
         // Most Delayed Routes (Aggregated directly from real delay minutes > 15)

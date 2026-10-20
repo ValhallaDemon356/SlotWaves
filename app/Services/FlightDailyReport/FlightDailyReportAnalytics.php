@@ -7,70 +7,112 @@ use Carbon\Carbon;
 class FlightDailyReportAnalytics
 {
     public const INJOURNEY_AIRPORTS_COORDINATES = [
-        'CGK' => ['lat' => -6.1256, 'lng' => 106.6559, 'name' => 'Soekarno-Hatta (Jakarta)'],
-        'HLP' => ['lat' => -6.2667, 'lng' => 106.8917, 'name' => 'Halim Perdanakusuma (Jakarta)'],
-        'KJT' => ['lat' => -6.6475, 'lng' => 108.1883, 'name' => 'Kertajati (Majalengka)'],
-        'BDO' => ['lat' => -6.9006, 'lng' => 107.5761, 'name' => 'Husein Sastranegara (Bandung)'],
-        'SRG' => ['lat' => -6.9742, 'lng' => 110.3756, 'name' => 'Jenderal Ahmad Yani (Semarang)'],
-        'YIA' => ['lat' => -7.9072, 'lng' => 110.0544, 'name' => 'Yogyakarta International (Kulon Progo)'],
-        'JOG' => ['lat' => -7.7881, 'lng' => 110.4317, 'name' => 'Adisutjipto (Yogyakarta)'],
-        'SUB' => ['lat' => -7.3797, 'lng' => 112.7875, 'name' => 'Juanda (Surabaya)'],
-        'BWX' => ['lat' => -8.3103, 'lng' => 114.3394, 'name' => 'Banyuwangi'],
-        'DPS' => ['lat' => -8.7481, 'lng' => 115.1672, 'name' => 'I Gusti Ngurah Rai (Bali)'],
-        'LOP' => ['lat' => -8.7578, 'lng' => 116.2764, 'name' => 'Lombok International (Praya)'],
-        'KOE' => ['lat' => -10.1714, 'lng' => 123.6653, 'name' => 'El Tari (Kupang)'],
-        'KNO' => ['lat' => 3.6422, 'lng' => 98.8853, 'name' => 'Kualanamu (Medan)'],
-        'BTJ' => ['lat' => 5.5225, 'lng' => 95.4194, 'name' => 'Sultan Iskandar Muda (Banda Aceh)'],
-        'DTB' => ['lat' => 2.2575, 'lng' => 98.9839, 'name' => 'Sisingamangaraja XII (Silangit)'],
-        'PDG' => ['lat' => -0.7867, 'lng' => 100.2806, 'name' => 'Minangkabau (Padang)'],
-        'PKU' => ['lat' => 0.4608, 'lng' => 101.4447, 'name' => 'Sultan Syarif Kasim II (Pekanbaru)'],
-        'BTH' => ['lat' => 1.1211, 'lng' => 104.1189, 'name' => 'Hang Nadim (Batam)'],
-        'TNJ' => ['lat' => 0.9236, 'lng' => 104.5317, 'name' => 'Raja Haji Fisabilillah (Tanjung Pinang)'],
-        'DJB' => ['lat' => -1.6381, 'lng' => 103.6444, 'name' => 'Sultan Thaha (Jambi)'],
-        'PLM' => ['lat' => -2.8983, 'lng' => 104.7000, 'name' => 'Sultan Mahmud Badaruddin II (Palembang)'],
-        'PGK' => ['lat' => -2.1625, 'lng' => 106.1394, 'name' => 'Depati Amir (Pangkal Pinang)'],
-        'TJQ' => ['lat' => -2.7608, 'lng' => 107.7547, 'name' => 'H.A.S. Hanandjoeddin (Belitung)'],
-        'BKS' => ['lat' => -3.8639, 'lng' => 102.3400, 'name' => 'Fatmawati Soekarno (Bengkulu)'],
-        'TKG' => ['lat' => -5.2425, 'lng' => 105.1786, 'name' => 'Radin Inten II (Lampung)'],
-        'PNK' => ['lat' => -0.1506, 'lng' => 109.4039, 'name' => 'Supadio (Pontianak)'],
-        'BPN' => ['lat' => -1.2683, 'lng' => 116.8947, 'name' => 'Sultan Aji Muhammad Sulaiman Sepinggan (Balikpapan)'],
-        'BDJ' => ['lat' => -3.4422, 'lng' => 114.7578, 'name' => 'Syamsudin Noor (Banjarmasin)'],
-        'PKY' => ['lat' => -2.2253, 'lng' => 113.9436, 'name' => 'Tjilik Riwut (Palangkaraya)'],
-        'UPG' => ['lat' => -5.0617, 'lng' => 119.5542, 'name' => 'Sultan Hasanuddin (Makassar)'],
-        'MDC' => ['lat' => 1.5492, 'lng' => 124.9258, 'name' => 'Sam Ratulangi (Manado)'],
-        'AMQ' => ['lat' => -3.7092, 'lng' => 128.0894, 'name' => 'Pattimura (Ambon)'],
-        'BIK' => ['lat' => -1.1903, 'lng' => 136.1097, 'name' => 'Frans Kaisiepo (Biak)'],
-        'DJJ' => ['lat' => -2.5769, 'lng' => 140.5164, 'name' => 'Sentani (Jayapura)'],
-        'PWL' => ['lat' => -7.4586, 'lng' => 109.0208, 'name' => 'Purwokerto / Wirasaba'],
-        'PCB' => ['lat' => -6.3475, 'lng' => 106.7497, 'name' => 'Pondok Cabe'],
-        'SOQ' => ['lat' => -0.8906, 'lng' => 131.2872, 'name' => 'Domine Eduard Osok (Sorong)'],
-        'PLW' => ['lat' => -0.9178, 'lng' => 119.9097, 'name' => 'Mutiara SIS Al-Jufrie (Palu)'],
-        'TIM' => ['lat' => -4.5283, 'lng' => 136.8867, 'name' => 'Mozes Kilangin (Timika)'],
-        'MKQ' => ['lat' => -8.5203, 'lng' => 140.4181, 'name' => 'Mopah (Merauke)'],
-        'KDI' => ['lat' => -4.0817, 'lng' => 122.4178, 'name' => 'Haluoleo (Kendari)'],
-        'GTO' => ['lat' => 0.6372, 'lng' => 122.8517, 'name' => 'Djalaluddin (Gorontalo)'],
-        'LUW' => ['lat' => -1.0378, 'lng' => 122.7758, 'name' => 'Syukuran Aminuddin Amir (Luwuk)'],
-        'TTE' => ['lat' => 0.8317, 'lng' => 127.3806, 'name' => 'Sultan Babullah (Ternate)'],
-        'LBJ' => ['lat' => -8.4878, 'lng' => 119.8872, 'name' => 'Komodo (Labuan Bajo)'],
-        'BMU' => ['lat' => -8.5397, 'lng' => 118.6903, 'name' => 'Sultan Muhammad Salahuddin (Bima)'],
-        'SIN' => ['lat' => 1.3644, 'lng' => 103.9915, 'name' => 'Singapore Changi'],
-        'KUL' => ['lat' => 2.7456, 'lng' => 101.7072, 'name' => 'Kuala Lumpur'],
-        'BKK' => ['lat' => 13.6900, 'lng' => 100.7501, 'name' => 'Bangkok Suvarnabhumi'],
-        'HKG' => ['lat' => 22.3080, 'lng' => 113.9185, 'name' => 'Hong Kong'],
-        'HND' => ['lat' => 35.5494, 'lng' => 139.7798, 'name' => 'Tokyo Haneda'],
-        'NRT' => ['lat' => 35.7720, 'lng' => 140.3929, 'name' => 'Tokyo Narita'],
-        'ICN' => ['lat' => 37.4602, 'lng' => 126.4407, 'name' => 'Seoul Incheon'],
-        'PVG' => ['lat' => 31.1443, 'lng' => 121.8083, 'name' => 'Shanghai Pudong'],
-        'CAN' => ['lat' => 23.3924, 'lng' => 113.2988, 'name' => 'Guangzhou Baiyun'],
-        'PEK' => ['lat' => 40.0799, 'lng' => 116.6031, 'name' => 'Beijing Capital'],
-        'TPE' => ['lat' => 25.0797, 'lng' => 121.2342, 'name' => 'Taipei Taoyuan'],
-        'SYD' => ['lat' => -33.9399, 'lng' => 151.1753, 'name' => 'Sydney Kingsford Smith'],
-        'MEL' => ['lat' => -37.6690, 'lng' => 144.8410, 'name' => 'Melbourne'],
-        'PER' => ['lat' => -31.9385, 'lng' => 115.9672, 'name' => 'Perth'],
-        'JED' => ['lat' => 21.6796, 'lng' => 39.1565, 'name' => 'Jeddah King Abdulaziz'],
-        'MED' => ['lat' => 24.5534, 'lng' => 39.7051, 'name' => 'Medina Prince Mohammad'],
-        'DOH' => ['lat' => 25.2731, 'lng' => 51.6081, 'name' => 'Doha Hamad'],
-        'AMS' => ['lat' => 52.3105, 'lng' => 4.7683, 'name' => 'Amsterdam Schiphol'],
+        // Domestic InJourney & Regional Airports
+        'CGK' => ['lat' => -6.1256, 'lon' => 106.6559, 'lng' => 106.6559, 'name' => 'Soekarno-Hatta (Jakarta)', 'city' => 'Jakarta', 'country' => 'Indonesia'],
+        'HLP' => ['lat' => -6.2667, 'lon' => 106.8917, 'lng' => 106.8917, 'name' => 'Halim Perdanakusuma (Jakarta)', 'city' => 'Jakarta', 'country' => 'Indonesia'],
+        'KJT' => ['lat' => -6.6475, 'lon' => 108.1883, 'lng' => 108.1883, 'name' => 'Kertajati (Majalengka)', 'city' => 'Majalengka', 'country' => 'Indonesia'],
+        'BDO' => ['lat' => -6.9006, 'lon' => 107.5761, 'lng' => 107.5761, 'name' => 'Husein Sastranegara (Bandung)', 'city' => 'Bandung', 'country' => 'Indonesia'],
+        'SRG' => ['lat' => -6.9742, 'lon' => 110.3756, 'lng' => 110.3756, 'name' => 'Jenderal Ahmad Yani (Semarang)', 'city' => 'Semarang', 'country' => 'Indonesia'],
+        'YIA' => ['lat' => -7.9072, 'lon' => 110.0544, 'lng' => 110.0544, 'name' => 'Yogyakarta International (Kulon Progo)', 'city' => 'Kulon Progo', 'country' => 'Indonesia'],
+        'JOG' => ['lat' => -7.7881, 'lon' => 110.4317, 'lng' => 110.4317, 'name' => 'Adisutjipto (Yogyakarta)', 'city' => 'Yogyakarta', 'country' => 'Indonesia'],
+        'SUB' => ['lat' => -7.3797, 'lon' => 112.7875, 'lng' => 112.7875, 'name' => 'Juanda (Surabaya)', 'city' => 'Surabaya', 'country' => 'Indonesia'],
+        'BWX' => ['lat' => -8.3103, 'lon' => 114.3394, 'lng' => 114.3394, 'name' => 'Banyuwangi', 'city' => 'Banyuwangi', 'country' => 'Indonesia'],
+        'DPS' => ['lat' => -8.7481, 'lon' => 115.1672, 'lng' => 115.1672, 'name' => 'I Gusti Ngurah Rai (Bali)', 'city' => 'Denpasar', 'country' => 'Indonesia'],
+        'LOP' => ['lat' => -8.7578, 'lon' => 116.2764, 'lng' => 116.2764, 'name' => 'Lombok International (Praya)', 'city' => 'Praya', 'country' => 'Indonesia'],
+        'KOE' => ['lat' => -10.1714, 'lon' => 123.6653, 'lng' => 123.6653, 'name' => 'El Tari (Kupang)', 'city' => 'Kupang', 'country' => 'Indonesia'],
+        'KNO' => ['lat' => 3.6422, 'lon' => 98.8853, 'lng' => 98.8853, 'name' => 'Kualanamu (Medan)', 'city' => 'Medan', 'country' => 'Indonesia'],
+        'BTJ' => ['lat' => 5.5225, 'lon' => 95.4194, 'lng' => 95.4194, 'name' => 'Sultan Iskandar Muda (Banda Aceh)', 'city' => 'Banda Aceh', 'country' => 'Indonesia'],
+        'DTB' => ['lat' => 2.2575, 'lon' => 98.9839, 'lng' => 98.9839, 'name' => 'Sisingamangaraja XII (Silangit)', 'city' => 'Silangit', 'country' => 'Indonesia'],
+        'PDG' => ['lat' => -0.7867, 'lon' => 100.2806, 'lng' => 100.2806, 'name' => 'Minangkabau (Padang)', 'city' => 'Padang', 'country' => 'Indonesia'],
+        'PKU' => ['lat' => 0.4608, 'lon' => 101.4447, 'lng' => 101.4447, 'name' => 'Sultan Syarif Kasim II (Pekanbaru)', 'city' => 'Pekanbaru', 'country' => 'Indonesia'],
+        'BTH' => ['lat' => 1.1211, 'lon' => 104.1189, 'lng' => 104.1189, 'name' => 'Hang Nadim (Batam)', 'city' => 'Batam', 'country' => 'Indonesia'],
+        'TNJ' => ['lat' => 0.9236, 'lon' => 104.5317, 'lng' => 104.5317, 'name' => 'Raja Haji Fisabilillah (Tanjung Pinang)', 'city' => 'Tanjung Pinang', 'country' => 'Indonesia'],
+        'DJB' => ['lat' => -1.6381, 'lon' => 103.6444, 'lng' => 103.6444, 'name' => 'Sultan Thaha (Jambi)', 'city' => 'Jambi', 'country' => 'Indonesia'],
+        'PLM' => ['lat' => -2.8983, 'lon' => 104.7000, 'lng' => 104.7000, 'name' => 'Sultan Mahmud Badaruddin II (Palembang)', 'city' => 'Palembang', 'country' => 'Indonesia'],
+        'PGK' => ['lat' => -2.1625, 'lon' => 106.1394, 'lng' => 106.1394, 'name' => 'Depati Amir (Pangkal Pinang)', 'city' => 'Pangkal Pinang', 'country' => 'Indonesia'],
+        'TJQ' => ['lat' => -2.7608, 'lon' => 107.7547, 'lng' => 107.7547, 'name' => 'H.A.S. Hanandjoeddin (Belitung)', 'city' => 'Belitung', 'country' => 'Indonesia'],
+        'BKS' => ['lat' => -3.8639, 'lon' => 102.3400, 'lng' => 102.3400, 'name' => 'Fatmawati Soekarno (Bengkulu)', 'city' => 'Bengkulu', 'country' => 'Indonesia'],
+        'TKG' => ['lat' => -5.2425, 'lon' => 105.1786, 'lng' => 105.1786, 'name' => 'Radin Inten II (Lampung)', 'city' => 'Lampung', 'country' => 'Indonesia'],
+        'PNK' => ['lat' => -0.1506, 'lon' => 109.4039, 'lng' => 109.4039, 'name' => 'Supadio (Pontianak)', 'city' => 'Pontianak', 'country' => 'Indonesia'],
+        'BPN' => ['lat' => -1.2683, 'lon' => 116.8947, 'lng' => 116.8947, 'name' => 'Sultan Aji Muhammad Sulaiman Sepinggan (Balikpapan)', 'city' => 'Balikpapan', 'country' => 'Indonesia'],
+        'BDJ' => ['lat' => -3.4422, 'lon' => 114.7578, 'lng' => 114.7578, 'name' => 'Syamsudin Noor (Banjarmasin)', 'city' => 'Banjarmasin', 'country' => 'Indonesia'],
+        'PKY' => ['lat' => -2.2253, 'lon' => 113.9436, 'lng' => 113.9436, 'name' => 'Tjilik Riwut (Palangkaraya)', 'city' => 'Palangkaraya', 'country' => 'Indonesia'],
+        'UPG' => ['lat' => -5.0617, 'lon' => 119.5542, 'lng' => 119.5542, 'name' => 'Sultan Hasanuddin (Makassar)', 'city' => 'Makassar', 'country' => 'Indonesia'],
+        'MDC' => ['lat' => 1.5492, 'lon' => 124.9258, 'lng' => 124.9258, 'name' => 'Sam Ratulangi (Manado)', 'city' => 'Manado', 'country' => 'Indonesia'],
+        'AMQ' => ['lat' => -3.7092, 'lon' => 128.0894, 'lng' => 128.0894, 'name' => 'Pattimura (Ambon)', 'city' => 'Ambon', 'country' => 'Indonesia'],
+        'BIK' => ['lat' => -1.1903, 'lon' => 136.1097, 'lng' => 136.1097, 'name' => 'Frans Kaisiepo (Biak)', 'city' => 'Biak', 'country' => 'Indonesia'],
+        'DJJ' => ['lat' => -2.5769, 'lon' => 140.5164, 'lng' => 140.5164, 'name' => 'Sentani (Jayapura)', 'city' => 'Jayapura', 'country' => 'Indonesia'],
+        'PWL' => ['lat' => -7.4586, 'lon' => 109.0208, 'lng' => 109.0208, 'name' => 'Purwokerto / Wirasaba', 'city' => 'Purwokerto', 'country' => 'Indonesia'],
+        'PCB' => ['lat' => -6.3475, 'lon' => 106.7497, 'lng' => 106.7497, 'name' => 'Pondok Cabe', 'city' => 'Tangerang Selatan', 'country' => 'Indonesia'],
+        'SOQ' => ['lat' => -0.8906, 'lon' => 131.2872, 'lng' => 131.2872, 'name' => 'Domine Eduard Osok (Sorong)', 'city' => 'Sorong', 'country' => 'Indonesia'],
+        'PLW' => ['lat' => -0.9178, 'lon' => 119.9097, 'lng' => 119.9097, 'name' => 'Mutiara SIS Al-Jufrie (Palu)', 'city' => 'Palu', 'country' => 'Indonesia'],
+        'TIM' => ['lat' => -4.5283, 'lon' => 136.8867, 'lng' => 136.8867, 'name' => 'Mozes Kilangin (Timika)', 'city' => 'Timika', 'country' => 'Indonesia'],
+        'MKQ' => ['lat' => -8.5203, 'lon' => 140.4181, 'lng' => 140.4181, 'name' => 'Mopah (Merauke)', 'city' => 'Merauke', 'country' => 'Indonesia'],
+        'KDI' => ['lat' => -4.0817, 'lon' => 122.4178, 'lng' => 122.4178, 'name' => 'Haluoleo (Kendari)', 'city' => 'Kendari', 'country' => 'Indonesia'],
+        'GTO' => ['lat' => 0.6372, 'lon' => 122.8517, 'lng' => 122.8517, 'name' => 'Djalaluddin (Gorontalo)', 'city' => 'Gorontalo', 'country' => 'Indonesia'],
+        'LUW' => ['lat' => -1.0378, 'lon' => 122.7758, 'lng' => 122.7758, 'name' => 'Syukuran Aminuddin Amir (Luwuk)', 'city' => 'Luwuk', 'country' => 'Indonesia'],
+        'TTE' => ['lat' => 0.8317, 'lon' => 127.3806, 'lng' => 127.3806, 'name' => 'Sultan Babullah (Ternate)', 'city' => 'Ternate', 'country' => 'Indonesia'],
+        'LBJ' => ['lat' => -8.4878, 'lon' => 119.8872, 'lng' => 119.8872, 'name' => 'Komodo (Labuan Bajo)', 'city' => 'Labuan Bajo', 'country' => 'Indonesia'],
+        'BMU' => ['lat' => -8.5397, 'lon' => 118.6903, 'lng' => 118.6903, 'name' => 'Sultan Muhammad Salahuddin (Bima)', 'city' => 'Bima', 'country' => 'Indonesia'],
+        'AAP' => ['lat' => -0.3744, 'lon' => 117.2500, 'lng' => 117.2500, 'name' => 'APT Pranoto (Samarinda)', 'city' => 'Samarinda', 'country' => 'Indonesia'],
+        'BEJ' => ['lat' => 2.1555, 'lon' => 117.4322, 'lng' => 117.4322, 'name' => 'Kalimarau (Berau)', 'city' => 'Berau', 'country' => 'Indonesia'],
+        'BUU' => ['lat' => -1.1277, 'lon' => 102.1350, 'lng' => 102.1350, 'name' => 'Muara Bungo', 'city' => 'Bungo', 'country' => 'Indonesia'],
+        'LLJ' => ['lat' => -3.2933, 'lon' => 102.9140, 'lng' => 102.9140, 'name' => 'Silampari (Lubuklinggau)', 'city' => 'Lubuklinggau', 'country' => 'Indonesia'],
+        'MLG' => ['lat' => -7.9266, 'lon' => 112.7140, 'lng' => 112.7140, 'name' => 'Abdul Rachman Saleh (Malang)', 'city' => 'Malang', 'country' => 'Indonesia'],
+        'PKN' => ['lat' => -2.7052, 'lon' => 111.6736, 'lng' => 111.6736, 'name' => 'Iskandar (Pangkalan Bun)', 'city' => 'Pangkalan Bun', 'country' => 'Indonesia'],
+        'TRK' => ['lat' => 3.3267, 'lon' => 117.5656, 'lng' => 117.5656, 'name' => 'Juwata (Tarakan)', 'city' => 'Tarakan', 'country' => 'Indonesia'],
+        'SMQ' => ['lat' => -2.5006, 'lon' => 112.9739, 'lng' => 112.9739, 'name' => 'Sampit', 'city' => 'Sampit', 'country' => 'Indonesia'],
+        'SOC' => ['lat' => -7.5161, 'lon' => 110.7569, 'lng' => 110.7569, 'name' => 'Adi Soemarmo (Surakarta)', 'city' => 'Surakarta', 'country' => 'Indonesia'],
+        'MOH' => ['lat' => -1.8744, 'lon' => 121.9483, 'lng' => 121.9483, 'name' => 'Morowali Airport', 'city' => 'Morowali', 'country' => 'Indonesia'],
+        'MWS' => ['lat' => 0.8167, 'lon' => 116.8833, 'lng' => 116.8833, 'name' => 'Muara Wahau Airport', 'city' => 'Muara Wahau', 'country' => 'Indonesia'],
+        'WDB' => ['lat' => 0.4639, 'lon' => 127.9150, 'lng' => 127.9150, 'name' => 'Wedo Bay Airport', 'city' => 'Weda', 'country' => 'Indonesia'],
+
+        // International Destinations
+        'SIN' => ['lat' => 1.3644, 'lon' => 103.9915, 'lng' => 103.9915, 'name' => 'Singapore Changi', 'city' => 'Singapore', 'country' => 'Singapore'],
+        'KUL' => ['lat' => 2.7456, 'lon' => 101.7099, 'lng' => 101.7099, 'name' => 'Kuala Lumpur International', 'city' => 'Kuala Lumpur', 'country' => 'Malaysia'],
+        'SZB' => ['lat' => 3.1306, 'lon' => 101.5497, 'lng' => 101.5497, 'name' => 'Sultan Abdul Aziz Shah', 'city' => 'Subang', 'country' => 'Malaysia'],
+        'PEN' => ['lat' => 5.2971, 'lon' => 100.2769, 'lng' => 100.2769, 'name' => 'Penang International', 'city' => 'Penang', 'country' => 'Malaysia'],
+        'BKK' => ['lat' => 13.6900, 'lon' => 100.7501, 'lng' => 100.7501, 'name' => 'Bangkok Suvarnabhumi', 'city' => 'Bangkok', 'country' => 'Thailand'],
+        'DMK' => ['lat' => 13.9126, 'lon' => 100.6068, 'lng' => 100.6068, 'name' => 'Don Mueang International', 'city' => 'Bangkok', 'country' => 'Thailand'],
+        'HKG' => ['lat' => 22.3080, 'lon' => 113.9185, 'lng' => 113.9185, 'name' => 'Hong Kong International', 'city' => 'Hong Kong', 'country' => 'Hong Kong'],
+        'HND' => ['lat' => 35.5494, 'lon' => 139.7798, 'lng' => 139.7798, 'name' => 'Tokyo Haneda', 'city' => 'Tokyo', 'country' => 'Japan'],
+        'NRT' => ['lat' => 35.7647, 'lon' => 140.3863, 'lng' => 140.3863, 'name' => 'Tokyo Narita', 'city' => 'Tokyo', 'country' => 'Japan'],
+        'CTS' => ['lat' => 42.7752, 'lon' => 141.6923, 'lng' => 141.6923, 'name' => 'New Chitose Airport', 'city' => 'Sapporo', 'country' => 'Japan'],
+        'KIX' => ['lat' => 34.4320, 'lon' => 135.2304, 'lng' => 135.2304, 'name' => 'Kansai International', 'city' => 'Osaka', 'country' => 'Japan'],
+        'ICN' => ['lat' => 37.4602, 'lon' => 126.4407, 'lng' => 126.4407, 'name' => 'Seoul Incheon', 'city' => 'Seoul', 'country' => 'South Korea'],
+        'PVG' => ['lat' => 31.1443, 'lon' => 121.8083, 'lng' => 121.8083, 'name' => 'Shanghai Pudong', 'city' => 'Shanghai', 'country' => 'China'],
+        'CAN' => ['lat' => 23.3924, 'lon' => 113.2988, 'lng' => 113.2988, 'name' => 'Guangzhou Baiyun', 'city' => 'Guangzhou', 'country' => 'China'],
+        'CSX' => ['lat' => 28.1892, 'lon' => 113.2197, 'lng' => 113.2197, 'name' => 'Changsha Huanghua International', 'city' => 'Changsha', 'country' => 'China'],
+        'DYG' => ['lat' => 29.1028, 'lon' => 110.4439, 'lng' => 110.4439, 'name' => 'Zhangjiajie Hehua', 'city' => 'Zhangjiajie', 'country' => 'China'],
+        'HAK' => ['lat' => 19.9347, 'lon' => 110.4589, 'lng' => 110.4589, 'name' => 'Haikou Meilan International', 'city' => 'Haikou', 'country' => 'China'],
+        'KMG' => ['lat' => 25.1019, 'lon' => 102.9292, 'lng' => 102.9292, 'name' => 'Kunming Changshui International', 'city' => 'Kunming', 'country' => 'China'],
+        'NNG' => ['lat' => 22.6083, 'lon' => 108.1722, 'lng' => 108.1722, 'name' => 'Nanning Wuxu International', 'city' => 'Nanning', 'country' => 'China'],
+        'TPE' => ['lat' => 25.0797, 'lon' => 121.2342, 'lng' => 121.2342, 'name' => 'Taipei Taoyuan', 'city' => 'Taipei', 'country' => 'Taiwan'],
+        'MFM' => ['lat' => 22.1494, 'lon' => 113.5917, 'lng' => 113.5917, 'name' => 'Macau International', 'city' => 'Macau', 'country' => 'Macau'],
+        'HAN' => ['lat' => 21.2212, 'lon' => 105.8072, 'lng' => 105.8072, 'name' => 'Noi Bai International', 'city' => 'Hanoi', 'country' => 'Vietnam'],
+        'SGN' => ['lat' => 10.8188, 'lon' => 106.6519, 'lng' => 106.6519, 'name' => 'Tan Son Nhat International', 'city' => 'Ho Chi Minh City', 'country' => 'Vietnam'],
+        'PNH' => ['lat' => 11.5466, 'lon' => 104.8441, 'lng' => 104.8441, 'name' => 'Phnom Penh International', 'city' => 'Phnom Penh', 'country' => 'Cambodia'],
+        'KOS' => ['lat' => 10.5797, 'lon' => 103.6360, 'lng' => 103.6360, 'name' => 'Sihanoukville International', 'city' => 'Sihanoukville', 'country' => 'Cambodia'],
+        'SYD' => ['lat' => -33.9399, 'lon' => 151.1753, 'lng' => 151.1753, 'name' => 'Sydney Kingsford Smith', 'city' => 'Sydney', 'country' => 'Australia'],
+        'MEL' => ['lat' => -37.6690, 'lon' => 144.8410, 'lng' => 144.8410, 'name' => 'Melbourne Tullamarine', 'city' => 'Melbourne', 'country' => 'Australia'],
+        'PER' => ['lat' => -31.9403, 'lon' => 115.9668, 'lng' => 115.9668, 'name' => 'Perth Airport', 'city' => 'Perth', 'country' => 'Australia'],
+        'DRW' => ['lat' => -12.4147, 'lon' => 130.8766, 'lng' => 130.8766, 'name' => 'Darwin International', 'city' => 'Darwin', 'country' => 'Australia'],
+        'BNE' => ['lat' => -27.3842, 'lon' => 153.1175, 'lng' => 153.1175, 'name' => 'Brisbane Airport', 'city' => 'Brisbane', 'country' => 'Australia'],
+        'BLR' => ['lat' => 13.1986, 'lon' => 77.7066, 'lng' => 77.7066, 'name' => 'Kempegowda International', 'city' => 'Bengaluru', 'country' => 'India'],
+        'HYD' => ['lat' => 17.2403, 'lon' => 78.4294, 'lng' => 78.4294, 'name' => 'Rajiv Gandhi International', 'city' => 'Hyderabad', 'country' => 'India'],
+        'JED' => ['lat' => 21.6796, 'lon' => 39.1565, 'lng' => 39.1565, 'name' => 'Jeddah King Abdulaziz', 'city' => 'Jeddah', 'country' => 'Saudi Arabia'],
+        'MED' => ['lat' => 24.5534, 'lon' => 39.7051, 'lng' => 39.7051, 'name' => 'Medina Prince Mohammad', 'city' => 'Medina', 'country' => 'Saudi Arabia'],
+        'DOH' => ['lat' => 25.2731, 'lon' => 51.6081, 'lng' => 51.6081, 'name' => 'Doha Hamad', 'city' => 'Doha', 'country' => 'Qatar'],
+        'DXB' => ['lat' => 25.2532, 'lon' => 55.3657, 'lng' => 55.3657, 'name' => 'Dubai International', 'city' => 'Dubai', 'country' => 'United Arab Emirates'],
+        'AUH' => ['lat' => 24.4330, 'lon' => 54.6511, 'lng' => 54.6511, 'name' => 'Zayed International', 'city' => 'Abu Dhabi', 'country' => 'United Arab Emirates'],
+        'IST' => ['lat' => 41.2753, 'lon' => 28.7519, 'lng' => 28.7519, 'name' => 'Istanbul Airport', 'city' => 'Istanbul', 'country' => 'Turkey'],
+        'ISL' => ['lat' => 40.9769, 'lon' => 28.8146, 'lng' => 28.8146, 'name' => 'Ataturk Airport', 'city' => 'Istanbul', 'country' => 'Turkey'],
+        'AMS' => ['lat' => 52.3105, 'lon' => 4.7683, 'lng' => 4.7683, 'name' => 'Amsterdam Schiphol', 'city' => 'Amsterdam', 'country' => 'Netherlands'],
+        'LHR' => ['lat' => 51.4700, 'lon' => -0.4543, 'lng' => -0.4543, 'name' => 'London Heathrow', 'city' => 'London', 'country' => 'United Kingdom'],
+        'STN' => ['lat' => 51.8860, 'lon' => 0.2389, 'lng' => 0.2389, 'name' => 'London Stansted', 'city' => 'London', 'country' => 'United Kingdom'],
+        'CDG' => ['lat' => 49.0097, 'lon' => 2.5479, 'lng' => 2.5479, 'name' => 'Paris Charles de Gaulle', 'city' => 'Paris', 'country' => 'France'],
+        'FRA' => ['lat' => 50.0379, 'lon' => 8.5622, 'lng' => 8.5622, 'name' => 'Frankfurt Airport', 'city' => 'Frankfurt', 'country' => 'Germany'],
+        'MAD' => ['lat' => 40.4839, 'lon' => -3.5680, 'lng' => -3.5680, 'name' => 'Adolfo Suarez Madrid-Barajas', 'city' => 'Madrid', 'country' => 'Spain'],
     ];
 
     protected HourlyChartService $hourlyChartService;
@@ -1056,6 +1098,62 @@ class FlightDailyReportAnalytics
         unset($sfxItem);
         usort($suffixCounts, fn($x, $y) => $y['count'] <=> $x['count']);
 
+        $networkCodes = [];
+        $networkAirports = [];
+        foreach ($allRoutes as $route) {
+            foreach (['origin', 'dest'] as $endpoint) {
+                $code = strtoupper(trim((string)($route[$endpoint] ?? '')));
+                if ($code !== '' && $code !== 'N/A') {
+                    $networkCodes[$code] = true;
+                    if (!isset($networkAirports[$code]) && isset(self::INJOURNEY_AIRPORTS_COORDINATES[$code])) {
+                        $c = self::INJOURNEY_AIRPORTS_COORDINATES[$code];
+                        $networkAirports[$code] = [
+                            'code'       => $code,
+                            'name'       => $c['name'] ?? $code,
+                            'city'       => $c['city'] ?? '',
+                            'country'    => $c['country'] ?? '',
+                            'lat'        => $c['lat'] ?? null,
+                            'lon'        => $c['lon'] ?? ($c['lng'] ?? null),
+                            'management' => 'OTHER',
+                            'is_active'  => true,
+                        ];
+                    }
+                }
+            }
+        }
+
+        $mappedNetworkRoutes = 0;
+        $unmappedRouteDetails = [];
+        foreach ($allRoutes as $route) {
+            $orig = $route['origin'] ?? '';
+            $dest = $route['dest'] ?? ($route['destination'] ?? '');
+            $hasOrig = !empty($networkAirports[$orig]['lat']) && !empty($networkAirports[$orig]['lon']);
+            $hasDest = !empty($networkAirports[$dest]['lat']) && !empty($networkAirports[$dest]['lon']);
+            if ($hasOrig && $hasDest) {
+                $mappedNetworkRoutes++;
+            } else {
+                $reasons = [];
+                if (!$hasOrig) $reasons[] = "Missing coordinates for origin [{$orig}]";
+                if (!$hasDest) $reasons[] = "Missing coordinates for destination [{$dest}]";
+                $unmappedRouteDetails[] = [
+                    'route'   => "{$orig} → {$dest}",
+                    'origin'  => $orig,
+                    'dest'    => $dest,
+                    'flights' => $route['flights'] ?? 0,
+                    'reason'  => implode('; ', $reasons),
+                ];
+            }
+        }
+
+        $networkSummary = [
+            'unique_routes'          => count($allRoutes),
+            'unique_airports'        => count($networkCodes),
+            'airports_with_coords'   => count(array_filter($networkAirports, fn($a) => $a['lat'] !== null && $a['lon'] !== null)),
+            'mapped_routes'          => $mappedNetworkRoutes,
+            'unmapped_routes'        => max(0, count($allRoutes) - $mappedNetworkRoutes),
+            'unmapped_route_details' => $unmappedRouteDetails,
+        ];
+
         return [
             'ranked_airlines'     => array_values($airlines),
             'top_routes'          => array_slice($busiestRoutes, 0, 15),
@@ -1069,6 +1167,9 @@ class FlightDailyReportAnalytics
             'suffix_distribution'=> array_values($suffixCounts),
             'leg_subtypes'        => $legSubtypes,
             'special_movements'   => $specialMovementsCount,
+            'network_routes'      => $allRoutes,
+            'network_airports'    => $networkAirports,
+            'network_summary'     => $networkSummary,
             'airport_coordinates' => self::INJOURNEY_AIRPORTS_COORDINATES,
         ];
     }

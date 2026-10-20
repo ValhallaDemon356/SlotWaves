@@ -1996,6 +1996,21 @@ const INJOURNEY_AIRPORTS_STATIC = {
     LSW: { code: 'LSW', name: 'Malikus Saleh', city: 'Lhokseumawe', lat: 5.2333, lon: 97.0500 },
     SBG: { code: 'SBG', name: 'Maimun Saleh', city: 'Sabang', lat: 5.8667, lon: 95.3333 },
     SIW: { code: 'SIW', name: 'Sibisa', city: 'Ajibata', lat: 2.6000, lon: 99.0167 },
+    BLR: { code: 'BLR', name: 'Kempegowda International', city: 'Bengaluru', lat: 13.1986, lon: 77.7066 },
+    CSX: { code: 'CSX', name: 'Changsha Huanghua International', city: 'Changsha', lat: 28.1892, lon: 113.2197 },
+    CTS: { code: 'CTS', name: 'New Chitose Airport', city: 'Sapporo', lat: 42.7752, lon: 141.6923 },
+    DYG: { code: 'DYG', name: 'Zhangjiajie Hehua', city: 'Zhangjiajie', lat: 29.1028, lon: 110.4439 },
+    HAK: { code: 'HAK', name: 'Haikou Meilan International', city: 'Haikou', lat: 19.9347, lon: 110.4589 },
+    HYD: { code: 'HYD', name: 'Rajiv Gandhi International', city: 'Hyderabad', lat: 17.2403, lon: 78.4294 },
+    ISL: { code: 'ISL', name: 'Ataturk Airport', city: 'Istanbul', lat: 40.9769, lon: 28.8146 },
+    KMG: { code: 'KMG', name: 'Kunming Changshui International', city: 'Kunming', lat: 25.1019, lon: 102.9292 },
+    MAD: { code: 'MAD', name: 'Adolfo Suarez Madrid-Barajas', city: 'Madrid', lat: 40.4839, lon: -3.5680 },
+    MFM: { code: 'MFM', name: 'Macau International', city: 'Macau', lat: 22.1494, lon: 113.5917 },
+    MOH: { code: 'MOH', name: 'Morowali Airport', city: 'Morowali', lat: -1.8744, lon: 121.9483 },
+    MWS: { code: 'MWS', name: 'Muara Wahau Airport', city: 'Muara Wahau', lat: 0.8167, lon: 116.8833 },
+    STN: { code: 'STN', name: 'London Stansted', city: 'London', lat: 51.8860, lon: 0.2389 },
+    SZB: { code: 'SZB', name: 'Sultan Abdul Aziz Shah', city: 'Subang', lat: 3.1306, lon: 101.5497 },
+    WDB: { code: 'WDB', name: 'Wedo Bay Airport', city: 'Weda', lat: 0.4639, lon: 127.9150 },
 };
 
 function fdrDashboardController() {
@@ -3236,9 +3251,62 @@ function fdrDashboardController() {
                 dep_cargo_kg: depCargo,
                 arr_dom_cargo_kg: arrDomCargo,
                 arr_int_cargo_kg: arrIntCargo,
-                dep_dom_cargo_kg: depDomCargo,
                 dep_int_cargo_kg: depIntCargo,
             };
+
+            // Recompute route aggregates for client-side filtering (§9)
+            const routeMap = {};
+            filteredRecords.forEach(r => {
+                const orig = (r.origin || r.city_1 || '').trim().toUpperCase();
+                const dest = (r.destination || r.city_2 || '').trim().toUpperCase();
+                if (!orig || !dest || orig === 'N/A' || dest === 'N/A') return;
+                const routeKey = `${orig} → ${dest}`;
+                if (!routeMap[routeKey]) {
+                    routeMap[routeKey] = {
+                        route: routeKey,
+                        origin: orig,
+                        dest: dest,
+                        destination: dest,
+                        flights: 0,
+                        passengers: 0,
+                        capacity: 0,
+                        load: 0,
+                        delayed_flights: 0,
+                        delay_sum: 0,
+                    };
+                }
+                routeMap[routeKey].flights++;
+                const pax = (r.paxLoad != null ? r.paxLoad : ((r.adult || 0) + (r.child || 0) + (r.infant || 0)));
+                routeMap[routeKey].passengers += pax;
+                routeMap[routeKey].capacity += (r.cap || 0);
+                routeMap[routeKey].load += (r.load || 0);
+                const dMin = r.delay_minutes || r.delayMin || 0;
+                if (dMin > 15) {
+                    routeMap[routeKey].delayed_flights++;
+                    routeMap[routeKey].delay_sum += dMin;
+                }
+            });
+            const recomputedRoutes = Object.values(routeMap).map(rt => {
+                const lfNum = rt.capacity > 0 ? Math.round((rt.load / rt.capacity) * 1000) / 10 : 0;
+                const avgDel = rt.delayed_flights > 0 ? Math.round(rt.delay_sum / rt.delayed_flights) : 0;
+                return Object.assign(rt, {
+                    count: rt.flights,
+                    movements: rt.flights,
+                    total_flights: rt.flights,
+                    pax: rt.passengers,
+                    totalPax: rt.passengers,
+                    totalCapacity: rt.capacity,
+                    avg_load_factor: rt.capacity > 0 ? `${lfNum}%` : '0.0%',
+                    lf_num: lfNum,
+                    avgLf: lfNum,
+                    slf: rt.capacity > 0 ? `${lfNum}%` : '0.0%',
+                    avg_delay: avgDel,
+                    avgDelay: avgDel,
+                    avg_delay_min: avgDel,
+                });
+            });
+            if (!this.airlineRoute) this.airlineRoute = {};
+            this.airlineRoute.network_routes = recomputedRoutes;
         },
 
         removeChip(key) {
@@ -3371,6 +3439,9 @@ function fdrDashboardController() {
                         top_slf_routes: data.top_slf_routes || ar.top_slf_routes || ar.highest_slf_routes || [],
                         leg_subtypes: data.leg_subtypes || ar.leg_subtypes || { SCHED: 0, UNSCHED: 0, CARGO: 0 },
                         suffix_distribution: data.suffix_distribution || ar.suffix_distribution || ar.suffix_breakdown || [],
+                        network_routes: data.network_routes || ar.network_routes || (this.airlineRoute ? this.airlineRoute.network_routes : []),
+                        network_airports: data.network_airports || ar.network_airports || (this.airlineRoute ? this.airlineRoute.network_airports : {}),
+                        network_summary: data.network_summary || ar.network_summary || (this.airlineRoute ? this.airlineRoute.network_summary : null),
                     };
                 }
                 if (data.summary) {
@@ -4633,6 +4704,44 @@ function fdrDashboardController() {
             return this.getNetworkRouteLines().length;
         },
 
+        getNetworkUnmappedCount() {
+            const total = this.getNetworkUniqueRouteCount();
+            const mapped = this.getNetworkMappedCount();
+            return Math.max(0, total - mapped);
+        },
+
+        getNetworkUnmappedList() {
+            const dict = this.getNetworkAirportDictionary();
+            const routes = this.getNetworkRoutes();
+            const unmapped = [];
+            routes.forEach((r) => {
+                let c1 = r.origin ? r.origin.trim().toUpperCase() : null;
+                let c2 = r.destination ? r.destination.trim().toUpperCase() : null;
+                if (!c1 || !c2) {
+                    if (r.route) {
+                        const parts = r.route.split(/[\s\-→]+/);
+                        if (parts.length >= 2) {
+                            c1 = parts[0].trim().toUpperCase();
+                            c2 = parts[1].trim().toUpperCase();
+                        }
+                    }
+                }
+                if (!c1 || !c2) {
+                    unmapped.push({ route: r.route || 'Unknown', reason: 'Malformed origin or destination' });
+                    return;
+                }
+                const a1 = dict[c1];
+                const a2 = dict[c2];
+                const missing = [];
+                if (!a1 || !Number.isFinite(a1.lat) || !Number.isFinite(a1.lon)) missing.push(`Origin ${c1}`);
+                if (!a2 || !Number.isFinite(a2.lat) || !Number.isFinite(a2.lon)) missing.push(`Dest ${c2}`);
+                if (missing.length > 0) {
+                    unmapped.push({ route: `${c1} → ${c2}`, reason: 'Missing coordinates: ' + missing.join(', ') });
+                }
+            });
+            return unmapped;
+        },
+
         getNetworkAirportDictionary() {
             const dict = Object.assign({}, INJOURNEY_AIRPORTS_STATIC, (window.fdrEngine && window.fdrEngine.INJOURNEY_AIRPORTS) || {});
             const serverAirports = this.airlineRoute && this.airlineRoute.network_airports ? this.airlineRoute.network_airports : {};
@@ -4733,11 +4842,11 @@ function fdrDashboardController() {
             const map = L.map('injourney-network-map', {
                 center: [-2.5, 118.0],
                 zoom: 5,
-                minZoom: 2,
+                minZoom: 3,
                 maxZoom: 18,
                 zoomControl: true,
                 attributionControl: true,
-                preferCanvas: true
+                preferCanvas: false
             });
 
             // Standard OpenStreetMap tiles (Prompt Item 2, 8)
@@ -5120,27 +5229,96 @@ function fdrDashboardController() {
                 marker.addTo(this._networkNodeLayer);
             });
 
-            // 3. Auto-Fit Bounds (§9)
-            if (activeBoundsPoints.length >= 2) {
-                map.fitBounds(L.latLngBounds(activeBoundsPoints), {
-                    padding: [30, 30],
-                    maxZoom: 8,
-                    animate: false
-                });
+            // 3. Auto-Fit Bounds (§6, §9)
+            map.invalidateSize(false);
+
+            if (validLines.length === 0 || activeBoundsPoints.length === 0) {
+                // Case: No valid routes under active filter (§6)
+                map.setView([-2.5, 118.0], 5);
             } else if (activeBoundsPoints.length === 1) {
+                // Case: Single airport (§6)
                 map.setView(activeBoundsPoints[0], 6);
             } else {
-                map.setView([-2.5, 118.0], 5);
+                const trf = (this.filters.traffic || 'ALL').toUpperCase();
+                const isDomOnly = trf === 'DOM' || trf === 'DOMESTIC';
+
+                // Check if all active points fall within Indonesian archipelago (lat -11.5..6.5, lon 94..142)
+                const allDomestic = activeBoundsPoints.every(pt => pt[0] >= -11.5 && pt[0] <= 6.5 && pt[1] >= 94.0 && pt[1] <= 142.0);
+
+                if (isDomOnly || allDomestic) {
+                    // Domestic routes extent (§6)
+                    map.fitBounds(L.latLngBounds(activeBoundsPoints), {
+                        padding: [30, 30],
+                        maxZoom: 7,
+                        minZoom: 4,
+                        animate: false
+                    });
+                } else {
+                    // International / multi-continental routes extent (§6)
+                    map.fitBounds(L.latLngBounds(activeBoundsPoints), {
+                        padding: [30, 30],
+                        maxZoom: 7,
+                        minZoom: 3,
+                        animate: false
+                    });
+                }
             }
 
-            // Invalidate size across lifecycle phases (§4)
-            map.invalidateSize(true);
+            // Invalidate size across lifecycle phases (§4, §8)
             setTimeout(() => {
-                if (map) map.invalidateSize(true);
-            }, 100);
+                if (this._networkMap) this._networkMap.invalidateSize(false);
+            }, 80);
             setTimeout(() => {
-                if (map) map.invalidateSize(true);
-            }, 300);
+                if (this._networkMap) this._networkMap.invalidateSize(false);
+            }, 250);
+        },
+
+        fitNetworkMap(scope = 'ALL') {
+            const map = this._networkMap;
+            if (!map) return;
+            map.invalidateSize(false);
+
+            const hub = (this.filters.airport || this.lockedAirport || 'CGK').toUpperCase();
+            const dict = this.getNetworkAirportDictionary();
+
+            if (scope === 'HUB') {
+                const hubInfo = dict[hub];
+                if (hubInfo && Number.isFinite(hubInfo.lat) && Number.isFinite(hubInfo.lon)) {
+                    map.setView([hubInfo.lat, hubInfo.lon], 6, { animate: true });
+                } else {
+                    map.setView([-6.1256, 106.6559], 6, { animate: true });
+                }
+                return;
+            }
+
+            if (scope === 'DOM') {
+                map.fitBounds([[-10.5, 95.0], [5.9, 141.0]], {
+                    padding: [25, 25],
+                    maxZoom: 7,
+                    animate: true
+                });
+                return;
+            }
+
+            const lines = this.getNetworkRouteLines();
+            const pts = [];
+            lines.forEach(l => {
+                if (l.a1 && Number.isFinite(l.a1.lat) && Number.isFinite(l.a1.lon)) pts.push([l.a1.lat, l.a1.lon]);
+                if (l.a2 && Number.isFinite(l.a2.lat) && Number.isFinite(l.a2.lon)) pts.push([l.a2.lat, l.a2.lon]);
+            });
+
+            if (pts.length >= 2) {
+                map.fitBounds(L.latLngBounds(pts), {
+                    padding: [30, 30],
+                    maxZoom: 7,
+                    minZoom: 3,
+                    animate: true
+                });
+            } else if (pts.length === 1) {
+                map.setView(pts[0], 6, { animate: true });
+            } else {
+                map.setView([-2.5, 118.0], 5, { animate: true });
+            }
         },
 
         getExportUrl(type) {
