@@ -38,7 +38,7 @@
     "VIEW_COMPILED_PATH": "/tmp/storage/framework/views",
     "LOG_CHANNEL": "stderr",
     "SESSION_SECURE_COOKIE": "true",
-    "SESSION_DRIVER": "database",
+    "SESSION_DRIVER": "cookie",
     "CACHE_STORE": "database",
     "QUEUE_CONNECTION": "sync",
     "FILESYSTEM_DISK": "local"

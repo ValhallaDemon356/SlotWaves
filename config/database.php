@@ -86,8 +86,8 @@ return [
 
         'pgsql' => [
             'driver' => 'pgsql',
-            'url' => env('DB_URL'),
-            'host' => env('DB_HOST', '127.0.0.1'),
+            'url' => env('DATABASE_URL', env('DB_URL')),
+            'host' => env('DB_HOST', 'aws-0-ap-southeast-1.pooler.supabase.com'),
             'port' => env('DB_PORT', '6543'),
             'database' => env('DB_DATABASE', 'postgres'),
             'username' => env('DB_USERNAME', 'postgres'),
@@ -96,10 +96,12 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => env('DB_SCHEMA', 'public'),
-            'sslmode' => env('DB_SSLMODE', 'require'),
-            'options' => extension_loaded('pdo_pgsql') ? [
+            'sslmode' => env('DB_SSLMODE', 'prefer'),
+            'options' => [
+                \PDO::ATTR_PERSISTENT => false,
+                \PDO::ATTR_TIMEOUT => 30,
                 \PDO::ATTR_EMULATE_PREPARES => true,
-            ] : [],
+            ],
         ],
 
         'sqlsrv' => [
