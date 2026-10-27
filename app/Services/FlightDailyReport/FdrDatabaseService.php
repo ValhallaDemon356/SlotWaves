@@ -877,13 +877,16 @@ class FdrDatabaseService
     public function hasDatabaseRecords(Upload $upload): bool
     {
         self::ensureWorkingConnection();
+        if (!empty($upload->cached_analytics['total_flights'])) {
+            return true;
+        }
         if (FdrFlight::where('upload_id', $upload->id)->exists()) {
             return true;
         }
         if (self::hydrateFlightsFromSupabaseRest($upload) > 0) {
             return true;
         }
-        return !empty($upload->cached_analytics['total_flights']);
+        return false;
     }
 
     /**
@@ -1547,6 +1550,12 @@ class FdrDatabaseService
      */
     public function buildFdrFilteredQuery(int $uploadId, array $filters): Builder
     {
+        if (!FdrFlight::where('upload_id', $uploadId)->exists()) {
+            $u = Upload::find($uploadId);
+            if ($u) {
+                self::hydrateFlightsFromSupabaseRest($u);
+            }
+        }
         return FdrFlight::query()
             ->where('upload_id', $uploadId)
             ->applyFilters($filters);
