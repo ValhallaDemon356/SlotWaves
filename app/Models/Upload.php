@@ -60,7 +60,7 @@ class Upload extends Model
     public function getReportDataAttribute($value)
     {
         $data = is_array($value) ? $value : (json_decode($value, true) ?: []);
-        if (empty($data['records'])) {
+        if (empty($data['records']) && ($this->report_type ?? '') !== 'fdr' && !empty($data['_storage_path'])) {
             $offloaded = $this->getOffloadedRecords();
             if (!empty($offloaded)) {
                 $data['records'] = $offloaded;
@@ -98,11 +98,12 @@ class Upload extends Model
             }
         }
 
-        // For FDR reports, fetch from the fdr_flights database table
+        // For FDR reports, fetch from the fdr_flights database table (capped to 2000 for memory safety)
         if (($this->report_type ?? '') === 'fdr' && !empty($this->id)) {
             try {
                 return \App\Models\FdrFlight::where('upload_id', $this->id)
                     ->orderBy('id')
+                    ->limit(2000)
                     ->get()
                     ->map->toFdrArray()
                     ->toArray();

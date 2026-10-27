@@ -92,7 +92,13 @@ class FlightDailyReportParser
      */
     public static function detectOasysFdrDetailed(string $htmlString, string $fileName = ''): array
     {
-        $normalizedLead = preg_replace('/<br\s*\/?>/i', ' ', substr($htmlString, 0, 131072));
+        // Only inspect the header section (up to the first numbered data row or first 16 KB)
+        // so airport codes or strings inside flight rows (e.g. HLP, STAD) never cause false positives.
+        $headerSlice = substr($htmlString, 0, 16384);
+        if (preg_match('/<td[^>]*>\s*1\s*<\/td>/i', $headerSlice, $mFirstRow, PREG_OFFSET_CAPTURE)) {
+            $headerSlice = substr($headerSlice, 0, $mFirstRow[0][1]);
+        }
+        $normalizedLead = preg_replace('/<br\s*\/?>/i', ' ', $headerSlice);
         $lower = strtolower($normalizedLead);
         $fnLower = strtolower($fileName);
 
@@ -103,7 +109,7 @@ class FlightDailyReportParser
             str_contains($lower, 'oasys departure vs apps') ||
             str_contains($lower, 'off block time') ||
             str_contains($lower, 'offblocktime') ||
-            str_contains($lower, 'stad') ||
+            (bool) preg_match('/\bstad\b/i', $lower) ||
             str_contains($lower, 'flt dep') ||
             str_contains($fnLower, 'departure vs apps') ||
             str_contains($fnLower, 'departure_vs_apps')
@@ -139,7 +145,7 @@ class FlightDailyReportParser
             (str_contains($lower, 'seat load factor') && (str_contains($lower, '2025') || str_contains($lower, '2026') || str_contains($lower, 'ratio'))) ||
             (str_contains($lower, 'dau oasys') && str_contains($lower, 'seat load factor'))
         ) {
-            $isDay = preg_match('/<td[^>]*>\s*[A-Z]{3}\s*(?:<br\s*\/?>|\s+)\d{4}-\d{2}-\d{2}\s*<\/td>/i', $htmlString) ||
+            $isDay = preg_match('/<td[^>]*>\s*[A-Z]{3}\s*(?:<br\s*\/?>|\s+)\d{4}-\d{2}-\d{2}\s*<\/td>/i', substr($htmlString, 0, 32768)) ||
                      str_contains($lower, 'day by day') ||
                      str_contains($fnLower, 'day');
 
@@ -399,7 +405,7 @@ class FlightDailyReportParser
         }
 
         @ini_set('pcre.backtrack_limit', '10000000');
-        @ini_set('memory_limit', '512M');
+        @ini_set('memory_limit', '1024M');
 
         // Probe first 4KB to detect format before reading whole file
         $handle = @fopen($filePath, 'rb');
@@ -709,7 +715,8 @@ class FlightDailyReportParser
                 $trContent = $match[0];
                 preg_match_all('/<t[dh][^>]*>(.*?)<\/t[dh]>/is', $trContent, $tds);
                 $cells = array_map(function($c) {
-                    return trim(html_entity_decode(strip_tags($c), ENT_QUOTES, 'UTF-8'));
+                    $pre = str_ireplace(['<br>', '<br/>', '<br />', '&nbsp;'], ' ', $c);
+                    return trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($pre), ENT_QUOTES, 'UTF-8')));
                 }, $tds[1]);
                 $rowStr = implode(' ', $cells);
                 if (stripos($rowStr, 'AIRLINE') !== false || stripos($rowStr, 'AIR LINE') !== false || stripos($rowStr, 'FLIGHT NO') !== false || stripos($rowStr, 'SIBT') !== false) {
@@ -748,7 +755,8 @@ class FlightDailyReportParser
 
                 if (preg_match_all('/<t[dh][^>]*>(.*?)<\/t[dh]>/is', $trHtml, $cMatches)) {
                     $cells = array_map(function($c) {
-                        return trim(html_entity_decode(strip_tags($c), ENT_QUOTES, 'UTF-8'));
+                        $pre = str_ireplace(['<br>', '<br/>', '<br />', '&nbsp;'], ' ', $c);
+                        return trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($pre), ENT_QUOTES, 'UTF-8')));
                     }, $cMatches[1]);
 
                     if (empty($cells) || (count($cells) === 1 && $cells[0] === '')) continue;
@@ -2114,9 +2122,21 @@ class FlightDailyReportParser
         try {
             $diff = null;
             if ($schedDt && $actDt) {
-                $diff = (int) Carbon::parse($schedDt)->diffInMinutes(Carbon::parse($actDt), false);
+                $tsS = strtotime($schedDt);
+                $tsA = strtotime($actDt);
+                if ($tsS !== false && $tsA !== false) {
+                    $diff = (int) round(($tsA - $tsS) / 60);
+                } else {
+                    $diff = (int) Carbon::parse($schedDt)->diffInMinutes(Carbon::parse($actDt), false);
+                }
             } elseif (preg_match('/(\d{1,2}[-\/]\d{1,2}[-\/]\d{4}\s+\d{1,2}:\d{2})/', $sched) && preg_match('/(\d{1,2}[-\/]\d{1,2}[-\/]\d{4}\s+\d{1,2}:\d{2})/', $act)) {
-                $diff = (int) Carbon::parse(str_replace('/', '-', $sched))->diffInMinutes(Carbon::parse(str_replace('/', '-', $act)), false);
+                $tsS = strtotime(str_replace('/', '-', $sched));
+                $tsA = strtotime(str_replace('/', '-', $act));
+                if ($tsS !== false && $tsA !== false) {
+                    $diff = (int) round(($tsA - $tsS) / 60);
+                } else {
+                    $diff = (int) Carbon::parse(str_replace('/', '-', $sched))->diffInMinutes(Carbon::parse(str_replace('/', '-', $act)), false);
+                }
             } else {
                 preg_match('/(\d{1,2}):(\d{2})/', $sched, $sm);
                 preg_match('/(\d{1,2}):(\d{2})/', $act, $am);
@@ -2458,7 +2478,6 @@ class FlightDailyReportParser
         $handle = fopen($filePath, 'r');
         $buffer = '';
         $records = [];
-        $fullContent = file_get_contents($filePath);
 
         while (!feof($handle) || strlen($buffer) > 0) {
             $trPos = stripos($buffer, '<tr');
@@ -2600,7 +2619,20 @@ class FlightDailyReportParser
         $handle = fopen($filePath, 'r');
         $buffer = '';
         $records = [];
-        $fullContent = file_get_contents($filePath);
+        $fileSize = (int) @filesize($filePath);
+        $fullContent = '';
+        if ($fileSize > 0 && $fileSize <= 262144) {
+            $fullContent = (string) @file_get_contents($filePath);
+        } elseif ($fileSize > 262144) {
+            $tailHandle = @fopen($filePath, 'rb');
+            if ($tailHandle) {
+                $headPart = (string) @fread($tailHandle, 65536);
+                @fseek($tailHandle, max(0, $fileSize - 65536));
+                $tailPart = (string) @fread($tailHandle, 65536);
+                @fclose($tailHandle);
+                $fullContent = $headPart . "\n" . $tailPart;
+            }
+        }
 
         while (!feof($handle) || strlen($buffer) > 0) {
             $trPos = stripos($buffer, '<tr');

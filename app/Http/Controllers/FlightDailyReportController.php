@@ -132,6 +132,14 @@ class FlightDailyReportController extends Controller
             return $this->configRedirect();
         }
 
+        session(['fdr_active_upload_id' => $upload->id]);
+        if (!$request->boolean('manual_config')) {
+            return redirect()->route('fdr.dashboard', [
+                'upload'     => $upload->id,
+                'date_scope' => 'ALL_PERIOD',
+            ]);
+        }
+
         $meta = $upload->report_data['meta'] ?? [];
         $cached = $upload->cached_analytics ?? [];
         $recordsCount = (int)($upload->total_rows ?? 0);
@@ -1151,7 +1159,7 @@ class FlightDailyReportController extends Controller
             }
 
             while (!$isEof) {
-                $batchResult = $this->parser->parseBatch($fullPath, $offset, 2000, $meta);
+                $batchResult = $this->parser->parseBatch($fullPath, $offset, 4000, $meta);
                 $offset = $batchResult['next_offset'];
                 $isEof = $batchResult['is_eof'];
                 $meta = array_merge($meta, $batchResult['meta'] ?? []);
@@ -1168,15 +1176,15 @@ class FlightDailyReportController extends Controller
                     }
 
                     if (!empty($dbRows)) {
-                        foreach (array_chunk($dbRows, 250) as $chunk) {
-                            FdrDatabaseService::executeWithRetry(function () use ($chunk) {
-                                DB::transaction(function () use ($chunk) {
+                        FdrDatabaseService::executeWithRetry(function () use ($dbRows) {
+                            DB::transaction(function () use ($dbRows) {
+                                foreach (array_chunk($dbRows, 500) as $chunk) {
                                     DB::table('fdr_flights')->insert($chunk);
-                                });
-                            }, 4, 300, false);
-                            if (config('database.default') === 'pgsql') {
-                                usleep(20000);
-                            }
+                                }
+                            });
+                        }, 4, 300, false);
+                        if (config('database.default') === 'pgsql') {
+                            usleep(20000);
                         }
                         $processedRows += count($dbRows);
                     }
@@ -1204,8 +1212,8 @@ class FlightDailyReportController extends Controller
                     'meta'           => $meta,
                 ]);
 
-                // Checkpoint and yield every 14s to maintain responsive browser UX and prevent gateway timeout
-                if (!$isEof && (microtime(true) - $startTime) > 14.0) {
+                // Checkpoint and yield every 24s to maintain responsive browser UX and prevent gateway timeout
+                if (!$isEof && (microtime(true) - $startTime) > 24.0) {
                     return response()->json([
                         'success'        => true,
                         'status'         => 'PARSING',
@@ -1566,14 +1574,6 @@ class FlightDailyReportController extends Controller
 
         session(['fdr_active_upload_id' => $upload->id]);
 
-        if ($upload->status !== 'completed') {
-            $job = FdrProcessingJob::where('upload_id', $upload->id)->latest()->first();
-            if ($job && $job->status !== 'READY') {
-                return redirect()->route('fdr.config', ['upload' => $upload->id])
-                    ->with('info', "Processing job is currently {$job->status} ({$job->progress}%). Dashboard will be available once ready.");
-            }
-        }
-
         $data = $upload->report_data ?: [];
         $meta = $data['meta'] ?? [];
         $defaultAirport = strtoupper(trim($meta['report_airport'] ?? ($meta['airport'] ?? 'CGK')));
@@ -1782,11 +1782,17 @@ class FlightDailyReportController extends Controller
         $hasDb = $this->fdrDbService->hasDatabaseRecords($upload);
 
         // Auto-heal / sync if database records don't exist yet but source is available
-        if (!$hasDb && $upload->status === 'completed') {
+        if (!$hasDb && empty($this->fdrDbService->getCachedAnalytics($upload))) {
             $offloaded = $upload->getOffloadedRecords();
             if (!empty($offloaded)) {
                 $classified = $this->parser->classifyRows($offloaded);
-                $this->fdrDbService->syncUploadToDatabase($upload, $classified['movement_records'], $meta);
+                $totalInserted = $this->fdrDbService->syncUploadToDatabase($upload, $classified['movement_records'], $meta);
+                $upload->updateWithRetry([
+                    'status'     => 'completed',
+                    'total_rows' => $totalInserted,
+                    'valid_rows' => $totalInserted,
+                ]);
+                FdrDatabaseService::syncCompletedUploadToSupabaseRest($upload->fresh());
                 $hasDb = true;
             } elseif (!empty($upload->stored_path)) {
                 if (str_starts_with($upload->stored_path, 'supabase://')) {
@@ -1797,9 +1803,21 @@ class FlightDailyReportController extends Controller
                         $storagePath = $parts[1] ?? '';
                         $storageService = app(\App\Services\Storage\SupabaseStorageService::class);
                         $tempPath = $storageService->downloadToTemp($storagePath, $bucket);
-                        $this->fdrDbService->syncUploadFromFile($upload, $tempPath, $this->parser);
-                        $hasDb = true;
+                        $totalInserted = $this->fdrDbService->syncUploadFromFile($upload, $tempPath, $this->parser);
                         @unlink($tempPath);
+                        if ($totalInserted > 0) {
+                            $upload->updateWithRetry([
+                                'status'             => 'completed',
+                                'total_rows'         => $totalInserted,
+                                'valid_rows'         => $totalInserted,
+                                'invalid_rows'       => 0,
+                                'duplicate_rows'     => 0,
+                                'parsing_confidence' => 1.0,
+                                'validation_summary' => ['valid' => true],
+                            ]);
+                            FdrDatabaseService::syncCompletedUploadToSupabaseRest($upload->fresh());
+                            $hasDb = true;
+                        }
                     } catch (\Throwable $e) {
                         Log::warning("Auto-heal from Supabase Storage failed for upload #{$upload->id}: " . $e->getMessage());
                     }
@@ -1807,14 +1825,21 @@ class FlightDailyReportController extends Controller
                     $disk = config('filesystems.default', 'local');
                     $localPath = Storage::disk($disk)->path($upload->stored_path);
                     if (file_exists($localPath)) {
-                        $this->fdrDbService->syncUploadFromFile($upload, $localPath, $this->parser);
-                        $hasDb = true;
+                        $totalInserted = $this->fdrDbService->syncUploadFromFile($upload, $localPath, $this->parser);
+                        if ($totalInserted > 0) {
+                            $upload->updateWithRetry([
+                                'status'     => 'completed',
+                                'total_rows' => $totalInserted,
+                                'valid_rows' => $totalInserted,
+                            ]);
+                            $hasDb = true;
+                        }
                     }
                 }
             }
         }
 
-        if ($hasDb) {
+        if ($hasDb || !empty($this->fdrDbService->getCachedAnalytics($upload))) {
             $isDefaultScope = (
                 (!$request->has('leg') || $request->query('leg') === 'ALL') &&
                 (!$request->has('operator') || $request->query('operator') === 'ALL') &&

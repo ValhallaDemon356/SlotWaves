@@ -569,7 +569,7 @@ class FdrDatabaseService
             // and can be hydrated across serverless containers
             self::supabaseRestRequest('DELETE', 'flights?upload_id=eq.' . $upload->id, null, ['Prefer: return=minimal']);
 
-            $flights = FdrFlight::where('upload_id', $upload->id)->orderBy('id')->limit(2500)->get();
+            $flights = FdrFlight::where('upload_id', $upload->id)->orderBy('id')->limit(1000)->get();
             if ($flights->isNotEmpty()) {
                 $supaRows = [];
                 foreach ($flights as $f) {
@@ -1191,12 +1191,12 @@ class FdrDatabaseService
             return 0;
         }
 
-        @ini_set('memory_limit', '512M');
+        @ini_set('memory_limit', '1024M');
         @ini_set('max_execution_time', '300');
 
         $now = now();
         $batch = [];
-        $batchSize = 250;
+        $batchSize = 500;
         $totalInserted = 0;
         $defaultAirport = strtoupper(trim($meta['airport'] ?? 'CGK'));
 
@@ -1221,8 +1221,9 @@ class FdrDatabaseService
                     });
                     $totalInserted += count($batch);
                     $batch = [];
-                    // Controlled 20ms breath between micro-batches to protect PgBouncer & Supabase RAM
-                    usleep(20000);
+                    if (config('database.default') === 'pgsql') {
+                        usleep(20000);
+                    }
                 }
             }
 
@@ -1235,7 +1236,9 @@ class FdrDatabaseService
                 });
                 $totalInserted += count($batch);
                 $batch = [];
-                usleep(20000);
+                if (config('database.default') === 'pgsql') {
+                    usleep(20000);
+                }
             }
 
             Log::info("FdrDatabaseService: Synced {$totalInserted} flights to database for upload #{$upload->id}");
@@ -1264,7 +1267,7 @@ class FdrDatabaseService
             throw new \InvalidArgumentException("Source FDR file not found: {$filePath}");
         }
 
-        @ini_set('memory_limit', '512M');
+        @ini_set('memory_limit', '1024M');
         @ini_set('max_execution_time', '300');
 
         $now = now();
@@ -1279,7 +1282,7 @@ class FdrDatabaseService
             });
 
             while (!$isEof) {
-                $batchResult = $parser->parseBatch($filePath, $offset, 2000, $meta);
+                $batchResult = $parser->parseBatch($filePath, $offset, 4000, $meta);
                 $offset = $batchResult['next_offset'];
                 $isEof = $batchResult['is_eof'];
                 $meta = array_merge($meta, $batchResult['meta'] ?? []);
@@ -1295,14 +1298,18 @@ class FdrDatabaseService
                         }
                     }
 
-                    foreach (array_chunk($dbRows, 250) as $chunk) {
-                        self::executeWithRetry(function () use ($chunk) {
-                            DB::transaction(function () use ($chunk) {
-                                DB::table('fdr_flights')->insert($chunk);
+                    if (!empty($dbRows)) {
+                        self::executeWithRetry(function () use ($dbRows) {
+                            DB::transaction(function () use ($dbRows) {
+                                foreach (array_chunk($dbRows, 500) as $chunk) {
+                                    DB::table('fdr_flights')->insert($chunk);
+                                }
                             });
                         });
-                        $totalInserted += count($chunk);
-                        usleep(20000);
+                        $totalInserted += count($dbRows);
+                        if (config('database.default') === 'pgsql') {
+                            usleep(20000);
+                        }
                     }
                     unset($dbRows);
                     unset($records);
@@ -1351,18 +1358,30 @@ class FdrDatabaseService
             return null;
         }
 
-        $schedDt = !empty($r['scheduled_datetime']) ? Carbon::parse($r['scheduled_datetime'])->toDateTimeString() : null;
-        $actDt = !empty($r['actual_datetime']) ? Carbon::parse($r['actual_datetime'])->toDateTimeString() : null;
+        $rawSchedDt = $r['scheduled_datetime'] ?? null;
+        $schedDt = !empty($rawSchedDt)
+            ? (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', (string) $rawSchedDt) ? (string) $rawSchedDt : Carbon::parse($rawSchedDt)->toDateTimeString())
+            : null;
+        $rawActDt = $r['actual_datetime'] ?? null;
+        $actDt = !empty($rawActDt)
+            ? (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', (string) $rawActDt) ? (string) $rawActDt : Carbon::parse($rawActDt)->toDateTimeString())
+            : null;
 
         $flightDate = null;
         if (!empty($r['flight_date']) && $r['flight_date'] !== 'N/A') {
-            $flightDate = FlightDailyReportFilter::standardizeDate($r['flight_date']);
+            $flightDate = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $r['flight_date'])
+                ? (string) $r['flight_date']
+                : FlightDailyReportFilter::standardizeDate($r['flight_date']);
         } elseif (!empty($r['operational_date']) && $r['operational_date'] !== 'N/A') {
-            $flightDate = FlightDailyReportFilter::standardizeDate($r['operational_date']);
+            $flightDate = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $r['operational_date'])
+                ? (string) $r['operational_date']
+                : FlightDailyReportFilter::standardizeDate($r['operational_date']);
         } elseif ($schedDt) {
             $flightDate = substr($schedDt, 0, 10);
         } elseif (!empty($meta['period_start'])) {
-            $flightDate = FlightDailyReportFilter::standardizeDate($meta['period_start']);
+            $flightDate = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $meta['period_start'])
+                ? (string) $meta['period_start']
+                : FlightDailyReportFilter::standardizeDate($meta['period_start']);
         }
 
         $direction = strtoupper(trim((string)($r['direction'] ?? 'ARRIVAL')));
@@ -1488,9 +1507,34 @@ class FdrDatabaseService
             'stand'                => $r['stand'] ?? null,
             'runway'               => $r['runway'] ?? null,
             'mtow'                 => $r['mtow'] ?? null,
-            'raw_data'             => json_encode(array_merge($r, [
-                'source_row_number' => $r['source_row_number'] ?? ($r['index'] ?? null),
-            ])),
+            'raw_data'             => json_encode([
+                'index'                  => $r['index'] ?? null,
+                'source_row_number'      => $r['source_row_number'] ?? ($r['index'] ?? null),
+                'sibt'                   => $r['sibt'] ?? null,
+                'sobt'                   => $r['sobt'] ?? null,
+                'aibt'                   => $r['aibt'] ?? null,
+                'aobt'                   => $r['aobt'] ?? null,
+                'umroh'                  => $r['umroh'] ?? 0,
+                'divert'                 => $r['divert'] ?? 0,
+                'miss'                   => $r['miss'] ?? 0,
+                'crw'                    => (int)($r['operating_crew'] ?? ($r['crw'] ?? 0)),
+                'ex_crw'                 => (int)($r['extra_crew'] ?? ($r['ex_crw'] ?? 0)),
+                'operating_crew'         => (int)($r['operating_crew'] ?? ($r['crw'] ?? 0)),
+                'extra_crew'             => (int)($r['extra_crew'] ?? ($r['ex_crw'] ?? 0)),
+                'total_crew'             => (int)($r['total_crew'] ?? ($r['operating_crew'] ?? ($r['crw'] ?? 0))),
+                'final'                  => $r['final'] ?? null,
+                'final_time'             => $r['final_time'] ?? null,
+                'branch'                 => $r['branch'] ?? $repAirport,
+                'raw_leg'                => $r['raw_leg'] ?? ($r['leg'] ?? null),
+                'leg_subtype'            => $r['leg_subtype'] ?? null,
+                'sched_type'             => $r['sched_type'] ?? ($isSched ? 'SCHED' : 'UNSCHED'),
+                'is_scheduled'           => $isSched,
+                'flight_suffix_label'    => $r['flight_suffix_label'] ?? null,
+                'flight_suffix_desc'     => $r['flight_suffix_desc'] ?? null,
+                'flight_suffix_category' => $r['flight_suffix_category'] ?? null,
+                'api_pax_edifly'         => $r['api_pax_edifly'] ?? null,
+                'api_cargo_edifly'       => $r['api_cargo_edifly'] ?? null,
+            ]),
             'created_at'           => $now,
             'updated_at'           => $now,
         ];
@@ -2468,7 +2512,7 @@ class FdrDatabaseService
      */
     public function precomputeAndCacheAnalytics(Upload $upload, array $meta = []): array
     {
-        @ini_set('memory_limit', '512M');
+        @ini_set('memory_limit', '1024M');
         @ini_set('max_execution_time', '300');
 
         if (empty($meta)) {
