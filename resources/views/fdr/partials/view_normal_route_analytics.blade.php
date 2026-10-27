@@ -1,5 +1,5 @@
 {{-- ══ ROUTE ANALYTICS, SPECIAL SUFFIXES & INTERACTIVE NETWORK MAP ═════════ --}}
-<div class="space-y-5" id="fdr-route-network-section" x-data="{ hoveredRoute: null, hoveredAirport: null }">
+<div class="space-y-5" id="fdr-route-network-section">
 
     {{-- ══ SPECIAL FLIGHT SUFFIX & IRREGULARITY CLASSIFICATION ═════════════════ --}}
     <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
@@ -209,9 +209,9 @@
             </div>
         </div>
 
-        {{-- Leaflet Geographic Map Canvas (explicit height 440px) --}}
-        <div class="w-full rounded-2xl relative overflow-hidden select-none shadow-sm border border-slate-200 bg-slate-100" id="injourney-network-container" style="height: 440px; min-height: 420px; width: 100%; position: relative;">
-            <div id="injourney-network-map" class="w-full h-full" style="height: 100%; min-height: 420px; width: 100%; position: relative; z-index: 1;"></div>
+        {{-- Leaflet Geographic Map Canvas (explicit height 480px, min-height 450px) --}}
+        <div class="w-full rounded-2xl relative overflow-hidden select-none shadow-sm border border-slate-200 bg-slate-50" id="injourney-network-container" style="height: 480px; min-height: 450px; width: 100%; position: relative;">
+            <div id="injourney-network-map" class="w-full h-full" style="height: 100%; min-height: 450px; width: 100%; position: relative; z-index: 1;"></div>
 
             {{-- Non-blocking basemap warning banner (§8, §21) --}}
             <div x-show="basemapUnavailable"
@@ -248,13 +248,21 @@
 
             {{-- Floating Interactive HUD Card for Airport Nodes --}}
             <template x-if="!hoveredRoute && hoveredAirport">
-                <div class="absolute bottom-3 left-4 bg-slate-900/95 backdrop-blur-md border border-blue-500/40 text-white rounded-xl px-4 py-2.5 text-xs shadow-2xl pointer-events-none space-y-0.5 z-20">
-                    <div class="font-black flex items-center gap-1.5 text-blue-400">
-                        <span class="w-2 h-2 rounded-full" :class="hoveredAirport.isHub ? 'bg-cyan-400' : 'bg-blue-400'"></span>
+                <div class="absolute bottom-3 left-4 bg-slate-900/95 backdrop-blur-md border border-blue-500/40 text-white rounded-xl px-4 py-2.5 text-xs shadow-2xl pointer-events-none space-y-1 z-20">
+                    <div class="font-black flex items-center gap-1.5" :class="hoveredAirport.isHub ? 'text-cyan-400' : (hoveredAirport.isActive ? 'text-blue-400' : 'text-slate-300')">
+                        <span class="w-2 h-2 rounded-full" :class="hoveredAirport.isHub ? 'bg-cyan-400 animate-pulse' : (hoveredAirport.isActive ? 'bg-blue-400' : 'bg-slate-400')"></span>
                         <span x-text="hoveredAirport.code + ' — ' + hoveredAirport.name"></span>
-                        <span x-show="hoveredAirport.isHub" class="px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 text-[9px] uppercase font-bold">Active Hub</span>
+                        <span class="px-1.5 py-0.2 rounded text-[9px] uppercase font-bold"
+                              :class="hoveredAirport.isHub ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : (hoveredAirport.isActive ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40' : 'bg-slate-800 text-slate-400 border border-slate-700')"
+                              x-text="hoveredAirport.type || (hoveredAirport.isHub ? 'Active Hub' : (hoveredAirport.isActive ? 'Connected Station' : 'Regional Station'))"></span>
                     </div>
-                    <div class="text-[10px] text-slate-400" x-text="hoveredAirport.city + ' • ' + (hoveredAirport.flightsCount || 0) + ' Connected Movements'"></div>
+                    <div class="text-[10px] text-slate-400" x-text="hoveredAirport.city"></div>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[11px] font-mono pt-1 border-t border-slate-800">
+                        <div class="text-slate-400">Movements: <span class="text-white font-bold" x-text="(hoveredAirport.flightsCount || 0).toLocaleString() + ' flt'"></span></div>
+                        <div class="text-slate-400">Passengers: <span class="text-white font-bold" x-text="(hoveredAirport.paxCount || 0).toLocaleString() + ' pax'"></span></div>
+                        <div class="text-slate-400">Routes: <span class="text-cyan-400 font-bold" x-text="(hoveredAirport.routesCount || 0) + ' routes'"></span></div>
+                        <div class="text-slate-400">Avg SLF: <span class="text-emerald-400 font-bold" x-text="hoveredAirport.slf || 'N/A'"></span></div>
+                    </div>
                 </div>
             </template>
         </div>
