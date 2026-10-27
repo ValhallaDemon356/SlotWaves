@@ -129,9 +129,17 @@ class FdrDatabaseService
             return (string) config('database.default', 'sqlite');
         }
 
+        $modeCacheFile = (is_dir('/tmp/storage') ? '/tmp/storage' : sys_get_temp_dir()) . '/slotwaves_db_mode.cache';
         $defaultConn = (string) config('database.default', 'pgsql');
+        $pgHost = (string) config('database.connections.pgsql.host', '');
 
-        if ($defaultConn === 'pgsql') {
+        // Fast-path: If running on Vercel serverless (/tmp/storage) or cached as sqlite fallback,
+        // or using the pooler host without SNI/fdr tables, skip the 15s libpq TCP timeout immediately.
+        $skipPgProbe = is_dir('/tmp/storage')
+            || str_contains($pgHost, 'pooler.supabase.com')
+            || (file_exists($modeCacheFile) && trim((string) @file_get_contents($modeCacheFile)) === 'sqlite');
+
+        if ($defaultConn === 'pgsql' && !$skipPgProbe) {
             try {
                 DB::connection('pgsql')->getPdo();
                 $check = DB::connection('pgsql')->selectOne(
@@ -139,12 +147,14 @@ class FdrDatabaseService
                 );
                 if ($check && !empty($check->u) && !empty($check->j) && !empty($check->f)) {
                     self::$connectionVerified = true;
+                    @file_put_contents($modeCacheFile, 'pgsql');
                     return 'pgsql';
                 }
                 Log::info('FdrDatabaseService: PostgreSQL lacks fdr_* tables. Switching to SQLite + Supabase PostgREST hybrid engine.');
             } catch (\Throwable $e) {
                 Log::info('FdrDatabaseService: PostgreSQL TCP pooler unavailable (' . self::sanitizeLogMessage($e->getMessage()) . '). Switching to SQLite + Supabase PostgREST hybrid engine.');
             }
+            @file_put_contents($modeCacheFile, 'sqlite');
         }
 
         $sqlitePath = is_dir('/tmp/storage')
