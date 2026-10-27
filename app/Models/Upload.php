@@ -41,6 +41,12 @@ class Upload extends Model
     public function getReportDataAttribute($value)
     {
         $data = is_array($value) ? $value : (json_decode($value, true) ?: []);
+        if (empty($data['records'])) {
+            $offloaded = $this->getOffloadedRecords();
+            if (!empty($offloaded)) {
+                $data['records'] = $offloaded;
+            }
+        }
         return $data;
     }
 
@@ -165,6 +171,16 @@ class Upload extends Model
                 unset($value['data']);
             }
 
+            // Clean internal parser buffers from meta
+            if (isset($value['meta']) && is_array($value['meta'])) {
+                unset(
+                    $value['meta']['_summaries'],
+                    $value['meta']['_col_map'],
+                    $value['meta']['_header_cols'],
+                    $value['meta']['_header_byte_offset']
+                );
+            }
+
             unset($value['raw_html'], $value['html'], $value['raw_content'], $value['content'], $value['_raw']);
 
             // Recursively strip giant strings (> 10KB) to prevent accidental raw HTML insertion
@@ -187,15 +203,27 @@ class Upload extends Model
         }
 
         if (is_array($value)) {
-            unset($value['records'], $value['html'], $value['raw_content'], $value['raw_html'], $value['raw']);
-            if (isset($value['sample']) && is_array($value['sample'])) {
-                $value['sample'] = array_slice($value['sample'], 0, 3);
+            // Keep strictly lightweight metadata
+            $trimmed = [
+                'valid'             => (bool)($value['valid'] ?? true),
+                'status'            => $value['status'] ?? ($value['stage'] ?? 'COMPLETED'),
+                'detected_template' => $value['detected_template'] ?? ($value['template'] ?? 'NORMAL'),
+                'records_count'     => $value['records_count'] ?? ($value['total_rows'] ?? 0),
+                'category'          => $value['category'] ?? null,
+                'category_title'    => $value['category_title'] ?? null,
+            ];
+
+            if (!empty($value['errors']) && is_array($value['errors'])) {
+                $trimmed['errors'] = array_slice($value['errors'], 0, 5);
             }
-            foreach ($value as $k => $v) {
-                if (is_string($v) && strlen($v) > 10240) {
-                    unset($value[$k]);
-                }
+            if (!empty($value['zero_state'])) {
+                $trimmed['zero_state'] = true;
             }
+            if (!empty($value['meta']['airport_code'])) {
+                $trimmed['meta'] = ['airport_code' => $value['meta']['airport_code']];
+            }
+
+            $value = array_filter($trimmed, fn($v) => $v !== null);
         }
         $this->attributes['validation_summary'] = is_array($value) ? json_encode($value) : $value;
     }

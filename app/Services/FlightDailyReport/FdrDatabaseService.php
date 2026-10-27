@@ -152,6 +152,7 @@ class FdrDatabaseService
                 Log::warning("FdrDatabaseService: Transient database error on attempt {$attempt}/{$maxRetries} ({$e->getMessage()}). Reconnecting in {$backoffMs}ms...");
 
                 try {
+                    DB::disconnect('pgsql');
                     DB::purge('pgsql');
                     DB::reconnect('pgsql');
                 } catch (\Throwable $reconnectErr) {
