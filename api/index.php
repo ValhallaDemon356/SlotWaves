@@ -91,7 +91,7 @@ _sw_setenv_default('APP_MAINTENANCE_DRIVER', 'file');
 _sw_setenv_default('LOG_CHANNEL',            'stderr');
 _sw_setenv('SESSION_DRIVER',                 'cookie');
 _sw_setenv_default('SESSION_SECURE_COOKIE',  'true');
-_sw_setenv_default('CACHE_STORE',            'database');
+_sw_setenv_default('CACHE_STORE',            'file');
 _sw_setenv_default('QUEUE_CONNECTION',       'sync');
 _sw_setenv_default('DB_CONNECTION',          'pgsql');
 

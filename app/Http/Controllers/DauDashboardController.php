@@ -1920,7 +1920,7 @@ class DauDashboardController extends Controller
             $signed = $storageService->createSignedUploadUrl(
                 $storagePath,
                 $bucket,
-                false
+                true
             );
 
             return response()->json([
@@ -1999,23 +1999,45 @@ class DauDashboardController extends Controller
                 ? $validated['bucket_name']
                 : config('services.supabase.bucket', env('NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET', 'flight-reports'));
 
-            \Illuminate\Support\Facades\DB::disconnect('pgsql');
+            \App\Services\FlightDailyReport\FdrDatabaseService::ensureWorkingConnection();
             $storagePath = $storageService->sanitizeStoragePath($validated['file_path']);
             $originalFilename = $validated['original_filename'];
             $airlineHint = $validated['airline_type'] ?? null;
-
-            // The signed-upload endpoint has already transferred the bytes to
-            // persistent Supabase Storage. Do NOT download/parse the entire file
-            // inside this request. That was the source of the previous generic
-            // "Error" response and made large files dependent on one invocation.
             $sourceUri = "supabase://{$bucket}/{$storagePath}";
-            $persisted = \App\Services\FlightDailyReport\FdrDatabaseService::executeWithRetry(function () use (
+            $correlationId = 'fdr_' . \Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(12));
+
+            // Sync queued upload metadata immediately to Supabase public.uploads via PostgREST HTTPS API
+            $supaUploadId = \App\Services\FlightDailyReport\FdrDatabaseService::syncQueuedUploadToSupabaseRest(
+                $originalFilename,
+                $sourceUri,
+                [
+                    'v'           => 2,
+                    'status'      => 'QUEUED',
+                    'stage'       => 'QUEUED',
+                    'progress'    => 0,
+                    'file_size'   => $fileSize,
+                    'report_type' => 'fdr',
+                    'meta'        => [
+                        'bucket'        => $bucket,
+                        'storage_path'  => $storagePath,
+                        'airline_hint'  => $airlineHint,
+                        'source_system' => 'OASYS',
+                        'report_name'   => 'FLIGHT DAILY REPORT',
+                        'source_path'   => $sourceUri,
+                    ],
+                ]
+            );
+
+            // Persistence closure for atomic transaction with idempotency and reconciliation
+            $persistAction = function () use (
                 $sourceUri,
                 $originalFilename,
                 $bucket,
                 $storagePath,
                 $airlineHint,
-                $request
+                $request,
+                $fileSize,
+                $supaUploadId
             ) {
                 return \Illuminate\Support\Facades\DB::transaction(function () use (
                     $sourceUri,
@@ -2023,15 +2045,18 @@ class DauDashboardController extends Controller
                     $bucket,
                     $storagePath,
                     $airlineHint,
-                    $request
+                    $request,
+                    $fileSize,
+                    $supaUploadId
                 ) {
-                    // Check for existing Upload record with the exact stored_path (storage-object idempotency)
-                    $upload = Upload::where('stored_path', $sourceUri)->lockForUpdate()->first();
+                    // 1. Check for existing Upload record with the exact stored_path (storage-object idempotency)
+                    $upload = Upload::where('stored_path', $sourceUri)->first();
+                    if (!$upload && $supaUploadId) {
+                        $upload = Upload::find($supaUploadId);
+                    }
 
                     if (!$upload) {
-                        $uploadToken = 'fdr_' . \Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(24));
-
-                        $upload = Upload::create([
+                        $createAttrs = [
                             'original_filename'  => $originalFilename,
                             'stored_path'        => $sourceUri,
                             'status'             => 'processing',
@@ -2053,66 +2078,55 @@ class DauDashboardController extends Controller
                                     'source_path'   => $sourceUri,
                                 ],
                             ],
-                        ]);
+                        ];
+                        if ($supaUploadId) {
+                            $createAttrs['id'] = $supaUploadId;
+                        }
+                        $upload = Upload::create($createAttrs);
+                    }
 
+                    // 2. Check for existing processing job to avoid duplicates
+                    $deterministicJobId = 'fdr_job_' . $upload->id;
+                    $job = \App\Models\FdrProcessingJob::find($deterministicJobId)
+                        ?: \App\Models\FdrProcessingJob::where('upload_id', $upload->id)
+                            ->orWhere('stored_path', $sourceUri)
+                            ->first();
+
+                    $uploadToken = $job?->upload_token ?? ('fdr_tok_' . $upload->id);
+
+                    // 3. Check for existing upload session or create it
+                    $session = \App\Models\FdrUploadSession::where('upload_token', $uploadToken)
+                        ->orWhere(function ($q) use ($bucket, $storagePath) {
+                            $q->where('storage_bucket', $bucket)->where('storage_path', $storagePath);
+                        })
+                        ->first();
+
+                    if (!$session) {
                         $session = \App\Models\FdrUploadSession::create([
                             'upload_token'      => $uploadToken,
                             'original_filename' => $originalFilename,
-                            'file_size'         => (int) ($request->input('file_size') ?? 0),
+                            'file_size'         => $fileSize,
                             'mime_type'         => $request->input('mime_type'),
                             'chunk_size'        => 0,
                             'total_chunks'      => 0,
-                            'uploaded_bytes'    => 0,
+                            'uploaded_bytes'    => $fileSize,
                             'uploaded_chunks'   => [],
                             'storage_bucket'    => $bucket,
                             'storage_path'      => $storagePath,
                             'status'            => \App\Models\FdrUploadSession::STATUS_UPLOADED,
                             'progress'          => 100,
                         ]);
-
-                        $job = \App\Models\FdrProcessingJob::create([
-                            'upload_id'      => $upload->id,
-                            'upload_token'   => $uploadToken,
-                            'filename'       => $originalFilename,
-                            'stored_path'    => $sourceUri,
-                            'file_size'      => (int) ($request->input('file_size') ?? 0),
-                            'report_type'    => 'fdr',
-                            'status'         => 'QUEUED',
-                            'stage'          => 'QUEUED',
-                            'stage_label'    => 'Preparing Flight Daily Report...',
-                            'progress'       => 0,
-                            'processed_rows' => 0,
-                            'total_rows'     => 0,
-                            'current_offset' => 0,
-                            'current_batch'  => 0,
-                            'failed_rows'    => 0,
-                            'meta'           => [
-                                'bucket'       => $bucket,
-                                'storage_path' => $storagePath,
-                                'airline_hint' => $airlineHint,
-                            ],
-                            'diagnostics'    => [
-                                'source' => 'SUPABASE_STORAGE',
-                            ],
-                            'result_url'     => route('fdr.dashboard', $upload->id),
-                        ]);
-
-                        return ['upload' => $upload, 'job' => $job, 'reconciled' => false];
                     }
 
-                    // Existing upload record found: Reconcile and avoid duplicate job/upload creation
-                    $job = \App\Models\FdrProcessingJob::where('upload_id', $upload->id)
-                        ->orWhere('stored_path', $sourceUri)
-                        ->first();
-
+                    // 4. Create job if not already existing
                     if (!$job) {
-                        $uploadToken = 'fdr_' . \Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(24));
                         $job = \App\Models\FdrProcessingJob::create([
+                            'id'             => $deterministicJobId,
                             'upload_id'      => $upload->id,
                             'upload_token'   => $uploadToken,
                             'filename'       => $originalFilename,
                             'stored_path'    => $sourceUri,
-                            'file_size'      => (int) ($request->input('file_size') ?? 0),
+                            'file_size'      => $fileSize,
                             'report_type'    => 'fdr',
                             'status'         => 'QUEUED',
                             'stage'          => 'QUEUED',
@@ -2133,22 +2147,47 @@ class DauDashboardController extends Controller
                             ],
                             'result_url'     => route('fdr.dashboard', $upload->id),
                         ]);
+                        $reconciled = false;
+                    } else {
+                        $reconciled = true;
                     }
 
-                    return ['upload' => $upload, 'job' => $job, 'reconciled' => true];
+                    return ['upload' => $upload, 'job' => $job, 'session' => $session, 'reconciled' => $reconciled];
                 });
-            }, 3, 300, true);
+            };
+
+            try {
+                $persisted = \App\Services\FlightDailyReport\FdrDatabaseService::executeWithRetry($persistAction, 3, 300, true);
+            } catch (\Throwable $e) {
+                $classification = \App\Services\FlightDailyReport\FdrDatabaseService::classifyError($e);
+
+                // If schema error (e.g. 42P01 undefined table or 42703 undefined column), attempt safe self-healing migration once
+                if ($classification['category'] === 'schema') {
+                    try {
+                        Log::info("handleUploadedFdr [{$correlationId}]: Schema error detected ({$classification['sql_state']}). Attempting automatic migration...");
+                        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+                        $persisted = \App\Services\FlightDailyReport\FdrDatabaseService::executeWithRetry($persistAction, 2, 300, true);
+                    } catch (\Throwable $migEx) {
+                        Log::warning("handleUploadedFdr [{$correlationId}]: Self-healing migration failed: " . \App\Services\FlightDailyReport\FdrDatabaseService::sanitizeLogMessage($migEx->getMessage()));
+                        // Re-throw original exception to be handled by the catch block below
+                        throw $e;
+                    }
+                } else {
+                    throw $e;
+                }
+            }
 
             $upload = $persisted['upload'];
             $job = $persisted['job'];
 
             session([
                 'fdr_active_upload_id' => $upload->id,
-                'active_upload_id'      => $upload->id,
+                'active_upload_id'     => $upload->id,
             ]);
 
             return response()->json([
                 'success'         => true,
+                'correlation_id'  => $correlationId,
                 'completed'       => $job->status === 'READY',
                 'is_async_job'    => true,
                 'upload_id'       => $upload->id,
@@ -2168,30 +2207,36 @@ class DauDashboardController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => [
-                    'code' => 'FDR_POST_UPLOAD_VALIDATION',
-                    'message' => implode('; ', $e->validator->errors()->all()),
+                    'code'      => 'FDR_POST_UPLOAD_VALIDATION',
+                    'category'  => 'validation',
+                    'message'   => implode('; ', $e->validator->errors()->all()),
                     'retryable' => false,
                 ],
             ], 422);
         } catch (\Throwable $e) {
-            $isConn = \App\Services\FlightDailyReport\FdrDatabaseService::isConnectionError($e);
-            $rawMsg = $e->getMessage() ?: get_class($e);
-            Log::error('handleUploadedFdr failed', [
-                'message' => $rawMsg,
-                'is_connection_error' => $isConn,
-                'exception' => $e,
-            ]);
+            $classification = \App\Services\FlightDailyReport\FdrDatabaseService::classifyError($e);
+            $cleanMsg = \App\Services\FlightDailyReport\FdrDatabaseService::sanitizeLogMessage($e->getMessage() ?: get_class($e));
 
-            $safeMsg = ($isConn || stripos($rawMsg, 'SQLSTATE') !== false || stripos($rawMsg, 'connection') !== false)
-                ? 'Koneksi database sedang disinkronkan kembali. Sistem akan mencoba lagi secara otomatis.'
-                : $rawMsg;
+            Log::error('handleUploadedFdr failed', [
+                'correlation_id' => $correlationId ?? null,
+                'storage_uri'    => $sourceUri ?? null,
+                'category'       => $classification['category'],
+                'sql_state'      => $classification['sql_state'],
+                'error_code'     => $classification['code'],
+                'is_retryable'   => $classification['is_retryable'],
+                'message'        => $cleanMsg,
+            ]);
 
             return response()->json([
                 'success' => false,
+                'category' => $classification['category'],
                 'error' => [
-                    'code' => $isConn ? 'DATABASE_CONNECTION_ERROR' : 'FDR_POST_UPLOAD_ERROR',
-                    'message' => $safeMsg,
-                    'retryable' => $isConn,
+                    'code'      => $classification['code'],
+                    'category'  => $classification['category'],
+                    'sql_state' => $classification['sql_state'],
+                    'title'     => $classification['user_title'],
+                    'message'   => $classification['user_message'],
+                    'retryable' => $classification['is_retryable'],
                 ],
             ], 500);
         }

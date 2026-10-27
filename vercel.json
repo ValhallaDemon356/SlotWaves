@@ -39,7 +39,7 @@
     "LOG_CHANNEL": "stderr",
     "SESSION_SECURE_COOKIE": "true",
     "SESSION_DRIVER": "cookie",
-    "CACHE_STORE": "database",
+    "CACHE_STORE": "file",
     "QUEUE_CONNECTION": "sync",
     "FILESYSTEM_DISK": "local"
   }

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Upload extends Model
 {
     protected $fillable = [
+        'id',
         'original_filename',
         'stored_path',
         'status',
@@ -31,6 +32,24 @@ class Upload extends Model
         'cached_analytics'   => 'array',
         'parsing_confidence' => 'float',
     ];
+
+    public function getErrorMessageAttribute($value)
+    {
+        if (is_string($value) && (str_starts_with($value, '__FDR_STATE__:') || str_starts_with($value, '__FDR_STATE_GZ__:'))) {
+            return null;
+        }
+        return $value;
+    }
+
+    public function resolveRouteBinding($value, $field = null)
+    {
+        \App\Services\FlightDailyReport\FdrDatabaseService::ensureWorkingConnection();
+        $model = parent::resolveRouteBinding($value, $field);
+        if (!$model && $field === null && is_numeric($value)) {
+            $model = \App\Services\FlightDailyReport\FdrDatabaseService::hydrateUploadFromSupabaseRest((int) $value);
+        }
+        return $model;
+    }
 
     public function getCachedAnalyticsAttribute($value)
     {

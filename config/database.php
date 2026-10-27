@@ -34,11 +34,11 @@ return [
 
         'sqlite' => [
             'driver' => 'sqlite',
-            'url' => env('DB_URL'),
-            'database' => env('DB_DATABASE', database_path('database.sqlite')),
+            'url' => env('DB_SQLITE_URL'),
+            'database' => env('DB_SQLITE_PATH', is_dir('/tmp/storage') ? '/tmp/storage/database.sqlite' : database_path('database.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
-            'busy_timeout' => null,
+            'busy_timeout' => 5000,
             'journal_mode' => null,
             'synchronous' => null,
             'transaction_mode' => 'DEFERRED',
@@ -86,7 +86,7 @@ return [
 
         'pgsql' => [
             'driver' => 'pgsql',
-            'url' => env('DATABASE_URL', env('DB_URL')),
+            'url' => env('DB_URL'),
             'host' => env('DB_HOST', 'aws-0-ap-southeast-1.pooler.supabase.com'),
             'port' => env('DB_PORT', '6543'),
             'database' => env('DB_DATABASE', 'postgres'),
@@ -97,11 +97,11 @@ return [
             'prefix_indexes' => true,
             'search_path' => env('DB_SCHEMA', 'public'),
             'sslmode' => env('DB_SSLMODE', 'require'),
-            'connect_timeout' => 15,
+            'connect_timeout' => 4,
             'options' => extension_loaded('pdo_pgsql') ? [
                 \PDO::ATTR_PERSISTENT => false,
                 \PDO::ATTR_EMULATE_PREPARES => true,
-                \PDO::ATTR_TIMEOUT => 15,
+                \PDO::ATTR_TIMEOUT => 4,
                 \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
             ] : [],
         ],

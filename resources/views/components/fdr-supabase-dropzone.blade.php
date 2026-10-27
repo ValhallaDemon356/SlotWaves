@@ -167,9 +167,21 @@
             <div class="flex-1 space-y-1">
                 <div class="font-bold text-red-800 dark:text-red-200" x-text="uploadState.errorTitle || 'Upload Error'"></div>
                 <div x-text="uploadState.errorMessage"></div>
-                <div class="pt-2">
-                    <button type="button" @click="resetUploader()" class="px-3 py-1 bg-red-600 text-white rounded-lg font-semibold text-[11px] hover:bg-red-700 transition">
-                        Try Again
+                <div class="pt-3 flex flex-wrap items-center gap-2">
+                    <template x-if="uploadedStorage && uploadedStorage.path">
+                        <button type="button" @click="retryPersistence()" class="px-3 py-1.5 bg-aviation-600 text-white rounded-lg font-semibold text-[11px] hover:bg-aviation-700 transition flex items-center gap-1.5 shadow-2xs">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <span>Coba Lagi Simpan Metadata (Tanpa Upload Ulang)</span>
+                        </button>
+                    </template>
+                    <template x-if="!uploadedStorage || !uploadedStorage.path">
+                        <button type="button" @click="startDirectUpload()" class="px-3 py-1.5 bg-aviation-600 text-white rounded-lg font-semibold text-[11px] hover:bg-aviation-700 transition flex items-center gap-1.5 shadow-2xs">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <span>Coba Upload Lagi</span>
+                        </button>
+                    </template>
+                    <button type="button" @click="resetUploader()" class="px-3 py-1.5 bg-slate-200 dark:bg-navy-800 text-slate-700 dark:text-slate-300 rounded-lg font-semibold text-[11px] hover:bg-slate-300 dark:hover:bg-navy-700 transition">
+                        Ganti File Baru
                     </button>
                 </div>
             </div>
@@ -192,6 +204,7 @@ function fdrSupabaseUploader(config) {
 
         isDragging: false,
         selectedFile: null,
+        uploadedStorage: null,
 
         detectedMetadata: {
             airline: null,
@@ -368,113 +381,163 @@ function fdrSupabaseUploader(config) {
                     }
                 });
 
+                // Save storage object identity so persistence can be retried without re-uploading large file
+                this.uploadedStorage = {
+                    path: storagePath,
+                    bucket: this.bucket,
+                    filename: file.name,
+                    fileSize: file.size,
+                    airline: this.detectedMetadata.airline
+                };
+
                 // Step 3: Notify Laravel backend that the persistent storage object is ready
-                this.uploadState.status = 'processing';
-                this.uploadState.progress = 100;
-                this.uploadState.statusTitle = 'Validating and preparing FDR analytics...';
-                this.uploadState.detailText = 'Source file is safely stored in Supabase Storage';
-                this.uploadState.speedText = 'Starting parser';
-
-                const notifyPayload = JSON.stringify({
-                    file_path: storagePath,
-                    bucket_name: this.bucket,
-                    original_filename: file.name,
-                    file_size: file.size,
-                    airline_type: this.detectedMetadata.airline
-                });
-
-                let response = null;
-                let data = null;
-                const maxNotifyRetries = 4;
-                const backoffDelays = [1500, 3000, 4500, 6000];
-
-                for (let retryIdx = 0; retryIdx <= maxNotifyRetries; retryIdx++) {
-                    try {
-                        response = await fetch(this.backendEndpoint, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-                                'X-CSRF-TOKEN': this.csrfToken,
-                                'X-Requested-With': 'XMLHttpRequest'
-                            },
-                            body: notifyPayload
-                        });
-
-                        data = await this.readJsonResponse(response);
-
-                        // Check if response indicates a permanent schema error (do NOT auto-retry)
-                        const rawDataStr = JSON.stringify(data || '');
-                        const isSchemaErr = /42P01|42703|42P07|SQLSTATE\[42|undefined_table|undefined_column|relation [\"\'].*?[\"\'] does not exist|column [\"\'].*?[\"\'] does not exist|kesalahan struktur database|DATABASE_SCHEMA/i.test(rawDataStr);
-
-                        const isConnErr = !isSchemaErr && !response.ok && (
-                            [502, 503, 504].includes(response.status) ||
-                            data?.error?.code === 'DATABASE_CONNECTION_ERROR' ||
-                            data?.error?.retryable === true ||
-                            /08006|08001|08003|57P01|terminating connection|could not receive data|Hot standby/i.test(rawDataStr)
-                        );
-
-                        if (isConnErr && retryIdx < maxNotifyRetries) {
-                            const delayMs = backoffDelays[retryIdx] || 3000;
-                            this.uploadState.statusTitle = 'Menyinkronkan koneksi database... (Percobaan ulang otomatis)';
-                            this.uploadState.detailText = `Menyambungkan kembali ke server database (Percobaan ${retryIdx + 1}/${maxNotifyRetries})...`;
-                            await new Promise(r => setTimeout(r, delayMs));
-                            continue;
-                        }
-
-                        if (!response.ok || !data.success) {
-                            throw new Error(this.extractError(data, `Backend processing failed (HTTP ${response.status}).`));
-                        }
-
-                        break; // Success!
-                    } catch (fetchErr) {
-                        const errMsg = fetchErr?.message || '';
-                        const isSchemaErr = /42P01|42703|42P07|SQLSTATE\[42|kesalahan struktur database|DATABASE_SCHEMA/i.test(errMsg);
-                        const isNetworkOrConn = !isSchemaErr && /fetch|network|connection|08006|ETIMEDOUT/i.test(errMsg);
-                        if (isNetworkOrConn && retryIdx < maxNotifyRetries) {
-                            const delayMs = backoffDelays[retryIdx] || 3000;
-                            this.uploadState.statusTitle = 'Menyinkronkan koneksi database... (Percobaan ulang otomatis)';
-                            this.uploadState.detailText = `Menyambungkan kembali ke server database (Percobaan ${retryIdx + 1}/${maxNotifyRetries})...`;
-                            await new Promise(r => setTimeout(r, delayMs));
-                            continue;
-                        }
-                        throw fetchErr;
-                    }
-                }
-
-                if (data.is_async_job && data.job_id && data.process_url) {
-                    await this.processFdrJob(data);
-                    return;
-                }
-
-                if (data.redirect_url) {
-                    setTimeout(() => {
-                        window.location.href = data.redirect_url;
-                    }, 800);
-                }
+                await this.notifyBackendPersistence(this.uploadedStorage);
 
             } catch (err) {
-                console.error('Direct Supabase FDR upload error:', err);
-                this.uploadState.error = true;
-                const msg = err?.message || String(err);
-
-                if (/NoSuchBucket|bucket .*ditemukan|Bucket not found/i.test(msg)) {
-                    this.uploadState.errorTitle = 'STORAGE BUCKET TIDAK DITEMUKAN (404)';
-                } else if (/RLS Policy|row-level security|403|permission denied/i.test(msg)) {
-                    this.uploadState.errorTitle = 'STORAGE AUTHORIZATION ERROR (403)';
-                } else if (/FDR_FILE_TOO_LARGE|50MB|too large|payload too large|413/i.test(msg)) {
-                    this.uploadState.errorTitle = 'FILE MELEBIHI BATAS MAKSIMUM 50MB';
-                } else if (/kesalahan struktur database|42P01|42703|DATABASE_SCHEMA/i.test(msg)) {
-                    this.uploadState.errorTitle = 'KESALAHAN STRUKTUR DATABASE (HUBUNGI ADMIN)';
-                } else if (/signed upload/i.test(msg)) {
-                    this.uploadState.errorTitle = 'SIGNED UPLOAD ERROR';
-                } else {
-                    this.uploadState.errorTitle = 'GAGAL MEMPROSES FLIGHT DAILY REPORT';
-                }
-
-                this.uploadState.errorMessage = msg;
-                this.uploadState.status = 'selected';
+                this.handleFatalError(err);
             }
+        },
+
+        async retryPersistence() {
+            if (!this.uploadedStorage || !this.uploadedStorage.path) {
+                return this.startDirectUpload();
+            }
+
+            this.uploadState.error = false;
+            this.uploadState.status = 'processing';
+            this.uploadState.progress = 100;
+            this.uploadState.statusTitle = 'Menyimpan metadata upload FDR...';
+            this.uploadState.detailText = 'File sudah tersimpan di Supabase Storage. Menghubungkan ke database...';
+            this.uploadState.speedText = 'Melanjutkan persistence';
+
+            try {
+                await this.notifyBackendPersistence(this.uploadedStorage);
+            } catch (err) {
+                this.handleFatalError(err);
+            }
+        },
+
+        async notifyBackendPersistence(storageInfo) {
+            this.uploadState.status = 'processing';
+            this.uploadState.progress = 100;
+            this.uploadState.statusTitle = 'Menyimpan metadata dan menyiapkan analitik FDR...';
+            this.uploadState.detailText = 'File aman tersimpan di Supabase Storage. Menghubungkan ke database...';
+            this.uploadState.speedText = 'Menyiapkan job';
+
+            const notifyPayload = JSON.stringify({
+                file_path: storageInfo.path,
+                bucket_name: storageInfo.bucket,
+                original_filename: storageInfo.filename,
+                file_size: storageInfo.fileSize,
+                airline_type: storageInfo.airline
+            });
+
+            let response = null;
+            let data = null;
+            const maxNotifyRetries = 3;
+            const backoffDelays = [1500, 3000, 4500];
+
+            for (let retryIdx = 0; retryIdx <= maxNotifyRetries; retryIdx++) {
+                try {
+                    response = await fetch(this.backendEndpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': this.csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: notifyPayload
+                    });
+
+                    data = await this.readJsonResponse(response);
+
+                    if (response.ok && data.success) {
+                        break; // Success!
+                    }
+
+                    const category = data?.category || data?.error?.category || '';
+                    const code = data?.error?.code || '';
+                    const isRetryable = (data?.error?.retryable === true);
+                    const rawDataStr = JSON.stringify(data || '');
+
+                    // Non-retryable errors (schema, integrity, auth, data, validation, 413 file size):
+                    // Fail-fast immediately without auto-retry loops
+                    const isNonRetryable = ['schema', 'integrity', 'auth', 'data', 'validation'].includes(category)
+                        || /DATABASE_SCHEMA|DATABASE_INTEGRITY|DATABASE_AUTH|DATABASE_DATA|FDR_FILE_TOO_LARGE/i.test(code)
+                        || /42P01|42703|42P07|SQLSTATE\[42|undefined table|undefined column|relation [\"\'].*?[\"\'] does not exist/i.test(rawDataStr);
+
+                    if (isNonRetryable || !isRetryable) {
+                        throw new Error(this.extractError(data, `Backend processing failed (HTTP ${response.status}).`));
+                    }
+
+                    if (retryIdx < maxNotifyRetries) {
+                        const delayMs = backoffDelays[retryIdx] || 3000;
+                        this.uploadState.statusTitle = 'Menyambungkan koneksi database... (Percobaan ulang)';
+                        this.uploadState.detailText = `Menyambungkan kembali ke server database (Percobaan ${retryIdx + 1}/${maxNotifyRetries})...`;
+                        await new Promise(r => setTimeout(r, delayMs));
+                        continue;
+                    }
+
+                    throw new Error('Percobaan pemulihan koneksi database telah habis. Upload belum dinyatakan berhasil diproses. File tetap aman tersimpan di Storage. Silakan coba kembali.');
+
+                } catch (fetchErr) {
+                    const errMsg = fetchErr?.message || '';
+                    const isNonRetryable = /schema|struktur database|42P01|42703|integritas|konflik|otorisasi|format data|too large|413|terlalu besar/i.test(errMsg);
+                    if (!isNonRetryable && retryIdx < maxNotifyRetries) {
+                        const delayMs = backoffDelays[retryIdx] || 3000;
+                        this.uploadState.statusTitle = 'Menyambungkan koneksi database... (Percobaan ulang)';
+                        this.uploadState.detailText = `Menyambungkan kembali ke server database (Percobaan ${retryIdx + 1}/${maxNotifyRetries})...`;
+                        await new Promise(r => setTimeout(r, delayMs));
+                        continue;
+                    }
+                    throw fetchErr;
+                }
+            }
+
+            if (data.is_async_job && data.job_id && data.process_url) {
+                await this.processFdrJob(data);
+                return;
+            }
+
+            if (data.redirect_url) {
+                setTimeout(() => {
+                    window.location.href = data.redirect_url;
+                }, 800);
+            }
+        },
+
+        handleFatalError(err) {
+            console.error('Direct Supabase FDR upload error:', err);
+            this.uploadState.error = true;
+            const msg = err?.message || String(err);
+
+            if (/NoSuchBucket|bucket .*ditemukan|Bucket not found/i.test(msg)) {
+                this.uploadState.errorTitle = 'STORAGE BUCKET TIDAK DITEMUKAN (404)';
+            } else if (/RLS Policy|row-level security|403|permission denied/i.test(msg)) {
+                this.uploadState.errorTitle = 'STORAGE AUTHORIZATION ERROR (403)';
+            } else if (/FDR_FILE_TOO_LARGE|50MB|too large|payload too large|413|terlalu besar/i.test(msg)) {
+                this.uploadState.errorTitle = 'FILE MELEBIHI BATAS MAKSIMUM 50MB';
+            } else if (/kesalahan struktur database|DATABASE_SCHEMA|struktur database belum sesuai/i.test(msg)) {
+                this.uploadState.errorTitle = 'STRUKTUR DATABASE BELUM SESUAI';
+            } else if (/konflik integritas|DATABASE_INTEGRITY/i.test(msg)) {
+                this.uploadState.errorTitle = 'KONFLIK INTEGRITAS DATABASE';
+            } else if (/otorisasi database|DATABASE_AUTH/i.test(msg)) {
+                this.uploadState.errorTitle = 'OTORISASI DATABASE GAGAL';
+            } else if (/format data tidak valid|DATABASE_DATA/i.test(msg)) {
+                this.uploadState.errorTitle = 'FORMAT DATA TIDAK VALID';
+            } else if (/percobaan pemulihan.*habis|retry exhausted/i.test(msg)) {
+                this.uploadState.errorTitle = 'PERCOBAAN KONEKSI DATABASE HABIS';
+            } else if (/koneksi database/i.test(msg)) {
+                this.uploadState.errorTitle = 'KONEKSI DATABASE BERMASALAH';
+            } else if (/signed upload/i.test(msg)) {
+                this.uploadState.errorTitle = 'SIGNED UPLOAD ERROR';
+            } else {
+                this.uploadState.errorTitle = 'GAGAL MEMPROSES FLIGHT DAILY REPORT';
+            }
+
+            this.uploadState.errorMessage = msg;
+            this.uploadState.status = 'selected';
         },
 
         async processFdrJob(jobData) {
@@ -550,7 +613,12 @@ function fdrSupabaseUploader(config) {
                 // Reset consecutive error counter on any valid response
                 consecutiveConnErrors = 0;
 
-                const status = processData.status || processData.stage || 'PARSING';
+                let status = processData.status || processData.stage || 'PARSING';
+                if (status === 'NEED_SOURCE_STREAM' && this.selectedFile) {
+                    processData = await this.streamCompressedSourceToJob(processUrl, this.selectedFile);
+                    status = processData?.status || processData?.stage || 'PARSING';
+                }
+
                 const progress = Number(processData.progress ?? 0);
 
                 this.uploadState.progress = Math.max(
@@ -605,6 +673,66 @@ function fdrSupabaseUploader(config) {
             );
         },
 
+        async streamCompressedSourceToJob(processUrl, file) {
+            this.uploadState.statusTitle = 'Mengompresi & menyinkronkan data untuk ekstraksi cepat...';
+            this.uploadState.detailText = 'Menyiapkan stream ekstraksi OASYS FDR...';
+
+            let payloadBlob = file;
+            let isGzip = '0';
+
+            if (typeof CompressionStream !== 'undefined' && file.stream) {
+                try {
+                    const compressedStream = file.stream().pipeThrough(new CompressionStream('gzip'));
+                    payloadBlob = await new Response(compressedStream).blob();
+                    isGzip = '1';
+                } catch (compErr) {
+                    payloadBlob = file;
+                    isGzip = '0';
+                }
+            }
+
+            const chunkSize = 3800000; // ~3.6 MB per request (safe under Vercel 4.5 MB limit)
+            const totalChunks = Math.max(1, Math.ceil(payloadBlob.size / chunkSize));
+            let lastData = {};
+
+            for (let idx = 0; idx < totalChunks; idx++) {
+                const start = idx * chunkSize;
+                const end = Math.min(payloadBlob.size, start + chunkSize);
+                const slice = payloadBlob.slice(start, end);
+
+                const form = new FormData();
+                form.append('source_chunk', slice, `chunk_${idx}.bin`);
+                form.append('chunk_index', String(idx));
+                form.append('total_chunks', String(totalChunks));
+                form.append('is_gzip', isGzip);
+
+                this.uploadState.progress = Math.min(45, 8 + Math.round(((idx + 1) / totalChunks) * 35));
+                this.uploadState.statusTitle = idx + 1 < totalChunks
+                    ? `Mengirim stream ekstraksi (${idx + 1}/${totalChunks})...`
+                    : 'Mengekstraksi & menyimpan pergerakan penerbangan ke Supabase...';
+
+                const resp = await fetch(processUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': this.csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: form
+                });
+
+                lastData = await this.readJsonResponse(resp);
+                if (!resp.ok && lastData?.error) {
+                    throw new Error(this.extractError(
+                        lastData,
+                        `FDR stream processing failed (HTTP ${resp.status}).`
+                    ));
+                }
+            }
+
+            return lastData;
+        },
+
         async readJsonResponse(response) {
             const text = await response.text();
             if (!text) return {};
@@ -616,33 +744,45 @@ function fdrSupabaseUploader(config) {
         },
 
         extractError(data, fallback) {
-            let errStr = '';
-            if (!data) errStr = fallback;
-            else if (Array.isArray(data.errors)) errStr = data.errors.join('; ');
-            else if (typeof data.error === 'string') errStr = data.error;
-            else if (data.error?.message) {
-                errStr = Array.isArray(data.error.message)
-                    ? data.error.message.join('; ')
-                    : data.error.message;
-            }
-            else if (data.error?.error) errStr = String(data.error.error);
-            else if (data.message) errStr = String(data.message);
-            else errStr = fallback;
+            if (!data) return fallback;
+            const errObj = data.error || {};
+            const category = data.category || errObj.category || '';
+            const code = errObj.code || '';
+            let userMsg = '';
 
-            // 1. Non-transient Schema / Structure Errors (42P01, 42703, 42P07, etc.):
-            // Do NOT hide behind generic connection retry!
-            const isSchemaError = /42P01|42703|42P07|SQLSTATE\[42|undefined_table|undefined_column|relation [\"\'].*?[\"\'] does not exist|column [\"\'].*?[\"\'] does not exist|kesalahan struktur database|DATABASE_SCHEMA/i.test(errStr);
-            if (isSchemaError) {
-                console.error('[FDR Dropzone] Non-transient database schema error detected:', errStr, data);
-                return 'Terjadi kesalahan struktur database (hubungi admin). Detail: ' + (data?.error?.message || errStr);
+            if (typeof errObj === 'string') userMsg = errObj;
+            else if (errObj.message) {
+                userMsg = Array.isArray(errObj.message) ? errObj.message.join('; ') : errObj.message;
+            } else if (errObj.error) userMsg = String(errObj.error);
+            else if (data.message) userMsg = String(data.message);
+            else if (Array.isArray(data.errors)) userMsg = data.errors.join('; ');
+
+            if (category === 'schema' || code === 'DATABASE_SCHEMA_ERROR') {
+                return userMsg || 'Struktur database belum sesuai dengan kebutuhan FDR. Hubungi administrator untuk menjalankan migration.';
+            }
+            if (category === 'integrity' || code === 'DATABASE_INTEGRITY_ERROR') {
+                return userMsg || 'Data unggahan tidak dapat disimpan karena konflik integritas database.';
+            }
+            if (category === 'auth' || code === 'DATABASE_AUTH_ERROR') {
+                return userMsg || 'Otorisasi database gagal. Hubungi administrator untuk memeriksa konfigurasi database.';
+            }
+            if (category === 'data' || code === 'DATABASE_DATA_ERROR') {
+                return userMsg || 'Data unggahan memiliki representasi nilai yang tidak valid untuk skema database.';
+            }
+            if (category === 'connection' || code === 'DATABASE_CONNECTION_ERROR') {
+                return userMsg || 'Koneksi database sedang bermasalah. Sistem telah mencoba menyambungkan kembali tetapi belum berhasil. File tetap aman di Storage.';
             }
 
-            // 2. Transient Connection Errors:
-            if (/08006|08001|08003|57P01|ETIMEDOUT|terminating connection|could not receive data from client|server closed the connection unexpectedly|Hot standby/i.test(errStr)) {
-                return 'Koneksi database sedang disinkronkan kembali. Silakan coba kembali sesaat lagi.';
+            // Raw message inspection fallback:
+            const rawMsg = userMsg || fallback;
+            if (/42P01|42703|42P07|SQLSTATE\[42|undefined table|undefined column|relation [\"\'].*?[\"\'] does not exist/i.test(rawMsg)) {
+                return 'Struktur database belum sesuai dengan kebutuhan FDR. Hubungi administrator untuk memeriksa migration.';
+            }
+            if (/08006|08001|08003|57P01|terminating connection|could not receive data|Hot standby/i.test(rawMsg)) {
+                return 'Koneksi database sedang bermasalah. Silakan coba kembali sesaat lagi.';
             }
 
-            return errStr;
+            return rawMsg;
         },
 
         uploadViaSignedUrl(file, signedUrl, onProgress) {
@@ -772,6 +912,7 @@ function fdrSupabaseUploader(config) {
 
         resetUploader() {
             this.selectedFile = null;
+            this.uploadedStorage = null;
             if (this.$refs.fileInput) {
                 this.$refs.fileInput.value = '';
             }

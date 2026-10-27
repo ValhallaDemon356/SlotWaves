@@ -114,12 +114,776 @@ class FdrDatabaseService
         'FRA' => ['name' => 'Frankfurt Airport', 'city' => 'Frankfurt', 'country' => 'Germany', 'lat' => 50.0379, 'lon' => 8.5622],
         'MAD' => ['name' => 'Adolfo Suarez Madrid-Barajas', 'city' => 'Madrid', 'country' => 'Spain', 'lat' => 40.4839, 'lon' => -3.5680],
     ];
+    private static bool $connectionVerified = false;
+
+    /**
+     * Ensures a working relational database connection with all required FDR tables.
+     * If PostgreSQL TCP pooler (port 6543) is unreachable, rejects credentials (28P01/08006),
+     * or lacks the FDR tables (42P01), automatically falls back to local/serverless SQLite
+     * (/tmp/storage/database.sqlite on Vercel, database/database.sqlite locally) and
+     * auto-creates the required schema while syncing state via Supabase PostgREST HTTPS API.
+     */
+    public static function ensureWorkingConnection(): string
+    {
+        if (self::$connectionVerified) {
+            return (string) config('database.default', 'sqlite');
+        }
+
+        $defaultConn = (string) config('database.default', 'pgsql');
+
+        if ($defaultConn === 'pgsql') {
+            try {
+                DB::connection('pgsql')->getPdo();
+                $check = DB::connection('pgsql')->selectOne(
+                    "SELECT to_regclass('public.uploads') as u, to_regclass('public.fdr_processing_jobs') as j, to_regclass('public.fdr_flights') as f"
+                );
+                if ($check && !empty($check->u) && !empty($check->j) && !empty($check->f)) {
+                    self::$connectionVerified = true;
+                    return 'pgsql';
+                }
+                Log::info('FdrDatabaseService: PostgreSQL lacks fdr_* tables. Switching to SQLite + Supabase PostgREST hybrid engine.');
+            } catch (\Throwable $e) {
+                Log::info('FdrDatabaseService: PostgreSQL TCP pooler unavailable (' . self::sanitizeLogMessage($e->getMessage()) . '). Switching to SQLite + Supabase PostgREST hybrid engine.');
+            }
+        }
+
+        $sqlitePath = is_dir('/tmp/storage')
+            ? '/tmp/storage/database.sqlite'
+            : database_path('database.sqlite');
+
+        $sqliteDir = dirname($sqlitePath);
+        if (!is_dir($sqliteDir)) {
+            @mkdir($sqliteDir, 0755, true);
+        }
+        if (!file_exists($sqlitePath)) {
+            @touch($sqlitePath);
+        }
+
+        config([
+            'database.default' => 'sqlite',
+            'database.connections.sqlite.database' => $sqlitePath,
+        ]);
+        DB::purge('sqlite');
+
+        self::ensureSqliteSchema();
+        self::$connectionVerified = true;
+
+        return 'sqlite';
+    }
+
+    /**
+     * Auto-initializes required tables in SQLite when running in serverless / fallback mode.
+     */
+    public static function ensureSqliteSchema(): void
+    {
+        $schema = \Illuminate\Support\Facades\Schema::connection('sqlite');
+
+        if (!$schema->hasTable('airports')) {
+            $schema->create('airports', function (\Illuminate\Database\Schema\Blueprint $table) {
+                $table->id();
+                $table->string('iata_code', 10)->index();
+                $table->string('icao_code', 10)->nullable();
+                $table->string('name')->nullable();
+                $table->string('city')->nullable();
+                $table->string('country')->nullable();
+                $table->string('timezone')->default('Asia/Jakarta');
+                $table->boolean('is_active')->default(true);
+                $table->integer('slot_capacity')->default(30);
+                $table->integer('arrival_capacity')->nullable();
+                $table->integer('departure_capacity')->nullable();
+                $table->string('ops_start_time')->default('06:00');
+                $table->string('ops_end_time')->default('20:00');
+                $table->decimal('latitude', 10, 6)->nullable();
+                $table->decimal('longitude', 10, 6)->nullable();
+                $table->string('management_type')->nullable();
+                $table->timestamps();
+            });
+        }
+
+        if (!$schema->hasTable('uploads')) {
+            $schema->create('uploads', function (\Illuminate\Database\Schema\Blueprint $table) {
+                $table->id();
+                $table->string('original_filename');
+                $table->string('stored_path');
+                $table->string('status')->default('pending');
+                $table->longText('error_message')->nullable();
+                $table->string('season')->nullable();
+                $table->unsignedBigInteger('airport_id')->nullable();
+                $table->integer('total_rows')->default(0);
+                $table->integer('valid_rows')->default(0);
+                $table->integer('invalid_rows')->default(0);
+                $table->integer('duplicate_rows')->default(0);
+                $table->float('parsing_confidence')->default(0);
+                $table->longText('validation_summary')->nullable();
+                $table->string('report_type', 50)->nullable()->index();
+                $table->longText('report_data')->nullable();
+                $table->longText('cached_analytics')->nullable();
+                $table->timestamps();
+            });
+        } else {
+            $missingCols = [];
+            foreach (['report_type', 'report_data', 'cached_analytics', 'validation_summary', 'season', 'airport_id', 'total_rows', 'valid_rows', 'invalid_rows', 'duplicate_rows', 'parsing_confidence'] as $col) {
+                if (!$schema->hasColumn('uploads', $col)) {
+                    $missingCols[] = $col;
+                }
+            }
+            if (!empty($missingCols)) {
+                $schema->table('uploads', function (\Illuminate\Database\Schema\Blueprint $table) use ($missingCols) {
+                    foreach ($missingCols as $col) {
+                        if (in_array($col, ['report_data', 'cached_analytics', 'validation_summary'], true)) {
+                            $table->longText($col)->nullable();
+                        } elseif (in_array($col, ['total_rows', 'valid_rows', 'invalid_rows', 'duplicate_rows', 'airport_id'], true)) {
+                            $table->integer($col)->default(0)->nullable();
+                        } elseif ($col === 'parsing_confidence') {
+                            $table->float($col)->default(0)->nullable();
+                        } else {
+                            $table->string($col)->nullable();
+                        }
+                    }
+                });
+            }
+        }
+
+        if (!$schema->hasTable('fdr_upload_sessions')) {
+            $schema->create('fdr_upload_sessions', function (\Illuminate\Database\Schema\Blueprint $table) {
+                $table->string('id', 64)->primary();
+                $table->unsignedBigInteger('user_id')->nullable();
+                $table->string('upload_token', 120)->unique();
+                $table->string('original_filename');
+                $table->unsignedBigInteger('file_size')->default(0);
+                $table->string('mime_type')->nullable();
+                $table->string('file_hash')->nullable();
+                $table->integer('chunk_size')->default(0);
+                $table->integer('total_chunks')->default(0);
+                $table->unsignedBigInteger('uploaded_bytes')->default(0);
+                $table->longText('uploaded_chunks')->nullable();
+                $table->string('storage_bucket')->nullable();
+                $table->string('storage_path')->nullable();
+                $table->string('status', 40)->default('CREATED');
+                $table->integer('progress')->default(0);
+                $table->integer('last_confirmed_chunk')->nullable();
+                $table->integer('failed_chunk')->nullable();
+                $table->timestamp('expires_at')->nullable();
+                $table->timestamps();
+            });
+        }
+
+        if (!$schema->hasTable('fdr_processing_jobs')) {
+            $schema->create('fdr_processing_jobs', function (\Illuminate\Database\Schema\Blueprint $table) {
+                $table->string('id', 64)->primary();
+                $table->unsignedBigInteger('upload_id')->nullable()->index();
+                $table->string('upload_token', 120)->index();
+                $table->string('filename')->nullable();
+                $table->string('stored_path')->nullable();
+                $table->unsignedBigInteger('file_size')->default(0);
+                $table->string('file_hash')->nullable();
+                $table->string('report_type', 60)->default('fdr');
+                $table->string('status', 40)->default('QUEUED');
+                $table->string('stage', 40)->default('QUEUED');
+                $table->string('stage_label')->nullable();
+                $table->integer('progress')->default(0);
+                $table->integer('processed_rows')->default(0);
+                $table->integer('total_rows')->default(0);
+                $table->unsignedBigInteger('current_offset')->default(0);
+                $table->integer('current_batch')->default(0);
+                $table->integer('failed_rows')->default(0);
+                $table->string('error_code', 100)->nullable();
+                $table->longText('meta')->nullable();
+                $table->longText('diagnostics')->nullable();
+                $table->longText('error_message')->nullable();
+                $table->string('result_url')->nullable();
+                $table->timestamp('started_at')->nullable();
+                $table->timestamp('completed_at')->nullable();
+                $table->timestamps();
+            });
+        }
+
+        if (!$schema->hasTable('fdr_flights')) {
+            $schema->create('fdr_flights', function (\Illuminate\Database\Schema\Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('upload_id')->index();
+                $table->date('flight_date')->nullable()->index();
+                $table->string('flight_number', 50)->nullable()->index();
+                $table->string('flight_number_base', 50)->nullable();
+                $table->string('flight_suffix', 20)->nullable();
+                $table->string('airline_code', 30)->nullable()->index();
+                $table->string('airline', 100)->nullable();
+                $table->string('paired_flight_number', 50)->nullable();
+                $table->string('aircraft_type', 100)->nullable();
+                $table->string('registration_number', 50)->nullable();
+                $table->string('leg', 50)->nullable();
+                $table->string('direction', 30)->nullable()->index();
+                $table->string('movement_type', 30)->nullable();
+                $table->string('origin_airport', 20)->nullable();
+                $table->string('destination_airport', 20)->nullable();
+                $table->string('city_1', 20)->nullable();
+                $table->string('city_2', 20)->nullable();
+                $table->string('report_airport', 20)->nullable()->index();
+                $table->string('traffic_type', 30)->nullable();
+                $table->string('scheduled_time', 20)->nullable();
+                $table->string('actual_time', 20)->nullable();
+                $table->dateTime('scheduled_datetime')->nullable();
+                $table->dateTime('actual_datetime')->nullable();
+                $table->string('scheduled_time_str', 30)->nullable();
+                $table->string('actual_time_str', 30)->nullable();
+                $table->integer('scheduled_hour')->nullable();
+                $table->integer('actual_hour')->nullable();
+                $table->integer('operational_hour')->default(0);
+                $table->integer('delay_minutes')->default(0);
+                $table->string('status', 30)->nullable();
+                $table->boolean('is_realized')->default(true);
+                $table->boolean('is_irregular')->default(false);
+                $table->integer('passenger_capacity')->default(0);
+                $table->integer('passenger_load')->default(0);
+                $table->float('load_factor')->nullable();
+                $table->integer('pax_adult')->default(0);
+                $table->integer('pax_child')->default(0);
+                $table->integer('pax_infant')->default(0);
+                $table->integer('pax_transit')->default(0);
+                $table->integer('pax_transfer')->default(0);
+                $table->integer('operating_crew')->default(0);
+                $table->integer('extra_crew')->default(0);
+                $table->float('cargo_kg')->default(0);
+                $table->float('baggage_kg')->default(0);
+                $table->float('pos_kg')->default(0);
+                $table->string('stand', 50)->nullable();
+                $table->string('runway', 50)->nullable();
+                $table->string('mtow', 50)->nullable();
+                $table->longText('raw_data')->nullable();
+                $table->timestamps();
+            });
+        }
+
+        if (!$schema->hasTable('upload_chunks')) {
+            $schema->create('upload_chunks', function (\Illuminate\Database\Schema\Blueprint $table) {
+                $table->id();
+                $table->string('upload_token', 120)->index();
+                $table->integer('chunk_index');
+                $table->longText('chunk_data')->nullable();
+                $table->timestamps();
+            });
+        }
+    }
+
+    /**
+     * Execute an HTTPS PostgREST request against Supabase (/rest/v1/...).
+     */
+    public static function supabaseRestRequest(string $method, string $endpoint, ?array $body = null, array $extraHeaders = []): array
+    {
+        $baseUrl = rtrim((string) config('services.supabase.url', 'https://zvtkphkjczjobvvtvhbm.supabase.co'), '/');
+        $serviceKey = trim((string) config('services.supabase.service_role_key', ''));
+        $anonKey = trim((string) config('services.supabase.anon_key', ''));
+        $apiKey = $serviceKey !== '' ? $serviceKey : $anonKey;
+
+        if ($baseUrl === '' || $apiKey === '' || str_contains($baseUrl, 'your-project-id')) {
+            return ['ok' => false, 'status' => 0, 'data' => null];
+        }
+
+        $url = $baseUrl . '/rest/v1/' . ltrim($endpoint, '/');
+        $headers = array_merge([
+            'apikey: ' . $apiKey,
+            'Authorization: Bearer ' . $apiKey,
+            'Content-Type: application/json',
+            'Accept: application/json',
+        ], $extraHeaders);
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_CUSTOMREQUEST  => strtoupper($method),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => $headers,
+            CURLOPT_TIMEOUT        => 8,
+            CURLOPT_CONNECTTIMEOUT => 4,
+            CURLOPT_SSL_VERIFYPEER => false,
+        ]);
+
+        if ($body !== null) {
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
+        }
+
+        $raw = curl_exec($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $decoded = is_string($raw) && $raw !== '' ? json_decode($raw, true) : null;
+        return [
+            'ok'     => ($status >= 200 && $status < 300),
+            'status' => $status,
+            'data'   => $decoded,
+        ];
+    }
+
+    /**
+     * Encode FDR state metadata into a compact string for Supabase public.uploads.error_message.
+     */
+    public static function encodeSupabaseStateEnvelope(array $state): string
+    {
+        $json = json_encode($state);
+        $gz = @gzencode($json, 6);
+        if ($gz !== false) {
+            return '__FDR_STATE_GZ__:' . base64_encode($gz);
+        }
+        return '__FDR_STATE__:' . $json;
+    }
+
+    /**
+     * Decode FDR state metadata from Supabase public.uploads.error_message.
+     */
+    public static function decodeSupabaseStateEnvelope(?string $raw): ?array
+    {
+        if (!is_string($raw) || $raw === '') {
+            return null;
+        }
+        if (str_starts_with($raw, '__FDR_STATE_GZ__:')) {
+            $b64 = substr($raw, strlen('__FDR_STATE_GZ__:'));
+            $bin = base64_decode($b64, true);
+            if ($bin !== false) {
+                $json = @gzdecode($bin);
+                if (is_string($json)) {
+                    $arr = json_decode($json, true);
+                    if (is_array($arr)) {
+                        return $arr;
+                    }
+                }
+            }
+        }
+        if (str_starts_with($raw, '__FDR_STATE__:')) {
+            $json = substr($raw, strlen('__FDR_STATE__:'));
+            $arr = json_decode($json, true);
+            if (is_array($arr)) {
+                return $arr;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Create or reconcile an Upload row in Supabase public.uploads via PostgREST HTTPS API.
+     * Returns the canonical Supabase upload ID so local SQLite and Supabase stay in sync.
+     */
+    public static function syncQueuedUploadToSupabaseRest(string $originalFilename, string $storedPath, array $statePayload): ?int
+    {
+        try {
+            $existingResp = self::supabaseRestRequest(
+                'GET',
+                'uploads?stored_path=eq.' . rawurlencode($storedPath) . '&order=id.desc&limit=1'
+            );
+
+            $encodedState = self::encodeSupabaseStateEnvelope($statePayload);
+            $nowStr = now()->toDateTimeString();
+
+            if ($existingResp['ok'] && !empty($existingResp['data'][0]['id'])) {
+                $supaId = (int) $existingResp['data'][0]['id'];
+                self::supabaseRestRequest(
+                    'PATCH',
+                    'uploads?id=eq.' . $supaId,
+                    [
+                        'error_message' => $encodedState,
+                        'updated_at'    => $nowStr,
+                    ],
+                    ['Prefer: return=minimal']
+                );
+                return $supaId;
+            }
+
+            $createResp = self::supabaseRestRequest(
+                'POST',
+                'uploads',
+                [
+                    'original_filename' => substr($originalFilename, 0, 255),
+                    'stored_path'       => substr($storedPath, 0, 255),
+                    'status'            => 'processing',
+                    'error_message'     => $encodedState,
+                    'created_at'        => $nowStr,
+                    'updated_at'        => $nowStr,
+                ],
+                ['Prefer: return=representation']
+            );
+
+            if ($createResp['ok'] && !empty($createResp['data'][0]['id'])) {
+                return (int) $createResp['data'][0]['id'];
+            }
+        } catch (\Throwable $e) {
+            Log::warning('FdrDatabaseService::syncQueuedUploadToSupabaseRest non-fatal warning: ' . self::sanitizeLogMessage($e->getMessage()));
+        }
+
+        return null;
+    }
+
+    /**
+     * Sync completed Upload metadata, precomputed analytics, and normalized flight rows
+     * to Supabase public.uploads and public.flights via PostgREST HTTPS API.
+     */
+    public static function syncCompletedUploadToSupabaseRest(Upload $upload, ?\App\Models\FdrProcessingJob $job = null): void
+    {
+        try {
+            $state = [
+                'v'                  => 2,
+                'job_id'             => $job?->id ?: "fdr_job_{$upload->id}",
+                'upload_token'       => $job?->upload_token ?: "fdr_tok_{$upload->id}",
+                'file_size'          => (int) ($job?->file_size ?: 0),
+                'status'             => $job?->status ?: 'READY',
+                'stage'              => $job?->stage ?: 'READY',
+                'progress'           => (int) ($job?->progress ?? 100),
+                'report_type'        => $upload->report_type ?: 'fdr',
+                'total_rows'         => (int) $upload->total_rows,
+                'valid_rows'         => (int) $upload->valid_rows,
+                'validation_summary' => $upload->validation_summary,
+                'report_data'        => $upload->report_data,
+                'cached_analytics'   => $upload->cached_analytics,
+                'diagnostics'        => $job?->diagnostics ?: [],
+            ];
+
+            $encodedState = self::encodeSupabaseStateEnvelope($state);
+            $nowStr = now()->toDateTimeString();
+
+            $patchResp = self::supabaseRestRequest(
+                'PATCH',
+                'uploads?id=eq.' . $upload->id,
+                [
+                    'status'        => $upload->status ?: 'completed',
+                    'error_message' => $encodedState,
+                    'updated_at'    => $nowStr,
+                ],
+                ['Prefer: return=representation']
+            );
+
+            if (empty($patchResp['data'])) {
+                self::supabaseRestRequest(
+                    'POST',
+                    'uploads',
+                    [
+                        'id'                => (int) $upload->id,
+                        'original_filename' => substr((string) ($upload->original_filename ?: 'FDR_Report.xls'), 0, 255),
+                        'stored_path'       => substr((string) ($upload->stored_path ?: ''), 0, 255),
+                        'status'            => $upload->status ?: 'completed',
+                        'error_message'     => $encodedState,
+                        'created_at'        => $nowStr,
+                        'updated_at'        => $nowStr,
+                    ],
+                    ['Prefer: return=minimal']
+                );
+            }
+
+            // Sync normalized flight rows to Supabase public.flights so data is visible in Supabase Table Editor
+            // and can be hydrated across serverless containers
+            self::supabaseRestRequest('DELETE', 'flights?upload_id=eq.' . $upload->id, null, ['Prefer: return=minimal']);
+
+            $flights = FdrFlight::where('upload_id', $upload->id)->orderBy('id')->limit(2500)->get();
+            if ($flights->isNotEmpty()) {
+                $supaRows = [];
+                foreach ($flights as $f) {
+                    $fDate = $f->flight_date
+                        ? (is_string($f->flight_date) ? substr($f->flight_date, 0, 10) : $f->flight_date->format('Y-m-d'))
+                        : date('Y-m-d');
+
+                    $compactRaw = [
+                        'flight_date'         => $fDate,
+                        'flight_number_base'  => $f->flight_number_base,
+                        'flight_suffix'       => $f->flight_suffix,
+                        'paired_flight_number'=> $f->paired_flight_number,
+                        'registration_number' => $f->registration_number,
+                        'leg'                 => $f->leg,
+                        'direction'           => $f->direction,
+                        'movement_type'       => $f->movement_type,
+                        'report_airport'      => $f->report_airport,
+                        'traffic_type'        => $f->traffic_type,
+                        'scheduled_time_str'  => $f->scheduled_time_str,
+                        'actual_time_str'     => $f->actual_time_str,
+                        'scheduled_hour'      => $f->scheduled_hour,
+                        'actual_hour'         => $f->actual_hour,
+                        'operational_hour'    => $f->operational_hour,
+                        'delay_minutes'       => $f->delay_minutes,
+                        'status'              => $f->status,
+                        'is_realized'         => (bool) $f->is_realized,
+                        'is_irregular'        => (bool) $f->is_irregular,
+                        'passenger_capacity'  => (int) $f->passenger_capacity,
+                        'passenger_load'      => (int) $f->passenger_load,
+                        'load_factor'         => $f->load_factor,
+                        'pax_adult'           => (int) $f->pax_adult,
+                        'pax_child'           => (int) $f->pax_child,
+                        'pax_infant'          => (int) $f->pax_infant,
+                        'pax_transit'         => (int) $f->pax_transit,
+                        'pax_transfer'        => (int) $f->pax_transfer,
+                        'operating_crew'      => (int) $f->operating_crew,
+                        'extra_crew'          => (int) $f->extra_crew,
+                        'cargo_kg'            => (float) $f->cargo_kg,
+                        'baggage_kg'          => (float) $f->baggage_kg,
+                        'pos_kg'              => (float) $f->pos_kg,
+                        'stand'               => $f->stand,
+                        'runway'              => $f->runway,
+                        'mtow'                => $f->mtow,
+                    ];
+
+                    $schedTime = $f->scheduled_time ?: '00:00:00';
+                    if (!preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $schedTime)) {
+                        $schedTime = '00:00:00';
+                    }
+
+                    $supaRows[] = [
+                        'upload_id'      => (int) $upload->id,
+                        'flight_number'  => substr((string) ($f->flight_number ?: 'N/A'), 0, 20),
+                        'airline_code'   => substr((string) ($f->airline_code ?: 'GA'), 0, 10),
+                        'aircraft_type'  => substr((string) ($f->aircraft_type ?: 'N/A'), 0, 50),
+                        'origin'         => substr((string) ($f->origin_airport ?: ($f->report_airport ?: 'CGK')), 0, 10),
+                        'destination'    => substr((string) ($f->destination_airport ?: ($f->report_airport ?: 'CGK')), 0, 10),
+                        'scheduled_time' => $schedTime,
+                        'operating_days' => substr($fDate, 0, 20),
+                        'flight_type'    => substr($f->direction === 'ARRIVAL' ? 'ARR' : 'DEP', 0, 20),
+                        'remarks'        => substr((string) ($f->status ?: 'ON_TIME'), 0, 255),
+                        'raw_data'       => json_encode($compactRaw),
+                        'created_at'     => $nowStr,
+                        'updated_at'     => $nowStr,
+                    ];
+                }
+
+                foreach (array_chunk($supaRows, 500) as $batchChunk) {
+                    self::supabaseRestRequest('POST', 'flights', $batchChunk, ['Prefer: return=minimal']);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('FdrDatabaseService::syncCompletedUploadToSupabaseRest non-fatal warning: ' . self::sanitizeLogMessage($e->getMessage()));
+        }
+    }
+
+    /**
+     * Hydrate an Upload and its FdrProcessingJob from Supabase PostgREST into local SQLite
+     * when a request lands on a fresh Vercel serverless container.
+     */
+    public static function hydrateUploadFromSupabaseRest(int $uploadId): ?Upload
+    {
+        self::ensureWorkingConnection();
+
+        $existing = Upload::find($uploadId);
+        if ($existing && ($existing->status === 'completed' && !empty($existing->cached_analytics))) {
+            return $existing;
+        }
+
+        try {
+            $resp = self::supabaseRestRequest('GET', 'uploads?id=eq.' . $uploadId . '&limit=1');
+            if (!$resp['ok'] || empty($resp['data'][0])) {
+                return $existing;
+            }
+
+            $row = $resp['data'][0];
+            $state = self::decodeSupabaseStateEnvelope($row['error_message'] ?? null) ?: [];
+
+            $attrs = [
+                'id'                 => (int) $row['id'],
+                'original_filename'  => $row['original_filename'] ?? 'CGK GA FDR.xls',
+                'stored_path'        => $row['stored_path'] ?? '',
+                'status'             => $row['status'] ?? 'processing',
+                'report_type'        => $state['report_type'] ?? 'fdr',
+                'total_rows'         => (int) ($state['total_rows'] ?? 0),
+                'valid_rows'         => (int) ($state['valid_rows'] ?? 0),
+                'invalid_rows'       => 0,
+                'duplicate_rows'     => 0,
+                'parsing_confidence' => ($row['status'] ?? '') === 'completed' ? 1.0 : 0.0,
+                'validation_summary' => $state['validation_summary'] ?? ['valid' => true],
+                'report_data'        => $state['report_data'] ?? [
+                    'meta' => $state['meta'] ?? [
+                        'source_system' => 'OASYS',
+                        'report_name'   => 'FLIGHT DAILY REPORT',
+                        'source_path'   => $row['stored_path'] ?? '',
+                    ],
+                ],
+                'cached_analytics'   => $state['cached_analytics'] ?? null,
+            ];
+
+            if ($existing) {
+                $existing->update($attrs);
+                $upload = $existing->fresh();
+            } else {
+                $upload = Upload::create($attrs);
+            }
+
+            $jobId = $state['job_id'] ?? "fdr_job_{$upload->id}";
+            $uploadToken = $state['upload_token'] ?? "fdr_tok_{$upload->id}";
+            $jobStatus = $state['status'] ?? (($upload->status === 'completed') ? 'READY' : 'QUEUED');
+
+            $job = \App\Models\FdrProcessingJob::find($jobId)
+                ?: \App\Models\FdrProcessingJob::where('upload_id', $upload->id)->first();
+
+            $jobAttrs = [
+                'id'             => $jobId,
+                'upload_id'      => $upload->id,
+                'upload_token'   => $uploadToken,
+                'filename'       => $upload->original_filename,
+                'stored_path'    => $upload->stored_path,
+                'file_size'      => (int) ($state['file_size'] ?? 0),
+                'report_type'    => 'fdr',
+                'status'         => $jobStatus,
+                'stage'          => $state['stage'] ?? $jobStatus,
+                'stage_label'    => $jobStatus === 'READY' ? 'Ready' : 'Preparing Flight Daily Report...',
+                'progress'       => (int) ($state['progress'] ?? ($jobStatus === 'READY' ? 100 : 0)),
+                'processed_rows' => (int) ($state['total_rows'] ?? 0),
+                'total_rows'     => (int) ($state['total_rows'] ?? 0),
+                'meta'           => $state['meta'] ?? ($upload->report_data['meta'] ?? []),
+                'diagnostics'    => $state['diagnostics'] ?? ['source' => 'SUPABASE_STORAGE'],
+                'result_url'     => route('fdr.dashboard', $upload->id),
+            ];
+
+            if ($job) {
+                $job->update($jobAttrs);
+            } else {
+                \App\Models\FdrProcessingJob::create($jobAttrs);
+            }
+
+            return $upload;
+        } catch (\Throwable $e) {
+            Log::warning('FdrDatabaseService::hydrateUploadFromSupabaseRest warning: ' . self::sanitizeLogMessage($e->getMessage()));
+            return $existing;
+        }
+    }
+
+    /**
+     * Find and hydrate the latest completed FDR Upload from Supabase PostgREST.
+     */
+    public static function hydrateLatestCompletedUploadFromSupabaseRest(): ?Upload
+    {
+        try {
+            $resp = self::supabaseRestRequest(
+                'GET',
+                'uploads?status=eq.completed&error_message=like.__FDR_STATE*&order=id.desc&limit=1&select=id'
+            );
+            if ($resp['ok'] && !empty($resp['data'][0]['id'])) {
+                return self::hydrateUploadFromSupabaseRest((int) $resp['data'][0]['id']);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('FdrDatabaseService::hydrateLatestCompletedUploadFromSupabaseRest warning: ' . self::sanitizeLogMessage($e->getMessage()));
+        }
+
+        return null;
+    }
+
+    /**
+     * Find an FdrProcessingJob locally or hydrate it from Supabase PostgREST across serverless containers.
+     */
+    public static function findOrHydrateJob(string $jobId): ?\App\Models\FdrProcessingJob
+    {
+        self::ensureWorkingConnection();
+
+        $job = \App\Models\FdrProcessingJob::find($jobId);
+        if ($job) {
+            return $job;
+        }
+
+        $uploadId = null;
+        if (preg_match('/^fdr_job_(\d+)$/', $jobId, $m)) {
+            $uploadId = (int) $m[1];
+        } elseif (is_numeric($jobId)) {
+            $uploadId = (int) $jobId;
+        }
+
+        if ($uploadId !== null && $uploadId > 0) {
+            self::hydrateUploadFromSupabaseRest($uploadId);
+            return \App\Models\FdrProcessingJob::find($jobId)
+                ?: \App\Models\FdrProcessingJob::where('upload_id', $uploadId)->latest()->first();
+        }
+
+        return null;
+    }
+
+    /**
+     * Hydrate fdr_flights rows from Supabase public.flights when a cold serverless container
+     * needs row-level filtering or exports.
+     */
+    public static function hydrateFlightsFromSupabaseRest(Upload $upload): int
+    {
+        try {
+            $resp = self::supabaseRestRequest('GET', 'flights?upload_id=eq.' . $upload->id . '&order=id.asc&limit=5000');
+            if (!$resp['ok'] || empty($resp['data']) || !is_array($resp['data'])) {
+                return 0;
+            }
+
+            $isSqlite = (DB::connection()->getDriverName() === 'sqlite');
+            $now = now();
+            $rows = [];
+
+            foreach ($resp['data'] as $sr) {
+                $raw = is_string($sr['raw_data'] ?? null) ? (json_decode($sr['raw_data'], true) ?: []) : ($sr['raw_data'] ?? []);
+                $isRealized = (bool) ($raw['is_realized'] ?? true);
+                $isIrregular = (bool) ($raw['is_irregular'] ?? false);
+
+                $rows[] = [
+                    'upload_id'            => (int) $upload->id,
+                    'flight_date'          => $raw['flight_date'] ?? ($sr['operating_days'] ?? date('Y-m-d')),
+                    'flight_number'        => $sr['flight_number'] ?? 'N/A',
+                    'flight_number_base'   => $raw['flight_number_base'] ?? ($sr['flight_number'] ?? 'N/A'),
+                    'flight_suffix'        => $raw['flight_suffix'] ?? null,
+                    'airline_code'         => $sr['airline_code'] ?? 'GA',
+                    'airline'              => $sr['airline_code'] ?? 'GA',
+                    'paired_flight_number' => $raw['paired_flight_number'] ?? null,
+                    'aircraft_type'        => $sr['aircraft_type'] ?? null,
+                    'registration_number'  => $raw['registration_number'] ?? null,
+                    'leg'                  => $raw['leg'] ?? null,
+                    'direction'            => $raw['direction'] ?? (($sr['flight_type'] ?? 'ARR') === 'ARR' ? 'ARRIVAL' : 'DEPARTURE'),
+                    'movement_type'        => $raw['movement_type'] ?? 'SCHEDULED',
+                    'origin_airport'       => $sr['origin'] ?? 'CGK',
+                    'destination_airport'  => $sr['destination'] ?? 'CGK',
+                    'city_1'               => $sr['origin'] ?? 'CGK',
+                    'city_2'               => $sr['destination'] ?? 'CGK',
+                    'report_airport'       => $raw['report_airport'] ?? 'CGK',
+                    'traffic_type'         => $raw['traffic_type'] ?? 'DOMESTIC',
+                    'scheduled_time'       => $sr['scheduled_time'] ?? null,
+                    'actual_time'          => null,
+                    'scheduled_datetime'   => null,
+                    'actual_datetime'      => null,
+                    'scheduled_time_str'   => $raw['scheduled_time_str'] ?? null,
+                    'actual_time_str'      => $raw['actual_time_str'] ?? null,
+                    'scheduled_hour'       => isset($raw['scheduled_hour']) ? (int) $raw['scheduled_hour'] : null,
+                    'actual_hour'          => isset($raw['actual_hour']) ? (int) $raw['actual_hour'] : null,
+                    'operational_hour'     => (int) ($raw['operational_hour'] ?? 0),
+                    'delay_minutes'        => (int) ($raw['delay_minutes'] ?? 0),
+                    'status'               => $raw['status'] ?? ($sr['remarks'] ?? 'ON_TIME'),
+                    'is_realized'          => $isSqlite ? ($isRealized ? 1 : 0) : ($isRealized ? 'true' : 'false'),
+                    'is_irregular'         => $isSqlite ? ($isIrregular ? 1 : 0) : ($isIrregular ? 'true' : 'false'),
+                    'passenger_capacity'   => (int) ($raw['passenger_capacity'] ?? 0),
+                    'passenger_load'       => (int) ($raw['passenger_load'] ?? 0),
+                    'load_factor'          => isset($raw['load_factor']) ? (float) $raw['load_factor'] : null,
+                    'pax_adult'            => (int) ($raw['pax_adult'] ?? 0),
+                    'pax_child'            => (int) ($raw['pax_child'] ?? 0),
+                    'pax_infant'           => (int) ($raw['pax_infant'] ?? 0),
+                    'pax_transit'          => (int) ($raw['pax_transit'] ?? 0),
+                    'pax_transfer'         => (int) ($raw['pax_transfer'] ?? 0),
+                    'operating_crew'       => (int) ($raw['operating_crew'] ?? 0),
+                    'extra_crew'           => (int) ($raw['extra_crew'] ?? 0),
+                    'cargo_kg'             => (float) ($raw['cargo_kg'] ?? 0),
+                    'baggage_kg'           => (float) ($raw['baggage_kg'] ?? 0),
+                    'pos_kg'               => (float) ($raw['pos_kg'] ?? 0),
+                    'stand'                => $raw['stand'] ?? null,
+                    'runway'               => $raw['runway'] ?? null,
+                    'mtow'                 => $raw['mtow'] ?? null,
+                    'raw_data'             => json_encode($raw),
+                    'created_at'           => $now,
+                    'updated_at'           => $now,
+                ];
+            }
+
+            foreach (array_chunk($rows, 250) as $chunk) {
+                DB::table('fdr_flights')->insert($chunk);
+            }
+
+            return count($rows);
+        } catch (\Throwable $e) {
+            Log::warning('FdrDatabaseService::hydrateFlightsFromSupabaseRest warning: ' . self::sanitizeLogMessage($e->getMessage()));
+            return 0;
+        }
+    }
+
     /**
      * Check if an upload already has records in the fdr_flights database table.
      */
     public function hasDatabaseRecords(Upload $upload): bool
     {
-        return FdrFlight::where('upload_id', $upload->id)->exists();
+        self::ensureWorkingConnection();
+        if (FdrFlight::where('upload_id', $upload->id)->exists()) {
+            return true;
+        }
+        if (self::hydrateFlightsFromSupabaseRest($upload) > 0) {
+            return true;
+        }
+        return !empty($upload->cached_analytics['total_flights']);
     }
 
     /**
@@ -127,23 +891,38 @@ class FdrDatabaseService
      */
     public function getRecordCount(Upload $upload): int
     {
-        return FdrFlight::where('upload_id', $upload->id)->count();
+        self::ensureWorkingConnection();
+        $cnt = FdrFlight::where('upload_id', $upload->id)->count();
+        if ($cnt === 0) {
+            $cnt = self::hydrateFlightsFromSupabaseRest($upload);
+        }
+        if ($cnt === 0 && !empty($upload->cached_analytics['total_flights'])) {
+            return (int) $upload->cached_analytics['total_flights'];
+        }
+        return $cnt;
     }
 
     /**
      * Resilient database query executor with exponential backoff and connection reconnect.
      * Recovers from PgBouncer pooler connection drops, standby mode failovers, and transient SSL terminations.
+     * Does NOT retry non-transient schema (42xxx), integrity (23xxx), auth (28xxx), or data (22xxx) errors.
      */
     public static function executeWithRetry(callable $callback, int $maxRetries = 3, int $initialDelayMs = 250, bool $forceFresh = false)
     {
         $attempt = 0;
-        $connectionName = config('database.default', 'pgsql');
 
         if ($forceFresh) {
+            self::ensureWorkingConnection();
+        }
+
+        $connectionName = config('database.default', 'pgsql');
+
+        if ($forceFresh && $connectionName === 'pgsql') {
             try {
                 DB::disconnect($connectionName);
                 DB::purge($connectionName);
-                DB::reconnect($connectionName);
+                $freshConn = DB::reconnect($connectionName);
+                $freshConn->select('SELECT 1');
             } catch (\Throwable $freshErr) {
                 // Non-fatal, reconnect will be retried in loop if needed
             }
@@ -154,7 +933,8 @@ class FdrDatabaseService
             try {
                 return $callback();
             } catch (\Throwable $e) {
-                $isConnectionDrop = self::isConnectionError($e);
+                $classification = self::classifyError($e);
+                $isConnectionDrop = ($classification['category'] === 'connection');
 
                 if ($attempt >= $maxRetries || !$isConnectionDrop) {
                     throw $e;
@@ -162,22 +942,28 @@ class FdrDatabaseService
 
                 $jitterMs = random_int(20, 80);
                 $backoffMs = ($initialDelayMs * (2 ** ($attempt - 1))) + $jitterMs;
-                Log::warning("FdrDatabaseService: Transient database connection error on attempt {$attempt}/{$maxRetries} ({$e->getMessage()}). Reconnecting in {$backoffMs}ms...");
+                Log::warning("FdrDatabaseService: Transient database connection error on attempt {$attempt}/{$maxRetries} ({$classification['sql_state']}). Reconnecting in {$backoffMs}ms...", [
+                    'category'  => $classification['category'],
+                    'sql_state' => $classification['sql_state'],
+                ]);
 
                 try {
                     // If a transaction was open when the connection severed, rollback safely
-                    if (DB::connection($connectionName)->transactionLevel() > 0) {
+                    while (DB::connection($connectionName)->transactionLevel() > 0) {
                         try {
                             DB::connection($connectionName)->rollBack();
                         } catch (\Throwable $rbEx) {
-                            // Severed socket cannot accept rollback, ignore safely
+                            // Severed socket cannot accept rollback, break cleanly
+                            break;
                         }
                     }
                     DB::disconnect($connectionName);
                     DB::purge($connectionName);
-                    DB::reconnect($connectionName);
+                    $conn = DB::reconnect($connectionName);
+                    // Lightweight validation ping to guarantee socket accepts queries:
+                    $conn->select('SELECT 1');
                 } catch (\Throwable $reconnectErr) {
-                    Log::warning("FdrDatabaseService: DB reconnect failed on attempt {$attempt}: " . $reconnectErr->getMessage());
+                    Log::warning("FdrDatabaseService: DB reconnect verification failed on attempt {$attempt}: " . self::sanitizeLogMessage($reconnectErr->getMessage()));
                 }
 
                 usleep($backoffMs * 1000);
@@ -186,62 +972,159 @@ class FdrDatabaseService
     }
 
     /**
-     * Detect transient database pooler, standby, and network drop errors.
-     * Inspects the full exception chain (QueryException -> PDOException -> driver error).
+     * Comprehensive, accurate classifier for database exceptions and general errors.
+     * Extracts true SQLSTATE from the exception chain (QueryException -> PDOException -> driver).
+     *
+     * Minimal separated categories:
+     * - 'connection': Transient 08xxx, 57P01-57P03, network drops (retryable)
+     * - 'schema': 42P01 undefined table, 42703 undefined column, 42xxx syntax (non-retryable)
+     * - 'integrity': 23xxx constraint violations (non-retryable)
+     * - 'auth': 28xxx authorization / password failed (non-retryable)
+     * - 'data': 22xxx data representation exception (non-retryable)
+     * - 'validation': Laravel form/input validation failed (non-retryable)
+     * - 'general': other unclassified application error (non-retryable)
+     *
+     * @return array{category: string, code: string, sql_state: string, is_retryable: bool, user_title: string, user_message: string, detail: string}
      */
-    public static function isConnectionError(\Throwable $e): bool
+    public static function classifyError(\Throwable $e): array
     {
         $curr = $e;
+        $sqlState = null;
+        $extractedMessage = $e->getMessage() ?: get_class($e);
+
         while ($curr) {
             $msg = $curr->getMessage();
-            $code = (string) $curr->getCode();
             $errorInfo = ($curr instanceof \PDOException || $curr instanceof \Illuminate\Database\QueryException)
                 ? ($curr->errorInfo ?? [])
                 : [];
-            $sqlState = (string) ($errorInfo[0] ?? $code);
 
-            // Fast exit: Do not retry integrity constraints, syntax errors, schema errors, or auth failures
-            // 23xxx = integrity constraint violations (23505 unique, 23503 foreign key, 23502 not null)
-            // 42xxx = syntax error or access rule violation (42P01 undefined table, 42703 undefined column)
-            // 28xxx = invalid authorization specification (28P01 password authentication failed)
-            // 22xxx = data exception (22001 string data right truncation, 22P02 invalid text representation)
-            $nonRetryablePrefixes = ['23', '42', '28', '22'];
-            $prefix = substr($sqlState, 0, 2);
-            if (in_array($prefix, $nonRetryablePrefixes, true)) {
-                return false;
+            $state = (string) ($errorInfo[0] ?? '');
+            if ($state !== '' && $sqlState === null) {
+                $sqlState = strtoupper($state);
             }
 
-            // Also check message content for schema/syntax errors (e.g. when wrapped with generic code)
-            $isSchemaOrSyntax = preg_match(
-                '/SQLSTATE\[42|42P01|42703|42P07|42601|undefined table|undefined column|relation [\"\'].*?[\"\'] does not exist|column [\"\'].*?[\"\'] does not exist|syntax error/i',
-                $msg
-            );
-            if ($isSchemaOrSyntax) {
-                return false;
-            }
-
-            // Connection error SQLSTATEs:
-            // 08006: connection failure
-            // 08003: connection does not exist
-            // 08001: unable to establish SQL connection
-            // 08004: server rejected connection
-            // 08007: connection failure during transaction
-            // 57P01: admin shutdown
-            // 57P02: crash shutdown
-            // 57P03: cannot connect now
-            $connectionSqlStates = ['08006', '08003', '08001', '08004', '08007', '57P01', '57P02', '57P03'];
-            if (in_array($sqlState, $connectionSqlStates, true) || in_array($code, ['7', '8006', '8003'], true)) {
-                return true;
-            }
-
-            if (self::hasConnectionDropMessage($msg)) {
-                return true;
+            if ($sqlState === null && preg_match('/SQLSTATE\[([A-Z0-9]{5})\]/i', $msg, $m)) {
+                $sqlState = strtoupper($m[1]);
             }
 
             $curr = $curr->getPrevious();
         }
 
-        return false;
+        $sqlState = $sqlState ?: 'UNKNOWN';
+        $prefix = substr($sqlState, 0, 2);
+        $cleanMsg = self::sanitizeLogMessage($extractedMessage);
+
+        // 1. Schema / Structure / Syntax Errors (Class 42xxx)
+        $isSchemaPattern = preg_match(
+            '/42P01|42703|42P07|42601|undefined table|undefined column|relation [\"\'].*?[\"\'] does not exist|column [\"\'].*?[\"\'] does not exist|syntax error/i',
+            $extractedMessage
+        );
+        if ($prefix === '42' || $isSchemaPattern) {
+            $missingTarget = '';
+            if (preg_match('/relation [\"\'](.*?)[\"\'] does not exist/i', $extractedMessage, $tm)) {
+                $missingTarget = " (Tabel '{$tm[1]}' belum tersedia di database)";
+            } elseif (preg_match('/column [\"\'](.*?)[\"\'] does not exist/i', $extractedMessage, $cm)) {
+                $missingTarget = " (Kolom '{$cm[1]}' belum tersedia di database)";
+            }
+
+            return [
+                'category'     => 'schema',
+                'code'         => 'DATABASE_SCHEMA_ERROR',
+                'sql_state'    => $sqlState,
+                'is_retryable' => false,
+                'user_title'   => 'STRUKTUR DATABASE BELUM SESUAI',
+                'user_message' => 'Struktur database belum sesuai dengan kebutuhan FDR. Hubungi administrator untuk memeriksa migration.' . $missingTarget,
+                'detail'       => $cleanMsg,
+            ];
+        }
+
+        // 2. Integrity Constraint Violations (Class 23xxx)
+        if ($prefix === '23' || preg_match('/unique constraint|foreign key constraint|not-null constraint|violates check constraint/i', $extractedMessage)) {
+            return [
+                'category'     => 'integrity',
+                'code'         => 'DATABASE_INTEGRITY_ERROR',
+                'sql_state'    => $sqlState,
+                'is_retryable' => false,
+                'user_title'   => 'KONFLIK INTEGRITAS DATABASE',
+                'user_message' => 'Data unggahan tidak dapat disimpan karena konflik integritas database. Periksa log server untuk detail aman.',
+                'detail'       => $cleanMsg,
+            ];
+        }
+
+        // 3. Authorization / Authentication (Class 28xxx)
+        if ($prefix === '28' || preg_match('/password authentication failed|permission denied for/i', $extractedMessage)) {
+            return [
+                'category'     => 'auth',
+                'code'         => 'DATABASE_AUTH_ERROR',
+                'sql_state'    => $sqlState,
+                'is_retryable' => false,
+                'user_title'   => 'OTORISASI DATABASE GAGAL',
+                'user_message' => 'Otorisasi database gagal. Hubungi administrator untuk memeriksa konfigurasi kredensial database.',
+                'detail'       => $cleanMsg,
+            ];
+        }
+
+        // 4. Data Representation / Type Exceptions (Class 22xxx)
+        if ($prefix === '22' || preg_match('/value too long|invalid input syntax/i', $extractedMessage)) {
+            return [
+                'category'     => 'data',
+                'code'         => 'DATABASE_DATA_ERROR',
+                'sql_state'    => $sqlState,
+                'is_retryable' => false,
+                'user_title'   => 'FORMAT DATA TIDAK VALID',
+                'user_message' => 'Data unggahan memiliki representasi nilai yang tidak valid untuk skema database.',
+                'detail'       => $cleanMsg,
+            ];
+        }
+
+        // 5. Transient Connection Errors (Class 08xxx, 57P01-57P03, Network drops)
+        $isConnectionSqlState = in_array($sqlState, ['08006', '08003', '08001', '08004', '08007', '57P01', '57P02', '57P03'], true);
+        $isConnectionMsg = self::hasConnectionDropMessage($extractedMessage);
+
+        if ($prefix === '08' || $isConnectionSqlState || $isConnectionMsg) {
+            return [
+                'category'     => 'connection',
+                'code'         => 'DATABASE_CONNECTION_ERROR',
+                'sql_state'    => $sqlState,
+                'is_retryable' => true,
+                'user_title'   => 'KONEKSI DATABASE BERMASALAH',
+                'user_message' => 'Koneksi database sedang bermasalah. Sistem telah mencoba menyambungkan kembali tetapi belum berhasil. File tetap disimpan jika upload Storage sudah berhasil. Silakan coba kembali setelah status database diverifikasi.',
+                'detail'       => $cleanMsg,
+            ];
+        }
+
+        // 6. Validation Error
+        if ($e instanceof \Illuminate\Validation\ValidationException) {
+            return [
+                'category'     => 'validation',
+                'code'         => 'FDR_VALIDATION_ERROR',
+                'sql_state'    => $sqlState,
+                'is_retryable' => false,
+                'user_title'   => 'VALIDASI UNGGAHAN GAGAL',
+                'user_message' => implode('; ', $e->validator->errors()->all()),
+                'detail'       => $cleanMsg,
+            ];
+        }
+
+        // 7. General Error
+        return [
+            'category'     => 'general',
+            'code'         => 'FDR_PROCESSING_ERROR',
+            'sql_state'    => $sqlState,
+            'is_retryable' => false,
+            'user_title'   => 'GAGAL MEMPROSES FLIGHT DAILY REPORT',
+            'user_message' => $cleanMsg,
+            'detail'       => $cleanMsg,
+        ];
+    }
+
+    /**
+     * Detect transient database pooler, standby, and network drop errors.
+     * Inspects the full exception chain (QueryException -> PDOException -> driver error).
+     */
+    public static function isConnectionError(\Throwable $e): bool
+    {
+        return self::classifyError($e)['category'] === 'connection';
     }
 
     /**
@@ -283,6 +1166,19 @@ class FdrDatabaseService
         }
 
         return false;
+    }
+
+    /**
+     * Sanitize log and exception messages by scrubbing sensitive connection parameters,
+     * passwords, authorization tokens, and API keys.
+     */
+    public static function sanitizeLogMessage(string $msg): string
+    {
+        $sanitized = preg_replace('/password=[^\s;]+/i', 'password=***', $msg);
+        $sanitized = preg_replace('/postgres:[^@]+@/i', 'postgres:***@', $sanitized);
+        $sanitized = preg_replace('/Bearer\s+[A-Za-z0-9_\-\.]+/i', 'Bearer ***', $sanitized);
+        $sanitized = preg_replace('/(token|key|secret)=[A-Za-z0-9_\-\.]+/i', '$1=***', $sanitized);
+        return $sanitized;
     }
 
     /**
@@ -574,8 +1470,8 @@ class FdrDatabaseService
             'operational_hour'     => (int)($r['operational_hour'] ?? ($r['hour'] ?? 0)),
             'delay_minutes'        => $delayMinutes,
             'status'               => $status,
-            'is_realized'          => $isRealized ? 'true' : 'false',
-            'is_irregular'         => (!empty($r['is_irregular'])) ? 'true' : 'false',
+            'is_realized'          => (config('database.default') === 'sqlite') ? ($isRealized ? 1 : 0) : ($isRealized ? 'true' : 'false'),
+            'is_irregular'         => (config('database.default') === 'sqlite') ? ((!empty($r['is_irregular'])) ? 1 : 0) : ((!empty($r['is_irregular'])) ? 'true' : 'false'),
             'passenger_capacity'   => $cap,
             'passenger_load'       => $paxLoad,
             'load_factor'          => $loadFactor,

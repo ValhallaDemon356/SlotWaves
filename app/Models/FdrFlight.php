@@ -123,7 +123,7 @@ class FdrFlight extends Model
             } else {
                 $query->where(function (Builder $sub) use ($operator) {
                     $sub->where('airline_code', strtoupper($operator))
-                        ->orWhere('flight_number', 'ILIKE', $operator . '%');
+                        ->orWhereRaw('LOWER(flight_number) LIKE ?', [strtolower($operator) . '%']);
                 });
             }
         }
@@ -184,17 +184,18 @@ class FdrFlight extends Model
                 if ($stdEnd !== 'N/A') $query->where('flight_date', '<=', $stdEnd);
             }
         } elseif (($dateScope === 'MONTH' || $analysisLevel === 'MONTHLY') && !empty($analysisMonth)) {
-            $query->whereRaw("TO_CHAR(flight_date, 'YYYY-MM') = ?", [$analysisMonth]);
+            $query->whereRaw("SUBSTR(CAST(flight_date AS TEXT), 1, 7) = ?", [$analysisMonth]);
         } elseif (($dateScope === 'YEAR' || $analysisLevel === 'YEARLY') && !empty($analysisYear)) {
-            $query->whereRaw("TO_CHAR(flight_date, 'YYYY') = ?", [$analysisYear]);
+            $query->whereRaw("SUBSTR(CAST(flight_date AS TEXT), 1, 4) = ?", [$analysisYear]);
         }
 
         // 8. Flight Number & Suffix
         $flightNo = strtoupper(trim($filters['flight_no'] ?? ''));
         if ($flightNo !== '') {
-            $query->where(function (Builder $sub) use ($flightNo) {
-                $sub->where('flight_number', 'ILIKE', '%' . $flightNo . '%')
-                    ->orWhere('flight_number_base', 'ILIKE', '%' . $flightNo . '%');
+            $flightNoLower = '%' . strtolower($flightNo) . '%';
+            $query->where(function (Builder $sub) use ($flightNoLower) {
+                $sub->whereRaw('LOWER(flight_number) LIKE ?', [$flightNoLower])
+                    ->orWhereRaw('LOWER(COALESCE(flight_number_base, \'\')) LIKE ?', [$flightNoLower]);
             });
         }
         $suffix = strtoupper(trim($filters['suffix'] ?? ''));
@@ -209,7 +210,7 @@ class FdrFlight extends Model
             $query->where(function (Builder $sub) use ($s) {
                 $sub->whereRaw('LOWER(flight_number) LIKE ?', [$s])
                     ->orWhereRaw('LOWER(airline_code) LIKE ?', [$s])
-                    ->orWhereRaw('LOWER(COALESCE(raw_data->>\'air_line\', \'\')) LIKE ?', [$s])
+                    ->orWhereRaw('LOWER(COALESCE(airline, \'\')) LIKE ?', [$s])
                     ->orWhereRaw('LOWER(COALESCE(registration_number, \'\')) LIKE ?', [$s])
                     ->orWhereRaw('LOWER(COALESCE(origin_airport, \'\')) LIKE ?', [$s])
                     ->orWhereRaw('LOWER(COALESCE(destination_airport, \'\')) LIKE ?', [$s])
@@ -218,7 +219,6 @@ class FdrFlight extends Model
                     ->orWhereRaw("LOWER(COALESCE(origin_airport, '') || ' -> ' || COALESCE(destination_airport, '')) LIKE ?", [$s])
                     ->orWhereRaw("LOWER(COALESCE(origin_airport, '') || ' ' || COALESCE(destination_airport, '')) LIKE ?", [$s])
                     ->orWhereRaw("LOWER(COALESCE(origin_airport, '') || COALESCE(destination_airport, '')) LIKE ?", [$s])
-                    ->orWhereRaw("LOWER(COALESCE(raw_data->>'route', '')) LIKE ?", [$s])
                     ->orWhereRaw('LOWER(COALESCE(stand, \'\')) LIKE ?', [$s])
                     ->orWhereRaw('LOWER(COALESCE(runway, \'\')) LIKE ?', [$s])
                     ->orWhereRaw('LOWER(COALESCE(aircraft_type, \'\')) LIKE ?', [$s]);

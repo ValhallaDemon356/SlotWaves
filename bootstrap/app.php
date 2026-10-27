@@ -18,6 +18,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
             'upload/*',
             'dau/compare/*',
             'fdr/upload',
+            'fdr/storage/signed-upload',
+            'fdr/signed-upload-url',
             'fdr/jobs/*',
             'fdr/handle-uploaded',
             'dau/handle-uploaded-fdr',
@@ -69,19 +71,18 @@ $app = Application::configure(basePath: dirname(__DIR__))
                 $category = 'Validation Error';
                 $isRetryable = false;
             } elseif ($e instanceof \Illuminate\Database\QueryException || $e instanceof \PDOException) {
-                $sqlState = (string) ($e->errorInfo[0] ?? $e->getCode());
-                $isSchemaError = str_starts_with($sqlState, '42') ||
-                    preg_match('/42P01|42703|42P07|relation [\"\'].*?[\"\'] does not exist|column [\"\'].*?[\"\'] does not exist|undefined table|undefined column/i', $errMsg);
-
-                if ($isSchemaError) {
-                    $statusCode = 500;
-                    $category = 'Database Schema / Structure Error';
-                    $isRetryable = false;
-                } else {
-                    $statusCode = 500;
-                    $category = 'Database / Supabase Connection Error';
-                    $isRetryable = true;
-                }
+                $classification = \App\Services\FlightDailyReport\FdrDatabaseService::classifyError($e);
+                $statusCode = 500;
+                $category = match ($classification['category']) {
+                    'schema'     => 'Database Schema / Structure Error',
+                    'integrity'  => 'Database Integrity Error',
+                    'auth'       => 'Database Authentication Error',
+                    'data'       => 'Database Data Representation Error',
+                    'connection' => 'Database / Supabase Connection Error',
+                    default      => 'Database Query Error',
+                };
+                $sanitizedMsg = $classification['user_message'];
+                $isRetryable = $classification['is_retryable'];
             } elseif ($e instanceof \Symfony\Component\HttpKernel\Exception\NotFoundHttpException) {
                 $statusCode = 404;
                 $category = 'Page Not Found (404)';

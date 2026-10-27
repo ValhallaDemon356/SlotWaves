@@ -55,6 +55,7 @@ class FlightDailyReportController extends Controller
      */
     public function configRedirect()
     {
+        FdrDatabaseService::ensureWorkingConnection();
         $activeUploadId = session('fdr_active_upload_id');
         if ($activeUploadId) {
             $upload = Upload::where('id', $activeUploadId)
@@ -70,6 +71,9 @@ class FlightDailyReportController extends Controller
             ->where('status', 'completed')
             ->latest()
             ->first();
+        if (!$latest) {
+            $latest = FdrDatabaseService::hydrateLatestCompletedUploadFromSupabaseRest();
+        }
         if ($latest) {
             return redirect()->route('fdr.dashboard', $latest->id);
         }
@@ -110,6 +114,7 @@ class FlightDailyReportController extends Controller
      */
     public function config(Request $request, Upload $upload = null)
     {
+        FdrDatabaseService::ensureWorkingConnection();
         if (!$upload || $upload->report_type !== 'fdr') {
             $activeUploadId = session('fdr_active_upload_id');
             if ($activeUploadId) {
@@ -117,6 +122,9 @@ class FlightDailyReportController extends Controller
             }
             if (!$upload) {
                 $upload = Upload::where('report_type', 'fdr')->where('status', 'completed')->latest()->first();
+            }
+            if (!$upload) {
+                $upload = FdrDatabaseService::hydrateLatestCompletedUploadFromSupabaseRest();
             }
         }
 
@@ -381,7 +389,7 @@ class FlightDailyReportController extends Controller
         $airlineHint = $validated['airline_type'] ?? null;
 
         try {
-            DB::disconnect('pgsql');
+            FdrDatabaseService::ensureWorkingConnection();
             $info = $storageService->getFileInfo($storagePath, $bucket);
             if ($info && !empty($info['size'])) {
                 $fileSize = (int)$info['size'];
@@ -402,85 +410,75 @@ class FlightDailyReportController extends Controller
             }
             $airport = \App\Models\Airport::findByIata($airportCode) ?? \App\Models\Airport::findByIata('CGK');
 
+            $sourceUri = "supabase://{$bucket}/{$storagePath}";
+            $uploadAttrs = [
+                'original_filename'  => $originalFilename,
+                'stored_path'        => $sourceUri,
+                'status'             => 'processing',
+                'report_type'        => 'fdr',
+                'total_rows'         => 0,
+                'valid_rows'         => 0,
+                'invalid_rows'       => 0,
+                'duplicate_rows'     => 0,
+                'parsing_confidence' => 0.0,
+                'season'             => 'summer',
+                'airport_id'         => $airport?->id,
+                'validation_summary' => ['status' => 'QUEUED'],
+                'report_data'        => [
+                    'meta' => [
+                        'airport'        => $airportCode,
+                        'report_airport' => $airportCode,
+                        'filename'       => $originalFilename,
+                        'operator'       => $airlineHint ?: 'ALL AIRLINE',
+                    ],
+                ],
+            ];
+
+            $jobMeta = [
+                'airport'        => $airportCode,
+                'report_airport' => $airportCode,
+                'operator'       => $airlineHint ?: 'ALL AIRLINE',
+                'bucket'         => $bucket,
+                'storage_path'   => $storagePath,
+                'file_size'      => $fileSize,
+                'filename'       => $originalFilename,
+            ];
+
+            $supabaseUploadId = FdrDatabaseService::syncQueuedUploadToSupabaseRest($uploadAttrs, $jobMeta);
+
             $persisted = FdrDatabaseService::executeWithRetry(function () use (
-                $originalFilename,
-                $bucket,
-                $storagePath,
-                $airportCode,
-                $airlineHint,
-                $airport,
+                $sourceUri,
+                $uploadAttrs,
+                $jobMeta,
+                $supabaseUploadId,
                 $fileSize
             ) {
                 return DB::transaction(function () use (
-                    $originalFilename,
-                    $bucket,
-                    $storagePath,
-                    $airportCode,
-                    $airlineHint,
-                    $airport,
+                    $sourceUri,
+                    $uploadAttrs,
+                    $jobMeta,
+                    $supabaseUploadId,
                     $fileSize
                 ) {
-                    $sourceUri = "supabase://{$bucket}/{$storagePath}";
-                    $upload = Upload::where('stored_path', $sourceUri)->lockForUpdate()->first();
-
-                    if (!$upload) {
-                        $uploadToken = (string) Str::uuid();
-
-                        $upload = Upload::create([
-                            'original_filename'  => $originalFilename,
-                            'stored_path'        => $sourceUri,
-                            'status'             => 'processing',
-                            'report_type'        => 'fdr',
-                            'total_rows'         => 0,
-                            'valid_rows'         => 0,
-                            'invalid_rows'       => 0,
-                            'duplicate_rows'     => 0,
-                            'parsing_confidence' => 0.0,
-                            'season'             => 'summer',
-                            'airport_id'         => $airport?->id,
-                            'validation_summary' => ['status' => 'QUEUED'],
-                            'report_data'        => [
-                                'meta' => [
-                                    'airport'        => $airportCode,
-                                    'report_airport' => $airportCode,
-                                    'filename'       => $originalFilename,
-                                    'operator'       => $airlineHint ?: 'ALL AIRLINE',
-                                ],
-                            ],
-                        ]);
-
-                        $job = FdrProcessingJob::create([
-                            'upload_id'      => $upload->id,
-                            'upload_token'   => $uploadToken,
-                            'status'         => 'QUEUED',
-                            'stage'          => 'QUEUED',
-                            'stage_label'    => 'Queued for streaming extraction...',
-                            'progress'       => 0,
-                            'processed_rows' => 0,
-                            'total_rows'     => 0,
-                            'current_offset' => 0,
-                            'current_batch'  => 0,
-                            'stored_path'    => $sourceUri,
-                            'file_size'      => $fileSize,
-                            'result_url'     => route('fdr.dashboard', $upload->id),
-                            'meta'           => [
-                                'airport'        => $airportCode,
-                                'report_airport' => $airportCode,
-                                'operator'       => $airlineHint ?: 'ALL AIRLINE',
-                                'bucket'         => $bucket,
-                                'storage_path'   => $storagePath,
-                            ],
-                        ]);
-
-                        return ['upload' => $upload, 'job' => $job, 'reconciled' => false];
+                    $upload = Upload::where('stored_path', $sourceUri)->first();
+                    if (!$upload && $supabaseUploadId) {
+                        $upload = Upload::find($supabaseUploadId);
                     }
 
+                    if (!$upload) {
+                        if ($supabaseUploadId) {
+                            $uploadAttrs['id'] = $supabaseUploadId;
+                        }
+                        $upload = Upload::create($uploadAttrs);
+                    }
+
+                    $uploadToken = "fdr_job_{$upload->id}";
                     $job = FdrProcessingJob::where('upload_id', $upload->id)
+                        ->orWhere('upload_token', $uploadToken)
                         ->orWhere('stored_path', $sourceUri)
                         ->first();
 
                     if (!$job) {
-                        $uploadToken = (string) Str::uuid();
                         $job = FdrProcessingJob::create([
                             'upload_id'      => $upload->id,
                             'upload_token'   => $uploadToken,
@@ -495,14 +493,10 @@ class FlightDailyReportController extends Controller
                             'stored_path'    => $sourceUri,
                             'file_size'      => $fileSize,
                             'result_url'     => route('fdr.dashboard', $upload->id),
-                            'meta'           => [
-                                'airport'        => $airportCode,
-                                'report_airport' => $airportCode,
-                                'operator'       => $airlineHint ?: 'ALL AIRLINE',
-                                'bucket'         => $bucket,
-                                'storage_path'   => $storagePath,
-                            ],
+                            'meta'           => $jobMeta,
                         ]);
+
+                        return ['upload' => $upload, 'job' => $job, 'reconciled' => false];
                     }
 
                     return ['upload' => $upload, 'job' => $job, 'reconciled' => true];
@@ -529,25 +523,31 @@ class FlightDailyReportController extends Controller
             ]);
 
         } catch (\Throwable $e) {
-            $isConn = FdrDatabaseService::isConnectionError($e);
-            $rawMsg = $e->getMessage();
-            Log::error('FDR handleUploaded failed: ' . $rawMsg, [
-                'exception'   => $e,
-                'file_path'   => $storagePath,
-                'bucket'      => $bucket,
-                'is_connection_error' => $isConn,
-            ]);
+            $classification = FdrDatabaseService::classifyError($e);
+            $cleanMsg = FdrDatabaseService::sanitizeLogMessage($e->getMessage());
 
-            $safeMsg = ($isConn || stripos($rawMsg, 'SQLSTATE') !== false || stripos($rawMsg, 'connection') !== false)
-                ? 'Koneksi database sedang disinkronkan kembali. Sistem akan mencoba lagi secara otomatis.'
-                : 'FDR_UPLOAD_CALLBACK_ERROR: ' . $rawMsg;
+            Log::error('FDR handleUploaded failed: ' . $cleanMsg, [
+                'file_path'    => $storagePath ?? null,
+                'bucket'       => $bucket ?? null,
+                'category'     => $classification['category'],
+                'sql_state'    => $classification['sql_state'],
+                'error_code'   => $classification['code'],
+                'is_retryable' => $classification['is_retryable'],
+            ]);
 
             return response()->json([
                 'success'   => false,
-                'error'     => $safeMsg,
-                'retryable' => $isConn,
-                'bucket'    => $bucket,
-                'path'      => $storagePath,
+                'category'  => $classification['category'],
+                'error'     => [
+                    'code'      => $classification['code'],
+                    'category'  => $classification['category'],
+                    'sql_state' => $classification['sql_state'],
+                    'title'     => $classification['user_title'],
+                    'message'   => $classification['user_message'],
+                    'retryable' => $classification['is_retryable'],
+                ],
+                'bucket'    => $bucket ?? null,
+                'path'      => $storagePath ?? null,
             ], 500);
         }
     }
@@ -604,7 +604,7 @@ class FlightDailyReportController extends Controller
      */
     public function jobStatus($jobId)
     {
-        $job = FdrProcessingJob::find($jobId);
+        $job = FdrDatabaseService::findOrHydrateJob((string) $jobId);
         if (!$job) {
             return response()->json([
                 'success' => false,
@@ -653,7 +653,7 @@ class FlightDailyReportController extends Controller
         set_time_limit(300);
 
         try {
-            $job = FdrProcessingJob::find($jobId);
+            $job = FdrDatabaseService::findOrHydrateJob((string) $jobId);
             if (!$job) {
                 return response()->json([
                     'success' => false,
@@ -675,6 +675,12 @@ class FlightDailyReportController extends Controller
                 );
 
                 $totalInDb = FdrFlight::where('upload_id', $job->upload_id)->count();
+                if ($totalInDb === 0 && !$isZeroStateOrAggregate) {
+                    $uploadObj = Upload::find($job->upload_id);
+                    if ($uploadObj) {
+                        $totalInDb = $this->fdrDbService->getRecordCount($uploadObj);
+                    }
+                }
                 if ($totalInDb === 0 && !$isZeroStateOrAggregate) {
                     $job->update([
                         'status'        => 'FAILED',
@@ -720,6 +726,64 @@ class FlightDailyReportController extends Controller
             $localTmpPath = sys_get_temp_dir() . '/fdr_src_' . $job->id . '.bin';
             $fullPath = null;
 
+            // Handle browser-streamed compressed source chunks (fallback when private bucket RLS blocks anon download)
+            if ($request->hasFile('source_chunk')) {
+                $chunkFile = $request->file('source_chunk');
+                $chunkIdx = (int) $request->input('chunk_index', 0);
+                $totalChunks = max(1, (int) $request->input('total_chunks', 1));
+                $isGzip = filter_var($request->input('is_gzip', false), FILTER_VALIDATE_BOOLEAN);
+                $streamPartPath = sys_get_temp_dir() . '/fdr_stream_' . $job->id . ($isGzip ? '.gz' : '.bin');
+
+                $mode = ($chunkIdx === 0) ? 'wb' : 'ab';
+                $outFp = @fopen($streamPartPath, $mode);
+                $inFp = @fopen($chunkFile->getRealPath(), 'rb');
+                if ($outFp && $inFp) {
+                    stream_copy_to_stream($inFp, $outFp);
+                }
+                if (is_resource($inFp)) {
+                    fclose($inFp);
+                }
+                if (is_resource($outFp)) {
+                    fclose($outFp);
+                }
+
+                if ($chunkIdx + 1 < $totalChunks) {
+                    $pct = min(20, 5 + (int) round((($chunkIdx + 1) / $totalChunks) * 15));
+                    return response()->json([
+                        'success'        => true,
+                        'status'         => 'STREAMING_SOURCE',
+                        'stage'          => 'STREAMING_SOURCE',
+                        'progress'       => $pct,
+                        'stage_label'    => 'Receiving compressed FDR stream (' . ($chunkIdx + 1) . '/' . $totalChunks . ')...',
+                        'chunk_received' => $chunkIdx,
+                    ]);
+                }
+
+                // Final chunk received: decompress or move into $localTmpPath
+                if ($isGzip) {
+                    $gzFp = @gzopen($streamPartPath, 'rb');
+                    $destFp = @fopen($localTmpPath, 'wb');
+                    if ($gzFp && $destFp) {
+                        while (!gzeof($gzFp)) {
+                            $buf = gzread($gzFp, 65536);
+                            if ($buf === false || $buf === '') {
+                                break;
+                            }
+                            fwrite($destFp, $buf);
+                        }
+                    }
+                    if (is_resource($gzFp)) {
+                        gzclose($gzFp);
+                    }
+                    if (is_resource($destFp)) {
+                        fclose($destFp);
+                    }
+                    @unlink($streamPartPath);
+                } else {
+                    @rename($streamPartPath, $localTmpPath);
+                }
+            }
+
             // Direct-upload FDR sources are persisted in private Supabase Storage.
             if (str_starts_with($storedPath, 'supabase://')) {
                 if (file_exists($localTmpPath) && filesize($localTmpPath) > 10) {
@@ -737,10 +801,7 @@ class FlightDailyReportController extends Controller
                     try {
                         /** @var \App\Services\Storage\SupabaseStorageService $supabaseStorage */
                         $supabaseStorage = app(\App\Services\Storage\SupabaseStorageService::class);
-                        DB::disconnect('pgsql');
                         $downloaded = $supabaseStorage->downloadToTemp($storageObject, $bucket);
-                        DB::purge('pgsql');
-                        DB::reconnect('pgsql');
 
                         if ($downloaded && file_exists($downloaded) && filesize($downloaded) > 10) {
                             @copy($downloaded, $localTmpPath);
@@ -756,7 +817,14 @@ class FlightDailyReportController extends Controller
                             'stored_path' => $storedPath,
                         ]);
                     } catch (\Throwable $e) {
-                        throw new \RuntimeException('FDR_SOURCE_DOWNLOAD_ERROR: ' . $e->getMessage(), 0, $e);
+                        // When private bucket RLS restricts anon download (HTTP 400/404/403), request compressed browser stream
+                        return response()->json([
+                            'success'     => true,
+                            'status'      => 'NEED_SOURCE_STREAM',
+                            'stage'       => 'STREAMING_SOURCE',
+                            'progress'    => 8,
+                            'stage_label' => 'Preparing compressed stream for serverless extraction...',
+                        ]);
                     }
                 }
             } elseif (file_exists($localTmpPath) && filesize($localTmpPath) > 10) {
@@ -911,6 +979,9 @@ class FlightDailyReportController extends Controller
                         'result_url'     => $resultUrl,
                         'completed_at'   => now(),
                     ]);
+                    if ($upload) {
+                        FdrDatabaseService::syncCompletedUploadToSupabaseRest($upload->fresh(), $job->fresh());
+                    }
                     return response()->json([
                         'success'        => true,
                         'status'         => 'READY',
@@ -972,6 +1043,9 @@ class FlightDailyReportController extends Controller
                         'result_url'     => $resultUrl,
                         'completed_at'   => now(),
                     ]);
+                    if ($upload) {
+                        FdrDatabaseService::syncCompletedUploadToSupabaseRest($upload->fresh(), $job->fresh());
+                    }
                     return response()->json([
                         'success'        => true,
                         'status'         => 'READY',
@@ -1042,6 +1116,9 @@ class FlightDailyReportController extends Controller
                         'result_url'     => $resultUrl,
                         'completed_at'   => now(),
                     ]);
+                    if ($upload) {
+                        FdrDatabaseService::syncCompletedUploadToSupabaseRest($upload->fresh(), $job->fresh());
+                    }
                     return response()->json([
                         'success'        => true,
                         'status'         => 'READY',
@@ -1097,7 +1174,9 @@ class FlightDailyReportController extends Controller
                                     DB::table('fdr_flights')->insert($chunk);
                                 });
                             }, 4, 300, false);
-                            usleep(20000);
+                            if (config('database.default') === 'pgsql') {
+                                usleep(20000);
+                            }
                         }
                         $processedRows += count($dbRows);
                     }
@@ -1125,8 +1204,8 @@ class FlightDailyReportController extends Controller
                     'meta'           => $meta,
                 ]);
 
-                // Checkpoint and yield every 3.5s to maintain responsive browser UX and prevent gateway timeout
-                if (!$isEof && (microtime(true) - $startTime) > 3.5) {
+                // Checkpoint and yield every 14s to maintain responsive browser UX and prevent gateway timeout
+                if (!$isEof && (microtime(true) - $startTime) > 14.0) {
                     return response()->json([
                         'success'        => true,
                         'status'         => 'PARSING',
@@ -1278,6 +1357,10 @@ class FlightDailyReportController extends Controller
                 'completed_at'   => now(),
             ]);
 
+            if ($upload) {
+                FdrDatabaseService::syncCompletedUploadToSupabaseRest($upload->fresh(), $job->fresh());
+            }
+
             FdrUploadSession::where('upload_token', $job->upload_token)
                 ->update(['status' => FdrUploadSession::STATUS_READY]);
 
@@ -1308,18 +1391,29 @@ class FlightDailyReportController extends Controller
         } catch (\Throwable $e) {
             $job = isset($job) ? $job : FdrProcessingJob::find($jobId);
             $msg = $e->getMessage();
-            $isConn = FdrDatabaseService::isConnectionError($e);
-            $errCode = 'FDR_PARSER_ERROR';
+            $classification = FdrDatabaseService::classifyError($e);
+            $errCode = $classification['code'];
+            $userMsg = $classification['user_message'];
+            $isRetryable = $classification['is_retryable'];
 
-            if ($isConn || $e instanceof \Illuminate\Database\QueryException || str_contains($msg, 'SQLSTATE') || str_contains($msg, '08006')) {
-                $errCode = 'DATABASE_CONNECTION_ERROR';
-                $msg = 'Koneksi database sedang disinkronkan kembali. Sistem akan mencoba lagi secara otomatis.';
-            } elseif (str_contains($msg, 'FDR_SOURCE_NOT_FOUND') || str_contains(strtolower($msg), 'not found') || str_contains(strtolower($msg), 'no longer available')) {
-                $errCode = 'FDR_SOURCE_NOT_FOUND';
-            } elseif (str_contains($msg, 'FDR_STORAGE_ERROR') || str_contains(strtolower($msg), 'storage') || str_contains(strtolower($msg), 'disk')) {
-                $errCode = 'FDR_STORAGE_ERROR';
-            } elseif (str_contains(strtolower($msg), 'timeout') || str_contains(strtolower($msg), 'maximum execution time')) {
-                $errCode = 'FDR_PROCESSING_TIMEOUT';
+            if ($classification['category'] === 'general') {
+                if (str_contains($msg, 'FDR_SOURCE_NOT_FOUND') || str_contains(strtolower($msg), 'not found') || str_contains(strtolower($msg), 'no longer available')) {
+                    $errCode = 'FDR_SOURCE_NOT_FOUND';
+                    $userMsg = 'File sumber FDR tidak ditemukan di storage.';
+                    $isRetryable = false;
+                } elseif (str_contains($msg, 'FDR_STORAGE_ERROR') || str_contains(strtolower($msg), 'storage') || str_contains(strtolower($msg), 'disk')) {
+                    $errCode = 'FDR_STORAGE_ERROR';
+                    $userMsg = 'Gagal mengakses penyimpanan file Supabase Storage.';
+                    $isRetryable = true;
+                } elseif (str_contains(strtolower($msg), 'timeout') || str_contains(strtolower($msg), 'maximum execution time')) {
+                    $errCode = 'FDR_PROCESSING_TIMEOUT';
+                    $userMsg = 'Batas waktu eksekusi pemrosesan tercapai. Sistem dapat melanjutkan dari checkpoint.';
+                    $isRetryable = true;
+                } else {
+                    $errCode = 'FDR_PARSER_ERROR';
+                    $userMsg = FdrDatabaseService::sanitizeLogMessage($msg);
+                    $isRetryable = false;
+                }
             }
 
             if ($job) {
@@ -1329,7 +1423,7 @@ class FlightDailyReportController extends Controller
                         'stage'         => 'PAUSED',
                         'stage_label'   => 'Processing Paused',
                         'error_code'    => $errCode,
-                        'error_message' => $msg,
+                        'error_message' => $userMsg,
                     ]);
                     FdrUploadSession::where('upload_token', $job->upload_token)
                         ->update(['status' => FdrUploadSession::STATUS_PAUSED]);
@@ -1340,7 +1434,10 @@ class FlightDailyReportController extends Controller
 
             Log::error("FDR Job {$jobId} Failed", [
                 'error_code'    => $errCode,
-                'error_message' => $msg,
+                'category'      => $classification['category'],
+                'sql_state'     => $classification['sql_state'],
+                'error_message' => FdrDatabaseService::sanitizeLogMessage($msg),
+                'retryable'     => $isRetryable,
             ]);
 
             return response()->json([
@@ -1350,12 +1447,13 @@ class FlightDailyReportController extends Controller
                 'stage_label'   => 'Processing Paused',
                 'error'         => [
                     'code'      => $errCode,
-                    'message'   => $msg,
-                    'retryable' => true,
+                    'category'  => $classification['category'],
+                    'message'   => $userMsg,
+                    'retryable' => $isRetryable,
                 ],
                 'error_code'    => $errCode,
-                'error_message' => $msg,
-            ], 200);
+                'error_message' => $userMsg,
+            ], 500);
         }
     }
 
@@ -1364,7 +1462,7 @@ class FlightDailyReportController extends Controller
      */
     public function showJob($jobId)
     {
-        $job = \App\Models\FdrProcessingJob::find($jobId);
+        $job = FdrDatabaseService::findOrHydrateJob((string) $jobId);
         if (!$job) {
             abort(404, 'Processing job not found.');
         }
@@ -2391,8 +2489,10 @@ class FlightDailyReportController extends Controller
         if ($this->fdrDbService->hasDatabaseRecords($upload)) {
             $flight = FdrFlight::where('upload_id', $upload->id)
                 ->where(function($q) use ($flightIndex) {
-                    $q->where('id', (int)$flightIndex)
-                      ->orWhereRaw("(raw_data->>'index')::int = ?", [(int)$flightIndex]);
+                    $q->where('id', (int)$flightIndex);
+                    if (config('database.default') === 'pgsql') {
+                        $q->orWhereRaw("(raw_data->>'index')::int = ?", [(int)$flightIndex]);
+                    }
                 })
                 ->first();
 

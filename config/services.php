@@ -36,8 +36,8 @@ return [
     ],
 
     'supabase' => [
-        'url' => env('SUPABASE_URL', env('VITE_SUPABASE_URL', 'https://your-project-id.supabase.co')),
-        'anon_key' => env('SUPABASE_ANON_KEY', env('VITE_SUPABASE_ANON_KEY', '')),
+        'url' => env('SUPABASE_URL', env('VITE_SUPABASE_URL', 'https://zvtkphkjczjobvvtvhbm.supabase.co')),
+        'anon_key' => env('SUPABASE_ANON_KEY', env('VITE_SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2dGtwaGtqY3pqb2J2dnR2aGJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxMzQzMDEsImV4cCI6MjEwMzcxMDMwMX0.S9AxYH5LJsQw43t3bN_6xhc-8X1HG9tt2_AZ7DoQqe8')),
         'service_role_key' => env('SUPABASE_SERVICE_ROLE_KEY', ''),
         'bucket' => env('NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET', env('SUPABASE_STORAGE_BUCKET', 'flight-reports')),
     ],

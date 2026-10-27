@@ -34,13 +34,15 @@ function assertTest(string $description, bool $condition) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 1. Connection Error Classification Tests
+// 1. Connection & SQL Error Classification Tests (classifyError)
 // ─────────────────────────────────────────────────────────────
-echo "1. Testing Connection Error Classifier (isConnectionError):\n";
+echo "1. Testing Error Classifier (classifyError & isConnectionError):\n";
 
 $e08006 = new \PDOException("SQLSTATE[08006]: connection failure FATAL: terminating connection due to administrator command", 7);
 $e08006->errorInfo = ['08006', 7, 'terminating connection due to administrator command'];
 assertTest("Classifies PDOException SQLSTATE 08006 as connection error", FdrDatabaseService::isConnectionError($e08006));
+$c08006 = FdrDatabaseService::classifyError($e08006);
+assertTest("classifyError: 08006 returns category 'connection' and is_retryable=true", $c08006['category'] === 'connection' && $c08006['is_retryable'] === true);
 
 $e08003 = new \PDOException("SQLSTATE[08003]: connection does not exist", 8003);
 $e08003->errorInfo = ['08003', null, 'connection does not exist'];
@@ -49,6 +51,8 @@ assertTest("Classifies SQLSTATE 08003 as connection error", FdrDatabaseService::
 $e57P01 = new \PDOException("FATAL: terminating connection due to administrator command", 57001);
 $e57P01->errorInfo = ['57P01', 57001, 'administrator shutdown'];
 assertTest("Classifies SQLSTATE 57P01 as connection error", FdrDatabaseService::isConnectionError($e57P01));
+$c57P01 = FdrDatabaseService::classifyError($e57P01);
+assertTest("classifyError: 57P01 returns category 'connection' and is_retryable=true", $c57P01['category'] === 'connection' && $c57P01['is_retryable'] === true);
 
 $eHotStandby = new \RuntimeException("the database system is not accepting connections: Hot standby mode is disabled");
 assertTest("Classifies Hot Standby message as connection error", FdrDatabaseService::isConnectionError($eHotStandby));
@@ -66,14 +70,20 @@ assertTest("Classifies nested QueryException wrapping PDOException as connection
 $eConstraint = new \PDOException("SQLSTATE[23505]: Unique violation: duplicate key value", 23505);
 $eConstraint->errorInfo = ['23505', 23505, 'duplicate key'];
 assertTest("Does NOT classify unique constraint violation (23505) as connection error", !FdrDatabaseService::isConnectionError($eConstraint));
+$c23505 = FdrDatabaseService::classifyError($eConstraint);
+assertTest("classifyError: 23505 returns category 'integrity' and is_retryable=false", $c23505['category'] === 'integrity' && $c23505['is_retryable'] === false);
 
 $eMissingCol = new \PDOException("SQLSTATE[42703]: Undefined column: column 'foo' does not exist", 42703);
 $eMissingCol->errorInfo = ['42703', 42703, 'column does not exist'];
 assertTest("Does NOT classify schema error (42703) as connection error", !FdrDatabaseService::isConnectionError($eMissingCol));
+$c42703 = FdrDatabaseService::classifyError($eMissingCol);
+assertTest("classifyError: 42703 returns category 'schema' and is_retryable=false", $c42703['category'] === 'schema' && $c42703['is_retryable'] === false);
 
 $eMissingTable = new \PDOException("SQLSTATE[42P01]: Undefined table: 7 ERROR: relation \"fdr_processing_jobs\" does not exist", 42);
 $eMissingTable->errorInfo = ['42P01', 7, 'relation "fdr_processing_jobs" does not exist'];
 assertTest("Does NOT classify undefined table (42P01) as connection error", !FdrDatabaseService::isConnectionError($eMissingTable));
+$c42P01 = FdrDatabaseService::classifyError($eMissingTable);
+assertTest("classifyError: 42P01 returns category 'schema' and is_retryable=false", $c42P01['category'] === 'schema' && $c42P01['is_retryable'] === false);
 
 $eNested42P01 = new QueryException(
     'pgsql',
@@ -86,6 +96,25 @@ assertTest("Does NOT classify wrapped 42P01 QueryException as connection error",
 $eSyntax = new \PDOException("SQLSTATE[42601]: syntax error at or near 'INSRT'", 42601);
 $eSyntax->errorInfo = ['42601', 42601, 'syntax error'];
 assertTest("Does NOT classify SQL syntax error (42601) as connection error", !FdrDatabaseService::isConnectionError($eSyntax));
+
+$eAuth = new \PDOException("SQLSTATE[28P01]: password authentication failed for user 'postgres'", 28);
+$eAuth->errorInfo = ['28P01', 28, 'password authentication failed'];
+$cAuth = FdrDatabaseService::classifyError($eAuth);
+assertTest("classifyError: 28P01 returns category 'auth' and is_retryable=false", $cAuth['category'] === 'auth' && $cAuth['is_retryable'] === false);
+
+$eData = new \PDOException("SQLSTATE[22001]: value too long for type character varying(20)", 22001);
+$eData->errorInfo = ['22001', 22001, 'string data right truncation'];
+$cData = FdrDatabaseService::classifyError($eData);
+assertTest("classifyError: 22001 returns category 'data' and is_retryable=false", $cData['category'] === 'data' && $cData['is_retryable'] === false);
+
+// Secret sanitization test
+$secretMsg = "Connection failed: host=db.example.com password=secretpass123; user=postgres:secretpass123@host; Bearer token_secret_abc123";
+$sanitized = FdrDatabaseService::sanitizeLogMessage($secretMsg);
+assertTest("sanitizeLogMessage redacts passwords and auth tokens", 
+    !str_contains($sanitized, 'secretpass123') && 
+    !str_contains($sanitized, 'token_secret_abc123') && 
+    str_contains($sanitized, 'password=***')
+);
 
 // ─────────────────────────────────────────────────────────────
 // 2. Retry Logic & Simulated Recovery Tests
