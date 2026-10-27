@@ -4874,16 +4874,13 @@ function fdrDashboardController() {
                 preferCanvas: true
             });
 
-            // CartoDB Positron (light_all) / Dark (dark_all) - fast, secure, CORS-enabled, reliable public endpoint
-            const isDark = document.documentElement.classList.contains('dark');
-            const cartoUrl = isDark
-                ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-                : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+            // Standard OpenStreetMap free keyless tile provider (Option A)
+            const osmUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
-            const tileLayer = L.tileLayer(cartoUrl, {
-                subdomains: 'abcd',
+            const tileLayer = L.tileLayer(osmUrl, {
+                subdomains: ['a', 'b', 'c'],
                 maxZoom: 19,
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank">CARTO</a>'
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
             });
 
             tileLayer.on('tileload', () => {
@@ -4892,12 +4889,13 @@ function fdrDashboardController() {
             });
 
             tileLayer.on('tileerror', (error) => {
-                console.warn('[FDR Route Network] Basemap tile error:', error);
+                console.warn('[FDR Route Network] Basemap tile warning:', error);
                 if (!this.tileLayerLoaded && !this._tileFallbackAttempted) {
                     this._tileFallbackAttempted = true;
-                    const fallbackLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    // Keyless Esri Light Gray Canvas fallback without auth tokens
+                    const fallbackLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
                         maxZoom: 18,
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
+                        attribution: '&copy; Esri, HERE, Garmin, &copy; OpenStreetMap contributors'
                     });
                     fallbackLayer.addTo(map);
                 } else if (!this.tileLayerLoaded) {
