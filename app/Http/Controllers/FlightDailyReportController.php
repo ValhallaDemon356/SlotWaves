@@ -379,55 +379,115 @@ class FlightDailyReportController extends Controller
             }
             $airport = \App\Models\Airport::findByIata($airportCode) ?? \App\Models\Airport::findByIata('CGK');
 
-            $upload = FdrDatabaseService::executeWithRetry(function () use ($originalFilename, $bucket, $storagePath, $airportCode, $airlineHint, $airport) {
-                return Upload::create([
-                    'original_filename'  => $originalFilename,
-                    'stored_path'        => "supabase://{$bucket}/{$storagePath}",
-                    'status'             => 'processing',
-                    'report_type'        => 'fdr',
-                    'total_rows'         => 0,
-                    'valid_rows'         => 0,
-                    'invalid_rows'       => 0,
-                    'duplicate_rows'     => 0,
-                    'parsing_confidence' => 0.0,
-                    'season'             => 'summer',
-                    'airport_id'         => $airport?->id,
-                    'validation_summary' => ['status' => 'QUEUED'],
-                    'report_data'        => [
-                        'meta' => [
-                            'airport'        => $airportCode,
-                            'report_airport' => $airportCode,
-                            'filename'       => $originalFilename,
-                            'operator'       => $airlineHint ?: 'ALL AIRLINE',
-                        ],
-                    ],
-                ]);
-            });
+            $persisted = FdrDatabaseService::executeWithRetry(function () use (
+                $originalFilename,
+                $bucket,
+                $storagePath,
+                $airportCode,
+                $airlineHint,
+                $airport,
+                $fileSize
+            ) {
+                return DB::transaction(function () use (
+                    $originalFilename,
+                    $bucket,
+                    $storagePath,
+                    $airportCode,
+                    $airlineHint,
+                    $airport,
+                    $fileSize
+                ) {
+                    $sourceUri = "supabase://{$bucket}/{$storagePath}";
+                    $upload = Upload::where('stored_path', $sourceUri)->lockForUpdate()->first();
 
-            $job = FdrDatabaseService::executeWithRetry(function () use ($upload, $uploadToken, $bucket, $storagePath, $fileSize, $airportCode, $airlineHint) {
-                return FdrProcessingJob::create([
-                    'upload_id'      => $upload->id,
-                    'upload_token'   => $uploadToken,
-                    'status'         => 'QUEUED',
-                    'stage'          => 'QUEUED',
-                    'stage_label'    => 'Queued for streaming extraction...',
-                    'progress'       => 0,
-                    'processed_rows' => 0,
-                    'total_rows'     => 0,
-                    'current_offset' => 0,
-                    'current_batch'  => 0,
-                    'stored_path'    => "supabase://{$bucket}/{$storagePath}",
-                    'file_size'      => $fileSize,
-                    'result_url'     => route('fdr.dashboard', $upload->id),
-                    'meta'           => [
-                        'airport'        => $airportCode,
-                        'report_airport' => $airportCode,
-                        'operator'       => $airlineHint ?: 'ALL AIRLINE',
-                        'bucket'         => $bucket,
-                        'storage_path'   => $storagePath,
-                    ],
-                ]);
-            });
+                    if (!$upload) {
+                        $uploadToken = (string) Str::uuid();
+
+                        $upload = Upload::create([
+                            'original_filename'  => $originalFilename,
+                            'stored_path'        => $sourceUri,
+                            'status'             => 'processing',
+                            'report_type'        => 'fdr',
+                            'total_rows'         => 0,
+                            'valid_rows'         => 0,
+                            'invalid_rows'       => 0,
+                            'duplicate_rows'     => 0,
+                            'parsing_confidence' => 0.0,
+                            'season'             => 'summer',
+                            'airport_id'         => $airport?->id,
+                            'validation_summary' => ['status' => 'QUEUED'],
+                            'report_data'        => [
+                                'meta' => [
+                                    'airport'        => $airportCode,
+                                    'report_airport' => $airportCode,
+                                    'filename'       => $originalFilename,
+                                    'operator'       => $airlineHint ?: 'ALL AIRLINE',
+                                ],
+                            ],
+                        ]);
+
+                        $job = FdrProcessingJob::create([
+                            'upload_id'      => $upload->id,
+                            'upload_token'   => $uploadToken,
+                            'status'         => 'QUEUED',
+                            'stage'          => 'QUEUED',
+                            'stage_label'    => 'Queued for streaming extraction...',
+                            'progress'       => 0,
+                            'processed_rows' => 0,
+                            'total_rows'     => 0,
+                            'current_offset' => 0,
+                            'current_batch'  => 0,
+                            'stored_path'    => $sourceUri,
+                            'file_size'      => $fileSize,
+                            'result_url'     => route('fdr.dashboard', $upload->id),
+                            'meta'           => [
+                                'airport'        => $airportCode,
+                                'report_airport' => $airportCode,
+                                'operator'       => $airlineHint ?: 'ALL AIRLINE',
+                                'bucket'         => $bucket,
+                                'storage_path'   => $storagePath,
+                            ],
+                        ]);
+
+                        return ['upload' => $upload, 'job' => $job, 'reconciled' => false];
+                    }
+
+                    $job = FdrProcessingJob::where('upload_id', $upload->id)
+                        ->orWhere('stored_path', $sourceUri)
+                        ->first();
+
+                    if (!$job) {
+                        $uploadToken = (string) Str::uuid();
+                        $job = FdrProcessingJob::create([
+                            'upload_id'      => $upload->id,
+                            'upload_token'   => $uploadToken,
+                            'status'         => 'QUEUED',
+                            'stage'          => 'QUEUED',
+                            'stage_label'    => 'Queued for streaming extraction...',
+                            'progress'       => 0,
+                            'processed_rows' => 0,
+                            'total_rows'     => 0,
+                            'current_offset' => 0,
+                            'current_batch'  => 0,
+                            'stored_path'    => $sourceUri,
+                            'file_size'      => $fileSize,
+                            'result_url'     => route('fdr.dashboard', $upload->id),
+                            'meta'           => [
+                                'airport'        => $airportCode,
+                                'report_airport' => $airportCode,
+                                'operator'       => $airlineHint ?: 'ALL AIRLINE',
+                                'bucket'         => $bucket,
+                                'storage_path'   => $storagePath,
+                            ],
+                        ]);
+                    }
+
+                    return ['upload' => $upload, 'job' => $job, 'reconciled' => true];
+                });
+            }, 3);
+
+            $upload = $persisted['upload'];
+            $job = $persisted['job'];
 
             session(['active_upload_id' => $upload->id]);
             session(['fdr_active_upload_id' => $upload->id]);

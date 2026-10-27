@@ -170,7 +170,7 @@ class UploadController extends Controller
         $airportCode = $validationResult['meta']['airport_code'] ?? 'CGK';
         $airport = \App\Models\Airport::findByIata($airportCode) ?? \App\Models\Airport::findByIata('CGK');
 
-        $upload = Upload::create([
+        $upload = Upload::createWithRetry([
             'original_filename' => $filename,
             'stored_path'       => $storedPath,
             'report_type'       => 'DAU2',
@@ -949,7 +949,7 @@ class UploadController extends Controller
             $airportCode = $validationResult['meta']['airport_code'] ?? 'CGK';
             $airport = \App\Models\Airport::findByIata($airportCode) ?? \App\Models\Airport::findByIata('CGK');
 
-            $upload = Upload::create([
+            $upload = Upload::createWithRetry([
                 'original_filename' => $filename,
                 'stored_path'       => $canonicalRelativePath,
                 'report_type'       => $reportType,
@@ -1055,7 +1055,7 @@ class UploadController extends Controller
                 $airportId = $bdo?->id;
             }
 
-            $upload = Upload::create([
+            $upload = Upload::createWithRetry([
                 'original_filename' => $filename,
                 'stored_path'       => $storedPath,
                 'report_type'       => 'slot_schedule',
@@ -1249,7 +1249,7 @@ class UploadController extends Controller
         $airportCode = $validationResult['meta']['airport_code'] ?? 'CGK';
         $airport = \App\Models\Airport::findByIata($airportCode) ?? \App\Models\Airport::findByIata('CGK');
 
-        $upload = Upload::create([
+        $upload = Upload::createWithRetry([
             'original_filename' => $filename,
             'stored_path'       => $storedPath,
             'report_type'       => $reportType,

@@ -137,6 +137,8 @@ class FdrDatabaseService
     public static function executeWithRetry(callable $callback, int $maxRetries = 3, int $initialDelayMs = 250)
     {
         $attempt = 0;
+        $connectionName = config('database.default', 'pgsql');
+
         while (true) {
             $attempt++;
             try {
@@ -148,13 +150,22 @@ class FdrDatabaseService
                     throw $e;
                 }
 
-                $backoffMs = $initialDelayMs * (2 ** ($attempt - 1));
-                Log::warning("FdrDatabaseService: Transient database error on attempt {$attempt}/{$maxRetries} ({$e->getMessage()}). Reconnecting in {$backoffMs}ms...");
+                $jitterMs = random_int(15, 60);
+                $backoffMs = ($initialDelayMs * (2 ** ($attempt - 1))) + $jitterMs;
+                Log::warning("FdrDatabaseService: Transient database connection error on attempt {$attempt}/{$maxRetries} ({$e->getMessage()}). Reconnecting in {$backoffMs}ms...");
 
                 try {
-                    DB::disconnect('pgsql');
-                    DB::purge('pgsql');
-                    DB::reconnect('pgsql');
+                    // If a transaction was open when the connection severed, rollback safely
+                    if (DB::connection($connectionName)->transactionLevel() > 0) {
+                        try {
+                            DB::connection($connectionName)->rollBack();
+                        } catch (\Throwable $rbEx) {
+                            // Severed socket cannot accept rollback, ignore safely
+                        }
+                    }
+                    DB::disconnect($connectionName);
+                    DB::purge($connectionName);
+                    DB::reconnect($connectionName);
                 } catch (\Throwable $reconnectErr) {
                     Log::warning("FdrDatabaseService: DB reconnect failed on attempt {$attempt}: " . $reconnectErr->getMessage());
                 }
@@ -166,23 +177,80 @@ class FdrDatabaseService
 
     /**
      * Detect transient database pooler, standby, and network drop errors.
+     * Inspects the full exception chain (QueryException -> PDOException -> driver error).
      */
     public static function isConnectionError(\Throwable $e): bool
     {
-        $msg = $e->getMessage();
+        $curr = $e;
+        while ($curr) {
+            $msg = $curr->getMessage();
+            $code = (string) $curr->getCode();
+            $errorInfo = ($curr instanceof \PDOException || $curr instanceof \Illuminate\Database\QueryException)
+                ? ($curr->errorInfo ?? [])
+                : [];
+            $sqlState = (string) ($errorInfo[0] ?? $code);
+
+            // Fast exit: Do not retry integrity constraints, syntax errors, or auth failures
+            // 23xxx = integrity constraint violations (23505 unique, 23503 foreign key, 23502 not null)
+            // 42xxx = syntax error or access rule violation (42P01 undefined table, 42703 undefined column)
+            // 28xxx = invalid authorization specification (28P01 password authentication failed)
+            // 22xxx = data exception (22001 string data right truncation, 22P02 invalid text representation)
+            $nonRetryablePrefixes = ['23', '42', '28', '22'];
+            $prefix = substr($sqlState, 0, 2);
+            if (in_array($prefix, $nonRetryablePrefixes, true)) {
+                return false;
+            }
+
+            // Connection error SQLSTATEs:
+            // 08006: connection failure
+            // 08003: connection does not exist
+            // 08001: unable to establish SQL connection
+            // 08004: server rejected connection
+            // 08007: connection failure during transaction
+            // 57P01: admin shutdown
+            // 57P02: crash shutdown
+            // 57P03: cannot connect now
+            $connectionSqlStates = ['08006', '08003', '08001', '08004', '08007', '57P01', '57P02', '57P03'];
+            if (in_array($sqlState, $connectionSqlStates, true) || in_array($code, ['7', '8006', '8003'], true)) {
+                return true;
+            }
+
+            if (self::hasConnectionDropMessage($msg)) {
+                return true;
+            }
+
+            $curr = $curr->getPrevious();
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if an error message contains known PostgreSQL pooler / network disconnection signatures.
+     */
+    public static function hasConnectionDropMessage(string $msg): bool
+    {
         $patterns = [
             'Hot standby mode is disabled',
             'the database system is not accepting connections',
             'terminating connection due to administrator command',
             'SSL connection has been closed unexpectedly',
+            'SSL SYSCALL error',
             'connection to server',
+            'connection failure',
+            'connection does not exist',
+            'could not connect to server',
+            'no connection to the server',
             'server closed the connection unexpectedly',
             'server has gone away',
             'Lost connection',
             'Broken pipe',
             'Connection refused',
             'Resource temporarily unavailable',
+            'Operation timed out',
+            'Connection timed out',
             '08006',
+            '08003',
             '57P01',
             'HY000',
         ];

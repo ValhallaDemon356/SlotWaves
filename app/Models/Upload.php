@@ -101,6 +101,13 @@ class Upload extends Model
     public static function createWithRetry(array $attributes, int $maxRetries = 3): static
     {
         return \App\Services\FlightDailyReport\FdrDatabaseService::executeWithRetry(function () use ($attributes) {
+            // Idempotency reconciliation: If stored_path is provided and an Upload already exists, reuse it
+            if (!empty($attributes['stored_path'])) {
+                $existing = static::where('stored_path', $attributes['stored_path'])->first();
+                if ($existing) {
+                    return $existing;
+                }
+            }
             return static::create($attributes);
         }, $maxRetries);
     }

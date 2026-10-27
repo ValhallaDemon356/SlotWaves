@@ -1995,75 +1995,138 @@ class DauDashboardController extends Controller
             // inside this request. That was the source of the previous generic
             // "Error" response and made large files dependent on one invocation.
             $sourceUri = "supabase://{$bucket}/{$storagePath}";
-            $uploadToken = 'fdr_' . \Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(24));
+            $persisted = \App\Services\FlightDailyReport\FdrDatabaseService::executeWithRetry(function () use (
+                $sourceUri,
+                $originalFilename,
+                $bucket,
+                $storagePath,
+                $airlineHint,
+                $request
+            ) {
+                return \Illuminate\Support\Facades\DB::transaction(function () use (
+                    $sourceUri,
+                    $originalFilename,
+                    $bucket,
+                    $storagePath,
+                    $airlineHint,
+                    $request
+                ) {
+                    // Check for existing Upload record with the exact stored_path (storage-object idempotency)
+                    $upload = Upload::where('stored_path', $sourceUri)->lockForUpdate()->first();
 
-            // Create a lightweight Upload record first. The real row count is
-            // filled in by the incremental processing job.
-            $upload = Upload::create([
-                'original_filename'  => $originalFilename,
-                'stored_path'        => $sourceUri,
-                'status'             => 'processing',
-                'report_type'        => 'fdr',
-                'total_rows'         => 0,
-                'valid_rows'         => 0,
-                'invalid_rows'       => 0,
-                'duplicate_rows'     => 0,
-                'parsing_confidence' => 0.0,
-                'validation_summary' => [
-                    'valid'          => true,
-                    'stage'          => 'QUEUED',
-                    'detected_format'=> 'PENDING_SERVER_VALIDATION',
-                ],
-                'report_data'        => [
-                    'meta' => [
-                        'source_system' => 'OASYS',
-                        'report_name'   => 'FLIGHT DAILY REPORT',
-                        'source_path'   => $sourceUri,
-                    ],
-                ],
-            ]);
+                    if (!$upload) {
+                        $uploadToken = 'fdr_' . \Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(24));
 
-            $session = \App\Models\FdrUploadSession::create([
-                'upload_token'      => $uploadToken,
-                'original_filename' => $originalFilename,
-                'file_size'         => 0,
-                'mime_type'         => $request->input('mime_type'),
-                'chunk_size'        => 0,
-                'total_chunks'      => 0,
-                'uploaded_bytes'    => 0,
-                'uploaded_chunks'  => [],
-                'storage_bucket'   => $bucket,
-                'storage_path'     => $storagePath,
-                'status'           => \App\Models\FdrUploadSession::STATUS_UPLOADED,
-                'progress'         => 100,
-            ]);
+                        $upload = Upload::create([
+                            'original_filename'  => $originalFilename,
+                            'stored_path'        => $sourceUri,
+                            'status'             => 'processing',
+                            'report_type'        => 'fdr',
+                            'total_rows'         => 0,
+                            'valid_rows'         => 0,
+                            'invalid_rows'       => 0,
+                            'duplicate_rows'     => 0,
+                            'parsing_confidence' => 0.0,
+                            'validation_summary' => [
+                                'valid'           => true,
+                                'stage'           => 'QUEUED',
+                                'detected_format' => 'PENDING_SERVER_VALIDATION',
+                            ],
+                            'report_data'        => [
+                                'meta' => [
+                                    'source_system' => 'OASYS',
+                                    'report_name'   => 'FLIGHT DAILY REPORT',
+                                    'source_path'   => $sourceUri,
+                                ],
+                            ],
+                        ]);
 
-            $job = \App\Models\FdrProcessingJob::create([
-                'upload_id'      => $upload->id,
-                'upload_token'   => $uploadToken,
-                'filename'       => $originalFilename,
-                'stored_path'    => $sourceUri,
-                'file_size'      => 0,
-                'report_type'    => 'fdr',
-                'status'         => 'QUEUED',
-                'stage'          => 'QUEUED',
-                'stage_label'    => 'Preparing Flight Daily Report...',
-                'progress'       => 0,
-                'processed_rows' => 0,
-                'total_rows'     => 0,
-                'current_offset' => 0,
-                'current_batch'  => 0,
-                'failed_rows'    => 0,
-                'meta'           => [
-                    'bucket'     => $bucket,
-                    'storage_path'=> $storagePath,
-                    'airline_hint'=> $airlineHint,
-                ],
-                'diagnostics'    => [
-                    'source' => 'SUPABASE_STORAGE',
-                ],
-                'result_url'     => route('fdr.dashboard', $upload->id),
-            ]);
+                        $session = \App\Models\FdrUploadSession::create([
+                            'upload_token'      => $uploadToken,
+                            'original_filename' => $originalFilename,
+                            'file_size'         => (int) ($request->input('file_size') ?? 0),
+                            'mime_type'         => $request->input('mime_type'),
+                            'chunk_size'        => 0,
+                            'total_chunks'      => 0,
+                            'uploaded_bytes'    => 0,
+                            'uploaded_chunks'   => [],
+                            'storage_bucket'    => $bucket,
+                            'storage_path'      => $storagePath,
+                            'status'            => \App\Models\FdrUploadSession::STATUS_UPLOADED,
+                            'progress'          => 100,
+                        ]);
+
+                        $job = \App\Models\FdrProcessingJob::create([
+                            'upload_id'      => $upload->id,
+                            'upload_token'   => $uploadToken,
+                            'filename'       => $originalFilename,
+                            'stored_path'    => $sourceUri,
+                            'file_size'      => (int) ($request->input('file_size') ?? 0),
+                            'report_type'    => 'fdr',
+                            'status'         => 'QUEUED',
+                            'stage'          => 'QUEUED',
+                            'stage_label'    => 'Preparing Flight Daily Report...',
+                            'progress'       => 0,
+                            'processed_rows' => 0,
+                            'total_rows'     => 0,
+                            'current_offset' => 0,
+                            'current_batch'  => 0,
+                            'failed_rows'    => 0,
+                            'meta'           => [
+                                'bucket'       => $bucket,
+                                'storage_path' => $storagePath,
+                                'airline_hint' => $airlineHint,
+                            ],
+                            'diagnostics'    => [
+                                'source' => 'SUPABASE_STORAGE',
+                            ],
+                            'result_url'     => route('fdr.dashboard', $upload->id),
+                        ]);
+
+                        return ['upload' => $upload, 'job' => $job, 'reconciled' => false];
+                    }
+
+                    // Existing upload record found: Reconcile and avoid duplicate job/upload creation
+                    $job = \App\Models\FdrProcessingJob::where('upload_id', $upload->id)
+                        ->orWhere('stored_path', $sourceUri)
+                        ->first();
+
+                    if (!$job) {
+                        $uploadToken = 'fdr_' . \Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(24));
+                        $job = \App\Models\FdrProcessingJob::create([
+                            'upload_id'      => $upload->id,
+                            'upload_token'   => $uploadToken,
+                            'filename'       => $originalFilename,
+                            'stored_path'    => $sourceUri,
+                            'file_size'      => (int) ($request->input('file_size') ?? 0),
+                            'report_type'    => 'fdr',
+                            'status'         => 'QUEUED',
+                            'stage'          => 'QUEUED',
+                            'stage_label'    => 'Preparing Flight Daily Report...',
+                            'progress'       => 0,
+                            'processed_rows' => 0,
+                            'total_rows'     => 0,
+                            'current_offset' => 0,
+                            'current_batch'  => 0,
+                            'failed_rows'    => 0,
+                            'meta'           => [
+                                'bucket'       => $bucket,
+                                'storage_path' => $storagePath,
+                                'airline_hint' => $airlineHint,
+                            ],
+                            'diagnostics'    => [
+                                'source' => 'SUPABASE_STORAGE',
+                            ],
+                            'result_url'     => route('fdr.dashboard', $upload->id),
+                        ]);
+                    }
+
+                    return ['upload' => $upload, 'job' => $job, 'reconciled' => true];
+                });
+            }, 3);
+
+            $upload = $persisted['upload'];
+            $job = $persisted['job'];
 
             session([
                 'fdr_active_upload_id' => $upload->id,
@@ -2072,16 +2135,19 @@ class DauDashboardController extends Controller
 
             return response()->json([
                 'success'         => true,
-                'completed'       => false,
+                'completed'       => $job->status === 'READY',
                 'is_async_job'    => true,
                 'upload_id'       => $upload->id,
                 'job_id'          => $job->id,
-                'status'          => 'QUEUED',
+                'status'          => $job->status,
                 'report_type'     => 'fdr',
                 'process_url'     => route('fdr.jobs.process', $job->id),
-                'poll_url'       => route('fdr.jobs.status', $job->id),
-                'redirect_url'   => route('fdr.dashboard', $upload->id),
-                'message'        => 'FDR source uploaded successfully. Server-side parsing has been queued.',
+                'poll_url'        => route('fdr.jobs.status', $job->id),
+                'redirect_url'    => route('fdr.dashboard', $upload->id),
+                'reconciled'      => $persisted['reconciled'],
+                'message'         => $persisted['reconciled']
+                    ? 'FDR source reconciled with existing session. Processing resuming...'
+                    : 'FDR source uploaded successfully. Server-side parsing has been queued.',
             ], 202);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -2094,17 +2160,19 @@ class DauDashboardController extends Controller
                 ],
             ], 422);
         } catch (\Throwable $e) {
+            $isConn = \App\Services\FlightDailyReport\FdrDatabaseService::isConnectionError($e);
             Log::error('handleUploadedFdr failed', [
                 'message' => $e->getMessage(),
+                'is_connection_error' => $isConn,
                 'exception' => $e,
             ]);
 
             return response()->json([
                 'success' => false,
                 'error' => [
-                    'code' => 'FDR_POST_UPLOAD_ERROR',
+                    'code' => $isConn ? 'DATABASE_CONNECTION_ERROR' : 'FDR_POST_UPLOAD_ERROR',
                     'message' => $e->getMessage() ?: get_class($e),
-                    'retryable' => true,
+                    'retryable' => $isConn,
                 ],
             ], 500);
         }
