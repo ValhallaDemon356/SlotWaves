@@ -365,6 +365,7 @@ class FlightDailyReportController extends Controller
         $fileSize = (int)($validated['file_size'] ?? 0);
 
         try {
+            DB::disconnect('pgsql');
             $info = $storageService->getFileInfo($storagePath, $bucket);
             if ($info && !empty($info['size'])) {
                 $fileSize = (int)$info['size'];
@@ -484,7 +485,7 @@ class FlightDailyReportController extends Controller
 
                     return ['upload' => $upload, 'job' => $job, 'reconciled' => true];
                 });
-            }, 3);
+            }, 3, 300, true);
 
             $upload = $persisted['upload'];
             $job = $persisted['job'];
@@ -506,17 +507,25 @@ class FlightDailyReportController extends Controller
             ]);
 
         } catch (\Throwable $e) {
-            Log::error('FDR handleUploaded failed: ' . $e->getMessage(), [
+            $isConn = FdrDatabaseService::isConnectionError($e);
+            $rawMsg = $e->getMessage();
+            Log::error('FDR handleUploaded failed: ' . $rawMsg, [
                 'exception'   => $e,
                 'file_path'   => $storagePath,
                 'bucket'      => $bucket,
+                'is_connection_error' => $isConn,
             ]);
 
+            $safeMsg = ($isConn || stripos($rawMsg, 'SQLSTATE') !== false || stripos($rawMsg, 'connection') !== false)
+                ? 'Koneksi database sedang disinkronkan kembali. Sistem akan mencoba lagi secara otomatis.'
+                : 'FDR_UPLOAD_CALLBACK_ERROR: ' . $rawMsg;
+
             return response()->json([
-                'success' => false,
-                'error'   => 'FDR_UPLOAD_CALLBACK_ERROR: ' . $e->getMessage(),
-                'bucket'  => $bucket,
-                'path'    => $storagePath,
+                'success'   => false,
+                'error'     => $safeMsg,
+                'retryable' => $isConn,
+                'bucket'    => $bucket,
+                'path'      => $storagePath,
             ], 500);
         }
     }
@@ -706,7 +715,11 @@ class FlightDailyReportController extends Controller
                     try {
                         /** @var \App\Services\Storage\SupabaseStorageService $supabaseStorage */
                         $supabaseStorage = app(\App\Services\Storage\SupabaseStorageService::class);
+                        DB::disconnect('pgsql');
                         $downloaded = $supabaseStorage->downloadToTemp($storageObject, $bucket);
+                        DB::purge('pgsql');
+                        DB::reconnect('pgsql');
+
                         if ($downloaded && file_exists($downloaded) && filesize($downloaded) > 10) {
                             @copy($downloaded, $localTmpPath);
                             @unlink($downloaded);
@@ -1056,12 +1069,13 @@ class FlightDailyReportController extends Controller
                     }
 
                     if (!empty($dbRows)) {
-                        foreach (array_chunk($dbRows, 500) as $chunk) {
+                        foreach (array_chunk($dbRows, 250) as $chunk) {
                             FdrDatabaseService::executeWithRetry(function () use ($chunk) {
                                 DB::transaction(function () use ($chunk) {
                                     DB::table('fdr_flights')->insert($chunk);
                                 });
-                            });
+                            }, 4, 300, false);
+                            usleep(20000);
                         }
                         $processedRows += count($dbRows);
                     }
@@ -1272,12 +1286,14 @@ class FlightDailyReportController extends Controller
         } catch (\Throwable $e) {
             $job = isset($job) ? $job : FdrProcessingJob::find($jobId);
             $msg = $e->getMessage();
+            $isConn = FdrDatabaseService::isConnectionError($e);
             $errCode = 'FDR_PARSER_ERROR';
 
-            if (str_contains($msg, 'FDR_SOURCE_NOT_FOUND') || str_contains(strtolower($msg), 'not found') || str_contains(strtolower($msg), 'no longer available')) {
+            if ($isConn || $e instanceof \Illuminate\Database\QueryException || str_contains($msg, 'SQLSTATE') || str_contains($msg, '08006')) {
+                $errCode = 'DATABASE_CONNECTION_ERROR';
+                $msg = 'Koneksi database sedang disinkronkan kembali. Sistem akan mencoba lagi secara otomatis.';
+            } elseif (str_contains($msg, 'FDR_SOURCE_NOT_FOUND') || str_contains(strtolower($msg), 'not found') || str_contains(strtolower($msg), 'no longer available')) {
                 $errCode = 'FDR_SOURCE_NOT_FOUND';
-            } elseif ($e instanceof \Illuminate\Database\QueryException) {
-                $errCode = 'FDR_DATABASE_ERROR';
             } elseif (str_contains($msg, 'FDR_STORAGE_ERROR') || str_contains(strtolower($msg), 'storage') || str_contains(strtolower($msg), 'disk')) {
                 $errCode = 'FDR_STORAGE_ERROR';
             } elseif (str_contains(strtolower($msg), 'timeout') || str_contains(strtolower($msg), 'maximum execution time')) {
@@ -1285,15 +1301,19 @@ class FlightDailyReportController extends Controller
             }
 
             if ($job) {
-                $job->update([
-                    'status'        => 'PAUSED',
-                    'stage'         => 'PAUSED',
-                    'stage_label'   => 'Processing Paused',
-                    'error_code'    => $errCode,
-                    'error_message' => $msg,
-                ]);
-                FdrUploadSession::where('upload_token', $job->upload_token)
-                    ->update(['status' => FdrUploadSession::STATUS_PAUSED]);
+                try {
+                    $job->update([
+                        'status'        => 'PAUSED',
+                        'stage'         => 'PAUSED',
+                        'stage_label'   => 'Processing Paused',
+                        'error_code'    => $errCode,
+                        'error_message' => $msg,
+                    ]);
+                    FdrUploadSession::where('upload_token', $job->upload_token)
+                        ->update(['status' => FdrUploadSession::STATUS_PAUSED]);
+                } catch (\Throwable $ignored) {
+                    // Suppress error if DB connection is temporarily unavailable during status update
+                }
             }
 
             Log::error("FDR Job {$jobId} Failed", [

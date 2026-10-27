@@ -363,27 +363,65 @@ function fdrSupabaseUploader(config) {
                 this.uploadState.detailText = 'Source file is safely stored in Supabase Storage';
                 this.uploadState.speedText = 'Starting parser';
 
-                const response = await fetch(this.backendEndpoint, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': this.csrfToken,
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: JSON.stringify({
-                        file_path: storagePath,
-                        bucket_name: this.bucket,
-                        original_filename: file.name,
-                        file_size: file.size,
-                        airline_type: this.detectedMetadata.airline
-                    })
+                const notifyPayload = JSON.stringify({
+                    file_path: storagePath,
+                    bucket_name: this.bucket,
+                    original_filename: file.name,
+                    file_size: file.size,
+                    airline_type: this.detectedMetadata.airline
                 });
 
-                const data = await this.readJsonResponse(response);
+                let response = null;
+                let data = null;
+                const maxNotifyRetries = 4;
+                const backoffDelays = [1500, 3000, 4500, 6000];
 
-                if (!response.ok || !data.success) {
-                    throw new Error(this.extractError(data, `Backend processing failed (HTTP ${response.status}).`));
+                for (let retryIdx = 0; retryIdx <= maxNotifyRetries; retryIdx++) {
+                    try {
+                        response = await fetch(this.backendEndpoint, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': this.csrfToken,
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: notifyPayload
+                        });
+
+                        data = await this.readJsonResponse(response);
+
+                        const isConnErr = !response.ok && (
+                            [500, 502, 503, 504].includes(response.status) ||
+                            data?.error?.code === 'DATABASE_CONNECTION_ERROR' ||
+                            data?.error?.retryable === true ||
+                            /08006|57P01|terminating connection|connection to server|Hot standby/i.test(JSON.stringify(data || ''))
+                        );
+
+                        if (isConnErr && retryIdx < maxNotifyRetries) {
+                            const delayMs = backoffDelays[retryIdx] || 3000;
+                            this.uploadState.statusTitle = 'Menyinkronkan koneksi database... (Percobaan ulang otomatis)';
+                            this.uploadState.detailText = `Menyambungkan kembali ke server database (Percobaan ${retryIdx + 1}/${maxNotifyRetries})...`;
+                            await new Promise(r => setTimeout(r, delayMs));
+                            continue;
+                        }
+
+                        if (!response.ok || !data.success) {
+                            throw new Error(this.extractError(data, `Backend processing failed (HTTP ${response.status}).`));
+                        }
+
+                        break; // Success!
+                    } catch (fetchErr) {
+                        const isNetworkOrConn = /fetch|network|connection|08006|database/i.test(fetchErr?.message || '');
+                        if (isNetworkOrConn && retryIdx < maxNotifyRetries) {
+                            const delayMs = backoffDelays[retryIdx] || 3000;
+                            this.uploadState.statusTitle = 'Menyinkronkan koneksi database... (Percobaan ulang otomatis)';
+                            this.uploadState.detailText = `Menyambungkan kembali ke server database (Percobaan ${retryIdx + 1}/${maxNotifyRetries})...`;
+                            await new Promise(r => setTimeout(r, delayMs));
+                            continue;
+                        }
+                        throw fetchErr;
+                    }
                 }
 
                 if (data.is_async_job && data.job_id && data.process_url) {
@@ -430,18 +468,54 @@ function fdrSupabaseUploader(config) {
             this.uploadState.speedText = 'Incremental processing';
 
             const maxAttempts = 240;
+            let consecutiveConnErrors = 0;
+            const maxConnRetries = 4;
+            const retryBackoffs = [1500, 3000, 4500, 6000];
 
             for (let attempt = 0; attempt < maxAttempts; attempt++) {
-                const processResponse = await fetch(processUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': this.csrfToken,
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
+                let processResponse = null;
+                let processData = null;
 
-                const processData = await this.readJsonResponse(processResponse);
+                try {
+                    processResponse = await fetch(processUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': this.csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    processData = await this.readJsonResponse(processResponse);
+                } catch (netErr) {
+                    consecutiveConnErrors++;
+                    if (consecutiveConnErrors <= maxConnRetries) {
+                        const delayMs = retryBackoffs[consecutiveConnErrors - 1] || 3000;
+                        this.uploadState.statusTitle = 'Menyinkronkan koneksi database... (Percobaan ulang otomatis)';
+                        this.uploadState.detailText = `Menyambungkan kembali ke database (Percobaan ${consecutiveConnErrors}/${maxConnRetries})...`;
+                        await new Promise(r => setTimeout(r, delayMs));
+                        continue;
+                    }
+                    throw netErr;
+                }
+
+                const isConnErr = !processResponse.ok && (
+                    [500, 502, 503, 504].includes(processResponse.status) ||
+                    processData?.error?.code === 'DATABASE_CONNECTION_ERROR' ||
+                    processData?.error?.retryable === true ||
+                    /08006|57P01|terminating connection|connection to server|Hot standby/i.test(JSON.stringify(processData || ''))
+                );
+
+                if (isConnErr) {
+                    consecutiveConnErrors++;
+                    if (consecutiveConnErrors <= maxConnRetries) {
+                        const delayMs = retryBackoffs[consecutiveConnErrors - 1] || 3000;
+                        this.uploadState.statusTitle = 'Menyinkronkan koneksi database... (Percobaan ulang otomatis)';
+                        this.uploadState.detailText = `Menyambungkan kembali ke database (Percobaan ${consecutiveConnErrors}/${maxConnRetries})...`;
+                        await new Promise(r => setTimeout(r, delayMs));
+                        continue;
+                    }
+                }
 
                 if (!processResponse.ok && processData?.error) {
                     throw new Error(this.extractError(
@@ -449,6 +523,9 @@ function fdrSupabaseUploader(config) {
                         `FDR processing failed (HTTP ${processResponse.status}).`
                     ));
                 }
+
+                // Reset consecutive error counter on any valid response
+                consecutiveConnErrors = 0;
 
                 const status = processData.status || processData.stage || 'PARSING';
                 const progress = Number(processData.progress ?? 0);
@@ -516,17 +593,25 @@ function fdrSupabaseUploader(config) {
         },
 
         extractError(data, fallback) {
-            if (!data) return fallback;
-            if (Array.isArray(data.errors)) return data.errors.join('; ');
-            if (typeof data.error === 'string') return data.error;
-            if (data.error?.message) {
-                return Array.isArray(data.error.message)
+            let errStr = '';
+            if (!data) errStr = fallback;
+            else if (Array.isArray(data.errors)) errStr = data.errors.join('; ');
+            else if (typeof data.error === 'string') errStr = data.error;
+            else if (data.error?.message) {
+                errStr = Array.isArray(data.error.message)
                     ? data.error.message.join('; ')
                     : data.error.message;
             }
-            if (data.error?.error) return String(data.error.error);
-            if (data.message) return String(data.message);
-            return fallback;
+            else if (data.error?.error) errStr = String(data.error.error);
+            else if (data.message) errStr = String(data.message);
+            else errStr = fallback;
+
+            // Never leak raw SQL or connection failures to UI
+            if (/SQLSTATE|08006|57P01|terminating connection|Hot standby|administrator command/i.test(errStr)) {
+                return 'Koneksi database sedang disinkronkan kembali. Silakan coba kembali sesaat lagi.';
+            }
+
+            return errStr;
         },
 
         uploadViaSignedUrl(file, signedUrl, onProgress) {
@@ -586,36 +671,6 @@ function fdrSupabaseUploader(config) {
 
         handleStartDirectUpload() {
             return this.startDirectUpload();
-        },
-
-        uploadViaSignedUrl(file, signedUrl, onProgress) {
-            return new Promise((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                xhr.open('PUT', signedUrl, true);
-                xhr.setRequestHeader('Content-Type', file.type || 'application/vnd.ms-excel');
-
-                if (xhr.upload && onProgress) {
-                    xhr.upload.onprogress = (e) => {
-                        if (e.lengthComputable) {
-                            onProgress(e.loaded, e.total);
-                        }
-                    };
-                }
-
-                xhr.onload = () => {
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        resolve(xhr.response);
-                    } else {
-                        reject(new Error(`Supabase Storage Signed Upload failed (HTTP ${xhr.status}): ${xhr.responseText}`));
-                    }
-                };
-
-                xhr.onerror = () => {
-                    reject(new Error('Network error during Supabase Storage Signed Upload. Check network connectivity.'));
-                };
-
-                xhr.send(file);
-            });
         },
 
         uploadViaXhr(file, storagePath, onProgress) {

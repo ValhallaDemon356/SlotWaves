@@ -96,12 +96,14 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => env('DB_SCHEMA', 'public'),
-            'sslmode' => env('DB_SSLMODE', 'prefer'),
-            'connect_timeout' => 30,
-            'options' => [
+            'sslmode' => env('DB_SSLMODE', 'require'),
+            'connect_timeout' => 15,
+            'options' => extension_loaded('pdo_pgsql') ? [
                 \PDO::ATTR_PERSISTENT => false,
-                \PDO::ATTR_TIMEOUT => 30,
-            ],
+                \PDO::ATTR_EMULATE_PREPARES => true,
+                \PDO::ATTR_TIMEOUT => 15,
+                \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+            ] : [],
         ],
 
         'sqlsrv' => [

@@ -1986,6 +1986,7 @@ class DauDashboardController extends Controller
                 ? $validated['bucket_name']
                 : config('services.supabase.bucket', env('NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET', 'flight-reports'));
 
+            \Illuminate\Support\Facades\DB::disconnect('pgsql');
             $storagePath = $storageService->sanitizeStoragePath($validated['file_path']);
             $originalFilename = $validated['original_filename'];
             $airlineHint = $validated['airline_type'] ?? null;
@@ -2123,7 +2124,7 @@ class DauDashboardController extends Controller
 
                     return ['upload' => $upload, 'job' => $job, 'reconciled' => true];
                 });
-            }, 3);
+            }, 3, 300, true);
 
             $upload = $persisted['upload'];
             $job = $persisted['job'];
@@ -2161,17 +2162,22 @@ class DauDashboardController extends Controller
             ], 422);
         } catch (\Throwable $e) {
             $isConn = \App\Services\FlightDailyReport\FdrDatabaseService::isConnectionError($e);
+            $rawMsg = $e->getMessage() ?: get_class($e);
             Log::error('handleUploadedFdr failed', [
-                'message' => $e->getMessage(),
+                'message' => $rawMsg,
                 'is_connection_error' => $isConn,
                 'exception' => $e,
             ]);
+
+            $safeMsg = ($isConn || stripos($rawMsg, 'SQLSTATE') !== false || stripos($rawMsg, 'connection') !== false)
+                ? 'Koneksi database sedang disinkronkan kembali. Sistem akan mencoba lagi secara otomatis.'
+                : $rawMsg;
 
             return response()->json([
                 'success' => false,
                 'error' => [
                     'code' => $isConn ? 'DATABASE_CONNECTION_ERROR' : 'FDR_POST_UPLOAD_ERROR',
-                    'message' => $e->getMessage() ?: get_class($e),
+                    'message' => $safeMsg,
                     'retryable' => $isConn,
                 ],
             ], 500);

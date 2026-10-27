@@ -134,10 +134,20 @@ class FdrDatabaseService
      * Resilient database query executor with exponential backoff and connection reconnect.
      * Recovers from PgBouncer pooler connection drops, standby mode failovers, and transient SSL terminations.
      */
-    public static function executeWithRetry(callable $callback, int $maxRetries = 3, int $initialDelayMs = 250)
+    public static function executeWithRetry(callable $callback, int $maxRetries = 3, int $initialDelayMs = 250, bool $forceFresh = false)
     {
         $attempt = 0;
         $connectionName = config('database.default', 'pgsql');
+
+        if ($forceFresh) {
+            try {
+                DB::disconnect($connectionName);
+                DB::purge($connectionName);
+                DB::reconnect($connectionName);
+            } catch (\Throwable $freshErr) {
+                // Non-fatal, reconnect will be retried in loop if needed
+            }
+        }
 
         while (true) {
             $attempt++;
@@ -150,7 +160,7 @@ class FdrDatabaseService
                     throw $e;
                 }
 
-                $jitterMs = random_int(15, 60);
+                $jitterMs = random_int(20, 80);
                 $backoffMs = ($initialDelayMs * (2 ** ($attempt - 1))) + $jitterMs;
                 Log::warning("FdrDatabaseService: Transient database connection error on attempt {$attempt}/{$maxRetries} ({$e->getMessage()}). Reconnecting in {$backoffMs}ms...");
 
@@ -279,7 +289,7 @@ class FdrDatabaseService
 
         $now = now();
         $batch = [];
-        $batchSize = 500;
+        $batchSize = 250;
         $totalInserted = 0;
         $defaultAirport = strtoupper(trim($meta['airport'] ?? 'CGK'));
 
@@ -304,6 +314,8 @@ class FdrDatabaseService
                     });
                     $totalInserted += count($batch);
                     $batch = [];
+                    // Controlled 20ms breath between micro-batches to protect PgBouncer & Supabase RAM
+                    usleep(20000);
                 }
             }
 
@@ -316,6 +328,7 @@ class FdrDatabaseService
                 });
                 $totalInserted += count($batch);
                 $batch = [];
+                usleep(20000);
             }
 
             Log::info("FdrDatabaseService: Synced {$totalInserted} flights to database for upload #{$upload->id}");
@@ -375,13 +388,14 @@ class FdrDatabaseService
                         }
                     }
 
-                    foreach (array_chunk($dbRows, 500) as $chunk) {
+                    foreach (array_chunk($dbRows, 250) as $chunk) {
                         self::executeWithRetry(function () use ($chunk) {
                             DB::transaction(function () use ($chunk) {
                                 DB::table('fdr_flights')->insert($chunk);
                             });
                         });
                         $totalInserted += count($chunk);
+                        usleep(20000);
                     }
                     unset($dbRows);
                     unset($records);
@@ -1525,6 +1539,18 @@ class FdrDatabaseService
             return $repData['cached_analytics'];
         }
 
+        // File-based fallback cache in /tmp
+        $tmpCacheFile = sys_get_temp_dir() . "/fdr_analytics_{$upload->id}.json";
+        if (file_exists($tmpCacheFile)) {
+            $json = @file_get_contents($tmpCacheFile);
+            if ($json) {
+                $decoded = json_decode($json, true);
+                if (!empty($decoded) && !empty($decoded['analytics'])) {
+                    return $decoded;
+                }
+            }
+        }
+
         return null;
     }
 
@@ -1650,7 +1676,15 @@ class FdrDatabaseService
             $upload->cached_analytics = $cachedPayload;
             $upload->saveQuietly();
         } catch (\Throwable $e) {
-            Log::warning("Could not persist cached_analytics for upload #{$upload->id}: " . $e->getMessage());
+            Log::warning("Could not persist cached_analytics to DB for upload #{$upload->id}: " . $e->getMessage());
+        }
+
+        // File-based fallback cache in /tmp for resilient offline dashboard rendering
+        try {
+            $tmpCacheFile = sys_get_temp_dir() . "/fdr_analytics_{$upload->id}.json";
+            @file_put_contents($tmpCacheFile, json_encode($cachedPayload));
+        } catch (\Throwable $fEx) {
+            // Non-critical local tmp cache
         }
 
         return $cachedPayload;

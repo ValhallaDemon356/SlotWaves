@@ -19,6 +19,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Enforce cookie session driver in serverless environments to avoid idle session pooler terminations
+        if (config('session.driver') === 'database' || !config('session.driver')) {
+            config(['session.driver' => 'cookie']);
+        }
+
         if ($this->app->runningInConsole()) {
             $this->commands([
                 \App\Console\Commands\AuditAirportsCommand::class,
