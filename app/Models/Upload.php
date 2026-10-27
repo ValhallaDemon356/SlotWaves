@@ -22,13 +22,21 @@ class Upload extends Model
         'validation_summary',
         'report_type',
         'report_data',
+        'cached_analytics',
     ];
 
     protected $casts = [
         'validation_summary' => 'array',
         'report_data'        => 'array',
+        'cached_analytics'   => 'array',
         'parsing_confidence' => 'float',
     ];
+
+    public function getCachedAnalyticsAttribute($value)
+    {
+        $data = is_array($value) ? $value : (json_decode($value, true) ?: []);
+        return $data;
+    }
 
     public function getReportDataAttribute($value)
     {

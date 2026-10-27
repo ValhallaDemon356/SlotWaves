@@ -172,6 +172,13 @@ class FdrDatabaseService
 
             DB::commit();
             Log::info("FdrDatabaseService: Synced {$totalInserted} flights to database for upload #{$upload->id}");
+
+            try {
+                $this->precomputeAndCacheAnalytics($upload, $meta);
+            } catch (\Throwable $e) {
+                Log::warning("Could not precompute analytics in syncUploadToDatabase for upload #{$upload->id}: " . $e->getMessage());
+            }
+
             return $totalInserted;
 
         } catch (\Throwable $e) {
@@ -229,6 +236,13 @@ class FdrDatabaseService
 
             DB::commit();
             Log::info("FdrDatabaseService: Synced {$totalInserted} flights from file for upload #{$upload->id}");
+
+            try {
+                $this->precomputeAndCacheAnalytics($upload, $meta);
+            } catch (\Throwable $e) {
+                Log::warning("Could not precompute analytics in syncUploadFromFile for upload #{$upload->id}: " . $e->getMessage());
+            }
+
             return $totalInserted;
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -359,6 +373,7 @@ class FdrDatabaseService
             'flight_number_base'   => $r['flight_no_base'] ?? $flNo,
             'flight_suffix'        => $r['flight_suffix'] ?? null,
             'airline_code'         => $airline,
+            'airline'              => $airline,
             'paired_flight_number' => $r['paired_no'] ?? null,
             'aircraft_type'        => $r['desc'] ?? ($r['aircraft_type'] ?? null),
             'registration_number'  => $r['reg_no'] ?? ($r['registration'] ?? null),
@@ -367,6 +382,8 @@ class FdrDatabaseService
             'movement_type'        => $isSched ? 'SCHEDULED' : 'UNSCHEDULED',
             'origin_airport'       => $originAirport,
             'destination_airport'  => $destAirport,
+            'city_1'               => $originAirport,
+            'city_2'               => $destAirport,
             'report_airport'       => $repAirport,
             'traffic_type'         => $traffic,
             'scheduled_time'       => $schedDt ? substr($schedDt, 11, 8) : null,
@@ -1339,6 +1356,152 @@ class FdrDatabaseService
             'reconciliation_apps'     => ['status' => 'MATCH', 'delta' => 0],
             'reconciliation_edifly'   => ['status' => 'MATCH', 'delta' => 0],
         ];
+    }
+
+    /**
+     * Retrieve precomputed summary analytics structure from cache column.
+     */
+    public function getCachedAnalytics(Upload $upload): ?array
+    {
+        $cached = $upload->cached_analytics;
+        if (!empty($cached) && is_array($cached) && !empty($cached['analytics'])) {
+            return $cached;
+        }
+
+        $repData = $upload->report_data ?: [];
+        if (!empty($repData['cached_analytics']) && is_array($repData['cached_analytics']) && !empty($repData['cached_analytics']['analytics'])) {
+            return $repData['cached_analytics'];
+        }
+
+        return null;
+    }
+
+    /**
+     * Precompute and store all heavy aggregations as a JSON payload in cached_analytics.
+     * Computes: 8 KPI cards, hourly distribution buckets, top routes, delay statistics,
+     * irregularity breakdowns, and operating crew sums once during upload/parse.
+     */
+    public function precomputeAndCacheAnalytics(Upload $upload, array $meta = []): array
+    {
+        if (empty($meta)) {
+            $repData = $upload->report_data ?: [];
+            $meta = $repData['meta'] ?? [];
+        }
+
+        $defaultAirport = strtoupper(trim($meta['report_airport'] ?? ($meta['airport'] ?? 'CGK')));
+
+        $minMax = FdrFlight::where('upload_id', $upload->id)->selectRaw("
+            MIN(flight_date) as min_date,
+            MAX(flight_date) as max_date,
+            COUNT(*) as total_flights,
+            COUNT(DISTINCT flight_date) as days_available
+        ")->first();
+
+        $totalDbRows = (int)($minMax->total_flights ?? 0);
+        $daysCount = (int)($minMax->days_available ?? 1);
+
+        $availableDates = FdrFlight::where('upload_id', $upload->id)
+            ->selectRaw('DISTINCT flight_date')
+            ->orderBy('flight_date')
+            ->pluck('flight_date')
+            ->map(fn($d) => is_string($d) ? substr($d, 0, 10) : ($d ? $d->format('Y-m-d') : null))
+            ->filter()
+            ->values()
+            ->toArray();
+
+        $pStart = $minMax && $minMax->min_date ? (is_string($minMax->min_date) ? substr($minMax->min_date, 0, 10) : $minMax->min_date->format('Y-m-d')) : ($meta['period_start'] ?? date('Y-m-d'));
+        $pEnd = $minMax && $minMax->max_date ? (is_string($minMax->max_date) ? substr($minMax->max_date, 0, 10) : $minMax->max_date->format('Y-m-d')) : ($meta['period_end'] ?? date('Y-m-d'));
+
+        $sourceSummary = [
+            'source_type'    => $daysCount > 30 ? 'MONTHLY' : ($daysCount > 1 ? 'MULTI-DAY' : 'DAILY'),
+            'period_start'   => $pStart,
+            'period_end'     => $pEnd,
+            'period_label'   => date('d-m-Y', strtotime($pStart)) . ' → ' . date('d-m-Y', strtotime($pEnd)),
+            'days_available' => $daysCount . ' ' . ($daysCount === 1 ? 'Day' : 'Days'),
+            'total_flights'  => $totalDbRows,
+            'source_rows'    => (int)($meta['source_rows'] ?? ($meta['raw_rows'] ?? $totalDbRows)),
+            'movement_rows'  => (int)($meta['movement_rows'] ?? $totalDbRows),
+            'summary_rows'   => (int)($meta['summary_rows'] ?? 0),
+            'db_rows'        => $totalDbRows,
+        ];
+
+        $airports = FdrFlight::where('upload_id', $upload->id)
+            ->whereNotNull('report_airport')
+            ->where('report_airport', '!=', '')
+            ->where('report_airport', '!=', 'N/A')
+            ->distinct()
+            ->orderBy('report_airport')
+            ->pluck('report_airport')
+            ->toArray();
+        if (empty($airports)) {
+            $airports = [$defaultAirport ?: 'CGK'];
+        }
+
+        $airlines = FdrFlight::where('upload_id', $upload->id)
+            ->whereNotNull('airline_code')
+            ->where('airline_code', '!=', '')
+            ->where('airline_code', '!=', 'N/A')
+            ->whereRaw("LOWER(airline_code) NOT LIKE '%pax all%'")
+            ->distinct()
+            ->orderBy('airline_code')
+            ->pluck('airline_code')
+            ->toArray();
+
+        $defaultFilters = [
+            'date_scope'     => 'ALL_PERIOD',
+            'analysis_level' => 'ALL_PERIOD',
+            'analysis_date'  => null,
+            'analysis_month' => null,
+            'analysis_year'  => null,
+            'airport'        => 'ALL',
+            'leg'            => 'ALL',
+            'operator'       => 'ALL',
+            'traffic'        => 'ALL',
+            'data_type'      => strtoupper(trim($meta['data_type'] ?? 'OPERATIONAL DATA')),
+            'realization'    => 'ALL',
+            'flight_no'      => '',
+            'suffix'         => '',
+            'start_date'     => '',
+            'end_date'       => '',
+            'report_mode'    => 1,
+            'time_basis'     => 'actual',
+            'otp_tolerance'  => 15,
+            'search'         => '',
+            'v'              => time(),
+        ];
+
+        $analytics = $this->computeAnalyticsFromDb($upload, $defaultFilters, $meta);
+
+        // Pre-fetch initial 50 paginated rows for instant SSR without queries
+        $initialRecords = FdrFlight::where('upload_id', $upload->id)
+            ->orderBy('id')
+            ->take(50)
+            ->get()
+            ->map->toFdrArray()
+            ->toArray();
+
+        $cachedPayload = [
+            'analytics'       => $analytics,
+            'available_dates' => $availableDates,
+            'source_summary'  => $sourceSummary,
+            'airports'        => $airports,
+            'airlines'        => $airlines,
+            'total_flights'   => $totalDbRows,
+            'initial_records' => $initialRecords,
+            'computed_at'     => now()->toISOString(),
+        ];
+
+        try {
+            $upload->cached_analytics = $cachedPayload;
+            $repData = $upload->report_data ?: [];
+            $repData['cached_analytics'] = $cachedPayload;
+            $upload->report_data = $repData;
+            $upload->saveQuietly();
+        } catch (\Throwable $e) {
+            Log::warning("Could not persist cached_analytics for upload #{$upload->id}: " . $e->getMessage());
+        }
+
+        return $cachedPayload;
     }
 
 }

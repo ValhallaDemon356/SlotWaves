@@ -858,6 +858,11 @@ class FlightDailyReportController extends Controller
                                 'template_type'         => $template,
                             ],
                         ]);
+                        try {
+                            $this->fdrDbService->precomputeAndCacheAnalytics($upload, $meta);
+                        } catch (\Throwable $e) {
+                            Log::warning("Could not precompute analytics for template upload #{$upload->id}: " . $e->getMessage());
+                        }
                         session(['fdr_active_upload_id' => $upload->id]);
                     }
                     if (isset($localTmpPath) && file_exists($localTmpPath)) {
@@ -1070,6 +1075,12 @@ class FlightDailyReportController extends Controller
                         'detected_format' => $meta['detected_format'] ?? 'OASYS HTML XLS',
                     ],
                 ]);
+
+                try {
+                    $this->fdrDbService->precomputeAndCacheAnalytics($upload, $meta);
+                } catch (\Throwable $e) {
+                    Log::warning("Could not precompute analytics in processJob for upload #{$upload->id}: " . $e->getMessage());
+                }
 
                 session(['fdr_active_upload_id' => $upload->id]);
                 session(['active_upload_id' => $upload->id]);
@@ -1537,6 +1548,125 @@ class FlightDailyReportController extends Controller
         }
 
         if ($hasDb) {
+            $isDefaultScope = (
+                (!$request->has('leg') || $request->query('leg') === 'ALL') &&
+                (!$request->has('operator') || $request->query('operator') === 'ALL') &&
+                (!$request->has('traffic') || $request->query('traffic') === 'ALL') &&
+                (!$request->has('realization') || $request->query('realization') === 'ALL') &&
+                (!$request->has('flight_no') || empty($request->query('flight_no'))) &&
+                (!$request->has('suffix') || empty($request->query('suffix'))) &&
+                (!$request->has('search') || empty($request->query('search'))) &&
+                (!$request->has('start_date') || empty($request->query('start_date'))) &&
+                (!$request->has('end_date') || empty($request->query('end_date'))) &&
+                (!$request->has('analysis_date') || empty($request->query('analysis_date'))) &&
+                (!$request->has('airport') || $request->query('airport') === 'ALL' || empty($request->query('airport'))) &&
+                (!in_array($request->query('date_scope'), ['DAY', 'RANGE', 'MONTH', 'YEAR']))
+            );
+
+            // Fast-path: Retrieve pre-computed JSON summary from cache column (< 50ms)
+            $cached = $isDefaultScope ? $this->fdrDbService->getCachedAnalytics($upload) : null;
+            if ($isDefaultScope && empty($cached)) {
+                try {
+                    $cached = $this->fdrDbService->precomputeAndCacheAnalytics($upload, $meta);
+                } catch (\Throwable $e) {
+                    Log::warning("Could not precompute analytics on-demand: " . $e->getMessage());
+                }
+            }
+
+            if ($isDefaultScope && !empty($cached) && !empty($cached['analytics'])) {
+                $analytics = $cached['analytics'];
+                $availableDates = $cached['available_dates'] ?? [];
+                $sourceSummary = $cached['source_summary'] ?? [];
+                $airports = $cached['airports'] ?? [$defaultAirport ?: 'CGK'];
+                $airlines = $cached['airlines'] ?? [];
+                $totalRecords = (int)($cached['total_flights'] ?? ($analytics['kpis']['total_flights'] ?? 0));
+                $records = !empty($cached['initial_records']) ? $cached['initial_records'] : FdrFlight::where('upload_id', $upload->id)->orderBy('id')->take(50)->get()->map->toFdrArray()->toArray();
+                $scope = $this->resolveAnalysisScope($request, $sourceSummary, $availableDates);
+
+                $filters = [
+                    'date_scope'     => 'ALL_PERIOD',
+                    'analysis_level' => 'ALL_PERIOD',
+                    'analysis_date'  => null,
+                    'analysis_month' => null,
+                    'analysis_year'  => null,
+                    'airport'        => 'ALL',
+                    'leg'            => 'ALL',
+                    'operator'       => 'ALL',
+                    'traffic'        => 'ALL',
+                    'data_type'      => strtoupper(trim($meta['data_type'] ?? 'OPERATIONAL DATA')),
+                    'realization'    => 'ALL',
+                    'flight_no'      => '',
+                    'suffix'         => '',
+                    'start_date'     => '',
+                    'end_date'       => '',
+                    'report_mode'    => 1,
+                    'time_basis'     => 'actual',
+                    'otp_tolerance'  => 15,
+                    'search'         => '',
+                    'v'              => time(),
+                ];
+
+                $filterResult = [
+                    'source_count'   => $totalRecords,
+                    'filtered_count' => $totalRecords,
+                    'excluded_count' => 0,
+                    'active_chips'   => [],
+                    'reconciliation' => [
+                        'source_count'      => $totalRecords,
+                        'filtered_count'    => $totalRecords,
+                        'excluded_count'    => 0,
+                        'exclusion_reasons' => [],
+                    ],
+                ];
+
+                $reportType = $request->query('report_type', $meta['report_type'] ?? ($upload->report_data['meta']['report_type'] ?? 'NORMAL'));
+
+                $clientParsedData = [
+                    'records'              => $records,
+                    'top_delayed_routes'   => $analytics['airline_route']['most_delayed_routes'] ?? [],
+                    'most_delayed_routes'  => $analytics['airline_route']['most_delayed_routes'] ?? [],
+                    'top_slf_routes'       => $analytics['airline_route']['highest_slf_routes'] ?? [],
+                    'highest_slf_routes'   => $analytics['airline_route']['highest_slf_routes'] ?? [],
+                    'suffix_distribution' => $analytics['airline_route']['suffix_distribution'] ?? [],
+                    'leg_subtypes'         => $analytics['airline_route']['leg_subtypes'] ?? [],
+                    'network_routes'       => $analytics['airline_route']['network_routes'] ?? [],
+                    'network_airports'     => $analytics['airline_route']['network_airports'] ?? [],
+                    'network_summary'      => $analytics['airline_route']['network_summary'] ?? null,
+                    'reconciliationMatrix' => $data['reconciliationMatrix'] ?? ($upload->report_data['reconciliationMatrix'] ?? null),
+                    'commentTotals'        => $data['commentTotals'] ?? ($upload->report_data['commentTotals'] ?? null),
+                    'metadata'             => array_merge($meta, [
+                        'totalSeatCapacity' => $analytics['kpis']['total_capacity'] ?? 0,
+                        'totalPax'          => $analytics['kpis']['total_passengers'] ?? 0,
+                        'avgSlf'            => $analytics['kpis']['load_factor_avg'] ?? 0,
+                    ]),
+                ];
+
+                return view('fdr.dashboard', [
+                    'upload'           => $upload,
+                    'meta'             => $meta,
+                    'reportType'       => $reportType,
+                    'filters'          => $filters,
+                    'filterResult'     => $filterResult,
+                    'analytics'        => $analytics,
+                    'records'          => $records,
+                    'totalRecords'     => $totalRecords,
+                    'airlines'         => $airlines,
+                    'airports'         => $airports,
+                    'rawRecordsCount'  => $totalRecords,
+                    'dateScope'        => 'ALL_PERIOD',
+                    'analysisLevel'    => 'ALL_PERIOD',
+                    'analysisDate'     => null,
+                    'analysisMonth'    => null,
+                    'analysisYear'     => null,
+                    'sourceType'       => $sourceSummary['source_type'] ?? 'DAILY',
+                    'availableDates'   => $availableDates,
+                    'sourceSummary'    => $sourceSummary,
+                    'timeBasis'        => 'actual',
+                    'otpTolerance'     => 15,
+                    'clientParsedData' => $clientParsedData,
+                ]);
+            }
+
             $availableDates = FdrFlight::where('upload_id', $upload->id)
                 ->selectRaw('DISTINCT flight_date')
                 ->orderBy('flight_date')
@@ -1891,13 +2021,43 @@ class FlightDailyReportController extends Controller
             $page = max(1, (int)$request->query('page', 1));
             $perPage = max(1, min(100, (int)$request->query('per_page', 50)));
 
-            $analytics = $this->fdrDbService->computeAnalyticsFromDb($upload, $filters, $meta);
+            $isDefaultScope = (
+                $page === 1 &&
+                (!$request->has('leg') || $request->query('leg') === 'ALL') &&
+                (!$request->has('operator') || $request->query('operator') === 'ALL') &&
+                (!$request->has('traffic') || $request->query('traffic') === 'ALL') &&
+                (!$request->has('realization') || $request->query('realization') === 'ALL') &&
+                (!$request->has('flight_no') || empty($request->query('flight_no'))) &&
+                (!$request->has('suffix') || empty($request->query('suffix'))) &&
+                (!$request->has('search') || empty($request->query('search'))) &&
+                (!$request->has('start_date') || empty($request->query('start_date'))) &&
+                (!$request->has('end_date') || empty($request->query('end_date'))) &&
+                (!$request->has('analysis_date') || empty($request->query('analysis_date'))) &&
+                (!$request->has('airport') || $request->query('airport') === 'ALL' || empty($request->query('airport'))) &&
+                (!in_array($request->query('date_scope'), ['DAY', 'RANGE', 'MONTH', 'YEAR']))
+            );
 
-            $baseQuery = $this->fdrDbService->buildFdrFilteredQuery($upload->id, $filters);
-            $total = (clone $baseQuery)->count();
-            $offset = ($page - 1) * $perPage;
-            $pagedFlights = (clone $baseQuery)->orderBy('id')->skip($offset)->take($perPage)->get();
-            $pagedRecords = $pagedFlights->map->toFdrArray()->toArray();
+            $cached = $isDefaultScope ? $this->fdrDbService->getCachedAnalytics($upload) : null;
+            if ($isDefaultScope && empty($cached)) {
+                try {
+                    $cached = $this->fdrDbService->precomputeAndCacheAnalytics($upload, $meta);
+                } catch (\Throwable $e) {}
+            }
+
+            if ($isDefaultScope && !empty($cached) && !empty($cached['analytics'])) {
+                $analytics = $cached['analytics'];
+                $total = (int)($cached['total_flights'] ?? ($analytics['kpis']['total_flights'] ?? 0));
+                $pagedRecords = !empty($cached['initial_records'])
+                    ? array_slice($cached['initial_records'], 0, $perPage)
+                    : FdrFlight::where('upload_id', $upload->id)->orderBy('id')->take($perPage)->get()->map->toFdrArray()->toArray();
+            } else {
+                $analytics = $this->fdrDbService->computeAnalyticsFromDb($upload, $filters, $meta);
+                $baseQuery = $this->fdrDbService->buildFdrFilteredQuery($upload->id, $filters);
+                $total = (clone $baseQuery)->count();
+                $offset = ($page - 1) * $perPage;
+                $pagedFlights = (clone $baseQuery)->orderBy('id')->skip($offset)->take($perPage)->get();
+                $pagedRecords = $pagedFlights->map->toFdrArray()->toArray();
+            }
 
             $totalMovements = (int)$minMax->total_flights;
             $activeChips = $this->buildActiveChips($filters, $scope, false);

@@ -4699,6 +4699,9 @@ function fdrDashboardController() {
         },
 
         getNetworkUniqueRouteCount() {
+            if (this.airlineRoute && this.airlineRoute.network_summary && this.airlineRoute.network_summary.unique_routes != null) {
+                return this.airlineRoute.network_summary.unique_routes;
+            }
             const routes = this.getNetworkRoutes();
             const uniqueKeys = new Set();
             routes.forEach(r => {
@@ -4719,10 +4722,16 @@ function fdrDashboardController() {
         },
 
         getNetworkMappedCount() {
+            if (this.airlineRoute && this.airlineRoute.network_summary && this.airlineRoute.network_summary.mapped_routes != null) {
+                return this.airlineRoute.network_summary.mapped_routes;
+            }
             return this.getNetworkRouteLines().length;
         },
 
         getNetworkUnmappedCount() {
+            if (this.airlineRoute && this.airlineRoute.network_summary && this.airlineRoute.network_summary.unmapped_routes != null) {
+                return this.airlineRoute.network_summary.unmapped_routes;
+            }
             const total = this.getNetworkUniqueRouteCount();
             const mapped = this.getNetworkMappedCount();
             return Math.max(0, total - mapped);
@@ -4784,6 +4793,9 @@ function fdrDashboardController() {
         },
 
         getNetworkActiveEndpointCount() {
+            if (this.airlineRoute && this.airlineRoute.network_summary && this.airlineRoute.network_summary.unique_airports != null) {
+                return this.airlineRoute.network_summary.unique_airports;
+            }
             const lines = this.getNetworkRouteLines();
             const set = new Set();
             lines.forEach(l => {
@@ -4794,8 +4806,11 @@ function fdrDashboardController() {
         },
 
         getNetworkRouteLines() {
-            const dict = this.getNetworkAirportDictionary();
             const routes = this.getNetworkRoutes();
+            if (this._cachedNetworkLines && this._lastNetworkRoutesRef === routes) {
+                return this._cachedNetworkLines;
+            }
+            const dict = this.getNetworkAirportDictionary();
             const lines = [];
 
             routes.forEach((r) => {
@@ -4838,6 +4853,8 @@ function fdrDashboardController() {
                 });
             });
 
+            this._lastNetworkRoutesRef = routes;
+            this._cachedNetworkLines = lines;
             return lines;
         },
 
