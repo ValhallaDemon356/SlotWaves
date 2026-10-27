@@ -45,8 +45,8 @@ class Upload extends Model
     {
         \App\Services\FlightDailyReport\FdrDatabaseService::ensureWorkingConnection();
         $model = parent::resolveRouteBinding($value, $field);
-        if (!$model && $field === null && is_numeric($value)) {
-            $model = \App\Services\FlightDailyReport\FdrDatabaseService::hydrateUploadFromSupabaseRest((int) $value);
+        if ($field === null && is_numeric($value) && (!$model || $model->status !== 'completed' || empty($model->cached_analytics))) {
+            $model = \App\Services\FlightDailyReport\FdrDatabaseService::hydrateUploadFromSupabaseRest((int) $value) ?: $model;
         }
         return $model;
     }
