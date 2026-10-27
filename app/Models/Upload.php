@@ -73,44 +73,78 @@ class Upload extends Model
             }
         }
 
+        // For FDR reports, fetch from the fdr_flights database table
+        if (($this->report_type ?? '') === 'fdr' && !empty($this->id)) {
+            try {
+                return \App\Models\FdrFlight::where('upload_id', $this->id)
+                    ->orderBy('id')
+                    ->get()
+                    ->map->toFdrArray()
+                    ->toArray();
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Failed to fetch fdr_flights for upload #{$this->id}: " . $e->getMessage());
+            }
+        }
+
         return [];
     }
 
     public function setReportDataAttribute($value)
     {
-        if (is_array($value) && isset($value['records']) && count($value['records']) > 500) {
-            $disk = config('filesystems.default', 'local');
-            $fileKey = !empty($this->id) ? "id_{$this->id}" : ('key_' . md5($this->stored_path ?? uniqid()));
-            $path = "reports/fdr_{$fileKey}.json.gz";
+        if (is_array($value)) {
+            // Strip out massive raw records (> 100) or raw HTML strings to prevent DB row bloat
+            if (isset($value['records']) && is_array($value['records']) && count($value['records']) > 100) {
+                // If larger than 500 records, optionally offload to disk/storage
+                if (count($value['records']) > 500) {
+                    try {
+                        $disk = config('filesystems.default', 'local');
+                        $fileKey = !empty($this->id) ? "id_{$this->id}" : ('key_' . md5($this->stored_path ?? uniqid()));
+                        $path = "reports/fdr_{$fileKey}.json.gz";
 
-            $tmpFile = tempnam(sys_get_temp_dir(), 'fdr_gz_');
-            $gz = gzopen($tmpFile, 'wb6');
-            if ($gz) {
-                gzwrite($gz, '[');
-                $first = true;
-                foreach ($value['records'] as $rec) {
-                    if (!$first) {
-                        gzwrite($gz, ',');
+                        $tmpFile = tempnam(sys_get_temp_dir(), 'fdr_gz_');
+                        $gz = gzopen($tmpFile, 'wb6');
+                        if ($gz) {
+                            gzwrite($gz, '[');
+                            $first = true;
+                            foreach ($value['records'] as $rec) {
+                                if (!$first) {
+                                    gzwrite($gz, ',');
+                                }
+                                gzwrite($gz, json_encode($rec));
+                                $first = false;
+                            }
+                            gzwrite($gz, ']');
+                            gzclose($gz);
+
+                            $stream = fopen($tmpFile, 'rb');
+                            \Illuminate\Support\Facades\Storage::disk($disk)->put($path, $stream);
+                            if (is_resource($stream)) fclose($stream);
+                            @unlink($tmpFile);
+                            $value['_storage_path'] = $path;
+                        }
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::warning("Could not offload records to gz: " . $e->getMessage());
                     }
-                    gzwrite($gz, json_encode($rec));
-                    $first = false;
                 }
-                gzwrite($gz, ']');
-                gzclose($gz);
-
-                $stream = fopen($tmpFile, 'rb');
-                \Illuminate\Support\Facades\Storage::disk($disk)->put($path, $stream);
-                if (is_resource($stream)) fclose($stream);
-                @unlink($tmpFile);
+                unset($value['records']);
             }
-
-            $light = $value;
-            unset($light['records']);
-            $light['_storage_path'] = $path;
-            $this->attributes['report_data'] = json_encode($light);
-            return;
+            if (isset($value['comparison_rows']) && is_array($value['comparison_rows']) && count($value['comparison_rows']) > 100) {
+                unset($value['comparison_rows']);
+            }
+            unset($value['raw_html'], $value['html'], $value['raw_content'], $value['content']);
         }
         $this->attributes['report_data'] = is_array($value) ? json_encode($value) : $value;
+    }
+
+    public function setValidationSummaryAttribute($value)
+    {
+        if (is_array($value)) {
+            unset($value['records'], $value['html'], $value['raw_content'], $value['raw_html']);
+            if (isset($value['sample']) && is_array($value['sample'])) {
+                $value['sample'] = array_slice($value['sample'], 0, 3);
+            }
+        }
+        $this->attributes['validation_summary'] = is_array($value) ? json_encode($value) : $value;
     }
 
     public function airport()

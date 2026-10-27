@@ -91,7 +91,11 @@ class FlightDailyReportController extends Controller
                 'duplicate_rows'     => 0,
                 'parsing_confidence' => 1.0,
                 'validation_summary' => ['valid' => true],
-                'report_data'        => $parsed,
+                'report_data'        => [
+                    'meta'            => $parsed['meta'] ?? [],
+                    'summary'         => $parsed['summary'] ?? [],
+                    'detected_format' => $parsed['detected_format'] ?? 'OASYS HTML XLS',
+                ],
             ]);
             session(['fdr_active_upload_id' => $upload->id]);
             return redirect()->route('fdr.dashboard', $upload->id);
@@ -121,8 +125,11 @@ class FlightDailyReportController extends Controller
         }
 
         $meta = $upload->report_data['meta'] ?? [];
-        $records = $upload->report_data['records'] ?? [];
-        $recordsCount = count($records);
+        $cached = $upload->cached_analytics ?? [];
+        $recordsCount = (int)($upload->total_rows ?? 0);
+        if ($recordsCount <= 0) {
+            $recordsCount = count($upload->report_data['records'] ?? []);
+        }
 
         $airlines = [];
         $reportAirports = [];
@@ -130,14 +137,53 @@ class FlightDailyReportController extends Controller
         if (!empty($mainAirport)) {
             $reportAirports[$mainAirport] = true;
         }
-        foreach ($records as $r) {
-            if (($r['row_type'] ?? 'MOVEMENT') === 'SUMMARY') continue;
-            $al = trim($r['air_line'] ?? '');
-            if ($al === '' || $al === 'N/A' || strcasecmp($al, 'PAX ALL') === 0 || stripos($al, 'PAX ALL') !== false) continue;
-            $airlines[$al] = true;
-            $rap = strtoupper(trim($r['report_airport'] ?? ($r['branch'] ?? '')));
-            if (!empty($rap) && $rap !== 'N/A') {
+
+        if (!empty($cached['airlines']) || !empty($cached['airports'])) {
+            foreach ($cached['airlines'] ?? [] as $al) {
+                $airlines[$al] = true;
+            }
+            foreach ($cached['airports'] ?? [] as $rap) {
                 $reportAirports[$rap] = true;
+            }
+        } else {
+            $dbAirlines = \App\Models\FdrFlight::where('upload_id', $upload->id)
+                ->whereNotNull('airline_code')
+                ->where('airline_code', '!=', '')
+                ->where('airline_code', '!=', 'N/A')
+                ->whereRaw("LOWER(airline_code) NOT LIKE '%pax all%'")
+                ->distinct()
+                ->orderBy('airline_code')
+                ->pluck('airline_code')
+                ->toArray();
+
+            $dbAirports = \App\Models\FdrFlight::where('upload_id', $upload->id)
+                ->whereNotNull('report_airport')
+                ->where('report_airport', '!=', '')
+                ->where('report_airport', '!=', 'N/A')
+                ->distinct()
+                ->orderBy('report_airport')
+                ->pluck('report_airport')
+                ->toArray();
+
+            if (!empty($dbAirlines) || !empty($dbAirports)) {
+                foreach ($dbAirlines as $al) {
+                    $airlines[$al] = true;
+                }
+                foreach ($dbAirports as $rap) {
+                    $reportAirports[$rap] = true;
+                }
+            } else {
+                $records = $upload->report_data['records'] ?? ($upload->getOffloadedRecords() ?? []);
+                foreach ($records as $r) {
+                    if (($r['row_type'] ?? 'MOVEMENT') === 'SUMMARY') continue;
+                    $al = trim($r['air_line'] ?? '');
+                    if ($al === '' || $al === 'N/A' || strcasecmp($al, 'PAX ALL') === 0 || stripos($al, 'PAX ALL') !== false) continue;
+                    $airlines[$al] = true;
+                    $rap = strtoupper(trim($r['report_airport'] ?? ($r['branch'] ?? '')));
+                    if (!empty($rap) && $rap !== 'N/A') {
+                        $reportAirports[$rap] = true;
+                    }
+                }
             }
         }
         ksort($airlines);
@@ -149,7 +195,7 @@ class FlightDailyReportController extends Controller
             'meta'         => $meta,
             'recordsCount' => $recordsCount,
             'airlines'     => array_keys($airlines),
-            'airports'     => array_keys($airports),
+            'airports'     => $airports,
         ]);
     }
 
@@ -195,6 +241,9 @@ class FlightDailyReportController extends Controller
         $classified = $this->parser->classifyRows($parsed['records']);
         $movementCount = count($classified['movement_records']);
 
+        @ini_set('memory_limit', '512M');
+        @ini_set('max_execution_time', '300');
+
         $upload = Upload::create([
             'original_filename'  => $origName,
             'stored_path'        => $storedPath,
@@ -205,8 +254,15 @@ class FlightDailyReportController extends Controller
             'invalid_rows'       => 0,
             'duplicate_rows'     => 0,
             'parsing_confidence' => 1.0,
-            'validation_summary' => $validation,
-            'report_data'        => $parsed,
+            'validation_summary' => [
+                'valid'             => true,
+                'detected_template' => $validation['detected_template'] ?? 'NORMAL',
+            ],
+            'report_data'        => [
+                'meta'            => $parsed['meta'] ?? [],
+                'summary'         => $parsed['summary'] ?? [],
+                'detected_format' => $parsed['detected_format'] ?? 'OASYS HTML XLS',
+            ],
         ]);
 
         $this->fdrDbService->syncUploadToDatabase($upload, $classified['movement_records'], $parsed['meta'] ?? []);
@@ -426,7 +482,11 @@ class FlightDailyReportController extends Controller
             'duplicate_rows'     => 0,
             'parsing_confidence' => 1.0,
             'validation_summary' => ['valid' => true],
-            'report_data'        => $parsed,
+            'report_data'        => [
+                'meta'            => $parsed['meta'] ?? [],
+                'summary'         => $parsed['summary'] ?? [],
+                'detected_format' => $parsed['detected_format'] ?? 'OASYS HTML XLS',
+            ],
         ]);
 
         $this->fdrDbService->syncUploadToDatabase($upload, $classified['movement_records'], $parsed['meta'] ?? []);
@@ -785,8 +845,6 @@ class FlightDailyReportController extends Controller
                             'validation_summary' => ['valid' => true],
                             'report_data'        => [
                                 'meta'            => $meta,
-                                'records'         => $compRows,
-                                'comparison_rows' => $compRows,
                                 'summary'         => $parsed['summary'] ?? [],
                                 'detected_format' => 'OASYS HTML XLS',
                                 'report_type'     => $template,
@@ -849,7 +907,6 @@ class FlightDailyReportController extends Controller
                             'validation_summary' => ['valid' => true],
                             'report_data'        => [
                                 'meta'                  => $meta,
-                                'records'               => $records,
                                 'reconciliationMatrix'  => $parsed['reconciliationMatrix'] ?? null,
                                 'commentTotals'         => $parsed['commentTotals'] ?? null,
                                 'summary'               => $parsed['summary'] ?? [],
@@ -2634,7 +2691,7 @@ class FlightDailyReportController extends Controller
         }
 
         $meta = $upload->report_data['meta'] ?? [];
-        $rawRecords = $upload->report_data['records'] ?? [];
+        $rawRecords = $upload->report_data['records'] ?? ($upload->getOffloadedRecords() ?? []);
 
         $availableDates = $this->extractAvailableDates($rawRecords, $meta);
         $sourceSummary = $this->buildSourceSummary($rawRecords, $availableDates, $meta);

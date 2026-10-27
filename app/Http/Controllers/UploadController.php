@@ -1146,10 +1146,23 @@ class UploadController extends Controller
                 'invalid_rows'       => 0,
                 'duplicate_rows'     => 0,
                 'parsing_confidence' => 1.0,
-                'validation_summary' => $validation,
-                'report_data'        => $parsed,
+                'validation_summary' => [
+                    'valid'             => true,
+                    'detected_template' => $validation['detected_template'] ?? 'NORMAL',
+                ],
+                'report_data'        => [
+                    'meta'    => $parsed['meta'] ?? [],
+                    'summary' => $parsed['summary'] ?? [],
+                ],
                 'airport_id'         => $airport?->id,
             ]);
+
+            try {
+                $fdrDbService = app(\App\Services\FlightDailyReport\FdrDatabaseService::class);
+                $fdrDbService->syncUploadToDatabase($upload, $parsed['records'], $parsed['meta'] ?? []);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Could not sync FDR to database in UploadController: " . $e->getMessage());
+            }
 
             session(['fdr_active_upload_id' => $upload->id]);
             session(['active_upload_id' => $upload->id]);

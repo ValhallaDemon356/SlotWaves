@@ -140,13 +140,15 @@ class FdrDatabaseService
             return 0;
         }
 
+        @ini_set('memory_limit', '512M');
+        @ini_set('max_execution_time', '300');
+
         $now = now();
         $batch = [];
         $batchSize = 500;
         $totalInserted = 0;
         $defaultAirport = strtoupper(trim($meta['airport'] ?? 'CGK'));
 
-        DB::beginTransaction();
         try {
             FdrFlight::where('upload_id', $upload->id)->delete();
 
@@ -158,19 +160,22 @@ class FdrDatabaseService
 
                 $batch[] = $row;
                 if (count($batch) >= $batchSize) {
-                    DB::table('fdr_flights')->insert($batch);
+                    DB::transaction(function () use ($batch) {
+                        DB::table('fdr_flights')->insert($batch);
+                    });
                     $totalInserted += count($batch);
                     $batch = [];
                 }
             }
 
             if (!empty($batch)) {
-                DB::table('fdr_flights')->insert($batch);
+                DB::transaction(function () use ($batch) {
+                    DB::table('fdr_flights')->insert($batch);
+                });
                 $totalInserted += count($batch);
                 $batch = [];
             }
 
-            DB::commit();
             Log::info("FdrDatabaseService: Synced {$totalInserted} flights to database for upload #{$upload->id}");
 
             try {
@@ -182,7 +187,6 @@ class FdrDatabaseService
             return $totalInserted;
 
         } catch (\Throwable $e) {
-            DB::rollBack();
             Log::error("FdrDatabaseService sync error for upload #{$upload->id}: " . $e->getMessage());
             throw $e;
         }
@@ -198,13 +202,15 @@ class FdrDatabaseService
             throw new \InvalidArgumentException("Source FDR file not found: {$filePath}");
         }
 
+        @ini_set('memory_limit', '512M');
+        @ini_set('max_execution_time', '300');
+
         $now = now();
         $totalInserted = 0;
         $offset = 0;
         $isEof = false;
         $meta = [];
 
-        DB::beginTransaction();
         try {
             FdrFlight::where('upload_id', $upload->id)->delete();
 
@@ -226,7 +232,9 @@ class FdrDatabaseService
                     }
 
                     foreach (array_chunk($dbRows, 500) as $chunk) {
-                        DB::table('fdr_flights')->insert($chunk);
+                        DB::transaction(function () use ($chunk) {
+                            DB::table('fdr_flights')->insert($chunk);
+                        });
                         $totalInserted += count($chunk);
                     }
                     unset($dbRows);
@@ -234,7 +242,6 @@ class FdrDatabaseService
                 }
             }
 
-            DB::commit();
             Log::info("FdrDatabaseService: Synced {$totalInserted} flights from file for upload #{$upload->id}");
 
             try {
@@ -245,7 +252,6 @@ class FdrDatabaseService
 
             return $totalInserted;
         } catch (\Throwable $e) {
-            DB::rollBack();
             Log::error("FdrDatabaseService file sync error for upload #{$upload->id}: " . $e->getMessage());
             throw $e;
         }
@@ -1383,6 +1389,9 @@ class FdrDatabaseService
      */
     public function precomputeAndCacheAnalytics(Upload $upload, array $meta = []): array
     {
+        @ini_set('memory_limit', '512M');
+        @ini_set('max_execution_time', '300');
+
         if (empty($meta)) {
             $repData = $upload->report_data ?: [];
             $meta = $repData['meta'] ?? [];
@@ -1493,9 +1502,6 @@ class FdrDatabaseService
 
         try {
             $upload->cached_analytics = $cachedPayload;
-            $repData = $upload->report_data ?: [];
-            $repData['cached_analytics'] = $cachedPayload;
-            $upload->report_data = $repData;
             $upload->saveQuietly();
         } catch (\Throwable $e) {
             Log::warning("Could not persist cached_analytics for upload #{$upload->id}: " . $e->getMessage());
