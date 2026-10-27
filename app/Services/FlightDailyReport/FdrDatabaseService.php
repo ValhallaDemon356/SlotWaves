@@ -200,7 +200,7 @@ class FdrDatabaseService
                 : [];
             $sqlState = (string) ($errorInfo[0] ?? $code);
 
-            // Fast exit: Do not retry integrity constraints, syntax errors, or auth failures
+            // Fast exit: Do not retry integrity constraints, syntax errors, schema errors, or auth failures
             // 23xxx = integrity constraint violations (23505 unique, 23503 foreign key, 23502 not null)
             // 42xxx = syntax error or access rule violation (42P01 undefined table, 42703 undefined column)
             // 28xxx = invalid authorization specification (28P01 password authentication failed)
@@ -208,6 +208,15 @@ class FdrDatabaseService
             $nonRetryablePrefixes = ['23', '42', '28', '22'];
             $prefix = substr($sqlState, 0, 2);
             if (in_array($prefix, $nonRetryablePrefixes, true)) {
+                return false;
+            }
+
+            // Also check message content for schema/syntax errors (e.g. when wrapped with generic code)
+            $isSchemaOrSyntax = preg_match(
+                '/SQLSTATE\[42|42P01|42703|42P07|42601|undefined table|undefined column|relation [\"\'].*?[\"\'] does not exist|column [\"\'].*?[\"\'] does not exist|syntax error/i',
+                $msg
+            );
+            if ($isSchemaOrSyntax) {
                 return false;
             }
 
@@ -244,6 +253,7 @@ class FdrDatabaseService
             'Hot standby mode is disabled',
             'the database system is not accepting connections',
             'terminating connection due to administrator command',
+            'could not receive data from client',
             'SSL connection has been closed unexpectedly',
             'SSL SYSCALL error',
             'connection to server',
@@ -259,10 +269,11 @@ class FdrDatabaseService
             'Resource temporarily unavailable',
             'Operation timed out',
             'Connection timed out',
+            'ETIMEDOUT',
             '08006',
             '08003',
+            '08001',
             '57P01',
-            'HY000',
         ];
 
         foreach ($patterns as $pattern) {

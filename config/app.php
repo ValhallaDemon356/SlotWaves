@@ -41,6 +41,8 @@ return [
 
     'debug' => (bool) env('APP_DEBUG', false),
 
+    'ops_deploy_token' => env('OPS_DEPLOY_TOKEN'),
+
     /*
     |--------------------------------------------------------------------------
     | Application URL

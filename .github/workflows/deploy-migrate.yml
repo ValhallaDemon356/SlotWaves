@@ -1,0 +1,36 @@
+name: Production Database Migration
+
+on:
+  workflow_dispatch:
+  deployment_status:
+
+jobs:
+  migrate:
+    name: Trigger Supabase Runtime Migration
+    # Run only when production deployment succeeds, or when manually triggered
+    if: github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Production')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Invoke Runtime Migration Endpoint
+        env:
+          APP_URL: ${{ secrets.APP_URL || 'https://slot-waves.vercel.app' }}
+          OPS_DEPLOY_TOKEN: ${{ secrets.OPS_DEPLOY_TOKEN }}
+        run: |
+          echo "Triggering runtime migration at ${APP_URL}/ops/migrate..."
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST "${APP_URL}/ops/migrate" \
+            -H "X-Ops-Token: ${OPS_DEPLOY_TOKEN}" \
+            -H "Accept: application/json")
+          
+          BODY=$(echo "$RESPONSE" | sed -e '$d')
+          HTTP_STATUS=$(echo "$RESPONSE" | tail -n1 | cut -d':' -f2)
+          
+          echo "Response Body: $BODY"
+          echo "HTTP Status: $HTTP_STATUS"
+          
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "::error::Migration endpoint returned HTTP $HTTP_STATUS"
+            exit 1
+          fi
+          
+          echo "Migration completed successfully!"

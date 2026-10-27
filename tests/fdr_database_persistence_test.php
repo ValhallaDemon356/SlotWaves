@@ -71,6 +71,18 @@ $eMissingCol = new \PDOException("SQLSTATE[42703]: Undefined column: column 'foo
 $eMissingCol->errorInfo = ['42703', 42703, 'column does not exist'];
 assertTest("Does NOT classify schema error (42703) as connection error", !FdrDatabaseService::isConnectionError($eMissingCol));
 
+$eMissingTable = new \PDOException("SQLSTATE[42P01]: Undefined table: 7 ERROR: relation \"fdr_processing_jobs\" does not exist", 42);
+$eMissingTable->errorInfo = ['42P01', 7, 'relation "fdr_processing_jobs" does not exist'];
+assertTest("Does NOT classify undefined table (42P01) as connection error", !FdrDatabaseService::isConnectionError($eMissingTable));
+
+$eNested42P01 = new QueryException(
+    'pgsql',
+    'INSERT INTO fdr_processing_jobs ...',
+    [],
+    new \PDOException('ERROR: 42P01: relation "fdr_processing_jobs" does not exist', 0)
+);
+assertTest("Does NOT classify wrapped 42P01 QueryException as connection error", !FdrDatabaseService::isConnectionError($eNested42P01));
+
 $eSyntax = new \PDOException("SQLSTATE[42601]: syntax error at or near 'INSRT'", 42601);
 $eSyntax->errorInfo = ['42601', 42601, 'syntax error'];
 assertTest("Does NOT classify SQL syntax error (42601) as connection error", !FdrDatabaseService::isConnectionError($eSyntax));

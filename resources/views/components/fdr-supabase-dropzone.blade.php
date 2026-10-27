@@ -231,11 +231,12 @@ function fdrSupabaseUploader(config) {
         processSelectedFile(file) {
             this.uploadState.error = false;
 
-            // 1. File Size Validation (Max 100MB)
-            if (file.size > this.maxSizeBytes) {
+            // 1. File Size Validation (Max 50MB Supabase Free Tier limit)
+            const MAX_STORAGE_BYTES = 50 * 1024 * 1024; // 52,428,800 bytes
+            if (file.size > MAX_STORAGE_BYTES) {
                 this.uploadState.error = true;
-                this.uploadState.errorTitle = 'FILE EXCEEDS MAXIMUM LIMIT';
-                this.uploadState.errorMessage = `Selected file (${(file.size / 1048576).toFixed(1)} MB) exceeds the maximum allowed limit of ${config.maxSizeMb || 100} MB.`;
+                this.uploadState.errorTitle = 'FILE MELEBIHI BATAS MAKSIMUM 50MB';
+                this.uploadState.errorMessage = 'File melebihi batas maksimum 50MB (Supabase Free tier). Pisahkan per bulan/per airline, atau hubungi admin untuk upgrade plan Supabase.';
                 return;
             }
 
@@ -292,6 +293,17 @@ function fdrSupabaseUploader(config) {
             if (!this.selectedFile) return;
 
             const file = this.selectedFile;
+
+            // Strict pre-upload limit check: Supabase Free tier hard limit is 50MiB (52,428,800 bytes)
+            const MAX_STORAGE_BYTES = 50 * 1024 * 1024;
+            if (file.size > MAX_STORAGE_BYTES) {
+                this.uploadState.error = true;
+                this.uploadState.errorTitle = 'FILE MELEBIHI BATAS MAKSIMUM 50MB';
+                this.uploadState.errorMessage = 'File melebihi batas maksimum 50MB (Supabase Free tier). Pisahkan per bulan/per airline, atau hubungi admin untuk upgrade plan Supabase.';
+                this.uploadState.status = 'selected';
+                return;
+            }
+
             const startTime = Date.now();
             let storagePath = null;
 
@@ -391,11 +403,15 @@ function fdrSupabaseUploader(config) {
 
                         data = await this.readJsonResponse(response);
 
-                        const isConnErr = !response.ok && (
-                            [500, 502, 503, 504].includes(response.status) ||
+                        // Check if response indicates a permanent schema error (do NOT auto-retry)
+                        const rawDataStr = JSON.stringify(data || '');
+                        const isSchemaErr = /42P01|42703|42P07|SQLSTATE\[42|undefined_table|undefined_column|relation [\"\'].*?[\"\'] does not exist|column [\"\'].*?[\"\'] does not exist|kesalahan struktur database|DATABASE_SCHEMA/i.test(rawDataStr);
+
+                        const isConnErr = !isSchemaErr && !response.ok && (
+                            [502, 503, 504].includes(response.status) ||
                             data?.error?.code === 'DATABASE_CONNECTION_ERROR' ||
                             data?.error?.retryable === true ||
-                            /08006|57P01|terminating connection|connection to server|Hot standby/i.test(JSON.stringify(data || ''))
+                            /08006|08001|08003|57P01|terminating connection|could not receive data|Hot standby/i.test(rawDataStr)
                         );
 
                         if (isConnErr && retryIdx < maxNotifyRetries) {
@@ -412,7 +428,9 @@ function fdrSupabaseUploader(config) {
 
                         break; // Success!
                     } catch (fetchErr) {
-                        const isNetworkOrConn = /fetch|network|connection|08006|database/i.test(fetchErr?.message || '');
+                        const errMsg = fetchErr?.message || '';
+                        const isSchemaErr = /42P01|42703|42P07|SQLSTATE\[42|kesalahan struktur database|DATABASE_SCHEMA/i.test(errMsg);
+                        const isNetworkOrConn = !isSchemaErr && /fetch|network|connection|08006|ETIMEDOUT/i.test(errMsg);
                         if (isNetworkOrConn && retryIdx < maxNotifyRetries) {
                             const delayMs = backoffDelays[retryIdx] || 3000;
                             this.uploadState.statusTitle = 'Menyinkronkan koneksi database... (Percobaan ulang otomatis)';
@@ -444,8 +462,10 @@ function fdrSupabaseUploader(config) {
                     this.uploadState.errorTitle = 'STORAGE BUCKET TIDAK DITEMUKAN (404)';
                 } else if (/RLS Policy|row-level security|403|permission denied/i.test(msg)) {
                     this.uploadState.errorTitle = 'STORAGE AUTHORIZATION ERROR (403)';
-                } else if (/FDR_FILE_TOO_LARGE|too large|payload too large|413/i.test(msg)) {
-                    this.uploadState.errorTitle = 'FILE TERLALU BESAR';
+                } else if (/FDR_FILE_TOO_LARGE|50MB|too large|payload too large|413/i.test(msg)) {
+                    this.uploadState.errorTitle = 'FILE MELEBIHI BATAS MAKSIMUM 50MB';
+                } else if (/kesalahan struktur database|42P01|42703|DATABASE_SCHEMA/i.test(msg)) {
+                    this.uploadState.errorTitle = 'KESALAHAN STRUKTUR DATABASE (HUBUNGI ADMIN)';
                 } else if (/signed upload/i.test(msg)) {
                     this.uploadState.errorTitle = 'SIGNED UPLOAD ERROR';
                 } else {
@@ -499,11 +519,14 @@ function fdrSupabaseUploader(config) {
                     throw netErr;
                 }
 
-                const isConnErr = !processResponse.ok && (
-                    [500, 502, 503, 504].includes(processResponse.status) ||
+                const rawProcessStr = JSON.stringify(processData || '');
+                const isSchemaErr = /42P01|42703|42P07|SQLSTATE\[42|undefined_table|undefined_column|relation [\"\'].*?[\"\'] does not exist|column [\"\'].*?[\"\'] does not exist|kesalahan struktur database|DATABASE_SCHEMA/i.test(rawProcessStr);
+
+                const isConnErr = !isSchemaErr && !processResponse.ok && (
+                    [502, 503, 504].includes(processResponse.status) ||
                     processData?.error?.code === 'DATABASE_CONNECTION_ERROR' ||
                     processData?.error?.retryable === true ||
-                    /08006|57P01|terminating connection|connection to server|Hot standby/i.test(JSON.stringify(processData || ''))
+                    /08006|08001|08003|57P01|terminating connection|could not receive data|Hot standby/i.test(rawProcessStr)
                 );
 
                 if (isConnErr) {
@@ -606,8 +629,16 @@ function fdrSupabaseUploader(config) {
             else if (data.message) errStr = String(data.message);
             else errStr = fallback;
 
-            // Never leak raw SQL or connection failures to UI
-            if (/SQLSTATE|08006|57P01|terminating connection|Hot standby|administrator command/i.test(errStr)) {
+            // 1. Non-transient Schema / Structure Errors (42P01, 42703, 42P07, etc.):
+            // Do NOT hide behind generic connection retry!
+            const isSchemaError = /42P01|42703|42P07|SQLSTATE\[42|undefined_table|undefined_column|relation [\"\'].*?[\"\'] does not exist|column [\"\'].*?[\"\'] does not exist|kesalahan struktur database|DATABASE_SCHEMA/i.test(errStr);
+            if (isSchemaError) {
+                console.error('[FDR Dropzone] Non-transient database schema error detected:', errStr, data);
+                return 'Terjadi kesalahan struktur database (hubungi admin). Detail: ' + (data?.error?.message || errStr);
+            }
+
+            // 2. Transient Connection Errors:
+            if (/08006|08001|08003|57P01|ETIMEDOUT|terminating connection|could not receive data from client|server closed the connection unexpectedly|Hot standby/i.test(errStr)) {
                 return 'Koneksi database sedang disinkronkan kembali. Silakan coba kembali sesaat lagi.';
             }
 

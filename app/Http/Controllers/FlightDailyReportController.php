@@ -291,10 +291,18 @@ class FlightDailyReportController extends Controller
     {
         $validated = $request->validate([
             'filename'     => 'required|string',
-            'file_size'    => 'nullable|numeric|max:104857600', // 100MB
+            'file_size'    => 'nullable|numeric',
             'content_type' => 'nullable|string',
             'bucket_name'  => 'nullable|string',
         ]);
+
+        $maxStorageBytes = 52428800; // 50MiB Supabase Free tier hard limit
+        if (!empty($validated['file_size']) && (int)$validated['file_size'] > $maxStorageBytes) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'File melebihi batas maksimum 50MB (Supabase Free tier). Pisahkan per bulan/per airline, atau hubungi admin untuk upgrade plan Supabase.',
+            ], 413);
+        }
 
         $bucket = !empty($validated['bucket_name'])
             ? $validated['bucket_name']
@@ -355,6 +363,15 @@ class FlightDailyReportController extends Controller
             'airline_type'      => 'nullable|string',
         ]);
 
+        $maxStorageBytes = 52428800; // 50MiB Supabase Free tier hard limit
+        $fileSize = (int)($validated['file_size'] ?? 0);
+        if ($fileSize > $maxStorageBytes) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'File melebihi batas maksimum 50MB (Supabase Free tier). Pisahkan per bulan/per airline, atau hubungi admin untuk upgrade plan Supabase.',
+            ], 413);
+        }
+
         $bucket = !empty($validated['bucket_name'])
             ? $validated['bucket_name']
             : config('services.supabase.bucket', env('NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET', 'flight-reports'));
@@ -362,13 +379,18 @@ class FlightDailyReportController extends Controller
         $storagePath = $validated['file_path'];
         $originalFilename = $validated['original_filename'];
         $airlineHint = $validated['airline_type'] ?? null;
-        $fileSize = (int)($validated['file_size'] ?? 0);
 
         try {
             DB::disconnect('pgsql');
             $info = $storageService->getFileInfo($storagePath, $bucket);
             if ($info && !empty($info['size'])) {
                 $fileSize = (int)$info['size'];
+                if ($fileSize > $maxStorageBytes) {
+                    return response()->json([
+                        'success' => false,
+                        'error'   => 'File melebihi batas maksimum 50MB (Supabase Free tier). Pisahkan per bulan/per airline, atau hubungi admin untuk upgrade plan Supabase.',
+                    ], 413);
+                }
             }
 
             $uploadToken = (string) Str::uuid();

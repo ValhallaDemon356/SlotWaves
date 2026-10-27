@@ -99,3 +99,8 @@ Route::prefix('api')->group(function () {
     Route::get('/airlines', [MasterDataController::class, 'airlines']);
     Route::get('/flights',  [MasterDataController::class, 'flights']);
 });
+
+// ── Admin Ops Runtime Pipeline (Protected by OPS_DEPLOY_TOKEN) ──────────────
+Route::post('/ops/migrate', [\App\Http\Controllers\OpsController::class, 'migrate'])->name('ops.migrate');
+Route::match(['GET', 'POST'], '/ops/migrate/status', [\App\Http\Controllers\OpsController::class, 'status'])->name('ops.migrate.status');
+

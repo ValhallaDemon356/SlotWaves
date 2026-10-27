@@ -1901,7 +1901,7 @@ class DauDashboardController extends Controller
                     'success' => false,
                     'error' => [
                         'code' => 'FDR_FILE_TOO_LARGE',
-                        'message' => "File exceeds the configured FDR upload limit of {$maxMb} MB.",
+                        'message' => 'File melebihi batas maksimum 50MB (Supabase Free tier). Pisahkan per bulan/per airline, atau hubungi admin untuk upgrade plan Supabase.',
                         'retryable' => false,
                     ],
                 ], 413);
@@ -1981,6 +1981,19 @@ class DauDashboardController extends Controller
                 'original_filename' => 'required|string|max:255',
                 'airline_type'      => 'nullable|string|max:50',
             ]);
+
+            $maxStorageBytes = 52428800; // 50MiB Supabase Free tier hard limit
+            $fileSize = (int) ($request->input('file_size') ?? 0);
+            if ($fileSize > $maxStorageBytes) {
+                return response()->json([
+                    'success' => false,
+                    'error' => [
+                        'code' => 'FDR_FILE_TOO_LARGE',
+                        'message' => 'File melebihi batas maksimum 50MB (Supabase Free tier). Pisahkan per bulan/per airline, atau hubungi admin untuk upgrade plan Supabase.',
+                        'retryable' => false,
+                    ],
+                ], 413);
+            }
 
             $bucket = !empty($validated['bucket_name'])
                 ? $validated['bucket_name']

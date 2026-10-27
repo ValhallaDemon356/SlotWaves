@@ -21,6 +21,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
             'fdr/jobs/*',
             'fdr/handle-uploaded',
             'dau/handle-uploaded-fdr',
+            'ops/*',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -56,32 +57,47 @@ $app = Application::configure(basePath: dirname(__DIR__))
             // Categorize the error
             $statusCode = 500;
             $category = 'Application Error';
+            $isRetryable = ($statusCode >= 500);
 
             if ($e instanceof \Illuminate\Session\TokenMismatchException) {
                 $statusCode = 419;
                 $category = 'CSRF Token Expired (419)';
                 $sanitizedMsg = 'Your session or CSRF token has expired. Please refresh the page and try again.';
+                $isRetryable = false;
             } elseif ($e instanceof \Illuminate\Validation\ValidationException) {
                 $statusCode = 422;
                 $category = 'Validation Error';
+                $isRetryable = false;
             } elseif ($e instanceof \Illuminate\Database\QueryException || $e instanceof \PDOException) {
-                $statusCode = 500;
-                $category = 'Database / Supabase Connection Error';
+                $sqlState = (string) ($e->errorInfo[0] ?? $e->getCode());
+                $isSchemaError = str_starts_with($sqlState, '42') ||
+                    preg_match('/42P01|42703|42P07|relation [\"\'].*?[\"\'] does not exist|column [\"\'].*?[\"\'] does not exist|undefined table|undefined column/i', $errMsg);
+
+                if ($isSchemaError) {
+                    $statusCode = 500;
+                    $category = 'Database Schema / Structure Error';
+                    $isRetryable = false;
+                } else {
+                    $statusCode = 500;
+                    $category = 'Database / Supabase Connection Error';
+                    $isRetryable = true;
+                }
             } elseif ($e instanceof \Symfony\Component\HttpKernel\Exception\NotFoundHttpException) {
                 $statusCode = 404;
                 $category = 'Page Not Found (404)';
+                $isRetryable = false;
             } elseif (str_contains($errClass, 'Pdf') || str_contains($errMsg, 'PDF') || str_contains($errMsg, 'parser')) {
                 $category = 'PDF Parsing / Schedule Extraction Error';
             }
 
-            if ($request->wantsJson() || $request->is('api/*') || $request->is('upload') || $request->is('upload/*') || $request->is('fdr/*') || $request->is('dau/*') || $request->ajax()) {
+            if ($request->wantsJson() || $request->is('api/*') || $request->is('upload') || $request->is('upload/*') || $request->is('fdr/*') || $request->is('dau/*') || $request->is('ops/*') || $request->ajax()) {
                 return new \Illuminate\Http\JsonResponse([
                     'success'  => false,
                     'category' => $category,
                     'error'    => [
-                        'code'      => strtoupper(str_replace(' ', '_', $category)),
+                        'code'      => strtoupper(str_replace([' ', '/', '-'], '_', $category)),
                         'message'   => $sanitizedMsg,
-                        'retryable' => ($statusCode >= 500),
+                        'retryable' => $isRetryable,
                     ],
                     'errors'   => $e instanceof \Illuminate\Validation\ValidationException ? $e->errors() : [],
                     'message'  => $sanitizedMsg,

@@ -111,6 +111,10 @@ class InitSupabaseDatabaseCommand extends Command
             'sessions'            => 'Persistent Serverless Sessions',
             'cache'               => 'Database Cache Store',
             'cache_locks'         => 'Database Cache Atomic Locks',
+            'upload_chunks'       => 'Resumable Upload Chunks Storage',
+            'fdr_processing_jobs' => 'FDR Processing Jobs & Checkpoints',
+            'fdr_upload_sessions' => 'FDR Upload Sessions Registry',
+            'fdr_flights'         => 'Normalized FDR Flights & Performance Analytics',
         ];
 
         $missingCount = 0;
