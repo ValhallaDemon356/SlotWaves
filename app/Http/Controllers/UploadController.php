@@ -12,6 +12,7 @@ use App\Services\Dau\Parsers\BaseDauParser;
 use App\Services\Dau\DauComparisonService;
 use App\Models\FdrUploadSession;
 use App\Models\FdrProcessingJob;
+use App\Services\FlightDailyReport\FdrDatabaseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
@@ -678,15 +679,17 @@ class UploadController extends Controller
             $chunkBytes = strlen($chunkData);
 
             // ── 3. Store chunk persistently (Database BLOB for DAU + FDR resilience) ───
-            DB::table('upload_chunks')->updateOrInsert(
-                ['upload_token' => $uploadToken, 'chunk_index' => $chunkIndex],
-                [
-                    'total_chunks' => $totalChunks,
-                    'chunk_size'   => $chunkBytes,
-                    'chunk_data'   => $chunkData,
-                    'created_at'   => now(),
-                ]
-            );
+            FdrDatabaseService::executeWithRetry(function () use ($uploadToken, $chunkIndex, $totalChunks, $chunkBytes, $chunkData) {
+                DB::table('upload_chunks')->updateOrInsert(
+                    ['upload_token' => $uploadToken, 'chunk_index' => $chunkIndex],
+                    [
+                        'total_chunks' => $totalChunks,
+                        'chunk_size'   => $chunkBytes,
+                        'chunk_data'   => $chunkData,
+                        'created_at'   => now(),
+                    ]
+                );
+            });
 
             // Write to storage disk as chunk part
             try {
@@ -749,7 +752,7 @@ class UploadController extends Controller
                     ]);
                 }
 
-                $upload = Upload::create([
+                $upload = Upload::createWithRetry([
                     'original_filename'  => $filename,
                     'stored_path'        => $canonicalRelativePath,
                     'status'             => 'processing',
@@ -763,28 +766,30 @@ class UploadController extends Controller
                     'report_data'        => ['meta' => ['airport' => 'CGK', 'airport_code' => 'CGK']],
                 ]);
 
-                $job = FdrProcessingJob::create([
-                    'upload_id'      => $upload->id,
-                    'upload_token'   => $uploadToken,
-                    'filename'       => $filename,
-                    'stored_path'    => $canonicalRelativePath,
-                    'file_size'      => $fileSize ?: ($session?->file_size ?? 0),
-                    'file_hash'      => $fileHash,
-                    'report_type'    => 'fdr',
-                    'status'         => 'UPLOADED',
-                    'stage'          => 'UPLOADED',
-                    'stage_label'    => 'Upload complete. Ready for processing.',
-                    'progress'       => 0,
-                    'processed_rows' => 0,
-                    'total_rows'     => 0,
-                    'current_offset' => 0,
-                    'current_batch'  => 0,
-                    'meta'           => [
-                        'canonical_path' => $canonicalRelativePath,
+                $job = FdrDatabaseService::executeWithRetry(function () use ($upload, $uploadToken, $filename, $canonicalRelativePath, $fileSize, $session, $fileHash) {
+                    return FdrProcessingJob::create([
+                        'upload_id'      => $upload->id,
+                        'upload_token'   => $uploadToken,
+                        'filename'       => $filename,
+                        'stored_path'    => $canonicalRelativePath,
                         'file_size'      => $fileSize ?: ($session?->file_size ?? 0),
-                    ],
-                    'result_url'     => route('fdr.dashboard', ['upload' => $upload->id, 'date_scope' => 'ALL_PERIOD']),
-                ]);
+                        'file_hash'      => $fileHash,
+                        'report_type'    => 'fdr',
+                        'status'         => 'UPLOADED',
+                        'stage'          => 'UPLOADED',
+                        'stage_label'    => 'Upload complete. Ready for processing.',
+                        'progress'       => 0,
+                        'processed_rows' => 0,
+                        'total_rows'     => 0,
+                        'current_offset' => 0,
+                        'current_batch'  => 0,
+                        'meta'           => [
+                            'canonical_path' => $canonicalRelativePath,
+                            'file_size'      => $fileSize ?: ($session?->file_size ?? 0),
+                        ],
+                        'result_url'     => route('fdr.dashboard', ['upload' => $upload->id, 'date_scope' => 'ALL_PERIOD']),
+                    ]);
+                });
 
                 session(['fdr_active_upload_id' => $upload->id]);
                 session(['active_upload_id' => $upload->id]);
@@ -1136,7 +1141,7 @@ class UploadController extends Controller
             $airportCode = $parsed['meta']['airport'] ?? 'CGK';
             $airport = \App\Models\Airport::findByIata($airportCode) ?? \App\Models\Airport::findByIata('CGK');
 
-            $upload = Upload::create([
+            $upload = Upload::createWithRetry([
                 'original_filename'  => $origName,
                 'stored_path'        => $storedPath,
                 'status'             => 'completed',

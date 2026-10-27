@@ -80,7 +80,7 @@ class FlightDailyReportController extends Controller
             $parsed = $this->parser->parse($templatePath);
             $classified = $this->parser->classifyRows($parsed['records']);
             $movementCount = count($classified['movement_records']);
-            $upload = Upload::create([
+            $upload = Upload::createWithRetry([
                 'original_filename'  => 'CGK FDR.xls',
                 'stored_path'        => 'templates/CGK FDR.xls',
                 'status'             => 'completed',
@@ -244,7 +244,7 @@ class FlightDailyReportController extends Controller
         @ini_set('memory_limit', '512M');
         @ini_set('max_execution_time', '300');
 
-        $upload = Upload::create([
+        $upload = Upload::createWithRetry([
             'original_filename'  => $origName,
             'stored_path'        => $storedPath,
             'status'             => 'completed',
@@ -379,51 +379,55 @@ class FlightDailyReportController extends Controller
             }
             $airport = \App\Models\Airport::findByIata($airportCode) ?? \App\Models\Airport::findByIata('CGK');
 
-            $upload = Upload::create([
-                'original_filename'  => $originalFilename,
-                'stored_path'        => "supabase://{$bucket}/{$storagePath}",
-                'status'             => 'processing',
-                'report_type'        => 'fdr',
-                'total_rows'         => 0,
-                'valid_rows'         => 0,
-                'invalid_rows'       => 0,
-                'duplicate_rows'     => 0,
-                'parsing_confidence' => 0.0,
-                'season'             => 'summer',
-                'airport_id'         => $airport?->id,
-                'validation_summary' => ['status' => 'QUEUED'],
-                'report_data'        => [
-                    'meta' => [
+            $upload = FdrDatabaseService::executeWithRetry(function () use ($originalFilename, $bucket, $storagePath, $airportCode, $airlineHint, $airport) {
+                return Upload::create([
+                    'original_filename'  => $originalFilename,
+                    'stored_path'        => "supabase://{$bucket}/{$storagePath}",
+                    'status'             => 'processing',
+                    'report_type'        => 'fdr',
+                    'total_rows'         => 0,
+                    'valid_rows'         => 0,
+                    'invalid_rows'       => 0,
+                    'duplicate_rows'     => 0,
+                    'parsing_confidence' => 0.0,
+                    'season'             => 'summer',
+                    'airport_id'         => $airport?->id,
+                    'validation_summary' => ['status' => 'QUEUED'],
+                    'report_data'        => [
+                        'meta' => [
+                            'airport'        => $airportCode,
+                            'report_airport' => $airportCode,
+                            'filename'       => $originalFilename,
+                            'operator'       => $airlineHint ?: 'ALL AIRLINE',
+                        ],
+                    ],
+                ]);
+            });
+
+            $job = FdrDatabaseService::executeWithRetry(function () use ($upload, $uploadToken, $bucket, $storagePath, $fileSize, $airportCode, $airlineHint) {
+                return FdrProcessingJob::create([
+                    'upload_id'      => $upload->id,
+                    'upload_token'   => $uploadToken,
+                    'status'         => 'QUEUED',
+                    'stage'          => 'QUEUED',
+                    'stage_label'    => 'Queued for streaming extraction...',
+                    'progress'       => 0,
+                    'processed_rows' => 0,
+                    'total_rows'     => 0,
+                    'current_offset' => 0,
+                    'current_batch'  => 0,
+                    'stored_path'    => "supabase://{$bucket}/{$storagePath}",
+                    'file_size'      => $fileSize,
+                    'result_url'     => route('fdr.dashboard', $upload->id),
+                    'meta'           => [
                         'airport'        => $airportCode,
                         'report_airport' => $airportCode,
-                        'filename'       => $originalFilename,
                         'operator'       => $airlineHint ?: 'ALL AIRLINE',
+                        'bucket'         => $bucket,
+                        'storage_path'   => $storagePath,
                     ],
-                ],
-            ]);
-
-            $job = FdrProcessingJob::create([
-                'upload_id'      => $upload->id,
-                'upload_token'   => $uploadToken,
-                'status'         => 'QUEUED',
-                'stage'          => 'QUEUED',
-                'stage_label'    => 'Queued for streaming extraction...',
-                'progress'       => 0,
-                'processed_rows' => 0,
-                'total_rows'     => 0,
-                'current_offset' => 0,
-                'current_batch'  => 0,
-                'stored_path'    => "supabase://{$bucket}/{$storagePath}",
-                'file_size'      => $fileSize,
-                'result_url'     => route('fdr.dashboard', $upload->id),
-                'meta'           => [
-                    'airport'        => $airportCode,
-                    'report_airport' => $airportCode,
-                    'operator'       => $airlineHint ?: 'ALL AIRLINE',
-                    'bucket'         => $bucket,
-                    'storage_path'   => $storagePath,
-                ],
-            ]);
+                ]);
+            });
 
             session(['active_upload_id' => $upload->id]);
             session(['fdr_active_upload_id' => $upload->id]);
@@ -471,7 +475,7 @@ class FlightDailyReportController extends Controller
         $classified = $this->parser->classifyRows($parsed['records']);
         $movementCount = count($classified['movement_records']);
 
-        $upload = Upload::create([
+        $upload = Upload::createWithRetry([
             'original_filename'  => 'OASYS-FDR-TEMPLATE.xls',
             'stored_path'        => 'templates/OASYS-FDR-TEMPLATE.xls',
             'status'             => 'completed',
@@ -769,7 +773,7 @@ class FlightDailyReportController extends Controller
                     ]);
                     $upload = Upload::find($job->upload_id);
                     if ($upload) {
-                        $upload->update([
+                        $upload->updateWithRetry([
                             'status'             => 'completed',
                             'report_type'        => 'fdr',
                             'total_rows'         => 0,
@@ -896,7 +900,7 @@ class FlightDailyReportController extends Controller
                     $totalInserted = 0;
                     if ($upload) {
                         $totalInserted = $this->fdrDbService->syncUploadToDatabase($upload, $records, $meta);
-                        $upload->update([
+                        $upload->updateWithRetry([
                             'status'             => 'completed',
                             'report_type'        => 'fdr',
                             'total_rows'         => $totalInserted,
@@ -968,7 +972,9 @@ class FlightDailyReportController extends Controller
 
             // Idempotency: If starting fresh at offset 0, clear any previous partial rows for this upload
             if ($offset === 0 && $currentBatch === 0) {
-                FdrFlight::where('upload_id', $job->upload_id)->delete();
+                FdrDatabaseService::executeWithRetry(function () use ($job) {
+                    FdrFlight::where('upload_id', $job->upload_id)->delete();
+                });
                 $processedRows = 0;
             }
 
@@ -991,7 +997,11 @@ class FlightDailyReportController extends Controller
 
                     if (!empty($dbRows)) {
                         foreach (array_chunk($dbRows, 500) as $chunk) {
-                            DB::table('fdr_flights')->insert($chunk);
+                            FdrDatabaseService::executeWithRetry(function () use ($chunk) {
+                                DB::transaction(function () use ($chunk) {
+                                    DB::table('fdr_flights')->insert($chunk);
+                                });
+                            });
                         }
                         $processedRows += count($dbRows);
                     }
@@ -1119,7 +1129,7 @@ class FlightDailyReportController extends Controller
             // Update Upload record to completed
             $upload = Upload::find($job->upload_id);
             if ($upload) {
-                $upload->update([
+                $upload->updateWithRetry([
                     'status'             => 'completed',
                     'total_rows'         => $totalInDb,
                     'valid_rows'         => $totalInDb,

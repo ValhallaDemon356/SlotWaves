@@ -131,6 +131,71 @@ class FdrDatabaseService
     }
 
     /**
+     * Resilient database query executor with exponential backoff and connection reconnect.
+     * Recovers from PgBouncer pooler connection drops, standby mode failovers, and transient SSL terminations.
+     */
+    public static function executeWithRetry(callable $callback, int $maxRetries = 3, int $initialDelayMs = 250)
+    {
+        $attempt = 0;
+        while (true) {
+            $attempt++;
+            try {
+                return $callback();
+            } catch (\Throwable $e) {
+                $isConnectionDrop = self::isConnectionError($e);
+
+                if ($attempt >= $maxRetries || !$isConnectionDrop) {
+                    throw $e;
+                }
+
+                $backoffMs = $initialDelayMs * (2 ** ($attempt - 1));
+                Log::warning("FdrDatabaseService: Transient database error on attempt {$attempt}/{$maxRetries} ({$e->getMessage()}). Reconnecting in {$backoffMs}ms...");
+
+                try {
+                    DB::purge('pgsql');
+                    DB::reconnect('pgsql');
+                } catch (\Throwable $reconnectErr) {
+                    Log::warning("FdrDatabaseService: DB reconnect failed on attempt {$attempt}: " . $reconnectErr->getMessage());
+                }
+
+                usleep($backoffMs * 1000);
+            }
+        }
+    }
+
+    /**
+     * Detect transient database pooler, standby, and network drop errors.
+     */
+    public static function isConnectionError(\Throwable $e): bool
+    {
+        $msg = $e->getMessage();
+        $patterns = [
+            'Hot standby mode is disabled',
+            'the database system is not accepting connections',
+            'terminating connection due to administrator command',
+            'SSL connection has been closed unexpectedly',
+            'connection to server',
+            'server closed the connection unexpectedly',
+            'server has gone away',
+            'Lost connection',
+            'Broken pipe',
+            'Connection refused',
+            'Resource temporarily unavailable',
+            '08006',
+            '57P01',
+            'HY000',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (stripos($msg, $pattern) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Ingest/Sync normalized FDR records into the fdr_flights table in efficient batches.
      * Guarantees idempotency by clearing any previous partial records for this upload.
      */
@@ -150,7 +215,9 @@ class FdrDatabaseService
         $defaultAirport = strtoupper(trim($meta['airport'] ?? 'CGK'));
 
         try {
-            FdrFlight::where('upload_id', $upload->id)->delete();
+            self::executeWithRetry(function () use ($upload) {
+                FdrFlight::where('upload_id', $upload->id)->delete();
+            });
 
             foreach ($records as $r) {
                 $row = $this->transformRecordToDbRow($r, $upload->id, $defaultAirport, $meta, $now);
@@ -160,8 +227,11 @@ class FdrDatabaseService
 
                 $batch[] = $row;
                 if (count($batch) >= $batchSize) {
-                    DB::transaction(function () use ($batch) {
-                        DB::table('fdr_flights')->insert($batch);
+                    $insertBatch = $batch;
+                    self::executeWithRetry(function () use ($insertBatch) {
+                        DB::transaction(function () use ($insertBatch) {
+                            DB::table('fdr_flights')->insert($insertBatch);
+                        });
                     });
                     $totalInserted += count($batch);
                     $batch = [];
@@ -169,8 +239,11 @@ class FdrDatabaseService
             }
 
             if (!empty($batch)) {
-                DB::transaction(function () use ($batch) {
-                    DB::table('fdr_flights')->insert($batch);
+                $insertBatch = $batch;
+                self::executeWithRetry(function () use ($insertBatch) {
+                    DB::transaction(function () use ($insertBatch) {
+                        DB::table('fdr_flights')->insert($insertBatch);
+                    });
                 });
                 $totalInserted += count($batch);
                 $batch = [];
@@ -212,7 +285,9 @@ class FdrDatabaseService
         $meta = [];
 
         try {
-            FdrFlight::where('upload_id', $upload->id)->delete();
+            self::executeWithRetry(function () use ($upload) {
+                FdrFlight::where('upload_id', $upload->id)->delete();
+            });
 
             while (!$isEof) {
                 $batchResult = $parser->parseBatch($filePath, $offset, 2000, $meta);
@@ -232,8 +307,10 @@ class FdrDatabaseService
                     }
 
                     foreach (array_chunk($dbRows, 500) as $chunk) {
-                        DB::transaction(function () use ($chunk) {
-                            DB::table('fdr_flights')->insert($chunk);
+                        self::executeWithRetry(function () use ($chunk) {
+                            DB::transaction(function () use ($chunk) {
+                                DB::table('fdr_flights')->insert($chunk);
+                            });
                         });
                         $totalInserted += count($chunk);
                     }

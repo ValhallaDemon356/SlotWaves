@@ -89,11 +89,38 @@ class Upload extends Model
         return [];
     }
 
+    /**
+     * Resilient factory method that executes Upload::create inside executeWithRetry.
+     */
+    public static function createWithRetry(array $attributes, int $maxRetries = 3): static
+    {
+        return \App\Services\FlightDailyReport\FdrDatabaseService::executeWithRetry(function () use ($attributes) {
+            return static::create($attributes);
+        }, $maxRetries);
+    }
+
+    /**
+     * Resilient instance updater that executes update inside executeWithRetry.
+     */
+    public function updateWithRetry(array $attributes = [], array $options = [], int $maxRetries = 3): bool
+    {
+        return \App\Services\FlightDailyReport\FdrDatabaseService::executeWithRetry(function () use ($attributes, $options) {
+            return $this->update($attributes, $options);
+        }, $maxRetries);
+    }
+
     public function setReportDataAttribute($value)
     {
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $value = $decoded;
+            }
+        }
+
         if (is_array($value)) {
-            // Strip out massive raw records (> 100) or raw HTML strings to prevent DB row bloat
-            if (isset($value['records']) && is_array($value['records']) && count($value['records']) > 100) {
+            // Strip out massive raw records (> 50) or raw HTML strings to prevent DB row bloat
+            if (isset($value['records']) && is_array($value['records']) && count($value['records']) > 50) {
                 // If larger than 500 records, optionally offload to disk/storage
                 if (count($value['records']) > 500) {
                     try {
@@ -128,20 +155,46 @@ class Upload extends Model
                 }
                 unset($value['records']);
             }
-            if (isset($value['comparison_rows']) && is_array($value['comparison_rows']) && count($value['comparison_rows']) > 100) {
+            if (isset($value['comparison_rows']) && is_array($value['comparison_rows']) && count($value['comparison_rows']) > 50) {
                 unset($value['comparison_rows']);
             }
-            unset($value['raw_html'], $value['html'], $value['raw_content'], $value['content']);
+            if (isset($value['rows']) && is_array($value['rows']) && count($value['rows']) > 50) {
+                unset($value['rows']);
+            }
+            if (isset($value['data']) && is_array($value['data']) && count($value['data']) > 50) {
+                unset($value['data']);
+            }
+
+            unset($value['raw_html'], $value['html'], $value['raw_content'], $value['content'], $value['_raw']);
+
+            // Recursively strip giant strings (> 10KB) to prevent accidental raw HTML insertion
+            foreach ($value as $k => $v) {
+                if (is_string($v) && strlen($v) > 10240) {
+                    unset($value[$k]);
+                }
+            }
         }
         $this->attributes['report_data'] = is_array($value) ? json_encode($value) : $value;
     }
 
     public function setValidationSummaryAttribute($value)
     {
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $value = $decoded;
+            }
+        }
+
         if (is_array($value)) {
-            unset($value['records'], $value['html'], $value['raw_content'], $value['raw_html']);
+            unset($value['records'], $value['html'], $value['raw_content'], $value['raw_html'], $value['raw']);
             if (isset($value['sample']) && is_array($value['sample'])) {
                 $value['sample'] = array_slice($value['sample'], 0, 3);
+            }
+            foreach ($value as $k => $v) {
+                if (is_string($v) && strlen($v) > 10240) {
+                    unset($value[$k]);
+                }
             }
         }
         $this->attributes['validation_summary'] = is_array($value) ? json_encode($value) : $value;
