@@ -30,6 +30,28 @@
     height: 100% !important;
     min-height: 450px !important;
 }
+.leaflet-pane svg {
+    max-width: none !important;
+    max-height: none !important;
+}
+.leaflet-marker-icon,
+.leaflet-div-icon {
+    background: transparent !important;
+    border: none !important;
+    transition: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.leaflet-marker-icon .marker-inner,
+.leaflet-div-icon .marker-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
 .injourney-hub-marker {
     display: flex;
     align-items: center;
@@ -42,6 +64,7 @@
     border-radius: 50%;
     background-color: rgba(6, 182, 212, 0.45);
     animation: ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+    pointer-events: none;
 }
 .injourney-hub-dot {
     position: relative;
@@ -53,6 +76,7 @@
     box-shadow: 0 0 10px rgba(6, 182, 212, 0.7);
 }
 .injourney-station-dot {
+    position: relative;
     width: 10px;
     height: 10px;
     border-radius: 50%;
@@ -62,7 +86,7 @@
 }
 .injourney-station-label {
     position: absolute;
-    top: 12px;
+    top: 15px;
     left: 50%;
     transform: translateX(-50%);
     background: rgba(15, 23, 42, 0.9);
@@ -79,7 +103,7 @@
 }
 .injourney-hub-label {
     position: absolute;
-    top: 15px;
+    top: 19px;
     left: 50%;
     transform: translateX(-50%);
     background: #0F172A;
@@ -104,7 +128,7 @@
     box-shadow: 0 0 3px rgba(100, 116, 139, 0.4);
     transition: transform 0.15s ease, background-color 0.15s ease;
 }
-.injourney-inactive-dot:hover {
+.marker-inner:hover .injourney-inactive-dot {
     transform: scale(1.4);
     background-color: #64748B;
     opacity: 1;
@@ -1857,6 +1881,17 @@ const _fdrCharts = {
     ediflyGap: null,
 };
 
+// Module-level non-reactive store for Leaflet Route Network Map instances.
+// Storing L.Map and L.LayerGroup outside Alpine.js v3 reactive state prevents deep Proxy wrapping
+// from desynchronizing Leaflet's internal _pixelOrigin / _mapPane transforms during simultaneous pan + zoom.
+const _fdrNetworkMap = {
+    map: null,
+    svgRenderer: null,
+    layerGroup: null,
+    resizeObserver: null,
+    windowResizeBound: false,
+};
+
 // Static coordinate dictionary for 35 InJourney Airports + common domestic & international destinations
 const INJOURNEY_AIRPORTS_STATIC = {
     // 35 InJourney Airports
@@ -2103,10 +2138,10 @@ function fdrDashboardController() {
                 this.logReconciliation('INIT');
             });
             setTimeout(() => {
-                if (this._networkMap) this._networkMap.invalidateSize(false);
+                this.safeInvalidateNetworkMap();
             }, 120);
             setTimeout(() => {
-                if (this._networkMap) this._networkMap.invalidateSize(false);
+                this.safeInvalidateNetworkMap();
             }, 400);
         },
 
@@ -3493,6 +3528,7 @@ function fdrDashboardController() {
 
             this.$nextTick(() => {
                 this.initAllCharts();
+                this.renderNetworkMap();
             });
         },
 
@@ -4858,12 +4894,44 @@ function fdrDashboardController() {
             return lines;
         },
 
+        safeInvalidateNetworkMap() {
+            const map = _fdrNetworkMap.map;
+            if (!map || !map._leaflet_id) return;
+            // Never invalidate size mid-zoom or mid-drag, as resetting _pixelOrigin during an active transform causes marker/polyline matrix drift
+            if (map._animatingZoom) return;
+            if (map.dragging && map.dragging._draggable && map.dragging._draggable._moving) return;
+            map.invalidateSize({ animate: false, pan: false });
+            this.syncNetworkMapCoordinates();
+        },
+
+        syncNetworkMapCoordinates() {
+            const map = _fdrNetworkMap.map;
+            if (!map || !map._leaflet_id) return;
+            if (map._animatingZoom) return;
+
+            if (_fdrNetworkMap.svgRenderer && typeof _fdrNetworkMap.svgRenderer._update === 'function') {
+                try {
+                    _fdrNetworkMap.svgRenderer._update();
+                } catch (e) {}
+            }
+
+            if (_fdrNetworkMap.layerGroup) {
+                _fdrNetworkMap.layerGroup.eachLayer((layer) => {
+                    if (layer instanceof L.Marker && typeof layer.update === 'function') {
+                        layer.update();
+                    } else if (layer instanceof L.Polyline && typeof layer.redraw === 'function') {
+                        layer.redraw();
+                    }
+                });
+            }
+        },
+
         initOrGetNetworkMap() {
             const container = document.getElementById('injourney-network-map');
             if (!container) return null;
 
-            if (this._networkMap && this._networkMap._leaflet_id) {
-                return this._networkMap;
+            if (_fdrNetworkMap.map && _fdrNetworkMap.map._leaflet_id) {
+                return _fdrNetworkMap.map;
             }
 
             if (typeof L === 'undefined') {
@@ -4880,15 +4948,44 @@ function fdrDashboardController() {
                 });
             }
 
+            // Native SVG renderer in geographic [lat, lng] space (never detached custom SVG or mismatched Canvas)
+            const svgRenderer = L.svg({ padding: 0.5 });
+            _fdrNetworkMap.svgRenderer = svgRenderer;
+
             // Basemap centered explicitly on Indonesian archipelago center: lat: -2.5489, lng: 118.0149 (zoom 5)
-            const map = L.map('injourney-network-map', {
+            const map = L.map(container, {
                 center: [-2.5489, 118.0149],
                 zoom: 5,
                 minZoom: 3,
                 maxZoom: 18,
                 zoomControl: true,
                 attributionControl: true,
-                preferCanvas: true
+                preferCanvas: false,
+                renderer: svgRenderer,
+                zoomAnimation: true,
+                markerZoomAnimation: true,
+                fadeAnimation: true,
+                inertia: true,
+                worldCopyJump: false
+            });
+
+            // Prevent simultaneous drag + scroll-wheel zoom matrix drift:
+            // If the user is actively dragging the map and scrolls the wheel simultaneously,
+            // commit/end the active drag BEFORE the wheel zoom transform starts so L.Draggable
+            // never overwrites map._mapPane's translate3d matrix with stale pre-zoom coordinates.
+            const cancelActiveDragBeforeZoom = () => {
+                if (map.dragging && map.dragging._draggable && map.dragging._draggable._moving) {
+                    try {
+                        map.dragging._draggable._onUp(new MouseEvent('mouseup'));
+                    } catch (e) {}
+                }
+            };
+            container.addEventListener('wheel', cancelActiveDragBeforeZoom, { capture: true, passive: true });
+            map.on('zoomstart', cancelActiveDragBeforeZoom);
+
+            // Re-synchronize all geographic layers (SVG trajectories, arrowheads, and airport markers) after pan/zoom
+            map.on('zoomend moveend viewreset', () => {
+                this.syncNetworkMapCoordinates();
             });
 
             // Standard OpenStreetMap free keyless tile provider (Option A)
@@ -4922,55 +5019,61 @@ function fdrDashboardController() {
 
             tileLayer.addTo(map);
 
-            this._networkRouteLayer = L.layerGroup().addTo(map);
-            this._networkNodeLayer = L.layerGroup().addTo(map);
-            this._networkMap = map;
+            // Unified single L.layerGroup() for all 3 geographic visual elements (Trajectories, Arrowheads, Airport Badges)
+            const unifiedLayerGroup = L.layerGroup().addTo(map);
+            _fdrNetworkMap.layerGroup = unifiedLayerGroup;
+            _fdrNetworkMap.map = map;
 
-            // Attach ResizeObserver to both map container and parent wrapper
-            if (typeof ResizeObserver !== 'undefined' && !this._networkMapResizeObserver) {
-                this._networkMapResizeObserver = new ResizeObserver(() => {
-                    if (this._networkMap) {
-                        this._networkMap.invalidateSize(false);
+            let lastObservedWidth = container.clientWidth;
+            let lastObservedHeight = container.clientHeight;
+
+            // Attach ResizeObserver to map container, only invalidating when actual dimensions change and not mid-zoom/drag
+            if (typeof ResizeObserver !== 'undefined' && !_fdrNetworkMap.resizeObserver) {
+                _fdrNetworkMap.resizeObserver = new ResizeObserver(() => {
+                    if (!_fdrNetworkMap.map) return;
+                    const w = container.clientWidth;
+                    const h = container.clientHeight;
+                    if (w > 0 && h > 0 && (w !== lastObservedWidth || h !== lastObservedHeight)) {
+                        lastObservedWidth = w;
+                        lastObservedHeight = h;
+                        this.safeInvalidateNetworkMap();
                     }
                 });
-                this._networkMapResizeObserver.observe(container);
-                const parentWrap = document.getElementById('injourney-network-container');
-                if (parentWrap) {
-                    this._networkMapResizeObserver.observe(parentWrap);
-                }
+                _fdrNetworkMap.resizeObserver.observe(container);
             }
 
             // Window resize handler
-            window.addEventListener('resize', () => {
-                if (this._networkMap) {
-                    this._networkMap.invalidateSize(false);
-                }
-            });
+            if (!_fdrNetworkMap.windowResizeBound) {
+                _fdrNetworkMap.windowResizeBound = true;
+                window.addEventListener('resize', () => {
+                    this.safeInvalidateNetworkMap();
+                });
+            }
 
             // Initial size invalidation
             setTimeout(() => {
-                if (this._networkMap) this._networkMap.invalidateSize(false);
+                this.safeInvalidateNetworkMap();
             }, 80);
 
             return map;
         },
 
         destroyNetworkMap() {
-            if (this._networkMapResizeObserver) {
+            if (_fdrNetworkMap.resizeObserver) {
                 try {
-                    this._networkMapResizeObserver.disconnect();
+                    _fdrNetworkMap.resizeObserver.disconnect();
                 } catch (e) {}
-                this._networkMapResizeObserver = null;
+                _fdrNetworkMap.resizeObserver = null;
             }
-            if (this._networkMap) {
+            if (_fdrNetworkMap.map) {
                 try {
-                    this._networkMap.remove();
+                    _fdrNetworkMap.map.remove();
                 } catch (e) {
                     console.warn('[FDR Route Network] Error destroying map:', e);
                 }
-                this._networkMap = null;
-                this._networkRouteLayer = null;
-                this._networkNodeLayer = null;
+                _fdrNetworkMap.map = null;
+                _fdrNetworkMap.svgRenderer = null;
+                _fdrNetworkMap.layerGroup = null;
             }
         },
 
@@ -4993,8 +5096,8 @@ function fdrDashboardController() {
             const ctrlLat = midLat + normLat * offset;
             const ctrlLon = midLon + normLon * offset;
 
-            // Sample quadratic Bezier curve
-            const steps = Math.max(16, Math.min(32, Math.round(dist * 3)));
+            // Sample 36 interpolated quadratic Bezier points directly in geographic [lat, lng] space
+            const steps = 36;
             const points = [];
             for (let i = 0; i <= steps; i++) {
                 const t = i / steps;
@@ -5021,12 +5124,14 @@ function fdrDashboardController() {
                 return;
             }
 
-            if (!this._networkRouteLayer) this._networkRouteLayer = L.layerGroup().addTo(map);
-            if (!this._networkNodeLayer) this._networkNodeLayer = L.layerGroup().addTo(map);
+            if (!_fdrNetworkMap.layerGroup) {
+                _fdrNetworkMap.layerGroup = L.layerGroup().addTo(map);
+            }
 
-            // Clear previous layers
-            this._networkRouteLayer.clearLayers();
-            this._networkNodeLayer.clearLayers();
+            const layerGroup = _fdrNetworkMap.layerGroup;
+
+            // Clear previous layers in the unified geographic layer group
+            layerGroup.clearLayers();
 
             const dict = this.getNetworkAirportDictionary();
             const routes = this.getNetworkRoutes();
@@ -5110,36 +5215,22 @@ function fdrDashboardController() {
 
             const uniqueRoutesCount = uniqueRouteKeys.size || routes.length;
 
-            // Diagnostic data contract logging
-            console.groupCollapsed("[FDR Route Network Map Telemetry]");
-            console.log({
-                uploadId: this.uploadId,
-                uniqueRoutes: uniqueRoutesCount,
-                mappedRoutes: mappedRoutesCount,
-                endpoints: activeAirportCodes.size,
-                mapWidth: container.clientWidth,
-                mapHeight: container.clientHeight,
-                tileLayerLoaded: this.tileLayerLoaded,
-                routeLayerCount: validLines.length,
-                markerLayerCount: this._networkNodeLayer ? this._networkNodeLayer.getLayers().length : 0
-            });
-            console.groupEnd();
-
-            // 1. Draw Directional Curved Trajectories
+            // 1. Draw Directional Curved Trajectories & Native Midpoint Arrowheads inside Unified L.layerGroup()
             validLines.forEach((line) => {
-                const curvedPoints = this.calculateCurvedGeoPoints(line.a1.lat, line.a1.lon, line.a2.lat, line.a2.lon);
+                const bezierLatLngs = this.calculateCurvedGeoPoints(line.a1.lat, line.a1.lon, line.a2.lat, line.a2.lon);
 
                 // Line thickness according to flight volume: Low (<15): 2px, Medium (15-50): 3px, High (>50): 4-6px
                 const strokeWidth = line.flights > 50 ? Math.min(6, 4 + Math.round(line.flights / 100)) : (line.flights > 15 ? 3 : 2);
                 const strokeOpacity = Math.max(0.70, Math.min(0.95, 0.65 + (line.flights / 80)));
 
-                const polyline = L.polyline(curvedPoints, {
+                const polyline = L.polyline(bezierLatLngs, {
+                    renderer: _fdrNetworkMap.svgRenderer || undefined,
                     color: '#0284C7',
                     weight: strokeWidth,
                     opacity: strokeOpacity,
                     lineCap: 'round',
                     lineJoin: 'round',
-                    smoothFactor: 1.0
+                    smoothFactor: 0
                 });
 
                 // Tooltip for route
@@ -5164,6 +5255,7 @@ function fdrDashboardController() {
                 });
 
                 polyline.on('mouseover', (e) => {
+                    if (map._animatingZoom || (map.dragging && map.dragging._draggable && map.dragging._draggable._moving)) return;
                     const layer = e.target;
                     layer.setStyle({
                         color: '#2563EB',
@@ -5183,32 +5275,37 @@ function fdrDashboardController() {
                     this.hoveredRoute = null;
                 });
 
-                polyline.addTo(this._networkRouteLayer);
+                polyline.addTo(layerGroup);
 
-                // Add directional arrowhead marker at ~72% along trajectory
-                if (curvedPoints.length >= 8) {
-                    const idxArrow = Math.floor(curvedPoints.length * 0.72);
-                    const pA = curvedPoints[idxArrow - 1];
-                    const pB = curvedPoints[idxArrow];
-                    const dScreenY = pA[0] - pB[0];
-                    const dScreenX = pB[1] - pA[1];
-                    const angleDeg = Math.atan2(dScreenY, dScreenX) * (180 / Math.PI);
+                // Native Geographic Directional Arrowhead Marker at t = 0.55 along bezierLatLngs
+                if (bezierLatLngs.length >= 4) {
+                    const idxArrow = Math.max(1, Math.min(bezierLatLngs.length - 1, Math.round((bezierLatLngs.length - 1) * 0.55)));
+                    const pA = bezierLatLngs[idxArrow - 1];
+                    const pB = bezierLatLngs[idxArrow];
+                    // Use Web Mercator projection so tangent angle matches rendered SVG polyline at all zoom levels
+                    const ptA = map.project(L.latLng(pA[0], pA[1]), 10);
+                    const ptB = map.project(L.latLng(pB[0], pB[1]), 10);
+                    const angleDeg = Math.atan2(ptB.y - ptA.y, ptB.x - ptA.x) * (180 / Math.PI);
 
                     const arrowIcon = L.divIcon({
                         className: 'injourney-arrow-marker',
-                        html: `<div style="transform: rotate(${angleDeg}deg); width:14px; height:14px; display:flex; align-items:center; justify-content:center; pointer-events:none;">
-                            <svg width="12" height="12" viewBox="0 0 10 10" fill="#0284C7" opacity="0.95">
-                                <path d="M 0 1.5 L 8 5 L 0 8.5 z"/>
+                        html: `<div class="marker-inner" style="width:16px; height:16px; transform: rotate(${angleDeg.toFixed(2)}deg); transform-origin: 50% 50%; pointer-events:none;">
+                            <svg width="12" height="12" viewBox="0 0 10 10" fill="#0284C7" opacity="0.95" style="display:block;">
+                                <path d="M 1 1.5 L 9 5 L 1 8.5 L 2.8 5 z"/>
                             </svg>
                         </div>`,
-                        iconSize: [14, 14],
-                        iconAnchor: [7, 7]
+                        iconSize: [16, 16],
+                        iconAnchor: [8, 8]
                     });
-                    L.marker(pB, { icon: arrowIcon, interactive: false }).addTo(this._networkRouteLayer);
+                    L.marker([pB[0], pB[1]], {
+                        icon: arrowIcon,
+                        interactive: false,
+                        keyboard: false
+                    }).addTo(layerGroup);
                 }
             });
 
-            // 2. Draw Airport Nodes
+            // 2. Draw Airport Hub & Station Badges inside the same Unified L.layerGroup()
             Object.keys(dict).forEach((code) => {
                 const info = dict[code];
                 if (!info || !Number.isFinite(info.lat) || !Number.isFinite(info.lon)) return;
@@ -5237,12 +5334,12 @@ function fdrDashboardController() {
                         : 'background: rgba(148, 163, 184, 0.2); color: #94A3B8; border: 1px solid rgba(148, 163, 184, 0.3);');
 
                 let iconHtml = '';
-                let iconSize = [10, 10];
-                let iconAnchor = [5, 5];
+                let iconSize = [12, 12];
+                let iconAnchor = [6, 6];
 
                 if (isHub) {
                     iconHtml = `
-                        <div class="injourney-hub-marker relative" style="width:28px; height:28px; display:flex; align-items:center; justify-content:center;">
+                        <div class="marker-inner injourney-hub-marker" style="width:28px; height:28px;">
                             <div class="injourney-hub-pulse"></div>
                             <div class="injourney-hub-dot"></div>
                             <div class="injourney-hub-label">${code}</div>
@@ -5252,7 +5349,7 @@ function fdrDashboardController() {
                     iconAnchor = [14, 14];
                 } else if (isActive) {
                     iconHtml = `
-                        <div class="relative" style="width:20px; height:20px; display:flex; align-items:center; justify-content:center;">
+                        <div class="marker-inner" style="width:20px; height:20px;">
                             <div class="injourney-station-dot"></div>
                             <div class="injourney-station-label">${code}</div>
                         </div>
@@ -5260,9 +5357,13 @@ function fdrDashboardController() {
                     iconSize = [20, 20];
                     iconAnchor = [10, 10];
                 } else {
-                    iconHtml = `<div class="injourney-inactive-dot" title="${code} - ${info.name}"></div>`;
-                    iconSize = [8, 8];
-                    iconAnchor = [4, 4];
+                    iconHtml = `
+                        <div class="marker-inner" style="width:12px; height:12px;">
+                            <div class="injourney-inactive-dot" title="${code} - ${info.name}"></div>
+                        </div>
+                    `;
+                    iconSize = [12, 12];
+                    iconAnchor = [6, 6];
                 }
 
                 const markerIcon = L.divIcon({
@@ -5298,6 +5399,7 @@ function fdrDashboardController() {
                 });
 
                 marker.on('mouseover', () => {
+                    if (map._animatingZoom || (map.dragging && map.dragging._draggable && map.dragging._draggable._moving)) return;
                     this.hoveredAirport = {
                         code,
                         name: info.name,
@@ -5315,11 +5417,26 @@ function fdrDashboardController() {
                     this.hoveredAirport = null;
                 });
 
-                marker.addTo(this._networkNodeLayer);
+                marker.addTo(layerGroup);
             });
 
+            // Diagnostic data contract logging
+            console.groupCollapsed("[FDR Route Network Map Telemetry]");
+            console.log({
+                uploadId: this.uploadId,
+                uniqueRoutes: uniqueRoutesCount,
+                mappedRoutes: mappedRoutesCount,
+                endpoints: activeAirportCodes.size,
+                mapWidth: container.clientWidth,
+                mapHeight: container.clientHeight,
+                tileLayerLoaded: this.tileLayerLoaded,
+                routeLayerCount: validLines.length,
+                totalLayerGroupCount: layerGroup ? layerGroup.getLayers().length : 0
+            });
+            console.groupEnd();
+
             // 3. Auto-Fit Bounds & Projections for Indonesia
-            map.invalidateSize(false);
+            this.safeInvalidateNetworkMap();
 
             const trf = (this.filters.traffic || 'ALL').toUpperCase();
             const isIntlOnly = trf === 'INTL' || trf === 'INTERNATIONAL';
@@ -5363,22 +5480,24 @@ function fdrDashboardController() {
                 map.setView([-2.5489, 118.0149], 5, { animate: false });
             }
 
-            // Invalidate size across layout settle lifecycle
+            this.syncNetworkMapCoordinates();
+
+            // Invalidate size across layout settle lifecycle (guarded against active drag/zoom)
             setTimeout(() => {
-                if (this._networkMap) this._networkMap.invalidateSize(false);
+                this.safeInvalidateNetworkMap();
             }, 80);
             setTimeout(() => {
-                if (this._networkMap) this._networkMap.invalidateSize(false);
+                this.safeInvalidateNetworkMap();
             }, 250);
             setTimeout(() => {
-                if (this._networkMap) this._networkMap.invalidateSize(false);
+                this.safeInvalidateNetworkMap();
             }, 600);
         },
 
         fitNetworkMap(scope = 'ALL') {
-            const map = this._networkMap;
+            const map = _fdrNetworkMap.map;
             if (!map) return;
-            map.invalidateSize(false);
+            this.safeInvalidateNetworkMap();
 
             const hub = (this.filters.airport || this.lockedAirport || 'CGK').toUpperCase();
             const dict = this.getNetworkAirportDictionary();
