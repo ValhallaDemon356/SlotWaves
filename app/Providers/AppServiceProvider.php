@@ -24,6 +24,16 @@ class AppServiceProvider extends ServiceProvider
             config(['session.driver' => 'cookie']);
         }
 
+        // Ensure a working relational database connection (auto-fallback to pre-seeded SQLite + Supabase REST
+        // when the PostgreSQL TCP pooler rejects connections without SNI or is unreachable on Vercel serverless).
+        if (!$this->app->runningInConsole()) {
+            try {
+                \App\Services\FlightDailyReport\FdrDatabaseService::ensureWorkingConnection();
+            } catch (\Throwable $e) {
+                // Non-fatal during boot
+            }
+        }
+
         if ($this->app->runningInConsole()) {
             $this->commands([
                 \App\Console\Commands\AuditAirportsCommand::class,

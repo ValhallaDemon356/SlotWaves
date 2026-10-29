@@ -157,16 +157,21 @@ class FdrDatabaseService
             @file_put_contents($modeCacheFile, 'sqlite');
         }
 
+        $bundledSqlitePath = database_path('database.sqlite');
         $sqlitePath = is_dir('/tmp/storage')
             ? '/tmp/storage/database.sqlite'
-            : database_path('database.sqlite');
+            : $bundledSqlitePath;
 
         $sqliteDir = dirname($sqlitePath);
         if (!is_dir($sqliteDir)) {
             @mkdir($sqliteDir, 0755, true);
         }
         if (!file_exists($sqlitePath)) {
-            @touch($sqlitePath);
+            if ($sqlitePath !== $bundledSqlitePath && file_exists($bundledSqlitePath) && filesize($bundledSqlitePath) > 0) {
+                @copy($bundledSqlitePath, $sqlitePath);
+            } else {
+                @touch($sqlitePath);
+            }
         }
 
         config([
@@ -175,37 +180,141 @@ class FdrDatabaseService
         ]);
         DB::purge('sqlite');
 
-        self::ensureSqliteSchema();
+        self::ensureSqliteSchema($sqlitePath, $bundledSqlitePath);
         self::$connectionVerified = true;
 
         return 'sqlite';
     }
 
     /**
-     * Auto-initializes required tables in SQLite when running in serverless / fallback mode.
+     * Auto-initializes required tables in SQLite when running in serverless / fallback mode,
+     * and hydrates the complete Master Data (602 Airports + 62 Airlines) if missing.
      */
-    public static function ensureSqliteSchema(): void
+    public static function ensureSqliteSchema(?string $sqlitePath = null, ?string $bundledSqlitePath = null): void
     {
         $schema = \Illuminate\Support\Facades\Schema::connection('sqlite');
+        $bundledSqlitePath = $bundledSqlitePath ?: database_path('database.sqlite');
+        $sqlitePath = $sqlitePath ?: (string) config('database.connections.sqlite.database', $bundledSqlitePath);
 
         if (!$schema->hasTable('airports')) {
             $schema->create('airports', function (\Illuminate\Database\Schema\Blueprint $table) {
                 $table->id();
-                $table->string('iata_code', 10)->index();
-                $table->string('icao_code', 10)->nullable();
+                $table->integer('bandara_id')->nullable()->index();
+                $table->string('iata_code', 10)->nullable()->index();
+                $table->string('icao_code', 10)->nullable()->index();
                 $table->string('name')->nullable();
                 $table->string('city')->nullable();
+                $table->string('area')->nullable();
+                $table->string('province')->nullable();
+                $table->string('region')->nullable();
                 $table->string('country')->nullable();
-                $table->string('timezone')->default('Asia/Jakarta');
-                $table->boolean('is_active')->default(true);
-                $table->integer('slot_capacity')->default(30);
-                $table->integer('arrival_capacity')->nullable();
-                $table->integer('departure_capacity')->nullable();
-                $table->string('ops_start_time')->default('06:00');
-                $table->string('ops_end_time')->default('20:00');
                 $table->decimal('latitude', 10, 6)->nullable();
                 $table->decimal('longitude', 10, 6)->nullable();
-                $table->string('management_type')->nullable();
+                $table->string('airport_type')->default('domestic');
+                $table->string('management_type')->default('PT. Angkasa Pura Indonesia');
+                $table->string('management_name')->nullable();
+                $table->string('usage_type')->default('Komersial')->nullable();
+                $table->string('classification')->nullable();
+                $table->string('status')->default('active');
+                $table->string('operating_status')->nullable();
+                $table->integer('aircraft_capacity')->default(6);
+                $table->integer('slot_capacity')->default(30);
+                $table->integer('arrival_capacity')->default(6)->nullable();
+                $table->integer('departure_capacity')->default(6)->nullable();
+                $table->string('timezone')->default('Asia/Jakarta');
+                $table->string('ops_start_time')->default('06:00');
+                $table->string('ops_end_time')->default('20:00');
+                $table->boolean('is_international')->default(false);
+                $table->boolean('is_active')->default(true);
+                $table->boolean('data_incomplete')->default(false);
+                $table->string('data_source')->default('INJOURNEY_AIRPORTS');
+                $table->string('source')->default('PROJECT_REFERENCE');
+                $table->string('source_url')->nullable();
+                $table->timestamp('source_checked_at')->nullable();
+                $table->timestamps();
+            });
+        } else {
+            $airportRequiredCols = [
+                'bandara_id'        => 'integer',
+                'area'              => 'string',
+                'province'          => 'string',
+                'region'            => 'string',
+                'airport_type'      => 'string',
+                'management_name'   => 'string',
+                'usage_type'        => 'string',
+                'classification'    => 'string',
+                'status'            => 'string',
+                'operating_status'  => 'string',
+                'aircraft_capacity' => 'integer',
+                'slot_capacity'     => 'integer',
+                'is_international'  => 'boolean',
+                'data_incomplete'   => 'boolean',
+                'data_source'       => 'string',
+                'source'            => 'string',
+                'source_url'        => 'string',
+                'source_checked_at' => 'timestamp',
+            ];
+            $missingAirportCols = [];
+            foreach ($airportRequiredCols as $col => $type) {
+                if (!$schema->hasColumn('airports', $col)) {
+                    $missingAirportCols[$col] = $type;
+                }
+            }
+            if (!empty($missingAirportCols)) {
+                $schema->table('airports', function (\Illuminate\Database\Schema\Blueprint $table) use ($missingAirportCols) {
+                    foreach ($missingAirportCols as $col => $type) {
+                        if ($type === 'integer') {
+                            $table->integer($col)->nullable();
+                        } elseif ($type === 'boolean') {
+                            $table->boolean($col)->default(false)->nullable();
+                        } elseif ($type === 'timestamp') {
+                            $table->timestamp($col)->nullable();
+                        } else {
+                            $table->string($col)->nullable();
+                        }
+                    }
+                });
+            }
+        }
+
+        if (!$schema->hasTable('airlines')) {
+            $schema->create('airlines', function (\Illuminate\Database\Schema\Blueprint $table) {
+                $table->id();
+                $table->string('airline_code', 20)->index();
+                $table->string('airline_name');
+                $table->string('organization_code')->nullable();
+                $table->string('category')->default('domestic');
+                $table->string('country')->default('Indonesia');
+                $table->string('status')->default('active');
+                $table->boolean('is_active')->default(true);
+                $table->string('source')->default('PROJECT_REFERENCE');
+                $table->string('source_url')->nullable();
+                $table->timestamp('source_checked_at')->nullable();
+                $table->timestamps();
+            });
+        }
+
+        if (!$schema->hasTable('flights')) {
+            $schema->create('flights', function (\Illuminate\Database\Schema\Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('upload_id')->index();
+                $table->string('flight_number');
+                $table->string('airline_code')->nullable();
+                $table->string('aircraft_type')->nullable();
+                $table->string('origin')->nullable()->index();
+                $table->string('destination')->nullable()->index();
+                $table->time('scheduled_time')->nullable();
+                $table->string('operating_days')->nullable();
+                $table->string('flight_type')->default('arrival');
+                $table->string('remarks')->nullable();
+                $table->longText('raw_data')->nullable();
+                $table->string('slot_status')->default('available');
+                $table->unsignedBigInteger('paired_flight_id')->nullable();
+                $table->string('direction')->default('arrival');
+                $table->string('traffic_type')->default('domestic');
+                $table->string('parse_status')->default('valid');
+                $table->string('validation_status')->default('valid');
+                $table->longText('validation_errors')->nullable();
                 $table->timestamps();
             });
         }
@@ -372,6 +481,81 @@ class FdrDatabaseService
                 $table->longText('chunk_data')->nullable();
                 $table->timestamps();
             });
+        }
+
+        self::ensureMasterDataHydrated($sqlitePath, $bundledSqlitePath);
+    }
+
+    /**
+     * Hydrates the Master Data tables (airports: 602 rows, airlines: 62 rows) into the active
+     * SQLite database if it was previously created empty on a warm serverless instance.
+     */
+    public static function ensureMasterDataHydrated(?string $sqlitePath = null, ?string $bundledSqlitePath = null): void
+    {
+        try {
+            $bundledSqlitePath = $bundledSqlitePath ?: database_path('database.sqlite');
+            $sqlitePath = $sqlitePath ?: (string) config('database.connections.sqlite.database', $bundledSqlitePath);
+
+            $conn = DB::connection('sqlite');
+            $airportCount = (int) $conn->table('airports')->count();
+            $airlineCount = (int) $conn->table('airlines')->count();
+
+            if ($airportCount >= 100 && $airlineCount >= 10) {
+                return;
+            }
+
+            $schema = \Illuminate\Support\Facades\Schema::connection('sqlite');
+
+            // 1. Fast hydration from bundled pre-seeded database/database.sqlite (< 10ms)
+            if ($sqlitePath !== $bundledSqlitePath && file_exists($bundledSqlitePath) && filesize($bundledSqlitePath) > 0) {
+                $bundledPdo = new \PDO('sqlite:' . $bundledSqlitePath);
+                $bundledPdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+
+                if ($airportCount < 100) {
+                    $validCols = array_flip($schema->getColumnListing('airports'));
+                    $rows = $bundledPdo->query('SELECT * FROM airports')->fetchAll(\PDO::FETCH_ASSOC);
+                    if (!empty($rows) && count($rows) >= 100) {
+                        $conn->table('airports')->delete();
+                        $cleanRows = [];
+                        foreach ($rows as $r) {
+                            $cleanRows[] = array_intersect_key($r, $validCols);
+                        }
+                        foreach (array_chunk($cleanRows, 100) as $chunk) {
+                            $conn->table('airports')->insert($chunk);
+                        }
+                        $airportCount = count($cleanRows);
+                    }
+                }
+
+                if ($airlineCount < 10) {
+                    $validCols = array_flip($schema->getColumnListing('airlines'));
+                    $rows = $bundledPdo->query('SELECT * FROM airlines')->fetchAll(\PDO::FETCH_ASSOC);
+                    if (!empty($rows) && count($rows) >= 10) {
+                        $conn->table('airlines')->delete();
+                        $cleanRows = [];
+                        foreach ($rows as $r) {
+                            $cleanRows[] = array_intersect_key($r, $validCols);
+                        }
+                        foreach (array_chunk($cleanRows, 50) as $chunk) {
+                            $conn->table('airlines')->insert($chunk);
+                        }
+                        $airlineCount = count($cleanRows);
+                    }
+                }
+            }
+
+            // 2. Fallback to running Hubud seeders if still unseeded
+            if ($airportCount < 37) {
+                (new \Database\Seeders\HubudAirportSeeder())->run();
+                if (file_exists(base_path('hubud_bandara_map.json'))) {
+                    \Illuminate\Support\Facades\Artisan::call('slotwaves:import-hubud-airports');
+                }
+            }
+            if ($airlineCount < 10) {
+                (new \Database\Seeders\HubudAirlineSeeder())->run();
+            }
+        } catch (\Throwable $e) {
+            Log::warning('FdrDatabaseService::ensureMasterDataHydrated warning: ' . self::sanitizeLogMessage($e->getMessage()));
         }
     }
 

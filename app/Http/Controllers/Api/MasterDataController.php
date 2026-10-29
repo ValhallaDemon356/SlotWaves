@@ -6,17 +6,24 @@ use App\Http\Controllers\Controller;
 use App\Models\Airport;
 use App\Models\Airline;
 use App\Models\Flight;
+use App\Services\FlightDailyReport\FdrDatabaseService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class MasterDataController extends Controller
 {
+    public function __construct()
+    {
+        FdrDatabaseService::ensureWorkingConnection();
+    }
+
     /**
      * GET /api/airports
      * Supports: search, management_type, region, airport_type, usage_type, iata, icao, data_source
      */
     public function airports(Request $request): JsonResponse
     {
+        FdrDatabaseService::ensureWorkingConnection();
         $query = Airport::query();
 
         if ($request->filled('search')) {

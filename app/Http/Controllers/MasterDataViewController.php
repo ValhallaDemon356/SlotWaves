@@ -4,12 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\Airport;
 use App\Models\Airline;
+use App\Services\FlightDailyReport\FdrDatabaseService;
 use Illuminate\Http\Request;
 
 class MasterDataViewController extends Controller
 {
+    public function __construct()
+    {
+        FdrDatabaseService::ensureWorkingConnection();
+    }
+
     public function index(Request $request)
     {
+        FdrDatabaseService::ensureWorkingConnection();
         $tab = $request->input('tab', 'airports');
 
             // ── 1. Airports Query & Dynamic Filters ─────────────────────────────
